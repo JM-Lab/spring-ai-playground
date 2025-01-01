@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: spring-ai-playground
+  profiles:
+    default: ollama
+  ai:
+    playground:
+      chat:
+        system:
+          prompt:
+
+---
+spring:
+  config:
+    activate:
+      on-profile: ollama
+  ai:
+    ollama:
+      init:
+        pull-model-strategy: when_missing
+    playground:
+      chat:
+        models:
+          - llama3.2
+          - llama3.2-vision
+          - llama3.1
+          - qwq
+          - mistral
+          - qwen2
+          - qwen2.5
+          - mixtral
+
+---
+spring:
+  config:
+    activate:
+      on-profile: openai
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        enabled: false
+        options:
+          model: o1-mini
+    playground:
+      chat:
+        models:
+          - o1-mini
+          - o1
+          - gpt-4o
+          - o1-preview
+          - gpt-4o-mini
+          - gpt-3.5-turbo
+          - gpt-3.5-turbo-16k
+          - gpt-4
+          - gpt-4-32k
+          - gpt-4-turbo
