@@ -15,6 +15,7 @@ Build and run the app:
 ./mvnw clean install
 ./mvnw spring-boot:run
 ```
+Open http://localhost:8080 in your browser.
 
 ## Auto-configurations
 
