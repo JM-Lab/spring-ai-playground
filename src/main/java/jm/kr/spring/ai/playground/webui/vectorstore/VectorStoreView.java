@@ -1,5 +1,7 @@
-package jm.kr.spring.ai.playground.webui.chat;
+package jm.kr.spring.ai.playground.webui.vectorstore;
 
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.contextmenu.MenuItem;
@@ -19,33 +21,40 @@ import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.popover.PopoverVariant;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
+import com.vaadin.flow.theme.lumo.LumoIcon;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import jm.kr.spring.ai.playground.service.chat.ChatClientService;
-import jm.kr.spring.ai.playground.service.chat.ChatHistory;
-import jm.kr.spring.ai.playground.service.chat.ChatHistoryService;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
-import jm.kr.spring.ai.playground.webui.VaadinUtils;
+import jm.kr.spring.ai.playground.webui.chat.ChatModelSettingView;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
-import java.util.Objects;
+import java.util.List;
 
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
-@Route(value = "chat", layout = SpringAiPlaygroundAppLayout.class)
-public class ChatView extends Div {
+@RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
+@Route(value = "vectorstore", layout = SpringAiPlaygroundAppLayout.class)
+public class VectorStoreView extends Div {
 
     private static final int SPLITTER_POSITION = 15;
-    private final ChatClientService chatClientService;
-    private final ChatHistoryService chatHistoryService;
-    private final ChatHistoriesView chatHistoriesView;
+    private final VectorStoreService vectorStoreService;
+    private final VectorStoreDocumentService vectorStoreDocumentService;
+    private final VectorStoreDocumentView vectorStoreDocumentView;
     private final SplitLayout splitLayout;
-    private final VerticalLayout chatContentLayout;
+    private final VectorStoreContentView vectorStoreContentView;
     private boolean sidebarCollapsed;
-    private ChatContentView chatContentView;
 
-    public ChatView(ChatClientService chatClientService, ChatHistoryService chatHistoryService) {
+    public VectorStoreView(VectorStoreService vectorStoreService,
+            VectorStoreDocumentService vectorStoreDocumentService) {
+        this.vectorStoreService = vectorStoreService;
+        this.vectorStoreDocumentService = vectorStoreDocumentService;
+
         this.splitLayout = new SplitLayout();
         this.splitLayout.setSizeFull();
         this.splitLayout.setSplitterPosition(SPLITTER_POSITION);
@@ -53,26 +62,32 @@ public class ChatView extends Div {
         setSizeFull();
         add(splitLayout);
 
-        this.chatClientService =
-                chatClientService.registerCompleteResponseConsumer(this::handleCompleteResponse);
-        this.chatHistoryService = chatHistoryService;
-        this.chatHistoriesView = new ChatHistoriesView(initChatHistoryHeader(),
-                initChatHistoryFooter()).registerHistoryClickConsumer(this::changeChatContent);
-        this.splitLayout.addToPrimary(chatHistoriesView);
-        this.chatContentLayout = new VerticalLayout();
-        this.chatContentLayout.setSpacing(false);
-        this.chatContentLayout.setMargin(false);
-        this.chatContentLayout.setPadding(false);
-        this.chatContentLayout.setHeightFull();
-        this.chatContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
+        this.vectorStoreDocumentView = new VectorStoreDocumentView(initDocumentViewHeader(), initDocumentViewFooter());
+        this.splitLayout.addToPrimary(this.vectorStoreDocumentView);
+        this.vectorStoreContentView = new VectorStoreContentView(vectorStoreService);
+        this.vectorStoreContentView.setSpacing(false);
+        this.vectorStoreContentView.setMargin(false);
+        this.vectorStoreContentView.setPadding(false);
+        HorizontalLayout chatContentHeader = createDocumentContentHeader();
+
+
+        VerticalLayout vectorStoreContentLayout = new VerticalLayout();
+        vectorStoreContentLayout.setSpacing(false);
+        vectorStoreContentLayout.setMargin(false);
+        vectorStoreContentLayout.setPadding(false);
+        vectorStoreContentLayout.setHeightFull();
+        vectorStoreContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
                 .set("flex-direction", "column").set("align-items", "stretch");
-        this.splitLayout.addToSecondary(this.chatContentLayout);
+        vectorStoreContentLayout.add(chatContentHeader, this.vectorStoreContentView);
+
+        this.splitLayout.addToSecondary(vectorStoreContentLayout);
         this.sidebarCollapsed = false;
-        addNewChatContent();
+
+
     }
 
-    private Header initChatHistoryHeader() {
-        Span appName = new Span("History");
+    private Header initDocumentViewHeader() {
+        Span appName = new Span("Document");
         appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
 
         MenuBar menuBar = new MenuBar();
@@ -80,12 +95,58 @@ public class ChatView extends Div {
         menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
         menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
 
+        Icon newDocument = styledIcon(VaadinIcon.FILE_TEXT_O);
+        newDocument.setTooltipText("New Document");
+        menuBar.addItem(newDocument, event -> {
+            Popover popover = new Popover();
+            popover.setTarget(newDocument);
+            popover.setWidth("400px");
+            popover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
+            popover.setPosition(PopoverPosition.BOTTOM_END);
+            popover.setAriaLabelledBy("model-setting-heading");
+            popover.setModal(true);
+            popover.addOpenedChangeListener(openedChangeEvent -> {
+                if (!openedChangeEvent.isOpened())
+                    popover.removeFromParent();
+            });
+
+            FileUpload fileUpload = new FileUpload();
+            fileUpload.getStyle().set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
+
+            H4 heading = new H4("Document Create");
+            heading.setId("model-setting-heading");
+            heading.setWidthFull();
+
+            Button closeButton = new Button(styledIcon(VaadinIcon.CLOSE), e -> popover.close());
+            closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+            HorizontalLayout headerLayout = new HorizontalLayout(heading, closeButton);
+            headerLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+            headerLayout.getStyle().set("padding", "0 0 0 var(--lumo-space-m)");
+
+            Button insertButton = new Button("Insert Document",
+                    buttonClickEvent -> {
+                        popover.close();
+                    });
+            insertButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
+            HorizontalLayout applyNewChatButtonLayout = new HorizontalLayout(insertButton);
+            applyNewChatButtonLayout.setWidthFull();
+            applyNewChatButtonLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+            applyNewChatButtonLayout.getStyle().set("padding", "var(--lumo-space-m) 0 var(--lumo-space-m) 0");
+
+            fileUpload.add(applyNewChatButtonLayout);
+
+            popover.add(headerLayout, fileUpload);
+            popover.open();
+
+        });
+
         Icon chatMenuIcon = styledIcon(VaadinIcon.ELLIPSIS_DOTS_H);
         chatMenuIcon.setTooltipText("Open Menu");
         MenuItem chatMenuItem = menuBar.addItem(chatMenuIcon);
         SubMenu chatSubMenu = chatMenuItem.getSubMenu();
-        chatSubMenu.addItem("Rename", menuItemClickEvent -> renameHistory());
-        chatSubMenu.addItem("Delete", menuItemClickEvent -> deleteHistory());
+        chatSubMenu.addItem("Rename", menuItemClickEvent -> renameDocument());
+        chatSubMenu.addItem("Delete", menuItemClickEvent -> deleteDocument());
 
         Header header = new Header(appName, menuBar);
         header.getStyle().set("white-space", "nowrap").set("height", "auto").set("width", "100%").set("display", "flex")
@@ -93,8 +154,8 @@ public class ChatView extends Div {
         return header;
     }
 
-    private void renameHistory() {
-        chatHistoriesView.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
+    private void renameDocument() {
+        vectorStoreDocumentView.getCurrentDocumentInfoAsOpt().ifPresent(documentInfo -> {
             Dialog dialog = new Dialog();
             dialog.setModal(true);
             dialog.setResizable(true);
@@ -107,15 +168,15 @@ public class ChatView extends Div {
 
             TextField titleTextField = new TextField();
             titleTextField.setWidthFull();
-            titleTextField.setValue(chatHistory.title());
+            titleTextField.setValue(documentInfo.title());
             titleTextField.addFocusListener(event ->
                     titleTextField.getElement().executeJs("this.inputElement.select();")
             );
             dialogLayout.add(titleTextField);
 
             Button saveButton = new Button("Save", e -> {
-                handleCompleteResponse(
-                        this.chatHistoryService.updateChatHistory(chatHistory, titleTextField.getValue()));
+                this.vectorStoreDocumentService.updateDocument(documentInfo, titleTextField.getValue());
+                this.vectorStoreDocumentView.updateDocumentContent(this.vectorStoreDocumentService.getDocumentList());
                 dialog.close();
             });
             saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -130,19 +191,19 @@ public class ChatView extends Div {
         });
     }
 
-    private void deleteHistory() {
-        chatHistoriesView.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
+    private void deleteDocument() {
+        vectorStoreDocumentView.getCurrentDocumentInfoAsOpt().ifPresent(documentInfo -> {
             Dialog dialog = new Dialog();
             dialog.setModal(true);
-            dialog.setHeaderTitle("Delete History: " + chatHistory.title());
-            dialog.add("Are you sure you want to delete this history permanently?");
+            dialog.setHeaderTitle("Delete Document: " + documentInfo.title());
+            dialog.add("Are you sure you want to delete this permanently?");
 
             Button deleteButton = new Button("Delete", e -> {
-                this.chatHistoryService.deleteChatHistory(chatHistory.chatId());
-                this.chatHistoriesView.updateHistoriesContent(this.chatHistoryService.getChatHistories());
-                if (this.chatHistoryService.getChatHistoriesTotal() < 1)
-                    addNewChatContent();
-                dialog.close();
+                this.vectorStoreDocumentService.deleteDocumentInfo(documentInfo.docId());
+                this.vectorStoreDocumentView.updateDocumentContent(this.vectorStoreDocumentService.getDocumentList());
+                if (this.vectorStoreDocumentService.getDocumentTotal() < 1)
+//                    addNewVectorStoreContent();
+                    dialog.close();
             });
             deleteButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
             deleteButton.getStyle().set("margin-right", "auto");
@@ -156,47 +217,64 @@ public class ChatView extends Div {
         });
     }
 
-    private Footer initChatHistoryFooter() {
+    private Footer initDocumentViewFooter() {
         Span footer = new Span("");
         footer.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
         return new Footer(footer);
     }
 
-    private HorizontalLayout createChatContentHeader(ChatContentView chatContentView) {
+    private HorizontalLayout createDocumentContentHeader() {
         Button toggleButton = new Button();
         toggleButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         Icon leftArrowIcon = styledIcon(VaadinIcon.CHEVRON_LEFT);
         Icon rightArrowIcon = styledIcon(VaadinIcon.CHEVRON_RIGHT);
-        leftArrowIcon.setTooltipText("History Toggle");
-        rightArrowIcon.setTooltipText("History Toggle");
+        leftArrowIcon.setTooltipText("Hide Documents");
+        rightArrowIcon.setTooltipText("Show Documents");
         toggleButton.setIcon(leftArrowIcon);
         toggleButton.addClickListener(event -> {
             sidebarCollapsed = !sidebarCollapsed;
             toggleButton.setIcon(sidebarCollapsed ? rightArrowIcon : leftArrowIcon);
             if (sidebarCollapsed)
-                chatHistoriesView.removeFromParent();
+                vectorStoreDocumentView.removeFromParent();
             else
-                this.splitLayout.addToPrimary(chatHistoriesView);
+                this.splitLayout.addToPrimary(vectorStoreDocumentView);
             splitLayout.setSplitterPosition(sidebarCollapsed ? 0 : SPLITTER_POSITION);
         });
 
-        H4 modelText = new H4("Model: " + chatContentView.getChatOption().getModel());
-        modelText.getStyle().set("white-space", "nowrap");
-        Div modelTextDiv = new Div(modelText);
-        modelTextDiv.getStyle().set("display", "flex").set("justify-content", "center").set("align-items", "center")
-                .set("height", "100%");
+        TextArea userPromptTextArea = new TextArea();
+        userPromptTextArea.setPlaceholder("Test Prompt");
+        userPromptTextArea.setWidthFull();
+        userPromptTextArea.setAutofocus(true);
+        userPromptTextArea.focus();
+        userPromptTextArea.getStyle().set("padding", "0");
+//        userPromptTextArea.setMaxHeight("150px");
+        userPromptTextArea.setValueChangeMode(ValueChangeMode.EAGER);
+        userPromptTextArea.addKeyDownListener(Key.ENTER, event -> {
+            if (!event.isComposing() && !event.getModifiers().contains(KeyModifier.SHIFT)) {
 
-        HorizontalLayout modelLabelLayout = new HorizontalLayout(modelTextDiv);
-        modelLabelLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        modelLabelLayout.setWidthFull();
+            }
+        });
+
+        Button submitButton = new Button("Submit");
+        submitButton.addClickListener(buttonClickEvent -> {});
+        userPromptTextArea.setSuffixComponent(submitButton);
+
+
+        TextField filterExpressionTextField = new TextField("Filter Expression");
+        Icon icon = LumoIcon.DROPDOWN.create();
+        filterExpressionTextField.setSuffixComponent(icon);
+        filterExpressionTextField.setWidthFull();
+        filterExpressionTextField.getStyle().set("padding", "0");
+
+
+        HorizontalLayout searchInputLayout = new HorizontalLayout(userPromptTextArea, filterExpressionTextField);
+        searchInputLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
+        searchInputLayout.setWidthFull();
+        searchInputLayout.setPadding(false);
 
         MenuBar menuBar = new MenuBar();
         menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
         menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-
-        Icon newChatIcon = styledIcon(VaadinIcon.CHAT);
-        newChatIcon.setTooltipText("New Chat");
-        menuBar.addItem(newChatIcon, event -> addNewChatContent());
 
         Icon chatMenuIcon = styledIcon(VaadinIcon.COG_O);
         chatMenuIcon.setTooltipText("Model Setting");
@@ -217,8 +295,7 @@ public class ChatView extends Div {
             });
 
             ChatModelSettingView chatModelSettingView =
-                    new ChatModelSettingView(chatClientService.getModels(), chatContentView.getSystemPrompt(),
-                            chatContentView.getChatOption());
+                    new ChatModelSettingView(List.of(), "", ChatOptions.builder().build());
             chatModelSettingView.getStyle()
                     .set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
 
@@ -235,8 +312,8 @@ public class ChatView extends Div {
 
             Button applyNewChatButton = new Button("Apply & New Chat",
                     event -> {
-                        addNewChatContent(chatModelSettingView.getSystemPromptTextArea(),
-                                chatModelSettingView.getChatOptions());
+//                        addNewVectorStoreContent(chatModelSettingView.getSystemPromptTextArea(),
+//                                chatModelSettingView.getChatOptions());
                         popover.close();
                     });
             applyNewChatButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
@@ -252,41 +329,12 @@ public class ChatView extends Div {
 
         });
 
-        HorizontalLayout horizontalLayout = new HorizontalLayout(toggleButton, modelLabelLayout, menuBar);
+        HorizontalLayout horizontalLayout = new HorizontalLayout(toggleButton, searchInputLayout, menuBar);
         horizontalLayout.getStyle().set("padding", "var(--lumo-space-m) 0 0 0");
         horizontalLayout.setWidthFull();
         horizontalLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
 
         return horizontalLayout;
-    }
-
-    private void handleCompleteResponse(ChatHistory chatHistory) {
-        this.chatHistoryService.updateChatHistory(chatHistory);
-        this.chatHistoriesView.updateHistoriesContent(this.chatHistoryService.getChatHistories());
-    }
-
-    private void addNewChatContent() {
-        addNewChatContent(this.chatClientService.getSystemPrompt(), this.chatClientService.getDefaultOptions());
-    }
-
-    private void addNewChatContent(String systemPrompt, ChatOptions chatOptions) {
-        this.chatHistoriesView.clearSelectHistory();
-        changeChatContent(this.chatHistoryService.createChatHistory(systemPrompt, chatOptions));
-    }
-
-    private void changeChatContent(ChatHistory chatHistory) {
-        if (Objects.nonNull(this.chatContentView) &&
-                chatHistory.chatId().equals(this.chatContentView.getChatId())) {
-            this.chatContentView.updateChatHistory(chatHistory);
-            return;
-        }
-        this.chatContentView = new ChatContentView(this.chatClientService, chatHistory,
-                this.chatHistoryService.getMessageList(chatHistory.chatId()));
-        HorizontalLayout chatContentHeader = createChatContentHeader(this.chatContentView);
-        VaadinUtils.getUi(this).access(() -> {
-            this.chatContentLayout.removeAll();
-            this.chatContentLayout.add(chatContentHeader, this.chatContentView);
-        });
     }
 
 }

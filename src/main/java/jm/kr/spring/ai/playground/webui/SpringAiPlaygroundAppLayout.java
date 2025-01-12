@@ -1,6 +1,7 @@
 package jm.kr.spring.ai.playground.webui;
 
-import com.vaadin.flow.component.HasComponents;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -11,11 +12,14 @@ import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.PageTitle;
 import jm.kr.spring.ai.playground.webui.chat.ChatView;
+import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
+
+import java.util.Map;
 
 @PageTitle("Spring AI Playground")
 public class SpringAiPlaygroundAppLayout extends AppLayout {
 
-    private Tabs tabs = new Tabs();
+    private Map<String, Class<? extends Component>> tabContents;
 
     public SpringAiPlaygroundAppLayout() {
         HorizontalLayout titleLayout = new HorizontalLayout();
@@ -27,18 +31,15 @@ public class SpringAiPlaygroundAppLayout extends AppLayout {
         Div springImgDiv = new Div(springImg);
         springImgDiv.getStyle().set("display", "flex").set("justify-content", "center").set("align-items", "center");
         titleLayout.add(springImgDiv, new H3("Spring AI Playground"));
+        Tabs tabs = new Tabs();
         addToNavbar(titleLayout, tabs);
-        addTab(ChatView.class);
-    }
 
-    private void addTab(Class<? extends HasComponents> clazz) {
-        Tab tab = new Tab(getViewName(clazz));
-        tabs.add(tab);
-    }
+        this.tabContents = Map.of("Chat", ChatView.class, "VectorStore", VectorStoreView.class);
+        tabs.add(new Tab("Chat"));
+        tabs.add(new Tab("VectorStore"));
+        tabs.addSelectedChangeListener(
+                event -> UI.getCurrent().navigate(tabContents.get(event.getSelectedTab().getLabel())));
 
-    public String getViewName(Class clazz) {
-        String lowerCase = clazz.getSimpleName().toLowerCase().replace("view", "");
-        return lowerCase.substring(0, 1).toUpperCase() + lowerCase.substring(1);
     }
 
 }
