@@ -13,3 +13,7 @@
 .blink {
     animation: blink 1.5s infinite;
 }
+
+.custom-list-box vaadin-item {
+    overflow: hidden;
+}

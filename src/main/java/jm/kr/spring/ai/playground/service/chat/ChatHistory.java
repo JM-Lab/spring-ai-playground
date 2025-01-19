@@ -6,7 +6,7 @@ public record ChatHistory(String chatId, String title, long createTimestamp, lon
                           ChatOptions chatOptions) {
 
     public ChatHistory newTitle(String newTitle) {
-        return new ChatHistory(chatId, newTitle, createTimestamp, System.currentTimeMillis(), systemPrompt,
+        return new ChatHistory(chatId, newTitle, createTimestamp, updateTimestamp, systemPrompt,
                 chatOptions);
     }
 

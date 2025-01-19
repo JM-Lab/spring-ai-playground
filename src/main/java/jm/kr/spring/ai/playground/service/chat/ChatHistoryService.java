@@ -7,11 +7,14 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.stereotype.Service;
 
+import java.beans.PropertyChangeSupport;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ChatHistoryService {
+
+    public static final String CURRENT_CHAT_HISTORY_EVENT = "CURRENT_CHAT_HISTORY_EVENT";
 
     private static final String TIMESTAMP = "timestamp";
 
@@ -19,40 +22,42 @@ public class ChatHistoryService {
 
     private final Map<String, ChatHistory> chatHistories;
 
+    private final PropertyChangeSupport chatHistoryChangeSupport;
+
     public ChatHistoryService(ChatMemory chatMemory) {
         this.chatMemory = chatMemory;
         this.chatHistories = new ConcurrentHashMap<>();
+        this.chatHistoryChangeSupport = new PropertyChangeSupport(this);
     }
 
-    public ChatHistory updateChatHistory(ChatHistory chatHistory, String newTitle) {
-        chatHistory = chatHistory.newTitle(newTitle);
-        this.chatHistories.put(chatHistory.chatId(), chatHistory);
-        return chatHistory;
+    public PropertyChangeSupport getChatHistoryChangeSupport() {
+        return this.chatHistoryChangeSupport;
     }
 
-    public ChatHistory updateChatHistory(ChatHistory chatHistory) {
-        return Optional.ofNullable(getMessageList(chatHistory.chatId())).filter(messages -> !messages.isEmpty())
-                .map(messages -> updateChatHistory(chatHistory, messages)).orElseThrow();
+    public void updateChatHistory(ChatHistory newChatHistory) {
+        Optional.ofNullable(getMessageList(newChatHistory.chatId())).filter(messages -> !messages.isEmpty())
+                .ifPresent(messages -> updateChatHistory(newChatHistory, messages));
     }
 
-    private ChatHistory updateChatHistory(ChatHistory chatHistory, List<Message> messages) {
+    private void updateChatHistory(ChatHistory chatHistory, List<Message> messages) {
         String chatId = chatHistory.chatId();
-        chatHistory = this.chatHistories.containsKey(chatId) ? chatHistory.newUpdateTimestamp() : chatHistory.newTitle(
-                extractTitle(messages));
-        this.chatHistories.put(chatId, chatHistory);
+        chatHistory = this.chatHistories.containsKey(chatId) ? this.chatHistories.get(chatId).title()
+                .equals(chatHistory.title()) ? chatHistory.newUpdateTimestamp() : chatHistory :
+                chatHistory.newTitle(extractTitle(messages));
         Long updateTimestamp = chatHistory.updateTimestamp();
         for (int i = messages.size() - 1; i >= 0; i--) {
             Map<String, Object> metadata = messages.get(i).getMetadata();
-            if (metadata.containsKey(TIMESTAMP))
-                break;
+
+            if (metadata.containsKey(TIMESTAMP)) {break;}
             metadata.put(TIMESTAMP, updateTimestamp);
         }
-        return chatHistory;
+        this.chatHistoryChangeSupport.firePropertyChange(CURRENT_CHAT_HISTORY_EVENT,
+                this.chatHistories.put(chatId, chatHistory), chatHistory);
     }
 
     private String extractTitle(List<Message> messageList) {
         return messageList.stream().filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
-                .map(Message::getText).map(userPrompt -> buildTitle(userPrompt, 20)).orElseThrow(() ->
+                .map(Message::getText).map(userPrompt -> buildTitle(userPrompt, 30)).orElseThrow(() ->
                         new IllegalArgumentException("No USER Message type: " + messageList));
     }
 
@@ -74,17 +79,10 @@ public class ChatHistoryService {
         this.chatHistories.remove(chatId);
     }
 
-    public int getChatHistoriesTotal() {
-        return this.chatHistories.size();
-    }
-
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions defaultOptions) {
         long createTimestamp = System.currentTimeMillis();
         return new ChatHistory(UUID.randomUUID().toString(), null, createTimestamp, createTimestamp, systemPrompt,
                 defaultOptions);
     }
 
-    public ChatHistory getChatHistory(String chatId) {
-        return this.chatHistories.get(chatId);
-    }
 }
