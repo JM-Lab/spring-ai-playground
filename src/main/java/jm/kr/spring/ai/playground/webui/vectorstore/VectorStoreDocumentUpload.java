@@ -14,9 +14,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
-public class FileUpload extends Div {
+public class VectorStoreDocumentUpload extends Div {
 
-    public FileUpload() {
+    public VectorStoreDocumentUpload() {
         String userHome = System.getProperty("user.home");
         File uploadDir = new File(userHome, "spring-ai-playground/vectorstore");
 
@@ -66,14 +66,12 @@ public class FileUpload extends Div {
         });
 
         // Upload failed listener
-        upload.addFailedListener(event -> {
-            Notification.show("Failed to upload: " + event.getFileName(), 3000, Notification.Position.MIDDLE);
-        });
+        upload.addFailedListener(event -> Notification.show("Failed to upload: " + event.getFileName(), 3000, Notification.Position.MIDDLE));
 
         add(upload);
     }
 
-    public class UploadExamplesI18N extends UploadI18N {
+    public static class UploadExamplesI18N extends UploadI18N {
         public UploadExamplesI18N() {
             setDropFiles(new DropFiles().setOne("Drop file here")
                     .setMany("Drop files here"));

@@ -66,4 +66,8 @@ public class VectorStoreService {
         this.vectorStore.doDelete(List.of(document.getId()));
     }
 
+    public String getVectorStoreName() {
+        return vectorStore.getName();
+    }
+
 }
