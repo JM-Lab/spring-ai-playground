@@ -71,6 +71,16 @@
             <artifactId>viritin</artifactId>
             <version>2.10.3</version>
         </dependency>
+        <dependency>
+            <groupId>org.vaadin.crudui</groupId>
+            <artifactId>crudui</artifactId>
+            <version>7.1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-tika-document-reader</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.ai</groupId>
