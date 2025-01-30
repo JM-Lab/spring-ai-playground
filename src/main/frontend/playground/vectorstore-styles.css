@@ -1,3 +1,8 @@
 .custom-container vaadin-horizontal-layout {
     width: 100%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    gap: var(--lumo-space-s);
+
 }

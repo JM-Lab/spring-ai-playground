@@ -3,12 +3,14 @@ package jm.kr.spring.ai.playground.webui.vectorstore;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.dependency.CssImport;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.listbox.MultiSelectListBox;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -19,29 +21,42 @@ import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.popover.PopoverVariant;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteAlias;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
-import jm.kr.spring.ai.playground.webui.chat.ChatModelSettingView;
-import org.springframework.ai.chat.prompt.ChatOptions;
+import jm.kr.spring.ai.playground.webui.VaadinUtils;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.EmbeddingOptions;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENTS_DELETE_EVENT;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_ADDING_EVENT;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_SELECTING_EVENT;
+import static jm.kr.spring.ai.playground.webui.VaadinUtils.headerPopover;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @CssImport("./playground/vectorstore-styles.css")
-@RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
-@Route(value = "vectorstore", layout = SpringAiPlaygroundAppLayout.class)
+@Route(value = "vector", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
+    public static final String DOC_INFO_ID = "docInfoId";
     private final VectorStoreService vectorStoreService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
     private final VectorStoreDocumentView vectorStoreDocumentView;
-    private final SplitLayout splitLayout;
     private final VectorStoreContentView vectorStoreContentView;
+    private final SplitLayout splitLayout;
     private double splitterPosition;
     private boolean sidebarCollapsed;
 
@@ -61,9 +76,21 @@ public class VectorStoreView extends Div {
         this.vectorStoreDocumentView = new VectorStoreDocumentView(vectorStoreDocumentService);
         this.splitLayout.addToPrimary(this.vectorStoreDocumentView);
         this.vectorStoreContentView = new VectorStoreContentView(vectorStoreService);
-        this.vectorStoreContentView.setSpacing(false);
-        this.vectorStoreContentView.setMargin(false);
-        this.vectorStoreContentView.setPadding(false);
+        this.vectorStoreDocumentService.getDocumentInfoChangeSupport().addPropertyChangeListener(changeEvent -> {
+            if (Objects.isNull(changeEvent.getNewValue()) || ((Collection<?>) changeEvent.getNewValue()).isEmpty())
+                return;
+            switch (changeEvent.getPropertyName()) {
+                case DOCUMENT_ADDING_EVENT ->
+                        handleDocumentAdding((List<VectorStoreDocumentInfo>) changeEvent.getNewValue());
+                case DOCUMENT_SELECTING_EVENT ->
+                        handleDocumentSelecting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
+                case DOCUMENTS_DELETE_EVENT ->
+                        handleDocumentDeleting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
+            }
+        });
+        vectorStoreContentView.setSpacing(false);
+        vectorStoreContentView.setMargin(false);
+        vectorStoreContentView.setPadding(false);
 
         VerticalLayout vectorStoreContentLayout = new VerticalLayout();
         vectorStoreContentLayout.setSpacing(false);
@@ -72,12 +99,29 @@ public class VectorStoreView extends Div {
         vectorStoreContentLayout.setHeightFull();
         vectorStoreContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
                 .set("flex-direction", "column").set("align-items", "stretch");
-        vectorStoreContentLayout.add(createDocumentContentHeader(), this.vectorStoreContentView);
+        vectorStoreContentLayout.add(createDocumentContentHeader(), vectorStoreContentView);
 
         this.splitLayout.addToSecondary(vectorStoreContentLayout);
         this.sidebarCollapsed = false;
+    }
 
+    private void handleDocumentAdding(List<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        this.vectorStoreService.add(
+                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
+                        .flatMap(List::stream).toList());
+        handleDocumentSelecting(newEventDocumentInfos);
+    }
 
+    private void handleDocumentSelecting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        this.vectorStoreContentView.showDocuments(
+                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::docInfoId).toList());
+    }
+
+    private void handleDocumentDeleting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        this.vectorStoreService.delete(
+                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
+                        .flatMap(List::stream).map(Document::getId).toList());
+        vectorStoreContentView.showAllDocuments();
     }
 
     private HorizontalLayout createDocumentContentHeader() {
@@ -105,117 +149,107 @@ public class VectorStoreView extends Div {
         });
         horizontalLayout.add(toggleButton);
 
-        Button newDocumentButton = styledButton("New Document", VaadinIcon.FILE_TEXT_O.create(), null);
-        newDocumentButton.addClickListener(event -> {
-            Popover popover = new Popover();
-            popover.setTarget(newDocumentButton);
-//            popover.setWidth("400px");
-            popover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
-            popover.setPosition(PopoverPosition.BOTTOM_END);
-            popover.setAriaLabelledBy("model-setting-heading");
-            popover.setModal(true);
-            popover.addOpenedChangeListener(openedChangeEvent -> {
-                if (!openedChangeEvent.isOpened())
-                    popover.removeFromParent();
-            });
-
-            VectorStoreDocumentUpload vectorStoreDocumentUpload = new VectorStoreDocumentUpload();
-            vectorStoreDocumentUpload.getStyle().set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
-
-            H4 heading = new H4("Document Create");
-            heading.setId("model-setting-heading");
-            heading.setWidthFull();
-
-            Button closeButton = new Button(styledIcon(VaadinIcon.CLOSE.create()), e -> popover.close());
-            closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
-            HorizontalLayout headerLayout = new HorizontalLayout(heading, closeButton);
-            headerLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            headerLayout.getStyle().set("padding", "0 0 0 var(--lumo-space-m)");
-
-            Button insertButton = new Button("Insert Document",
-                    buttonClickEvent -> popover.close());
-            insertButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
-            HorizontalLayout applyNewChatButtonLayout = new HorizontalLayout(insertButton);
-            applyNewChatButtonLayout.setWidthFull();
-            applyNewChatButtonLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-            applyNewChatButtonLayout.getStyle().set("padding", "var(--lumo-space-m) 0 var(--lumo-space-m) 0");
-
-            vectorStoreDocumentUpload.add(applyNewChatButtonLayout);
-
-            popover.add(headerLayout, vectorStoreDocumentUpload);
-            popover.open();
-        });
+        Button newDocumentButton = styledButton("New Document", VaadinIcon.FILE_ADD.create(), null);
         horizontalLayout.add(newDocumentButton);
 
-        H4 vectorStoreText =
-                new H4("VectorStore: " + this.vectorStoreService.getVectorStoreName());
-        vectorStoreText.getStyle().set("white-space", "nowrap");
-        Div modelTextDiv = new Div(vectorStoreText);
-        modelTextDiv.getStyle().set("display", "flex").set("justify-content", "center").set("align-items", "center")
-                .set("height", "100%");
+        Popover newDocumentPopover = headerPopover(newDocumentButton, "Upload Document");
+        newDocumentPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
+        newDocumentPopover.setPosition(PopoverPosition.BOTTOM_END);
+        newDocumentPopover.setModal(true);
 
-        HorizontalLayout vectorStoreLabelLayout = new HorizontalLayout(modelTextDiv);
+        VectorStoreDocumentUpload vectorStoreDocumentUpload =
+                new VectorStoreDocumentUpload(this.vectorStoreDocumentService);
+        vectorStoreDocumentUpload.getStyle().set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
+        newDocumentPopover.add(vectorStoreDocumentUpload);
+
+        HorizontalLayout chunkDocumentHorizontalLayout = new HorizontalLayout();
+        vectorStoreDocumentUpload.add(chunkDocumentHorizontalLayout);
+        chunkDocumentHorizontalLayout.setWidthFull();
+        chunkDocumentHorizontalLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        chunkDocumentHorizontalLayout.getStyle().set("padding", "var(--lumo-space-m) 0 var(--lumo-space-m) 0");
+
+        Button chunkDocumentButton = new Button("Chunk Document");
+        chunkDocumentButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
+        chunkDocumentHorizontalLayout.add(chunkDocumentButton);
+        chunkDocumentButton.addClickListener(buttonClickEvent -> {
+            newDocumentPopover.close();
+            List<String> uploadedFileNames = new ArrayList<>(vectorStoreDocumentUpload.getUploadedFileNames());
+            vectorStoreDocumentUpload.clearFileList();
+            if (uploadedFileNames.isEmpty()) {
+                VaadinUtils.showInfoNotification("No uploaded files found");
+                return;
+            }
+            Map<String, List<Document>> uploadedDocumentItems =
+                    this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames);
+            Set<Document> chunks =
+                    uploadedDocumentItems.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+            if (chunks.isEmpty()) {
+                VaadinUtils.showInfoNotification("No chunks found");
+                return;
+            }
+
+            MultiSelectListBox<Document> documentListBox = new MultiSelectListBox<>();
+            documentListBox.setRenderer(
+                    new ComponentRenderer<Component, Document>(document -> new Span(document.getText())));
+
+            documentListBox.setItems(chunks);
+            documentListBox.select(chunks);
+
+            Dialog confirmationDialog = VaadinUtils.headerDialog(
+                    String.format("Chunk Summary - %d chunks successfully extracted", chunks.size()));
+            confirmationDialog.setModal(false);
+            Button confirmButton = new Button("Embed and Insert Confirm");
+            confirmationDialog.add(confirmButton, documentListBox);
+            confirmationDialog.open();
+            confirmButton.addClickListener(event -> {
+                confirmationDialog.close();
+                Set<Document> selectedItems = documentListBox.getSelectedItems();
+                Map<String, List<Document>> filenameDocuments =
+                        uploadedDocumentItems.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                                entry -> entry.getValue().stream().filter(selectedItems::contains).toList()));
+                this.vectorStoreDocumentView.addDocumentContent(uploadedFileNames, filenameDocuments);
+            });
+        });
+
+        EmbeddingOptions embeddingOptions = this.vectorStoreService.getEmbeddingOptions();
+        H4 embeddingModelServiceText = new H4(Objects.nonNull(embeddingOptions.getDimensions())
+                ? String.format("%s - %s - %d", this.vectorStoreService.getEmbeddingModelServiceName(),
+                embeddingOptions.getModel(), embeddingOptions.getDimensions())
+                : String.format("%s - %s", this.vectorStoreService.getEmbeddingModelServiceName(),
+                embeddingOptions.getModel()));
+
+
+        embeddingModelServiceText.getStyle().set("white-space", "nowrap");
+        Div embeddingModelServiceTextDiv = new Div(embeddingModelServiceText);
+        embeddingModelServiceTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
+                .set("align-items", "center").set("height", "100%");
+
+        HorizontalLayout vectorStoreLabelLayout = new HorizontalLayout(embeddingModelServiceTextDiv);
         vectorStoreLabelLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         vectorStoreLabelLayout.setWidthFull();
         horizontalLayout.add(vectorStoreLabelLayout);
 
-        MenuBar menuBar = new MenuBar();
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+        Icon searchSettingIcon = styledIcon(VaadinIcon.COG_O.create());
+        searchSettingIcon.getStyle().set("marginRight", "var(--lumo-space-l)");
+        Popover searchSettingPopover = headerPopover(searchSettingIcon, "Search Settings");
+        searchSettingPopover.setWidth("250px");
+        searchSettingPopover.setHoverDelay(0);
+        searchSettingPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
+        searchSettingPopover.setPosition(PopoverPosition.BOTTOM);
+        searchSettingPopover.setModal(true);
 
-        Icon vectorStoreMenuIcon = styledIcon(VaadinIcon.COG_O.create());
-        vectorStoreMenuIcon.getStyle().set("marginRight", "var(--lumo-space-l)");
-        vectorStoreMenuIcon.setTooltipText("VectorStore Setting");
-        MenuItem menuItem = menuBar.addItem(vectorStoreMenuIcon);
-        menuItem.addClickListener(menuItemClickEvent -> {
-            Popover popover = new Popover();
-            popover.setTarget(menuItem);
-            popover.setWidth("400px");
-            popover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
-            popover.setPosition(PopoverPosition.BOTTOM_END);
-            popover.setAriaLabelledBy("model-setting-heading");
-            popover.setModal(true);
-            popover.addOpenedChangeListener(event -> {
-                if (!event.isOpened())
-                    popover.removeFromParent();
-            });
+        VectorStoreSearchSettingView vectorStoreSearchSettingView =
+                new VectorStoreSearchSettingView(this.vectorStoreService);
+        vectorStoreSearchSettingView.getStyle()
+                .set("padding", "0 var(--lumo-space-m) var(--lumo-space-m) var(--lumo-space-m)");
+        searchSettingPopover.add(vectorStoreSearchSettingView);
 
-            ChatModelSettingView chatModelSettingView =
-                    new ChatModelSettingView(List.of(), "", ChatOptions.builder().build());
-            chatModelSettingView.getStyle()
-                    .set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
+        MenuBar searchSettingMenuBar = new MenuBar();
+        searchSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
+        searchSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+        searchSettingMenuBar.addItem(searchSettingIcon);
 
-            H4 heading = new H4("Model Setting");
-            heading.setId("model-setting-heading");
-            heading.setWidthFull();
-
-            Button closeButton = new Button(styledIcon(VaadinIcon.CLOSE.create()), e -> popover.close());
-            closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
-            HorizontalLayout headerLayout = new HorizontalLayout(heading, closeButton);
-            headerLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            headerLayout.getStyle().set("padding", "0 0 0 var(--lumo-space-m)");
-
-            Button applyNewChatButton = new Button("Apply & New Chat",
-                    event -> {
-//                        addNewVectorStoreContent(chatModelSettingView.getSystemPromptTextArea(),
-//                                chatModelSettingView.getChatOptions());
-                        popover.close();
-                    });
-            applyNewChatButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
-            HorizontalLayout applyNewChatButtonLayout = new HorizontalLayout(applyNewChatButton);
-            applyNewChatButtonLayout.setWidthFull();
-            applyNewChatButtonLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-            applyNewChatButtonLayout.getStyle().set("padding", "var(--lumo-space-m) 0 var(--lumo-space-m) 0");
-
-            chatModelSettingView.add(applyNewChatButtonLayout);
-
-            popover.add(headerLayout, chatModelSettingView);
-            popover.open();
-        });
-        horizontalLayout.add(menuBar);
-
+        horizontalLayout.add(searchSettingMenuBar);
         return horizontalLayout;
     }
 

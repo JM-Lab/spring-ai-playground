@@ -1,16 +1,20 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
-import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.document.Document;
 
-public record VectorStoreDocumentInfo(String docId, String title, long createTimestamp, long updateTimestamp,
-                                      String documentPath, EmbeddingOptions embeddingOptions) {
+import java.util.List;
+import java.util.function.Supplier;
+
+public record VectorStoreDocumentInfo(String docInfoId, String title, long createTimestamp, long updateTimestamp,
+                                      String documentPath, Supplier<List<Document>> documentListSupplier) {
+
     public VectorStoreDocumentInfo newTitle(String newTitle) {
-        return new VectorStoreDocumentInfo(docId, newTitle, createTimestamp, System.currentTimeMillis(), documentPath,
-                embeddingOptions);
+        return new VectorStoreDocumentInfo(docInfoId, newTitle, createTimestamp, System.currentTimeMillis(),
+                documentPath, documentListSupplier);
     }
 
     public VectorStoreDocumentInfo newUpdateTimestamp() {
-        return new VectorStoreDocumentInfo(docId, title, createTimestamp, System.currentTimeMillis(), documentPath,
-                embeddingOptions);
+        return new VectorStoreDocumentInfo(docInfoId, title, createTimestamp, System.currentTimeMillis(), documentPath,
+                documentListSupplier);
     }
 }

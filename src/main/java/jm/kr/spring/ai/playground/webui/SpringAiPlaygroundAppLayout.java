@@ -19,7 +19,7 @@ import java.util.Map;
 @PageTitle("Spring AI Playground")
 public class SpringAiPlaygroundAppLayout extends AppLayout {
 
-    private Map<String, Class<? extends Component>> tabContents;
+    private final Map<String, Class<? extends Component>> tabContents;
 
     public SpringAiPlaygroundAppLayout() {
         HorizontalLayout titleLayout = new HorizontalLayout();
@@ -34,9 +34,9 @@ public class SpringAiPlaygroundAppLayout extends AppLayout {
         Tabs tabs = new Tabs();
         addToNavbar(titleLayout, tabs);
 
-        this.tabContents = Map.of("Chat", ChatView.class, "VectorStore", VectorStoreView.class);
-        tabs.add(new Tab("Chat"));
-        tabs.add(new Tab("VectorStore"));
+        this.tabContents = Map.of("Chat Models", ChatView.class, "Vector Databases", VectorStoreView.class);
+        tabs.add(new Tab("Chat Models"));
+        tabs.add(new Tab("Vector Databases"));
         tabs.addSelectedChangeListener(
                 event -> UI.getCurrent().navigate(tabContents.get(event.getSelectedTab().getLabel())));
 
