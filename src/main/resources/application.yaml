@@ -24,9 +24,14 @@ spring:
     ollama:
       init:
         pull-model-strategy: when_missing
+      chat:
+        options:
+          model: deepseek-r1:8b
     playground:
       chat:
         models:
+          - deepseek-r1:8b
+          - mistral-small
           - llama3.2
           - llama3.2-vision
           - llama3.1
