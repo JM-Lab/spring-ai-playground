@@ -6,9 +6,19 @@ import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.popover.Popover;
 
+import java.time.ZoneId;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public interface VaadinUtils {
 
@@ -32,4 +42,52 @@ public interface VaadinUtils {
         styledButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         return styledButton;
     }
+
+    static Popover headerPopover(Component target, String headerText) {
+        Popover popover = new Popover();
+        popover.setTarget(target);
+        popover.add(buildHeaderHorizontalLayout(headerText, e -> popover.close()));
+        return popover;
+    }
+
+    static Dialog headerDialog(String headerText) {
+        Dialog dialog = new Dialog();
+        dialog.getHeader().add(buildHeaderHorizontalLayout(headerText, e -> dialog.close()));
+        return dialog;
+    }
+
+    static HorizontalLayout buildHeaderHorizontalLayout(String headerText,
+            ComponentEventListener<ClickEvent<Button>> clickListener) {
+        H4 heading = new H4(headerText);
+        heading.setWidthFull();
+
+        Button closeButton = new Button(styledIcon(VaadinIcon.CLOSE.create()), clickListener);
+        closeButton.setTooltipText("Cancel & Close");
+        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        HorizontalLayout headerLayout = new HorizontalLayout(heading, closeButton);
+        headerLayout.setWidthFull();
+        headerLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+        headerLayout.getStyle().set("padding", "0 var(--lumo-space-m)");
+        return headerLayout;
+    }
+
+    static void showErrorNotification(String errorMessage) {
+        Notification notification = new Notification(errorMessage, 3000, Notification.Position.TOP_CENTER);
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        notification.open();
+    }
+
+    static void showInfoNotification(String message) {
+        Notification notification = new Notification(message, 3000, Notification.Position.TOP_CENTER);
+        notification.open();
+    }
+
+    static CompletableFuture<ZoneId> buildClientZoneIdFuture(CompletableFuture<ZoneId> zoneIdFuture) {
+        UI.getCurrent().getPage().retrieveExtendedClientDetails(details -> zoneIdFuture.complete(
+                ZoneId.of(details.getTimeZoneId())));
+        return zoneIdFuture;
+
+    }
+
 }

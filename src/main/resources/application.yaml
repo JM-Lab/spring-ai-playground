@@ -1,4 +1,7 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
   application:
     name: spring-ai-playground
   profiles:
@@ -10,8 +13,8 @@ spring:
           prompt:
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 20MB
+      max-request-size: 20MB
 ---
 spring:
   config:
