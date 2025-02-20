@@ -5,10 +5,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.rometools.utils.Strings;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.KeyModifier;
+import com.vaadin.flow.component.KeyDownEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.ColumnRendering;
@@ -26,7 +25,6 @@ import com.vaadin.flow.internal.JsonDecodingException;
 import com.vaadin.flow.internal.JsonUtils;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.Media;
 import org.springframework.ai.util.JacksonUtils;
@@ -41,6 +39,8 @@ import org.vaadin.crudui.layout.CrudLayout;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import static com.vaadin.flow.component.grid.GridVariant.LUMO_NO_BORDER;
 import static com.vaadin.flow.component.grid.GridVariant.LUMO_ROW_STRIPES;
@@ -137,6 +137,19 @@ public class VectorStoreContentView extends VerticalLayout {
         new VectorStoreContentContextMenu(this.gridCrud);
         add(this.gridCrud);
 
+        TextField userPromptTextField = new TextField();
+        userPromptTextField.setPlaceholder("Enter a prompt to test similarity search...");
+        userPromptTextField.setWidth("60%");
+        userPromptTextField.setAutofocus(true);
+        userPromptTextField.focus();
+        userPromptTextField.getStyle().setPadding("0");
+        userPromptTextField.setClearButtonVisible(true);
+        userPromptTextField.setValueChangeMode(ValueChangeMode.EAGER);
+        Button searchButton =
+                VaadinUtils.styledButton("Search", VaadinIcon.SEARCH.create(), buttonClickEvent -> refreshGrid());
+        userPromptTextField.setSuffixComponent(searchButton);
+        userPromptTextField.addKeyDownListener(Key.ENTER, event -> clickSearchButton(event, searchButton));
+
         TextField filterExpressionTextField = new TextField();
         filterExpressionTextField.setPlaceholder("Enter a Spring AI metadata filters, e.g., country == 'BG'");
         filterExpressionTextField.setWidth("40%");
@@ -147,23 +160,7 @@ public class VectorStoreContentView extends VerticalLayout {
                 .open("https://docs.spring.io/spring-ai/reference/api/vectordbs.html#_filter_string"));
         filterExpressionInfoIcon.setTooltipText("Click for metadata filter documentation");
         filterExpressionTextField.setSuffixComponent(filterExpressionInfoIcon);
-
-        TextField userPromptTextField = new TextField();
-        userPromptTextField.setPlaceholder("Enter a prompt to test similarity search...");
-        userPromptTextField.setWidth("60%");
-        userPromptTextField.setAutofocus(true);
-        userPromptTextField.focus();
-        userPromptTextField.getStyle().setPadding("0");
-        userPromptTextField.setClearButtonVisible(true);
-        userPromptTextField.setValueChangeMode(ValueChangeMode.EAGER);
-        Button searchButton =
-                VaadinUtils.styledButton("Search", VaadinIcon.SEARCH.create(),
-                        buttonClickEvent -> refreshGrid());
-        userPromptTextField.setSuffixComponent(searchButton);
-        userPromptTextField.addKeyDownListener(Key.ENTER, event -> {
-            if (!event.isComposing() && !event.getModifiers().contains(KeyModifier.SHIFT))
-                searchButton.click();
-        });
+        filterExpressionTextField.addKeyDownListener(Key.ENTER, event -> clickSearchButton(event, searchButton));
 
         HorizontalLayout searchInputLayout =
                 new HorizontalLayout(userPromptTextField, filterExpressionTextField);
@@ -179,10 +176,8 @@ public class VectorStoreContentView extends VerticalLayout {
         Grid<VectorStoreContentItem> grid = this.gridCrud.getGrid();
         this.dataView = grid.getGenericDataView();
         this.gridCrud.setOperations(
-                () -> (Objects.isNull(this.searchRequest) ? vectorStoreService.search(
-                        userPromptTextField.getValue(),
-                        filterExpressionTextField.getValue()) : vectorStoreService.search(
-                        this.searchRequest)).stream()
+                () -> (Objects.isNull(this.searchRequest) ? vectorStoreService.search(userPromptTextField.getValue(),
+                        filterExpressionTextField.getValue()) : vectorStoreService.search(this.searchRequest)).stream()
                         .map(this::convertToViewDocument).toList(),
                 item -> convertToViewDocument(this.vectorStoreService.add(buildCustomChunk(item))),
                 item -> convertToViewDocument(this.vectorStoreService.update(convertToDocument(item))),
@@ -224,7 +219,12 @@ public class VectorStoreContentView extends VerticalLayout {
         });
     }
 
-    private @NotNull Document buildCustomChunk(VectorStoreContentItem item) {
+    private static void clickSearchButton(KeyDownEvent event, Button searchButton) {
+        if (!event.isComposing())
+            searchButton.click();
+    }
+
+    private Document buildCustomChunk(VectorStoreContentItem item) {
         Document document = convertToDocument(item);
         document.getMetadata().put(DOC_INFO_ID, CUSTOM_ADD_DOC_INFO_ID);
         return document;
@@ -249,12 +249,13 @@ public class VectorStoreContentView extends VerticalLayout {
 
     private Document convertToDocument(VectorStoreContentItem vectorStoreContentItem) {
         Document.Builder builder = new Document.Builder();
-        if (Strings.isNotEmpty(vectorStoreContentItem.getId()))
-            builder.id(vectorStoreContentItem.getId());
-        builder.metadata(Strings.isBlank(vectorStoreContentItem.getMetadata()) ? Map.of() : readToObject(
-                vectorStoreContentItem.getMetadata(), MAP_TYPE_REFERENCE));
-        if (Strings.isNotEmpty(vectorStoreContentItem.getMedia()))
-            builder.media(readToObject(vectorStoreContentItem.getMedia(), MEDIA_TYPE_REFERENCE));
+        Optional.ofNullable(vectorStoreContentItem.getId()).filter(Predicate.not(String::isBlank))
+                .ifPresent(builder::id);
+        builder.metadata(
+                Optional.ofNullable(vectorStoreContentItem.getMetadata()).filter(Predicate.not(String::isBlank))
+                        .map(metadata -> readToObject(metadata, MAP_TYPE_REFERENCE)).orElseGet(Map::of));
+        Optional.ofNullable(vectorStoreContentItem.getMedia()).filter(Predicate.not(String::isBlank))
+                .map(media -> readToObject(media, MAP_TYPE_REFERENCE)).ifPresent(builder::metadata);
         return builder.text(vectorStoreContentItem.getText()).build();
     }
 
@@ -276,13 +277,17 @@ public class VectorStoreContentView extends VerticalLayout {
     }
 
     private void refreshGrid() {
-        this.gridCrud.refreshGrid();
-        VaadinUtils.showInfoNotification(String.format("Search results: %d items (Threshold: %.2f, TopK: %d)",
-                dataView.getItems().count(), Objects.nonNull(this.searchRequest) ?
-                        ALL_SEARCH_REQUEST_OPTION.similarityThreshold() : vectorStoreService.getVectorStoreOption()
-                        .similarityThreshold(),
-                Objects.nonNull(this.searchRequest) ? ALL_SEARCH_REQUEST_OPTION.topK()
-                        : vectorStoreService.getVectorStoreOption().topK()));
+        try {
+            this.gridCrud.refreshGrid();
+            VaadinUtils.showInfoNotification(String.format("Search results: %d items (Threshold: %.2f, TopK: %d)",
+                    dataView.getItems().count(), Objects.nonNull(this.searchRequest) ?
+                            ALL_SEARCH_REQUEST_OPTION.similarityThreshold() : vectorStoreService.getVectorStoreOption()
+                            .similarityThreshold(),
+                    Objects.nonNull(this.searchRequest) ? ALL_SEARCH_REQUEST_OPTION.topK()
+                            : vectorStoreService.getVectorStoreOption().topK()));
+        } catch (Exception e) {
+            VaadinUtils.showErrorNotification(e.getMessage());
+        }
     }
 
     private static class VectorStoreContentContextMenu extends GridContextMenu<VectorStoreContentItem> {

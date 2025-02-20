@@ -202,6 +202,7 @@ public class VectorStoreView extends Div {
             confirmationDialog.add(confirmButton, documentListBox);
             confirmationDialog.open();
             confirmButton.addClickListener(event -> {
+                confirmationDialog.setEnabled(false);
                 confirmationDialog.close();
                 Set<Document> selectedItems = documentListBox.getSelectedItems();
                 Map<String, List<Document>> filenameDocuments =
