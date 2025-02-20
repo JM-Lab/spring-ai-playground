@@ -64,6 +64,9 @@ To switch to OpenAI, follow these steps:
             api-key: your-openai-api-key
       ```
 ## Vector Databases
+
+![Spring AI Vector Database Playground Demo](spring-ai-playground-vectordb.gif)
+
 **Spring AI Playground** offers a comprehensive vector database playground with advanced retrieval capabilities powered by Spring AI's VectorStore API integration.
 
 - **Multi-Provider Testing**: Switch between vector database providers without code changes
