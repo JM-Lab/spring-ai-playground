@@ -3,13 +3,16 @@ package jm.kr.spring.ai.playground.service.chat;
 
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.stereotype.Service;
 
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,18 +41,35 @@ public class ChatHistoryService {
     }
 
     public void updateChatHistory(ChatHistory chatHistory) {
-        String chatId = chatHistory.getChatId();
-        this.chatIdHistoryMap.put(chatId, chatHistory.setUpdateTimestamp(System.currentTimeMillis()));
-        this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null, chatHistory);
+        String chatId = chatHistory.chatId();
+        ChatHistory mutateChatHistory = nutateChatHistory(chatHistory);
+        this.chatIdHistoryMap.put(chatId, mutateChatHistory);
+        this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null, mutateChatHistory);
+    }
+
+    private ChatHistory nutateChatHistory(ChatHistory chatHistory) {
+        if (Objects.isNull(chatHistory.title()) || chatHistory.title().isEmpty())
+            return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
+        return this.chatIdHistoryMap.get(chatHistory.chatId()).mutate(chatHistory.title(), System.currentTimeMillis());
+    }
+
+    private String extractTitle(List<Message> messageList) {
+        return messageList.stream().filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
+                .map(Message::getText).map(userPrompt -> buildTitle(userPrompt.trim(), 20)).orElseThrow(() ->
+                        new IllegalArgumentException("No USER Message type: " + messageList));
+    }
+
+    private String buildTitle(String userPrompt, int length) {
+        return userPrompt.length() > length ? userPrompt.substring(0, length) + "..." : userPrompt;
     }
 
     public List<ChatHistory> getChatHistoryList() {
         return this.chatIdHistoryMap.values().stream()
-                .sorted(Comparator.comparingLong(ChatHistory::getUpdateTimestamp).reversed()).toList();
+                .sorted(Comparator.comparingLong(ChatHistory::updateTimestamp).reversed()).toList();
     }
 
     private List<Message> getMessageList(String chatId) {
-        return Optional.ofNullable(this.chatMemory.get(chatId, Integer.MAX_VALUE)).orElseGet(List::of);
+        return Optional.ofNullable(this.chatMemory.get(chatId, Integer.MAX_VALUE)).orElseGet(ArrayList::new);
     }
 
     public void deleteChatHistory(String chatId) {
@@ -58,10 +78,10 @@ public class ChatHistoryService {
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions defaultOptions) {
-        long createTimestamp = System.currentTimeMillis();
-        String chatHistoryId = "ChatHistory-" + UUID.randomUUID();
-        return new ChatHistory(chatHistoryId, createTimestamp, createTimestamp, systemPrompt,
-                defaultOptions, () -> getMessageList(chatHistoryId));
+        String chatId = "Chat-" + UUID.randomUUID();
+        long timestamp = System.currentTimeMillis();
+        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt, defaultOptions,
+                () -> getMessageList(chatId));
     }
 
 }

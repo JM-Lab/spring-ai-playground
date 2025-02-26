@@ -79,11 +79,11 @@ public class ChatContentView extends VerticalLayout {
         getStyle().set("overflow", "hidden").set("display", "flex")
                 .set("flex-direction", "column").set("align-items", "stretch");
 
-        List<Message> messages = this.chatHistory.getMessagesSupplier().get();
+        List<Message> messages = this.chatHistory.messagesSupplier().get();
         if (messages.isEmpty())
             return;
         ChatContentManager chatContentManager = new ChatContentManager(null, null, zoneIdFuture,
-                this.chatHistory.getMessagesSupplier());
+                this.chatHistory.messagesSupplier());
         messages.forEach(
                 message -> chatContentManager.addMarkdownMessage(this.messageListLayout,
                         message, message.getMessageType()));
@@ -97,7 +97,7 @@ public class ChatContentView extends VerticalLayout {
         this.userPromptTextArea.clear();
 
         ChatContentManager chatContentManager = new ChatContentManager(this.messageListLayout, userPrompt, zoneIdFuture,
-                this.chatHistory.getMessagesSupplier());
+                this.chatHistory.messagesSupplier());
         this.messageListLayout.add(chatContentManager.getBotResponse());
 
         Flux<String> botResponseStream = this.chatService.stream(this.chatHistory, userPrompt,
@@ -111,18 +111,18 @@ public class ChatContentView extends VerticalLayout {
     }
 
     public ChatOptions getChatOption() {
-        return this.chatHistory.getChatOptions();
+        return this.chatHistory.chatOptions();
     }
 
-    public String getSystemPrompt() {return this.chatHistory.getSystemPrompt();}
+    public String getSystemPrompt() {return this.chatHistory.systemPrompt();}
 
     public void updateChatHistory(ChatHistory updateChatHistory) {
-        if (updateChatHistory.getChatId().equals(getChatId()))
+        if (updateChatHistory.chatId().equals(getChatId()))
             this.chatHistory = updateChatHistory;
     }
 
     public String getChatId() {
-        return this.chatHistory.getChatId();
+        return this.chatHistory.chatId();
     }
 
     private static class ChatContentManager {

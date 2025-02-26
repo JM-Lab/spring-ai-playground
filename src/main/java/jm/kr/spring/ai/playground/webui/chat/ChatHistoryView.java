@@ -50,22 +50,29 @@ public class ChatHistoryView extends VerticalLayout {
         this.chatHistoryListBox.addClassName("custom-list-box");
         this.chatHistoryListBox.setItems(List.of());
         this.chatHistoryListBox.setRenderer(new ComponentRenderer<>(chatHistory -> {
-            Span title = new Span(chatHistory.getTitle());
+            Span title = new Span(chatHistory.title());
             title.getStyle().set("white-space", "nowrap").set("overflow", "hidden").set("text-overflow", "ellipsis")
                     .set("flex-grow", "1");
             title.getElement().setAttribute("title",
-                    LocalDateTime.ofInstant(Instant.ofEpochMilli(chatHistory.getCreateTimestamp()),
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(chatHistory.createTimestamp()),
                             ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             return title;
         }));
-        this.chatHistoryListBox.addValueChangeListener(event -> Optional.ofNullable(event.getValue())
-                .filter(chatHistory -> Objects.nonNull(event.getOldValue()) && !chatHistory.equals(event.getOldValue()))
-                .ifPresent(chatHistory -> this.chatHistoryService.getChatHistoryChangeSupport()
-                        .firePropertyChange(CHAT_HISTORY_SELECT_EVENT, event.getOldValue(), chatHistory)));
+        this.chatHistoryListBox.addValueChangeListener(
+                event -> notifyChatHistoryUpdate(event.getOldValue(), event.getValue()));
         Scroller scroller = new Scroller(this.chatHistoryListBox);
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
         add(initChatHistoryHeader(), scroller);
+    }
+
+    private void notifyChatHistoryUpdate(ChatHistory oldChatHistory, ChatHistory newChatHistory) {
+        if (Objects.isNull(newChatHistory))
+            this.chatHistoryService.getChatHistoryChangeSupport()
+                    .firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, null);
+        else if (Objects.nonNull(oldChatHistory) && !newChatHistory.equals(oldChatHistory))
+            this.chatHistoryService.getChatHistoryChangeSupport()
+                    .firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, newChatHistory);
     }
 
     private Header initChatHistoryHeader() {
@@ -93,7 +100,7 @@ public class ChatHistoryView extends VerticalLayout {
 
     private void renameHistory() {
         this.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
-            Dialog dialog = VaadinUtils.headerDialog("Rename: " + chatHistory.getTitle());
+            Dialog dialog = VaadinUtils.headerDialog("Rename: " + chatHistory.title());
             dialog.setModal(true);
             dialog.setResizable(true);
             dialog.addThemeVariants(DialogVariant.LUMO_NO_PADDING);
@@ -104,14 +111,15 @@ public class ChatHistoryView extends VerticalLayout {
 
             TextField titleTextField = new TextField();
             titleTextField.setWidthFull();
-            titleTextField.setValue(chatHistory.getTitle());
+            titleTextField.setValue(chatHistory.title());
             titleTextField.addFocusListener(event ->
                     titleTextField.getElement().executeJs("this.inputElement.select();")
             );
             dialogLayout.add(titleTextField);
 
             Button saveButton = new Button("Save", e -> {
-                this.chatHistoryService.updateChatHistory(chatHistory.setTitle(titleTextField.getValue()));
+                this.chatHistoryService.updateChatHistory(
+                        chatHistory.mutate(titleTextField.getValue(), System.currentTimeMillis()));
                 dialog.close();
             });
             saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -125,12 +133,12 @@ public class ChatHistoryView extends VerticalLayout {
 
     private void deleteHistory() {
         this.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
-            Dialog dialog = VaadinUtils.headerDialog("Delete: " + chatHistory.getTitle());
+            Dialog dialog = VaadinUtils.headerDialog("Delete: " + chatHistory.title());
             dialog.setModal(true);
             dialog.add("Are you sure you want to delete this history permanently?");
 
             Button deleteButton = new Button("Delete", e -> {
-                this.chatHistoryService.deleteChatHistory(chatHistory.getChatId());
+                this.chatHistoryService.deleteChatHistory(chatHistory.chatId());
                 this.updateChatHistoryContent(null);
                 dialog.close();
             });
@@ -144,7 +152,7 @@ public class ChatHistoryView extends VerticalLayout {
 
     private void updateChatHistoryContent(ChatHistory selectedChatHistory) {
         VaadinUtils.getUi(this).access(() -> {
-            this.chatHistoryListBox.clear();
+            ChatHistory oldChatHistory = this.chatHistoryListBox.getValue();
             this.chatHistoryListBox.removeAll();
             List<ChatHistory> chatHistoryList = this.chatHistoryService.getChatHistoryList();
             if (chatHistoryList.isEmpty()) {
@@ -153,16 +161,14 @@ public class ChatHistoryView extends VerticalLayout {
                 return;
             }
             this.chatHistoryListBox.setItems(chatHistoryList);
-            if (Objects.nonNull(selectedChatHistory))
-                this.chatHistoryListBox.setValue(selectedChatHistory);
-            else if (!chatHistoryList.isEmpty())
-                this.chatHistoryListBox.setValue(chatHistoryList.getFirst());
+            this.chatHistoryListBox.setValue(Objects.isNull(selectedChatHistory) ? chatHistoryList.getFirst() :
+                    selectedChatHistory);
+            notifyChatHistoryUpdate(oldChatHistory, this.chatHistoryListBox.getValue());
         });
     }
 
     public void clearSelectHistory() {
-        getChildren().filter(component -> component instanceof ListBox).findFirst()
-                .map((component -> (ListBox<?>) component)).ifPresent(listBox -> listBox.setValue(null));
+        this.chatHistoryListBox.clear();
     }
 
     public Optional<ChatHistory> getCurrentChatHistoryAsOpt() {

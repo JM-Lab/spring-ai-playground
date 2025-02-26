@@ -172,12 +172,12 @@ public class ChatView extends Div {
                     this.chatService.getDefaultOptions());
         }
         if (Objects.nonNull(this.chatContentView) &&
-                chatHistory.getChatId().equals(this.chatContentView.getChatId())) {
+                chatHistory.chatId().equals(this.chatContentView.getChatId())) {
             this.chatContentView.updateChatHistory(chatHistory);
             return;
         }
         this.chatContentView = new ChatContentView(this.chatService, chatHistory);
-        ChatOptions chatOptions = chatHistory.getChatOptions();
+        ChatOptions chatOptions = chatHistory.chatOptions();
         VaadinUtils.getUi(this).access(() -> {
             this.chatContentLayout.removeAll();
             this.chatContentLayout.add(createChatContentHeader(chatOptions), this.chatContentView);
