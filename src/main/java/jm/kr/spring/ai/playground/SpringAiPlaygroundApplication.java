@@ -2,11 +2,11 @@ package jm.kr.spring.ai.playground;
 
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Push;
-import jm.kr.spring.ai.playground.service.vectorstore.inmemory.SimpleVectorStoreWithFilterExpression;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -36,7 +36,7 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     @Bean
     @ConditionalOnMissingBean(VectorStore.class)
     public VectorStore vectorStore(EmbeddingModel embeddingModel) {
-        return SimpleVectorStoreWithFilterExpression.builder(embeddingModel).build();
+        return SimpleVectorStore.builder(embeddingModel).build();
     }
 
     @Bean

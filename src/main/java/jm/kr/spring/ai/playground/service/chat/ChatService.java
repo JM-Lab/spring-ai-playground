@@ -79,7 +79,7 @@ public class ChatService {
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp) {
-        return streamWithRaw(chatHistory, prompt, timestamp).map(Generation::getOutput).map(AbstractMessage::getContent)
+        return streamWithRaw(chatHistory, prompt, timestamp).map(Generation::getOutput).map(AbstractMessage::getText)
                 .doFinally(signalType -> {
                     if (SignalType.ON_COMPLETE.equals(signalType))
                         this.completeResponseConsumers.forEach(consumer -> consumer.accept(chatHistory));
@@ -93,7 +93,7 @@ public class ChatService {
     }
 
     public String call(ChatHistory chatHistory, String prompt) {
-        return callWithRaw(chatHistory, prompt).getOutput().getContent();
+        return callWithRaw(chatHistory, prompt).getOutput().getText();
     }
 
     public Generation callWithRaw(ChatHistory chatHistory, String prompt) {

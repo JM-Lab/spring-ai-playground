@@ -27,6 +27,9 @@ spring:
       chat:
         options:
           model: deepseek-r1:8b
+      embedding:
+        options:
+          model: bge-m3
     playground:
       chat:
         models:
