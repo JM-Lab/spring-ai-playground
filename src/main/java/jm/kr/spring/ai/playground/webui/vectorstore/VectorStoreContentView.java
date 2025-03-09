@@ -255,7 +255,7 @@ public class VectorStoreContentView extends VerticalLayout {
                 Optional.ofNullable(vectorStoreContentItem.getMetadata()).filter(Predicate.not(String::isBlank))
                         .map(metadata -> readToObject(metadata, MAP_TYPE_REFERENCE)).orElseGet(Map::of));
         Optional.ofNullable(vectorStoreContentItem.getMedia()).filter(Predicate.not(String::isBlank))
-                .map(media -> readToObject(media, MAP_TYPE_REFERENCE)).ifPresent(builder::metadata);
+                .map(media -> readToObject(media, MEDIA_TYPE_REFERENCE)).ifPresent(builder::media);
         return builder.text(vectorStoreContentItem.getText()).build();
     }
 
@@ -281,10 +281,10 @@ public class VectorStoreContentView extends VerticalLayout {
             this.gridCrud.refreshGrid();
             VaadinUtils.showInfoNotification(String.format("Search results: %d items (Threshold: %.2f, TopK: %d)",
                     dataView.getItems().count(), Objects.nonNull(this.searchRequest) ?
-                            ALL_SEARCH_REQUEST_OPTION.similarityThreshold() : vectorStoreService.getVectorStoreOption()
+                            ALL_SEARCH_REQUEST_OPTION.similarityThreshold() : vectorStoreService.getSearchRequestOption()
                             .similarityThreshold(),
                     Objects.nonNull(this.searchRequest) ? ALL_SEARCH_REQUEST_OPTION.topK()
-                            : vectorStoreService.getVectorStoreOption().topK()));
+                            : vectorStoreService.getSearchRequestOption().topK()));
         } catch (Exception e) {
             VaadinUtils.showErrorNotification(e.getMessage());
         }

@@ -30,8 +30,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static jm.kr.spring.ai.playground.service.chat.ChatHistoryService.CHAT_HISTORY_CHANGE_EVENT;
+import static jm.kr.spring.ai.playground.service.chat.ChatHistoryService.CHAT_HISTORY_EMPTY_EVENT;
 import static jm.kr.spring.ai.playground.service.chat.ChatHistoryService.CHAT_HISTORY_SELECT_EVENT;
-import static jm.kr.spring.ai.playground.service.chat.ChatHistoryService.EMPTY_CHAT_HISTORY_EVENT;
 
 public class ChatHistoryView extends VerticalLayout {
 
@@ -157,7 +157,7 @@ public class ChatHistoryView extends VerticalLayout {
             List<ChatHistory> chatHistoryList = this.chatHistoryService.getChatHistoryList();
             if (chatHistoryList.isEmpty()) {
                 this.chatHistoryService.getChatHistoryChangeSupport()
-                        .firePropertyChange(EMPTY_CHAT_HISTORY_EVENT, false, true);
+                        .firePropertyChange(CHAT_HISTORY_EMPTY_EVENT, false, true);
                 return;
             }
             this.chatHistoryListBox.setItems(chatHistoryList);

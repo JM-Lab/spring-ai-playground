@@ -1,7 +1,6 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
 
-import com.rometools.utils.Strings;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.AbstractEmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -9,7 +8,6 @@ import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.embedding.EmbeddingOptionsBuilder;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.observation.AbstractObservationVectorStore;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -17,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.springframework.ai.vectorstore.SearchRequest.DEFAULT_TOP_K;
@@ -39,19 +38,19 @@ public class VectorStoreService {
     public static final SearchRequestOption ALL_SEARCH_REQUEST_OPTION =
             new SearchRequestOption(SIMILARITY_THRESHOLD_ACCEPT_ALL, 10000);
     private final AbstractEmbeddingModel embeddingModel;
-    private final AbstractObservationVectorStore vectorStore;
+    private final VectorStore vectorStore;
     private SearchRequestOption searchRequestOption;
     private EmbeddingOptions embeddingOptions;
 
     public VectorStoreService(EmbeddingModel embeddingModel, VectorStore vectorStore,
             @Lazy ApplicationContext applicationContext) {
         this.embeddingModel = (AbstractEmbeddingModel) embeddingModel;
-        this.vectorStore = (AbstractObservationVectorStore) vectorStore;
+        this.vectorStore = vectorStore;
         this.searchRequestOption = new SearchRequestOption(0.6, DEFAULT_TOP_K);
         this.applicationContext = applicationContext;
     }
 
-    public SearchRequestOption getVectorStoreOption() {
+    public SearchRequestOption getSearchRequestOption() {
         return searchRequestOption;
     }
 
@@ -63,29 +62,36 @@ public class VectorStoreService {
         SearchRequest.Builder searchRequestBuilder = SearchRequest.builder();
         searchRequestBuilder.similarityThreshold(this.searchRequestOption.similarityThreshold())
                 .topK(this.searchRequestOption.topK());
-        if (!Strings.isBlank(userPromptText))
+        if (Objects.nonNull(userPromptText) && !userPromptText.isBlank()) {
             searchRequestBuilder.query(userPromptText);
-        if (!Strings.isBlank(filterExpression))
+        }
+        if (Objects.nonNull(filterExpression) && !filterExpression.isBlank()) {
             searchRequestBuilder.filterExpression(filterExpression);
+        }
         return search(searchRequestBuilder.build());
     }
 
     public Collection<Document> search(SearchRequest searchRequest) {
-        return this.vectorStore.doSimilaritySearch(searchRequest);
+        return this.vectorStore.similaritySearch(searchRequest);
+    }
+
+    public void add(List<Document> documents) {
+        this.vectorStore.add(documents);
     }
 
     public Document add(Document document) {
-        this.vectorStore.add(List.of(document));
+        add(List.of(document));
         return document;
     }
 
     public Document update(Document document) {
         delete(List.of(document.getId()));
-        return add(document);
+        add(document);
+        return document;
     }
 
     public void delete(List<String> documentIds) {
-        this.vectorStore.doDelete(documentIds);
+        this.vectorStore.delete(documentIds);
     }
 
     public String getEmbeddingModelServiceName() {
@@ -103,10 +109,6 @@ public class VectorStoreService {
                                 throw new RuntimeException(e);
                             }
                         }).map(o -> (EmbeddingOptions) o).orElseGet(EmbeddingOptionsBuilder.builder()::build));
-    }
-
-    public void add(List<Document> documents) {
-        this.vectorStore.add(documents);
     }
 
 }

@@ -14,7 +14,7 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
 
     public VectorStoreSearchSettingView(VectorStoreService vectorStoreService) {
         this.vectorStoreService = vectorStoreService;
-        SearchRequestOption vectorStoreOption = this.vectorStoreService.getVectorStoreOption();
+        SearchRequestOption vectorStoreOption = this.vectorStoreService.getSearchRequestOption();
 
         setSpacing(false);
         setAlignItems(Alignment.START);
@@ -40,7 +40,7 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
         similarityThresholdInput.addValueChangeListener(e -> {
             similarityThresholdSlider.setValue(e.getValue());
             this.vectorStoreService.setVectorStoreOption(
-                    this.vectorStoreService.getVectorStoreOption().newSimilarityThreshold(e.getValue()));
+                    this.vectorStoreService.getSearchRequestOption().newSimilarityThreshold(e.getValue()));
         });
         similarityThresholdInput.setValue(vectorStoreOption.similarityThreshold());
         add(similarityThresholdInput, similarityThresholdSlider);
@@ -65,7 +65,7 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
         topKInput.addValueChangeListener(e -> {
             topKSlider.setValue(e.getValue().doubleValue());
             this.vectorStoreService.setVectorStoreOption(
-                    this.vectorStoreService.getVectorStoreOption().newTopK(e.getValue()));
+                    this.vectorStoreService.getSearchRequestOption().newTopK(e.getValue()));
         });
         add(topKInput, topKSlider);
     }

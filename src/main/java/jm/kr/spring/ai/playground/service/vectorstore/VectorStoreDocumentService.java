@@ -43,7 +43,7 @@ public class VectorStoreDocumentService {
     public final static TokenTextSplitInfo DEFAULT_TOKEN_TEXT_SPLIT_INFO =
             new TokenTextSplitInfo(800, 350, 5, 10000, true);
 
-    private final File uploadDir;
+    final File uploadDir;
 
     private final DataSize maxUploadSize;
 
@@ -124,7 +124,7 @@ public class VectorStoreDocumentService {
     }
 
     public DataSize getMaxUploadSize() {
-        return maxUploadSize;
+        return this.maxUploadSize;
     }
 
     public VectorStoreDocumentInfo updateDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo, String title) {

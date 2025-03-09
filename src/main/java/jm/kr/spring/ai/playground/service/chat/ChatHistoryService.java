@@ -22,7 +22,7 @@ public class ChatHistoryService {
 
     public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";
     public static final String CHAT_HISTORY_SELECT_EVENT = "CHAT_HISTORY_SELECT_EVENT";
-    public static final String EMPTY_CHAT_HISTORY_EVENT = "EMPTY_CHAT_HISTORY_EVENT";
+    public static final String CHAT_HISTORY_EMPTY_EVENT = "CHAT_HISTORY_EMPTY_EVENT";
 
     private final ChatMemory chatMemory;
 
@@ -42,13 +42,13 @@ public class ChatHistoryService {
 
     public void updateChatHistory(ChatHistory chatHistory) {
         String chatId = chatHistory.chatId();
-        ChatHistory mutateChatHistory = nutateChatHistory(chatHistory);
-        this.chatIdHistoryMap.put(chatId, mutateChatHistory);
-        this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null, mutateChatHistory);
+        ChatHistory updatedChatHistory = changeChatHistory(chatHistory);
+        this.chatIdHistoryMap.put(chatId, updatedChatHistory);
+        this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null, updatedChatHistory);
     }
 
-    private ChatHistory nutateChatHistory(ChatHistory chatHistory) {
-        if (Objects.isNull(chatHistory.title()) || chatHistory.title().isEmpty())
+    private ChatHistory changeChatHistory(ChatHistory chatHistory) {
+        if (Objects.isNull(chatHistory.title()) || chatHistory.title().isBlank())
             return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
         return this.chatIdHistoryMap.get(chatHistory.chatId()).mutate(chatHistory.title(), System.currentTimeMillis());
     }
@@ -77,10 +77,10 @@ public class ChatHistoryService {
         this.chatIdHistoryMap.remove(chatId);
     }
 
-    public ChatHistory createChatHistory(String systemPrompt, ChatOptions defaultOptions) {
+    public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
         String chatId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
-        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt, defaultOptions,
+        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt, chatOptions,
                 () -> getMessageList(chatId));
     }
 

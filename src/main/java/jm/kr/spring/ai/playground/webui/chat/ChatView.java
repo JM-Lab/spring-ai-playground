@@ -57,12 +57,12 @@ public class ChatView extends Div {
         this.splitLayout.addThemeVariants(SplitLayoutVariant.LUMO_SMALL);
         add(this.splitLayout);
 
-        this.chatService = chatService.registerCompleteResponseConsumer(this::handleCompleteResponse);
+        this.chatService = chatService.registerCompleteResponseConsumer(chatHistoryService::updateChatHistory);
         this.chatHistoryService = chatHistoryService;
         PropertyChangeSupport chatHistoryChangeSupport = this.chatHistoryService.getChatHistoryChangeSupport();
         chatHistoryChangeSupport.addPropertyChangeListener(ChatHistoryService.CHAT_HISTORY_SELECT_EVENT,
                 event -> this.changeChatContent((ChatHistory) event.getNewValue()));
-        chatHistoryChangeSupport.addPropertyChangeListener(ChatHistoryService.EMPTY_CHAT_HISTORY_EVENT, event -> {
+        chatHistoryChangeSupport.addPropertyChangeListener(ChatHistoryService.CHAT_HISTORY_EMPTY_EVENT, event -> {
             if ((boolean) event.getNewValue())
                 this.changeChatContent(null);
         });
@@ -109,7 +109,7 @@ public class ChatView extends Div {
         horizontalLayout.add(newChatButton);
 
         H4 chatModelServiceText =
-                new H4(String.format("%s: %s", this.chatService.getChatModelServiceName(), chatOptions.getModel()));
+                new H4(String.format("%s: %s", this.chatService.getChatModelProvider(), chatOptions.getModel()));
         chatModelServiceText.getStyle().set("white-space", "nowrap");
         Div chatModelServiceTextDiv = new Div(chatModelServiceText);
         chatModelServiceTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
@@ -151,10 +151,6 @@ public class ChatView extends Div {
 
         horizontalLayout.add(chatModelSettingMenuBar);
         return horizontalLayout;
-    }
-
-    private void handleCompleteResponse(ChatHistory chatHistory) {
-        this.chatHistoryService.updateChatHistory(chatHistory);
     }
 
     private void addNewChatContent() {

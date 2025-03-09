@@ -46,8 +46,8 @@ public class ChatService {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
         this.models = playgroundOptions.chat().models();
         this.chatModel = chatModel;
-        this.chatOptions =
-                Optional.ofNullable(playgroundOptions.chat().chatOptions()).orElseGet(chatModel::getDefaultOptions);
+        this.chatOptions = Optional.ofNullable((ChatOptions) playgroundOptions.chat().chatOptions())
+                .orElseGet(chatModel::getDefaultOptions);
         this.advisors = advisors;
         this.chatClientBuilder = chatClientBuilder;
         this.chatMemory = chatMemory;
@@ -72,7 +72,7 @@ public class ChatService {
             ChatClient.Builder chatClientBuilder =
                     this.chatClientBuilder.clone().defaultAdvisors(advisors)
                             .defaultOptions(chatHistory.chatOptions());
-            Optional.ofNullable(systemPrompt).filter(Predicate.not(String::isBlank))
+            Optional.ofNullable(this.systemPrompt).filter(Predicate.not(String::isBlank))
                     .ifPresent(chatClientBuilder::defaultSystem);
             return chatClientBuilder.build();
         });
@@ -92,12 +92,14 @@ public class ChatService {
                 .stream().chatResponse().map(ChatResponse::getResult);
     }
 
-    public String call(ChatHistory chatHistory, String prompt) {
-        return callWithRaw(chatHistory, prompt).getOutput().getText();
+    public String call(ChatHistory chatHistory, String prompt, long timestamp) {
+        return callWithRaw(chatHistory, prompt, timestamp).getOutput().getText();
     }
 
-    public Generation callWithRaw(ChatHistory chatHistory, String prompt) {
-        return buildChatClient(chatHistory).prompt(prompt).call().chatResponse().getResult();
+    public Generation callWithRaw(ChatHistory chatHistory, String prompt, long timestamp) {
+        return buildChatClient(chatHistory).prompt(new Prompt(
+                        new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))))
+                .call().chatResponse().getResult();
     }
 
     public ChatOptions getDefaultOptions() {
@@ -105,14 +107,14 @@ public class ChatService {
     }
 
     public String getSystemPrompt() {
-        return systemPrompt;
+        return this.systemPrompt;
     }
 
     public List<String> getModels() {
-        return models;
+        return this.models;
     }
 
-    public String getChatModelServiceName() {
+    public String getChatModelProvider() {
         return this.chatModel.getClass().getSimpleName().replace("ChatModel", "");
     }
 }
