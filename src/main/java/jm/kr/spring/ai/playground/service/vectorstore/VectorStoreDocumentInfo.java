@@ -13,8 +13,4 @@ public record VectorStoreDocumentInfo(String docInfoId, String title, long creat
                 documentPath, documentListSupplier);
     }
 
-    public VectorStoreDocumentInfo newUpdateTimestamp() {
-        return new VectorStoreDocumentInfo(docInfoId, title, createTimestamp, System.currentTimeMillis(), documentPath,
-                documentListSupplier);
-    }
 }

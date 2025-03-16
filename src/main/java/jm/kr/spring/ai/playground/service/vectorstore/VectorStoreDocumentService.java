@@ -1,7 +1,6 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
 import com.vaadin.flow.component.notification.Notification;
-import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
@@ -70,7 +69,7 @@ public class VectorStoreDocumentService {
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
         long createTimestamp = System.currentTimeMillis();
         File uploadedDocumentFile = new File(uploadDir, documentFileName);
-        String docInfoId = VectorStoreView.DOC_INFO_ID + "-" + UUID.randomUUID();
+        String docInfoId = VectorStoreService.DOC_INFO_ID + "-" + UUID.randomUUID();
         List<Document> documentList = IntStream.range(0, uploadedDocumentItems.size()).boxed()
                 .map(i -> copyNewDocument(docInfoId, i, uploadedDocumentItems.get(i))).toList();
         VectorStoreDocumentInfo vectorStoreDocumentInfo =
@@ -82,7 +81,7 @@ public class VectorStoreDocumentService {
 
     private Document copyNewDocument(String docInfoId, Integer index, Document uploadedDocument) {
         Map<String, Object> metadata = new HashMap<>(uploadedDocument.getMetadata());
-        metadata.put(VectorStoreView.DOC_INFO_ID, docInfoId);
+        metadata.put(VectorStoreService.DOC_INFO_ID, docInfoId);
         return new Document(index + "-" + docInfoId, uploadedDocument.getText(), metadata);
     }
 

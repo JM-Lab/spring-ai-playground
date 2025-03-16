@@ -46,7 +46,7 @@ import static com.vaadin.flow.component.grid.GridVariant.LUMO_NO_BORDER;
 import static com.vaadin.flow.component.grid.GridVariant.LUMO_ROW_STRIPES;
 import static com.vaadin.flow.component.grid.GridVariant.LUMO_WRAP_CELL_CONTENT;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.ALL_SEARCH_REQUEST_OPTION;
-import static jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView.DOC_INFO_ID;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
 
 public class VectorStoreContentView extends VerticalLayout {
 

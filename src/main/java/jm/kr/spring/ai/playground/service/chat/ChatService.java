@@ -2,12 +2,14 @@ package jm.kr.spring.ai.playground.service.chat;
 
 
 import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AbstractMessage;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -25,8 +27,11 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
+import static org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor.FILTER_EXPRESSION;
 
 @Service
 public class ChatService {
@@ -40,9 +45,11 @@ public class ChatService {
     private final ChatMemory chatMemory;
     private final Map<String, ChatClient> chatClientCache;
     private final List<Consumer<ChatHistory>> completeResponseConsumers;
+    private final VectorStoreDocumentService vectorStoreDocumentService;
 
     public ChatService(ChatModel chatModel, ChatClient.Builder chatClientBuilder,
-            SpringAiPlaygroundOptions playgroundOptions, List<Advisor> advisors, ChatMemory chatMemory) {
+            SpringAiPlaygroundOptions playgroundOptions, List<Advisor> advisors, ChatMemory chatMemory,
+            VectorStoreDocumentService vectorStoreDocumentService) {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
         this.models = playgroundOptions.chat().models();
         this.chatModel = chatModel;
@@ -51,6 +58,7 @@ public class ChatService {
         this.advisors = advisors;
         this.chatClientBuilder = chatClientBuilder;
         this.chatMemory = chatMemory;
+        this.vectorStoreDocumentService = vectorStoreDocumentService;
         this.chatClientCache = new WeakHashMap<>();
         this.completeResponseConsumers = new ArrayList<>();
     }
@@ -60,15 +68,38 @@ public class ChatService {
         return this;
     }
 
+    public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp, String filterExpression) {
+        return streamWithRaw(chatHistory, prompt, timestamp, filterExpression).map(Generation::getOutput)
+                .map(AssistantMessage::getText)
+                .doFinally(signalType -> {
+                    if (SignalType.ON_COMPLETE.equals(signalType))
+                        this.completeResponseConsumers.forEach(consumer -> consumer.accept(chatHistory));
+                });
+    }
+
+    public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, long timestamp,
+            String filterExpression) {
+        return getChatClientRequestSpec(chatHistory, prompt, timestamp, filterExpression).stream().chatResponse()
+                .map(ChatResponse::getResult);
+
+    }
+
+    private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
+            long timestamp, String filterExpression) {
+        ChatClient.ChatClientRequestSpec chatClientRequestSpec = buildChatClient(chatHistory).prompt(new Prompt(
+                new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))));
+        Optional.ofNullable(filterExpression).filter(Predicate.not(String::isBlank)).ifPresent(
+                filter -> chatClientRequestSpec.advisors(
+                        advisorSpec -> advisorSpec.param(FILTER_EXPRESSION, filter)));
+        return chatClientRequestSpec;
+    }
+
     private ChatClient buildChatClient(ChatHistory chatHistory) {
         return this.chatClientCache.computeIfAbsent(chatHistory.chatId(), id -> {
             List<Advisor> advisors = new ArrayList<>(this.advisors);
             MessageChatMemoryAdvisor messageChatMemoryAdvisor = new MessageChatMemoryAdvisor(this.chatMemory, id,
                     AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE);
-            if (advisors.isEmpty())
-                advisors.add(messageChatMemoryAdvisor);
-            else
-                advisors.set(0, messageChatMemoryAdvisor);
+            advisors.addFirst(messageChatMemoryAdvisor);
             ChatClient.Builder chatClientBuilder =
                     this.chatClientBuilder.clone().defaultAdvisors(advisors)
                             .defaultOptions(chatHistory.chatOptions());
@@ -78,28 +109,15 @@ public class ChatService {
         });
     }
 
-    public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp) {
-        return streamWithRaw(chatHistory, prompt, timestamp).map(Generation::getOutput).map(AbstractMessage::getText)
-                .doFinally(signalType -> {
-                    if (SignalType.ON_COMPLETE.equals(signalType))
-                        this.completeResponseConsumers.forEach(consumer -> consumer.accept(chatHistory));
-                });
+    public String call(ChatHistory chatHistory, String prompt, long timestamp,
+            String filterExpression) {
+        return callWithRaw(chatHistory, prompt, timestamp, filterExpression).getOutput().getText();
     }
 
-    public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, long timestamp) {
-        return buildChatClient(chatHistory).prompt(new Prompt(
-                        new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))))
-                .stream().chatResponse().map(ChatResponse::getResult);
-    }
-
-    public String call(ChatHistory chatHistory, String prompt, long timestamp) {
-        return callWithRaw(chatHistory, prompt, timestamp).getOutput().getText();
-    }
-
-    public Generation callWithRaw(ChatHistory chatHistory, String prompt, long timestamp) {
-        return buildChatClient(chatHistory).prompt(new Prompt(
-                        new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))))
-                .call().chatResponse().getResult();
+    public Generation callWithRaw(ChatHistory chatHistory, String prompt, long timestamp,
+            String filterExpression) {
+        return getChatClientRequestSpec(chatHistory, prompt, timestamp, filterExpression).call().chatResponse()
+                .getResult();
     }
 
     public ChatOptions getDefaultOptions() {
@@ -116,5 +134,13 @@ public class ChatService {
 
     public String getChatModelProvider() {
         return this.chatModel.getClass().getSimpleName().replace("ChatModel", "");
+    }
+
+    public List<VectorStoreDocumentInfo> getDocumentsFromVectorDB() {
+        return this.vectorStoreDocumentService.getDocumentList();
+    }
+
+    public String buildFilterExpression(List<String> docInfoIds) {
+        return docInfoIds.stream().collect(Collectors.joining("', '", DOC_INFO_ID + " in ['", "']"));
     }
 }

@@ -23,6 +23,8 @@ import static org.springframework.ai.vectorstore.SearchRequest.SIMILARITY_THRESH
 
 @Service
 public class VectorStoreService {
+    public static final String DOC_INFO_ID = "docInfoId";
+
     public record SearchRequestOption(Double similarityThreshold, Integer topK) {
         public SearchRequestOption newSimilarityThreshold(Double newSimilarityThreshold) {
             return new SearchRequestOption(newSimilarityThreshold, topK);

@@ -7,20 +7,22 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.accordion.Accordion;
 import com.vaadin.flow.component.accordion.AccordionPanel;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.details.DetailsVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.vaadin.firitin.components.messagelist.MarkdownMessage;
-import reactor.core.publisher.Flux;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -52,6 +54,14 @@ public class ChatContentView extends VerticalLayout {
         Scroller messageScroller = new Scroller(this.messageListLayout);
         messageScroller.setSizeFull();
 
+        MultiSelectComboBox<VectorStoreDocumentInfo> documentsComboBox = new MultiSelectComboBox<>();
+        documentsComboBox.setPlaceholder("No documents for RAG");
+        documentsComboBox.setWidth("300px");
+        documentsComboBox.setTooltipText("RAG with documents stored in VectorDB.");
+        documentsComboBox.setSelectedItemsOnTop(true);
+        documentsComboBox.setItemLabelGenerator(VectorStoreDocumentInfo::title);
+        documentsComboBox.setItems(this.chatService.getDocumentsFromVectorDB());
+
         this.userPromptTextArea = new TextArea();
         this.userPromptTextArea.setPlaceholder("Ask Spring AI");
         this.userPromptTextArea.setWidthFull();
@@ -59,20 +69,29 @@ public class ChatContentView extends VerticalLayout {
         this.userPromptTextArea.focus();
         this.userPromptTextArea.setMaxHeight("150px");
         this.userPromptTextArea.setValueChangeMode(ValueChangeMode.EAGER);
+        this.userPromptTextArea.setClearButtonVisible(true);
         CompletableFuture<ZoneId> zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
+
+        Button submitButton = new Button("Submit");
+        submitButton.addClickListener(buttonClickEvent -> inputEvent(zoneIdFuture, documentsComboBox));
+        this.userPromptTextArea.setSuffixComponent(submitButton);
 
         this.userPromptTextArea.addKeyDownListener(Key.ENTER, event -> {
             if (!event.isComposing() && !event.getModifiers().contains(KeyModifier.SHIFT))
-                inputEvent(zoneIdFuture);
+                submitButton.click();
         });
 
-        Button submitButton = new Button("Submit");
-        submitButton.addClickListener(buttonClickEvent -> inputEvent(zoneIdFuture));
-        this.userPromptTextArea.setSuffixComponent(submitButton);
+        Icon ragIcon = VaadinUtils.styledIcon(VaadinIcon.SEARCH_PLUS.create());
+        ragIcon.setTooltipText("Select documents in VectorDB");
+        ragIcon.addSingleClickListener(event -> documentsComboBox.setOpened(true));
+        this.userPromptTextArea.setPrefixComponent(ragIcon);
 
-        HorizontalLayout userInput = new HorizontalLayout(userPromptTextArea);
-        userInput.setWidthFull();
-        add(messageScroller, userInput);
+        VerticalLayout userInputLayout = new VerticalLayout(documentsComboBox, this.userPromptTextArea);
+        userInputLayout.setWidthFull();
+        userInputLayout.setMargin(false);
+        userInputLayout.setSpacing(false);
+        userInputLayout.setPadding(false);
+        add(messageScroller, userInputLayout);
         setSizeFull();
         setMargin(false);
         setSpacing(false);
@@ -84,12 +103,12 @@ public class ChatContentView extends VerticalLayout {
             return;
         ChatContentManager chatContentManager = new ChatContentManager(null, null, zoneIdFuture,
                 this.chatHistory.messagesSupplier());
-        messages.forEach(
-                message -> chatContentManager.addMarkdownMessage(this.messageListLayout,
-                        message, message.getMessageType()));
+        messages.forEach(message -> chatContentManager.addMarkdownMessage(this.messageListLayout, message,
+                message.getMessageType()));
     }
 
-    private void inputEvent(CompletableFuture<ZoneId> zoneIdFuture) {
+    private void inputEvent(CompletableFuture<ZoneId> zoneIdFuture,
+            MultiSelectComboBox<VectorStoreDocumentInfo> documentsComboBox) {
         String userPrompt = this.userPromptTextArea.getValue();
         if (userPrompt.isBlank())
             return;
@@ -100,14 +119,15 @@ public class ChatContentView extends VerticalLayout {
                 this.chatHistory.messagesSupplier());
         this.messageListLayout.add(chatContentManager.getBotResponse());
 
-        Flux<String> botResponseStream = this.chatService.stream(this.chatHistory, userPrompt,
-                chatContentManager.getStartTimestamp());
         UI ui = VaadinUtils.getUi(this);
-        botResponseStream.doFinally(signalType -> ui.access(() -> {
-            chatContentManager.doFinally();
-            this.userPromptTextArea.setEnabled(true);
-            this.userPromptTextArea.focus();
-        })).subscribe(content -> ui.access(() -> chatContentManager.append(content)));
+        this.chatService.stream(this.chatHistory, userPrompt, chatContentManager.getStartTimestamp(),
+                        this.chatService.buildFilterExpression(
+                                documentsComboBox.getSelectedItems().stream().map(VectorStoreDocumentInfo::docInfoId).toList()))
+                .doFinally(signalType -> ui.access(() -> {
+                    chatContentManager.doFinally();
+                    this.userPromptTextArea.setEnabled(true);
+                    this.userPromptTextArea.focus();
+                })).subscribe(content -> ui.access(() -> chatContentManager.append(content)));
     }
 
     public ChatOptions getChatOption() {
@@ -276,6 +296,7 @@ public class ChatContentView extends VerticalLayout {
                         getBotThinkResponseName(this.responseTimestamp - this.botThinkTimestamp));
             }
             setMetadata(RESPONSE_TIMESTAMP, this.responseTimestamp);
+            this.botResponse.scrollIntoView();
         }
 
         private void setMetadata(String key, Object value) {

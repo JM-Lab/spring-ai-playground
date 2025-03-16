@@ -1,3 +1,7 @@
+logging:
+  level:
+    jm.kr.spring.ai.playground.service.SimpleRagAdvisor: DEBUG
+
 spring:
   threads:
     virtual:

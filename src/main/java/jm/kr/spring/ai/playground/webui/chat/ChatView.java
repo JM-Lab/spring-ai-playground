@@ -20,6 +20,7 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
+import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatHistoryService;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
@@ -34,6 +35,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.headerPopover;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
+@UIScope
 @CssImport("./playground/chat-styles.css")
 @RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
 @Route(value = "chat", layout = SpringAiPlaygroundAppLayout.class)
