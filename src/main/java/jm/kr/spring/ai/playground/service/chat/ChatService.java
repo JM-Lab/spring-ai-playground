@@ -2,34 +2,54 @@ package jm.kr.spring.ai.playground.service.chat;
 
 
 import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AbstractMessage;
-import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
+import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
+import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
+import static org.springframework.ai.chat.client.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
 
 @Service
 public class ChatService {
+    private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
+
+    public static final String CHAT_META = "chatMeta";
+    public static final String RAG_FILTER_EXPRESSION = "ragFilterExpression";
+
+    public record ChatMeta(String model, Usage usage, List<Document> retrievedDocuments) {}
 
     private final List<Advisor> advisors;
     private final String systemPrompt;
@@ -39,67 +59,84 @@ public class ChatService {
     private final ChatClient.Builder chatClientBuilder;
     private final ChatMemory chatMemory;
     private final Map<String, ChatClient> chatClientCache;
-    private final List<Consumer<ChatHistory>> completeResponseConsumers;
+    private final VectorStoreDocumentService vectorStoreDocumentService;
 
     public ChatService(ChatModel chatModel, ChatClient.Builder chatClientBuilder,
-            SpringAiPlaygroundOptions playgroundOptions, List<Advisor> advisors, ChatMemory chatMemory) {
+            SpringAiPlaygroundOptions playgroundOptions, List<Advisor> advisors, ChatMemory chatMemory,
+            VectorStoreDocumentService vectorStoreDocumentService) {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
         this.models = playgroundOptions.chat().models();
         this.chatModel = chatModel;
         this.chatOptions = Optional.ofNullable((ChatOptions) playgroundOptions.chat().chatOptions())
                 .orElseGet(chatModel::getDefaultOptions);
         this.advisors = advisors;
+        Optional.ofNullable(this.systemPrompt).filter(Predicate.not(String::isBlank))
+                .ifPresent(chatClientBuilder::defaultSystem);
         this.chatClientBuilder = chatClientBuilder;
         this.chatMemory = chatMemory;
+        this.vectorStoreDocumentService = vectorStoreDocumentService;
         this.chatClientCache = new WeakHashMap<>();
-        this.completeResponseConsumers = new ArrayList<>();
     }
 
-    public ChatService registerCompleteResponseConsumer(Consumer<ChatHistory> completeResponseConsumer) {
-        this.completeResponseConsumers.add(completeResponseConsumer);
-        return this;
+    public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
+            Consumer<ChatHistory> completeChatHistoryConsumer) {
+        return streamWithRaw(chatHistory, prompt, filterExpression).map(Generation::getOutput)
+                .map(AssistantMessage::getText).doFinally(signalType -> {
+                    if (Objects.nonNull(completeChatHistoryConsumer) && SignalType.ON_COMPLETE.equals(signalType))
+                        completeChatHistoryConsumer.accept(chatHistory);
+                });
+    }
+
+    public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression) {
+        AtomicReference<ChatResponse> lastChatResponse = new AtomicReference<>();
+        return getChatClientRequestSpec(chatHistory, prompt, filterExpression).stream().chatResponse()
+                .doOnNext(lastChatResponse::set).doFinally(signalType -> {
+                    if (SignalType.ON_COMPLETE.equals(signalType))
+                        applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
+                }).map(ChatResponse::getResult);
+    }
+
+    private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
+            String filterExpression) {
+        return buildChatClient(chatHistory).prompt().user(prompt).advisors(advisor -> {
+            advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatHistory.chatId());
+            advisor.param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100);
+            if (StringUtils.hasText(filterExpression))
+                advisor.param(RAG_FILTER_EXPRESSION, filterExpression);
+        });
     }
 
     private ChatClient buildChatClient(ChatHistory chatHistory) {
         return this.chatClientCache.computeIfAbsent(chatHistory.chatId(), id -> {
             List<Advisor> advisors = new ArrayList<>(this.advisors);
-            MessageChatMemoryAdvisor messageChatMemoryAdvisor = new MessageChatMemoryAdvisor(this.chatMemory, id,
-                    AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE);
-            if (advisors.isEmpty())
-                advisors.add(messageChatMemoryAdvisor);
-            else
-                advisors.set(0, messageChatMemoryAdvisor);
-            ChatClient.Builder chatClientBuilder =
-                    this.chatClientBuilder.clone().defaultAdvisors(advisors)
-                            .defaultOptions(chatHistory.chatOptions());
-            Optional.ofNullable(this.systemPrompt).filter(Predicate.not(String::isBlank))
-                    .ifPresent(chatClientBuilder::defaultSystem);
-            return chatClientBuilder.build();
+            advisors.addFirst(new MessageChatMemoryAdvisor(this.chatMemory, id,
+                    AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE));
+            return this.chatClientBuilder.clone().defaultAdvisors(advisors).defaultOptions(chatHistory.chatOptions())
+                    .build();
         });
     }
 
-    public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp) {
-        return streamWithRaw(chatHistory, prompt, timestamp).map(Generation::getOutput).map(AbstractMessage::getText)
-                .doFinally(signalType -> {
-                    if (SignalType.ON_COMPLETE.equals(signalType))
-                        this.completeResponseConsumers.forEach(consumer -> consumer.accept(chatHistory));
-                });
+    public String call(ChatHistory chatHistory, String prompt, String filterExpression) {
+        return callWithRaw(chatHistory, prompt, filterExpression).getOutput().getText();
     }
 
-    public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, long timestamp) {
-        return buildChatClient(chatHistory).prompt(new Prompt(
-                        new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))))
-                .stream().chatResponse().map(ChatResponse::getResult);
+    public Generation callWithRaw(ChatHistory chatHistory, String prompt, String filterExpression) {
+        return applyChatResponseMetadataToLastUserMessage(chatHistory,
+                getChatClientRequestSpec(chatHistory, prompt, filterExpression).call().chatResponse()).getResult();
     }
 
-    public String call(ChatHistory chatHistory, String prompt, long timestamp) {
-        return callWithRaw(chatHistory, prompt, timestamp).getOutput().getText();
-    }
-
-    public Generation callWithRaw(ChatHistory chatHistory, String prompt, long timestamp) {
-        return buildChatClient(chatHistory).prompt(new Prompt(
-                        new UserMessage(prompt, List.of(), Map.of("chatId", chatHistory.chatId(), TIMESTAMP, timestamp))))
-                .call().chatResponse().getResult();
+    private ChatResponse applyChatResponseMetadataToLastUserMessage(ChatHistory chatHistory,
+            ChatResponse chatResponse) {
+        chatHistory.messagesSupplier().get().reversed().stream()
+                .filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
+                .map(Message::getMetadata).ifPresentOrElse(metadata -> {
+                            ChatResponseMetadata chatResponseMetadata = chatResponse.getMetadata();
+                            metadata.put(CHAT_META, new ChatMeta(chatResponseMetadata.getModel(),
+                                    chatResponseMetadata.getUsage(), chatResponseMetadata.get(DOCUMENT_CONTEXT)));
+                        },
+                        () -> logger.error("No user message found in chat history to update metadata. [chatId={}]",
+                                chatHistory.chatId()));
+        return chatResponse;
     }
 
     public ChatOptions getDefaultOptions() {
@@ -116,5 +153,14 @@ public class ChatService {
 
     public String getChatModelProvider() {
         return this.chatModel.getClass().getSimpleName().replace("ChatModel", "");
+    }
+
+    public List<VectorStoreDocumentInfo> getExistDocumentInfoList() {
+        return this.vectorStoreDocumentService.getDocumentList();
+    }
+
+    public String buildFilterExpression(List<String> docInfoIds) {
+        return docInfoIds.isEmpty() ? null : docInfoIds.stream()
+                .collect(Collectors.joining("', '", DOC_INFO_ID + " in ['", "']"));
     }
 }

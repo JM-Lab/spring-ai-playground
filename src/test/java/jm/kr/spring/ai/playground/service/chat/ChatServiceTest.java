@@ -1,6 +1,7 @@
 package jm.kr.spring.ai.playground.service.chat;
 
 import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions;
+import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -23,12 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor.FILTER_EXPRESSION;
 
 @SpringBootTest
 class ChatServiceTest {
 
     @Autowired
     ChatService chatService;
+
+    @Autowired
+    VectorStoreDocumentService vectorStoreDocumentService;
 
     @MockitoBean
     ChatModel chatModel;
@@ -37,29 +42,30 @@ class ChatServiceTest {
     void testStream() {
         long timestamp = System.currentTimeMillis();
         ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
-                ChatOptions.builder().build(), List::of);
+                new DefaultChatOptions(), List::of);
         String prompt = "Hello World";
 
         when(chatModel.stream(any(Prompt.class))).thenReturn(
                 Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage(prompt))))));
 
-        chatService.registerCompleteResponseConsumer(
-                chatHistory1 -> assertEquals(chatHistory, chatHistory1));
         assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", timestamp).toStream().collect(Collectors.joining()));
+                chatService.stream(chatHistory, "Test Chat", null, null).toStream().collect(Collectors.joining()));
+        assertEquals(prompt,
+                chatService.stream(chatHistory, "Test Chat", FILTER_EXPRESSION + " in ['a', 'b']", null).toStream()
+                        .collect(Collectors.joining()));
     }
 
     @Test
     void testCall() {
         long timestamp = System.currentTimeMillis();
         ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
-                ChatOptions.builder().build(), List::of);
+                new DefaultChatOptions(), List::of);
         String prompt = "Hello World";
 
         when(chatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage(prompt)))));
 
-        assertEquals(prompt, chatService.call(chatHistory, prompt, timestamp));
+        assertEquals(prompt, chatService.call(chatHistory, prompt, null));
     }
 
     @Test
@@ -96,8 +102,15 @@ class ChatServiceTest {
                 new SpringAiPlaygroundOptions(new SpringAiPlaygroundOptions.Chat("systemPrompt", List.of(
                         "MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
         ChatMemory chatMemory = mock(ChatMemory.class);
-        ChatService service = new ChatService(chatModel, chatClientBuilder, playgroundOptions, List.of(), chatMemory);
+        ChatService service = new ChatService(chatModel, chatClientBuilder, playgroundOptions, List.of(), chatMemory,
+                vectorStoreDocumentService);
         assertEquals("MockLlmProvider", service.getChatModelProvider());
+    }
+
+    @Test
+    void buildFilterExpression() {
+        assertEquals("docInfoId in ['test.pdf', 'hello.docx']",
+                this.chatService.buildFilterExpression(List.of("test.pdf", "hello.docx")));
     }
 
     private static class MockLlmProviderChatModel implements ChatModel {

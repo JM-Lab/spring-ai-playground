@@ -56,7 +56,7 @@ class VectorStoreServiceTest {
     public void testAddDocument() {
         Document document = new Document("id", "text", Map.of());
 
-        Document result = vectorStoreService.add(document);
+        Document result = vectorStoreService.add(List.of(document)).getFirst();
 
         verify(vectorStore).add(List.of(document));
         assertSame(document, result);

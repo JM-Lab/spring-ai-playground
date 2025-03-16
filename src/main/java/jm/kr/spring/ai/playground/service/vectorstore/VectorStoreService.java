@@ -8,21 +8,31 @@ import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.embedding.EmbeddingOptionsBuilder;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static org.springframework.ai.vectorstore.SearchRequest.DEFAULT_TOP_K;
 import static org.springframework.ai.vectorstore.SearchRequest.SIMILARITY_THRESHOLD_ACCEPT_ALL;
 
 @Service
 public class VectorStoreService {
+    public static final String DOC_INFO_ID = "docInfoId";
+    public static final SearchRequestOption ALL_SEARCH_REQUEST_OPTION =
+            new SearchRequestOption(SIMILARITY_THRESHOLD_ACCEPT_ALL, 10000);
+    public static final Function<List<String>, SearchRequest> SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION =
+            docInfoIds -> new SearchRequest.Builder().similarityThreshold(
+                            ALL_SEARCH_REQUEST_OPTION.similarityThreshold()).topK(ALL_SEARCH_REQUEST_OPTION.topK())
+                    .filterExpression(new FilterExpressionBuilder().in(DOC_INFO_ID, docInfoIds.toArray()).build())
+                    .build();
+
     public record SearchRequestOption(Double similarityThreshold, Integer topK) {
         public SearchRequestOption newSimilarityThreshold(Double newSimilarityThreshold) {
             return new SearchRequestOption(newSimilarityThreshold, topK);
@@ -35,8 +45,6 @@ public class VectorStoreService {
 
     private final ApplicationContext applicationContext;
 
-    public static final SearchRequestOption ALL_SEARCH_REQUEST_OPTION =
-            new SearchRequestOption(SIMILARITY_THRESHOLD_ACCEPT_ALL, 10000);
     private final AbstractEmbeddingModel embeddingModel;
     private final VectorStore vectorStore;
     private SearchRequestOption searchRequestOption;
@@ -58,7 +66,7 @@ public class VectorStoreService {
         this.searchRequestOption = searchRequestOption;
     }
 
-    public Collection<Document> search(String userPromptText, String filterExpression) {
+    public List<Document> search(String userPromptText, String filterExpression) {
         SearchRequest.Builder searchRequestBuilder = SearchRequest.builder();
         searchRequestBuilder.similarityThreshold(this.searchRequestOption.similarityThreshold())
                 .topK(this.searchRequestOption.topK());
@@ -71,22 +79,24 @@ public class VectorStoreService {
         return search(searchRequestBuilder.build());
     }
 
-    public Collection<Document> search(SearchRequest searchRequest) {
+    public List<Document> search(SearchRequest searchRequest) {
         return this.vectorStore.similaritySearch(searchRequest);
     }
 
-    public void add(List<Document> documents) {
-        this.vectorStore.add(documents);
+    public void add(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
+        this.vectorStore.add(vectorStoreDocumentInfo.documentListSupplier().get());
+        vectorStoreDocumentInfo.changeDocumentListSupplier(() -> this.vectorStore.similaritySearch(
+                SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(List.of(vectorStoreDocumentInfo.docInfoId()))));
     }
 
-    public Document add(Document document) {
-        add(List.of(document));
-        return document;
+    public List<Document> add(List<Document> documents) {
+        this.vectorStore.add(documents);
+        return documents;
     }
 
     public Document update(Document document) {
         delete(List.of(document.getId()));
-        add(document);
+        add(List.of(document));
         return document;
     }
 

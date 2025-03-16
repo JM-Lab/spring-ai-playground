@@ -39,8 +39,7 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
         similarityThresholdSlider.addValueChangeListener(e -> similarityThresholdInput.setValue(e.getValue()));
         similarityThresholdInput.addValueChangeListener(e -> {
             similarityThresholdSlider.setValue(e.getValue());
-            this.vectorStoreService.setVectorStoreOption(
-                    this.vectorStoreService.getSearchRequestOption().newSimilarityThreshold(e.getValue()));
+            this.vectorStoreService.setVectorStoreOption(vectorStoreOption.newSimilarityThreshold(e.getValue()));
         });
         similarityThresholdInput.setValue(vectorStoreOption.similarityThreshold());
         add(similarityThresholdInput, similarityThresholdSlider);
@@ -64,8 +63,7 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
         topKSlider.addValueChangeListener(e -> topKInput.setValue(e.getValue().intValue()));
         topKInput.addValueChangeListener(e -> {
             topKSlider.setValue(e.getValue().doubleValue());
-            this.vectorStoreService.setVectorStoreOption(
-                    this.vectorStoreService.getSearchRequestOption().newTopK(e.getValue()));
+            this.vectorStoreService.setVectorStoreOption(vectorStoreOption.newTopK(e.getValue()));
         });
         add(topKInput, topKSlider);
     }

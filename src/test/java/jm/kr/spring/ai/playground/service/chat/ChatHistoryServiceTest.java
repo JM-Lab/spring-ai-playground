@@ -1,6 +1,7 @@
 package jm.kr.spring.ai.playground.service.chat;
 
 import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions;
+import jm.kr.spring.ai.playground.webui.chat.ChatView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -50,7 +52,11 @@ public class ChatHistoryServiceTest {
         ChatHistory chatHistory = chatHistoryService.createChatHistory(systemPrompt, chatOptions);
         assertNotNull(chatHistory);
         assertEquals(systemPrompt, chatHistory.systemPrompt());
-        assertEquals(chatOptions, chatHistory.chatOptions());
+        assertEquals(chatOptions.getModel(), chatHistory.chatOptions().getModel());
+        assertEquals(chatOptions.getTemperature(), chatHistory.chatOptions().getTemperature());
+        assertEquals(chatOptions.getMaxTokens(), chatHistory.chatOptions().getMaxTokens());
+        assertEquals(chatOptions.getTopP(), chatHistory.chatOptions().getTopP());
+        assertEquals(chatOptions.getStopSequences(), chatHistory.chatOptions().getStopSequences());
         assertTrue(chatHistory.chatId().startsWith("Chat-"));
         assertEquals(chatHistory.createTimestamp(), chatHistory.updateTimestamp());
         assertNull(chatHistory.title());
@@ -109,39 +115,37 @@ public class ChatHistoryServiceTest {
     @Test
     void testChatHistoryEvents() {
         PropertyChangeListener listener = mock(PropertyChangeListener.class);
-        chatHistoryService.getChatHistoryChangeSupport().addPropertyChangeListener(listener);
+        PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
+        chatHistoryChangeSupport.addPropertyChangeListener(listener);
 
         ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
         String chatId = chatHistory.chatId();
         chatMemory.add(chatId, new UserMessage("User Message"));
-        chatHistoryService.getChatHistoryChangeSupport()
-                .firePropertyChange(ChatHistoryService.CHAT_HISTORY_CHANGE_EVENT, null, chatId);
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_CHANGE_EVENT, null, chatId);
 
         chatHistoryService.updateChatHistory(chatHistory.mutate("", System.currentTimeMillis()));
 
         chatHistoryService.deleteChatHistory(chatId);
-        chatHistoryService.getChatHistoryChangeSupport()
-                .firePropertyChange(ChatHistoryService.CHAT_HISTORY_EMPTY_EVENT, null, chatId);
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_EMPTY_EVENT, null, chatId);
 
-        chatHistoryService.getChatHistoryChangeSupport()
-                .firePropertyChange(ChatHistoryService.CHAT_HISTORY_SELECT_EVENT, null, chatId);
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_SELECT_EVENT, null, chatId);
 
         ArgumentCaptor<PropertyChangeEvent> eventCaptor = ArgumentCaptor.forClass(PropertyChangeEvent.class);
-        verify(listener, times(4)).propertyChange(eventCaptor.capture());
+        verify(listener, times(3)).propertyChange(eventCaptor.capture());
 
         List<PropertyChangeEvent> events = eventCaptor.getAllValues();
 
         assertTrue(events.stream().anyMatch(
-                e -> e.getPropertyName().equals(ChatHistoryService.CHAT_HISTORY_CHANGE_EVENT) &&
-                        e.getOldValue() == null && e.getNewValue().equals(chatId)));
+                e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_CHANGE_EVENT) && e.getOldValue() == null &&
+                        e.getNewValue().equals(chatId)));
 
         assertTrue(events.stream().anyMatch(
-                e -> e.getPropertyName().equals(ChatHistoryService.CHAT_HISTORY_SELECT_EVENT) &&
-                        e.getOldValue() == null && e.getNewValue().equals(chatId)));
+                e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_SELECT_EVENT) && e.getOldValue() == null &&
+                        e.getNewValue().equals(chatId)));
 
         assertTrue(events.stream().anyMatch(
-                e -> e.getPropertyName().equals(ChatHistoryService.CHAT_HISTORY_EMPTY_EVENT) &&
-                        e.getOldValue() == null && e.getNewValue().equals(chatId)));
+                e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_EMPTY_EVENT) && e.getOldValue() == null &&
+                        e.getNewValue().equals(chatId)));
 
     }
 }

@@ -1,13 +1,19 @@
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor.*: DEBUG
+    jm.kr.spring.ai.playground.service.*: DEBUG
+
 spring:
   threads:
     virtual:
       enabled: true
   application:
-    name: spring-ai-playground
+    name: spring-ai-playground-test
   profiles:
     default: openai
   ai:
     playground:
+      user-home:
       chat:
         system:
           prompt:
@@ -26,7 +32,7 @@ spring:
         pull-model-strategy: when_missing
       chat:
         options:
-          model: deepseek-r1:8b
+          model: mistral
       embedding:
         options:
           model: bge-m3

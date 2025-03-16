@@ -1,23 +1,24 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
 import com.vaadin.flow.component.notification.Notification;
-import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TextSplitter;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
-import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,9 +33,7 @@ import java.util.stream.IntStream;
 @Service
 public class VectorStoreDocumentService {
 
-    public static final String DOCUMENT_SELECTING_EVENT = "DOCUMENT_SELECTING_EVENT";
-    public static final String DOCUMENT_ADDING_EVENT = "DOCUMENT_ADDING_EVENT";
-    public static final String DOCUMENTS_DELETE_EVENT = "DOCUMENTS_DELETE_EVENT";
+    private static final Logger logger = LoggerFactory.getLogger(VectorStoreDocumentService.class);
 
     public record TokenTextSplitInfo(int chunkSize, int minChunkSizeChars, int minChunkLengthToEmbed,
                                      int maxNumChunks, boolean keepSeparator) {}
@@ -43,7 +42,9 @@ public class VectorStoreDocumentService {
     public final static TokenTextSplitInfo DEFAULT_TOKEN_TEXT_SPLIT_INFO =
             new TokenTextSplitInfo(800, 350, 5, 10000, true);
 
-    final File uploadDir;
+    private final ResourceLoader resourceLoader;
+
+    private final Path uploadDir;
 
     private final DataSize maxUploadSize;
 
@@ -51,26 +52,21 @@ public class VectorStoreDocumentService {
     private final TokenTextSplitter defaultTokenTextSplitter;
     private final Map<String, VectorStoreDocumentInfo> documentInfos = new ConcurrentHashMap<>();
 
-    private final PropertyChangeSupport documentInfoChangeSupport;
-
-    public VectorStoreDocumentService(@Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize) {
-        this.uploadDir = new File(System.getProperty("user.home"), "spring-ai-playground/vectorstore");
-        if (!uploadDir.exists())
-            uploadDir.mkdirs();
+    public VectorStoreDocumentService(Path springAiPlaygroundHomeDir,
+            @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize, ResourceLoader resourceLoader) throws
+            IOException {
+        this.uploadDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("docs");
+        this.resourceLoader = resourceLoader;
+        Files.createDirectories(uploadDir);
         this.maxUploadSize = maxUploadSize;
         this.splitters = new WeakHashMap<>();
         this.defaultTokenTextSplitter = newTokenTextSplitter(DEFAULT_TOKEN_TEXT_SPLIT_INFO);
-        this.documentInfoChangeSupport = new PropertyChangeSupport(this);
-    }
-
-    public PropertyChangeSupport getDocumentInfoChangeSupport() {
-        return this.documentInfoChangeSupport;
     }
 
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
         long createTimestamp = System.currentTimeMillis();
-        File uploadedDocumentFile = new File(uploadDir, documentFileName);
-        String docInfoId = VectorStoreView.DOC_INFO_ID + "-" + UUID.randomUUID();
+        File uploadedDocumentFile = uploadDir.resolve(documentFileName).toFile();
+        String docInfoId = VectorStoreService.DOC_INFO_ID + "-" + UUID.randomUUID();
         List<Document> documentList = IntStream.range(0, uploadedDocumentItems.size()).boxed()
                 .map(i -> copyNewDocument(docInfoId, i, uploadedDocumentItems.get(i))).toList();
         VectorStoreDocumentInfo vectorStoreDocumentInfo =
@@ -82,14 +78,21 @@ public class VectorStoreDocumentService {
 
     private Document copyNewDocument(String docInfoId, Integer index, Document uploadedDocument) {
         Map<String, Object> metadata = new HashMap<>(uploadedDocument.getMetadata());
-        metadata.put(VectorStoreView.DOC_INFO_ID, docInfoId);
+        metadata.put(VectorStoreService.DOC_INFO_ID, docInfoId);
         return new Document(index + "-" + docInfoId, uploadedDocument.getText(), metadata);
     }
 
     public Map<String, List<Document>> extractDocumentItems(List<String> uploadedFileNames) {
-        return uploadedFileNames.stream()
-                .map(fileName -> Map.entry(fileName, split(new FileSystemResource(new File(uploadDir,
-                        fileName))))).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+        return uploadedFileNames.stream().map(fileName -> Map.entry(fileName,
+                        split(resolveResource(this.uploadDir.resolve(fileName).toFile().getPath()))))
+                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private Resource resolveResource(String path) {
+        if (path.startsWith("classpath:") || path.startsWith("file:")) {
+            return resourceLoader.getResource(path);
+        }
+        return resourceLoader.getResource("file:" + path);
     }
 
     private List<Document> split(Resource resource) {
@@ -112,7 +115,7 @@ public class VectorStoreDocumentService {
     }
 
     public void addUploadedDocumentFile(String fileName, File uploadedFile) throws Exception {
-        File file = new File(uploadDir, fileName);
+        File file = this.uploadDir.resolve(fileName).toFile();
         if (file.exists())
             throw new FileAlreadyExistsException("Already Exists - " + file.getAbsolutePath());
         Files.copy(uploadedFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -120,7 +123,7 @@ public class VectorStoreDocumentService {
     }
 
     public void removeUploadedDocumentFile(String fileName) throws IOException {
-        Files.deleteIfExists(new File(uploadDir, fileName).toPath());
+        Files.deleteIfExists(this.uploadDir.resolve(fileName));
     }
 
     public DataSize getMaxUploadSize() {
@@ -128,6 +131,7 @@ public class VectorStoreDocumentService {
     }
 
     public VectorStoreDocumentInfo updateDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo, String title) {
+        logger.info("Updating document info: {}", title);
         VectorStoreDocumentInfo updateVectorStoreDocumentInfo = vectorStoreDocumentInfo.newTitle(title);
         this.documentInfos.put(vectorStoreDocumentInfo.docInfoId(), updateVectorStoreDocumentInfo);
         return updateVectorStoreDocumentInfo;
@@ -140,6 +144,10 @@ public class VectorStoreDocumentService {
     public List<VectorStoreDocumentInfo> getDocumentList() {
         return this.documentInfos.values().stream()
                 .sorted(Comparator.comparingLong(VectorStoreDocumentInfo::updateTimestamp).reversed()).toList();
+    }
+
+    public Path getUploadDir() {
+        return this.uploadDir;
     }
 
 }

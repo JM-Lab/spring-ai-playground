@@ -23,14 +23,18 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.spring.annotation.SpringComponent;
+import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
+import jm.kr.spring.ai.playground.webui.PersistentUiDataStorage;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingOptions;
 
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -40,18 +44,19 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENTS_DELETE_EVENT;
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_ADDING_EVENT;
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_SELECTING_EVENT;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.headerPopover;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
+@SpringComponent
+@UIScope
 @CssImport("./playground/vectorstore-styles.css")
 @Route(value = "vector", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
-    public static final String DOC_INFO_ID = "docInfoId";
+    public static final String DOCUMENT_SELECTING_EVENT = "DOCUMENT_SELECTING_EVENT";
+    public static final String DOCUMENT_ADDING_EVENT = "DOCUMENT_ADDING_EVENT";
+    public static final String DOCUMENTS_DELETE_EVENT = "DOCUMENTS_DELETE_EVENT";
     private final VectorStoreService vectorStoreService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
     private final VectorStoreDocumentView vectorStoreDocumentView;
@@ -60,8 +65,23 @@ public class VectorStoreView extends Div {
     private double splitterPosition;
     private boolean sidebarCollapsed;
 
-    public VectorStoreView(VectorStoreService vectorStoreService,
+    public VectorStoreView(PersistentUiDataStorage persistentUiDataStorage, VectorStoreService vectorStoreService,
             VectorStoreDocumentService vectorStoreDocumentService) {
+        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
+        documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
+            if (Objects.isNull(changeEvent.getNewValue()))
+                return;
+            Collection<VectorStoreDocumentInfo> newDocumentInfos =
+                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
+            if (newDocumentInfos.isEmpty())
+                return;
+            switch (changeEvent.getPropertyName()) {
+                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
+                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
+                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
+            }
+        });
+
         setSizeFull();
 
         this.splitLayout = new SplitLayout();
@@ -73,24 +93,13 @@ public class VectorStoreView extends Div {
         this.vectorStoreService = vectorStoreService;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
 
-        this.vectorStoreDocumentView = new VectorStoreDocumentView(vectorStoreDocumentService);
+        this.vectorStoreDocumentView =
+                new VectorStoreDocumentView(vectorStoreDocumentService, documentInfoChangeSupport);
         this.splitLayout.addToPrimary(this.vectorStoreDocumentView);
-        this.vectorStoreContentView = new VectorStoreContentView(vectorStoreService);
-        this.vectorStoreDocumentService.getDocumentInfoChangeSupport().addPropertyChangeListener(changeEvent -> {
-            if (Objects.isNull(changeEvent.getNewValue()) || ((Collection<?>) changeEvent.getNewValue()).isEmpty())
-                return;
-            switch (changeEvent.getPropertyName()) {
-                case DOCUMENT_ADDING_EVENT ->
-                        handleDocumentAdding((List<VectorStoreDocumentInfo>) changeEvent.getNewValue());
-                case DOCUMENT_SELECTING_EVENT ->
-                        handleDocumentSelecting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
-                case DOCUMENTS_DELETE_EVENT ->
-                        handleDocumentDeleting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
-            }
-        });
-        vectorStoreContentView.setSpacing(false);
-        vectorStoreContentView.setMargin(false);
-        vectorStoreContentView.setPadding(false);
+        this.vectorStoreContentView = new VectorStoreContentView(persistentUiDataStorage, vectorStoreService);
+        this.vectorStoreContentView.setSpacing(false);
+        this.vectorStoreContentView.setMargin(false);
+        this.vectorStoreContentView.setPadding(false);
 
         VerticalLayout vectorStoreContentLayout = new VerticalLayout();
         vectorStoreContentLayout.setSpacing(false);
@@ -105,10 +114,8 @@ public class VectorStoreView extends Div {
         this.sidebarCollapsed = false;
     }
 
-    private void handleDocumentAdding(List<VectorStoreDocumentInfo> newEventDocumentInfos) {
-        this.vectorStoreService.add(
-                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
-                        .flatMap(List::stream).toList());
+    private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        newEventDocumentInfos.forEach(this.vectorStoreService::add);
         handleDocumentSelecting(newEventDocumentInfos);
     }
 

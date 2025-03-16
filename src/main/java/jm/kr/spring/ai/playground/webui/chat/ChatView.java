@@ -20,26 +20,38 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
+import com.vaadin.flow.spring.annotation.SpringComponent;
+import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatHistoryService;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
+import jm.kr.spring.ai.playground.webui.PersistentUiDataStorage;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.headerPopover;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
+@SpringComponent
+@UIScope
 @CssImport("./playground/chat-styles.css")
 @RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
 @Route(value = "chat", layout = SpringAiPlaygroundAppLayout.class)
 public class ChatView extends Div {
 
+    public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";
+    public static final String CHAT_HISTORY_SELECT_EVENT = "CHAT_HISTORY_SELECT_EVENT";
+    public static final String CHAT_HISTORY_EMPTY_EVENT = "CHAT_HISTORY_EMPTY_EVENT";
+
+    private final PersistentUiDataStorage persistentUiDataStorage;
     private final ChatService chatService;
+    private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private final ChatHistoryService chatHistoryService;
     private final ChatHistoryView chatHistoryView;
     private final SplitLayout splitLayout;
@@ -48,7 +60,23 @@ public class ChatView extends Div {
     private boolean sidebarCollapsed;
     private ChatContentView chatContentView;
 
-    public ChatView(ChatService chatService, ChatHistoryService chatHistoryService) {
+    public ChatView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
+            ChatHistoryService chatHistoryService) {
+        this.persistentUiDataStorage = persistentUiDataStorage;
+        this.chatService = chatService;
+        this.chatHistoryService = chatHistoryService;
+
+        PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
+        chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_SELECT_EVENT,
+                event -> this.changeChatContent((ChatHistory) event.getNewValue()));
+        chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_EMPTY_EVENT, event -> {
+            if ((boolean) event.getNewValue())
+                addNewChatContent();
+        });
+        this.completeChatHistoryConsumer =
+                chatHistory -> chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null,
+                        chatHistoryService.updateChatHistory(chatHistory));
+        setHeightFull();
         setSizeFull();
 
         this.splitLayout = new SplitLayout();
@@ -57,16 +85,10 @@ public class ChatView extends Div {
         this.splitLayout.addThemeVariants(SplitLayoutVariant.LUMO_SMALL);
         add(this.splitLayout);
 
-        this.chatService = chatService.registerCompleteResponseConsumer(chatHistoryService::updateChatHistory);
-        this.chatHistoryService = chatHistoryService;
-        PropertyChangeSupport chatHistoryChangeSupport = this.chatHistoryService.getChatHistoryChangeSupport();
-        chatHistoryChangeSupport.addPropertyChangeListener(ChatHistoryService.CHAT_HISTORY_SELECT_EVENT,
-                event -> this.changeChatContent((ChatHistory) event.getNewValue()));
-        chatHistoryChangeSupport.addPropertyChangeListener(ChatHistoryService.CHAT_HISTORY_EMPTY_EVENT, event -> {
-            if ((boolean) event.getNewValue())
-                this.changeChatContent(null);
-        });
-        this.chatHistoryView = new ChatHistoryView(chatHistoryService);
+        this.chatHistoryView =
+                new ChatHistoryView(persistentUiDataStorage, chatHistoryService, chatHistoryChangeSupport);
+        chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_CHANGE_EVENT,
+                event -> this.chatHistoryView.changeChatHistoryContent((ChatHistory) event.getNewValue()));
         this.splitLayout.addToPrimary(chatHistoryView);
         this.chatContentLayout = new VerticalLayout();
         this.chatContentLayout.setSpacing(false);
@@ -163,20 +185,14 @@ public class ChatView extends Div {
     }
 
     private void changeChatContent(ChatHistory chatHistory) {
-        if (Objects.isNull(chatHistory)) {
-            chatHistory = this.chatHistoryService.createChatHistory(this.chatService.getSystemPrompt(),
-                    this.chatService.getDefaultOptions());
-        }
-        if (Objects.nonNull(this.chatContentView) &&
-                chatHistory.chatId().equals(this.chatContentView.getChatId())) {
-            this.chatContentView.updateChatHistory(chatHistory);
+        if (Objects.isNull(chatHistory))
             return;
-        }
-        this.chatContentView = new ChatContentView(this.chatService, chatHistory);
-        ChatOptions chatOptions = chatHistory.chatOptions();
+
+        this.chatContentView = new ChatContentView(this.persistentUiDataStorage, this.chatService, chatHistory,
+                this.completeChatHistoryConsumer);
         VaadinUtils.getUi(this).access(() -> {
             this.chatContentLayout.removeAll();
-            this.chatContentLayout.add(createChatContentHeader(chatOptions), this.chatContentView);
+            this.chatContentLayout.add(createChatContentHeader(chatHistory.chatOptions()), this.chatContentView);
         });
     }
 

@@ -1,3 +1,8 @@
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor.*: DEBUG
+    jm.kr.spring.ai.playground.service.*: DEBUG
+
 spring:
   threads:
     virtual:
@@ -8,6 +13,7 @@ spring:
     default: ollama
   ai:
     playground:
+      user-home:
       chat:
         system:
           prompt:
@@ -33,6 +39,7 @@ spring:
     playground:
       chat:
         models:
+          - gemma3
           - deepseek-r1:8b
           - mistral-small
           - llama3.2
