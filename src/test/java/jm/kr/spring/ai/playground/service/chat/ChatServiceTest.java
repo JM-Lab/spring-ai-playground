@@ -42,25 +42,25 @@ class ChatServiceTest {
     void testStream() {
         long timestamp = System.currentTimeMillis();
         ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
-                ChatOptions.builder().build(), List::of);
+                new DefaultChatOptions(), List::of);
         String prompt = "Hello World";
 
         when(chatModel.stream(any(Prompt.class))).thenReturn(
                 Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage(prompt))))));
 
-        chatService.registerCompleteResponseConsumer(chatHistory1 -> assertEquals(chatHistory, chatHistory1));
         assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", timestamp, null).toStream().collect(Collectors.joining()));
-        assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", timestamp, FILTER_EXPRESSION + " in ['a', 'b']").toStream()
+                chatService.stream(chatHistory, "Test Chat", timestamp, null, null).toStream()
                         .collect(Collectors.joining()));
+        assertEquals(prompt,
+                chatService.stream(chatHistory, "Test Chat", timestamp, FILTER_EXPRESSION + " in ['a', 'b']", null)
+                        .toStream().collect(Collectors.joining()));
     }
 
     @Test
     void testCall() {
         long timestamp = System.currentTimeMillis();
         ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
-                ChatOptions.builder().build(), List::of);
+                new DefaultChatOptions(), List::of);
         String prompt = "Hello World";
 
         when(chatModel.call(any(Prompt.class))).thenReturn(

@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -25,6 +26,14 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
         SpringApplication.run(SpringAiPlaygroundApplication.class, args);
+    }
+
+    @Bean
+    public Path springAiPlaygroundHomeDir(){
+        Path homeDir = Path.of(System.getProperty("user.home"), "spring-ai-playground");
+        if (!homeDir.toFile().exists())
+            homeDir.toFile().mkdirs();
+        return homeDir;
     }
 
     @Bean

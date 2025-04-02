@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -41,11 +42,15 @@ public class ChatContentView extends VerticalLayout {
     private final VerticalLayout messageListLayout;
     private final TextArea userPromptTextArea;
     private final ChatService chatService;
+    private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private ChatHistory chatHistory;
 
-    public ChatContentView(ChatService chatService, ChatHistory chatHistory) {
+    public ChatContentView(ChatService chatService, ChatHistory chatHistory,
+            Consumer<ChatHistory> completeChatHistoryConsumer) {
         this.chatHistory = chatHistory;
         this.chatService = chatService;
+        this.completeChatHistoryConsumer = completeChatHistoryConsumer;
+
         this.messageListLayout = new VerticalLayout();
         this.messageListLayout.setMargin(false);
         this.messageListLayout.setSpacing(false);
@@ -122,7 +127,8 @@ public class ChatContentView extends VerticalLayout {
         UI ui = VaadinUtils.getUi(this);
         this.chatService.stream(this.chatHistory, userPrompt, chatContentManager.getStartTimestamp(),
                         this.chatService.buildFilterExpression(
-                                documentsComboBox.getSelectedItems().stream().map(VectorStoreDocumentInfo::docInfoId).toList()))
+                                documentsComboBox.getSelectedItems().stream().map(VectorStoreDocumentInfo::docInfoId).toList()),
+                        this.completeChatHistoryConsumer)
                 .doFinally(signalType -> ui.access(() -> {
                     chatContentManager.doFinally();
                     this.userPromptTextArea.setEnabled(true);

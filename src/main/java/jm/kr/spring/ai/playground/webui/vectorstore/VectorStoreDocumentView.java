@@ -16,12 +16,15 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.springframework.ai.document.Document;
 
+import java.beans.PropertyChangeSupport;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -34,16 +37,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENTS_DELETE_EVENT;
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_ADDING_EVENT;
-import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService.DOCUMENT_SELECTING_EVENT;
+import static jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView.DOCUMENTS_DELETE_EVENT;
+import static jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView.DOCUMENT_ADDING_EVENT;
+import static jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView.DOCUMENT_SELECTING_EVENT;
 
-public class VectorStoreDocumentView extends VerticalLayout {
+public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnterObserver {
 
     private final VectorStoreDocumentService vectorStoreDocumentService;
     private final MultiSelectListBox<VectorStoreDocumentInfo> documentListBox;
+    private final PropertyChangeSupport documentInfoChangeSupport;
 
-    public VectorStoreDocumentView(VectorStoreDocumentService vectorStoreDocumentService) {
+    public VectorStoreDocumentView(VectorStoreDocumentService vectorStoreDocumentService,
+            PropertyChangeSupport documentInfoChangeSupport) {
+        this.documentInfoChangeSupport = documentInfoChangeSupport;
+
         setHeightFull();
         setSpacing(false);
         setMargin(false);
@@ -67,8 +74,8 @@ public class VectorStoreDocumentView extends VerticalLayout {
         this.documentListBox.addValueChangeListener(event -> Optional.ofNullable(event.getValue())
                 .filter(vectorStoreDocumentInfos -> this.documentListBox.getSelectedItems()
                         .equals(vectorStoreDocumentInfos))
-                .ifPresent(documentInfos -> vectorStoreDocumentService.getDocumentInfoChangeSupport()
-                        .firePropertyChange(DOCUMENT_SELECTING_EVENT, event.getOldValue(), documentInfos)));
+                .ifPresent(documentInfos -> this.documentInfoChangeSupport.firePropertyChange(DOCUMENT_SELECTING_EVENT,
+                        event.getOldValue(), documentInfos)));
         add(initDocumentViewHeader(), this.documentListBox);
     }
 
@@ -148,8 +155,7 @@ public class VectorStoreDocumentView extends VerticalLayout {
             for (VectorStoreDocumentInfo documentInfo : selectedItems)
                 this.vectorStoreDocumentService.deleteDocumentInfo(documentInfo.docInfoId());
             this.updateDocumentContent();
-            vectorStoreDocumentService.getDocumentInfoChangeSupport()
-                    .firePropertyChange(DOCUMENTS_DELETE_EVENT, null, selectedItems);
+            this.documentInfoChangeSupport.firePropertyChange(DOCUMENTS_DELETE_EVENT, null, selectedItems);
             dialog.close();
         });
         deleteButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
@@ -167,8 +173,7 @@ public class VectorStoreDocumentView extends VerticalLayout {
                             documents);
                 }).filter(Objects::nonNull).toList();
         updateDocumentContent();
-        this.vectorStoreDocumentService.getDocumentInfoChangeSupport()
-                .firePropertyChange(DOCUMENT_ADDING_EVENT, null, newDocumentInfos);
+        this.documentInfoChangeSupport.firePropertyChange(DOCUMENT_ADDING_EVENT, null, newDocumentInfos);
     }
 
     private void updateDocumentContent() {
@@ -178,4 +183,8 @@ public class VectorStoreDocumentView extends VerticalLayout {
         });
     }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
+        updateDocumentContent();
+    }
 }

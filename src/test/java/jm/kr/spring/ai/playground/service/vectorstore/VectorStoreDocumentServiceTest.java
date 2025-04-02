@@ -1,5 +1,6 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
+import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.document.Document;
@@ -11,6 +12,7 @@ import org.springframework.util.unit.DataSize;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -111,31 +113,29 @@ class VectorStoreDocumentServiceTest {
     @Test
     void testDocumentEvents() {
         PropertyChangeListener listener = mock(PropertyChangeListener.class);
-        service.getDocumentInfoChangeSupport().addPropertyChangeListener(listener);
+        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
+        documentInfoChangeSupport.addPropertyChangeListener(listener);
 
         VectorStoreDocumentInfo docInfo =
                 service.putNewDocument("event-add.txt", List.of(new Document("id", "text", Map.of())));
-        service.getDocumentInfoChangeSupport()
-                .firePropertyChange(VectorStoreDocumentService.DOCUMENT_ADDING_EVENT, null, docInfo);
+        documentInfoChangeSupport.firePropertyChange(VectorStoreView.DOCUMENT_ADDING_EVENT, null, docInfo);
 
         List<VectorStoreDocumentInfo> docList = service.getDocumentList();
-        service.getDocumentInfoChangeSupport()
-                .firePropertyChange(VectorStoreDocumentService.DOCUMENT_SELECTING_EVENT, null, docList);
+        documentInfoChangeSupport.firePropertyChange(VectorStoreView.DOCUMENT_SELECTING_EVENT, null, docList);
 
         service.deleteDocumentInfo(docInfo.docInfoId());
-        service.getDocumentInfoChangeSupport()
-                .firePropertyChange(VectorStoreDocumentService.DOCUMENTS_DELETE_EVENT, docInfo, null);
+        documentInfoChangeSupport.firePropertyChange(VectorStoreView.DOCUMENTS_DELETE_EVENT, docInfo, null);
 
         ArgumentCaptor<PropertyChangeEvent> eventCaptor = ArgumentCaptor.forClass(PropertyChangeEvent.class);
         verify(listener, times(3)).propertyChange(eventCaptor.capture());
         List<PropertyChangeEvent> events = eventCaptor.getAllValues();
 
         assertTrue(events.stream()
-                .anyMatch(e -> e.getPropertyName().equals(VectorStoreDocumentService.DOCUMENT_ADDING_EVENT)));
+                .anyMatch(e -> e.getPropertyName().equals(VectorStoreView.DOCUMENT_ADDING_EVENT)));
         assertTrue(events.stream()
-                .anyMatch(e -> e.getPropertyName().equals(VectorStoreDocumentService.DOCUMENT_SELECTING_EVENT)));
+                .anyMatch(e -> e.getPropertyName().equals(VectorStoreView.DOCUMENT_SELECTING_EVENT)));
         assertTrue(events.stream()
-                .anyMatch(e -> e.getPropertyName().equals(VectorStoreDocumentService.DOCUMENTS_DELETE_EVENT)));
+                .anyMatch(e -> e.getPropertyName().equals(VectorStoreView.DOCUMENTS_DELETE_EVENT)));
     }
 
 

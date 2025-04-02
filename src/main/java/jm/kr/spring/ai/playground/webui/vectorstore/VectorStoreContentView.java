@@ -23,7 +23,10 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.internal.JsonDecodingException;
 import com.vaadin.flow.internal.JsonUtils;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
+import jm.kr.spring.ai.playground.webui.PersistentUiDataStorage;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.Media;
@@ -48,7 +51,11 @@ import static com.vaadin.flow.component.grid.GridVariant.LUMO_WRAP_CELL_CONTENT;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.ALL_SEARCH_REQUEST_OPTION;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
 
-public class VectorStoreContentView extends VerticalLayout {
+public class VectorStoreContentView extends VerticalLayout implements BeforeEnterObserver {
+
+    private static final String LAST_SEARCH_REQUEST_OPTION = "lastSearchRequestOption";
+
+    private record SearchRequestOption(String query, String searchFilter) {}
 
     public static final String CUSTOM_ADD_DOC_INFO_ID = "docInfoId-custom";
     private static final ObjectMapper ObjectMapper =
@@ -57,12 +64,28 @@ public class VectorStoreContentView extends VerticalLayout {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
     private static final TypeReference<Media> MEDIA_TYPE_REFERENCE = new TypeReference<>() {};
 
+    private final PersistentUiDataStorage persistentUiDataStorage;
     private final VectorStoreService vectorStoreService;
     private final GridCrud<VectorStoreContentItem> gridCrud;
     private final GridDataView<VectorStoreContentItem> dataView;
+    private final TextField userPromptTextField;
+    private final TextField filterExpressionTextField;
     private SearchRequest searchRequest;
 
-    public VectorStoreContentView(VectorStoreService vectorStoreService) {
+    @Override
+    public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
+        this.persistentUiDataStorage.loadData(LAST_SEARCH_REQUEST_OPTION, SearchRequestOption.class,
+                searchRequestOption -> {
+                    if (Objects.nonNull(searchRequestOption)) {
+                        this.userPromptTextField.setValue(searchRequestOption.query());
+                        this.filterExpressionTextField.setValue(searchRequestOption.searchFilter());
+                    }
+                });
+    }
+
+    public VectorStoreContentView(PersistentUiDataStorage persistentUiDataStorage,
+            VectorStoreService vectorStoreService) {
+        this.persistentUiDataStorage = persistentUiDataStorage;
         this.vectorStoreService = vectorStoreService;
 
         setSizeFull();
@@ -137,7 +160,7 @@ public class VectorStoreContentView extends VerticalLayout {
         new VectorStoreContentContextMenu(this.gridCrud);
         add(this.gridCrud);
 
-        TextField userPromptTextField = new TextField();
+        this.userPromptTextField = new TextField();
         userPromptTextField.setPlaceholder("Enter a prompt to test similarity search...");
         userPromptTextField.setWidth("60%");
         userPromptTextField.setAutofocus(true);
@@ -150,7 +173,7 @@ public class VectorStoreContentView extends VerticalLayout {
         userPromptTextField.setSuffixComponent(searchButton);
         userPromptTextField.addKeyDownListener(Key.ENTER, event -> clickSearchButton(event, searchButton));
 
-        TextField filterExpressionTextField = new TextField();
+        this.filterExpressionTextField = new TextField();
         filterExpressionTextField.setPlaceholder("Enter a Spring AI metadata filters, e.g., country == 'BG'");
         filterExpressionTextField.setWidth("40%");
         filterExpressionTextField.getStyle().setPadding("0");
@@ -176,10 +199,12 @@ public class VectorStoreContentView extends VerticalLayout {
         Grid<VectorStoreContentItem> grid = this.gridCrud.getGrid();
         this.dataView = grid.getGenericDataView();
         this.gridCrud.setOperations(
-                () -> (Objects.isNull(this.searchRequest) ? vectorStoreService.search(userPromptTextField.getValue(),
-                        filterExpressionTextField.getValue()) : vectorStoreService.search(this.searchRequest)).stream()
+                () -> (Objects.isNull(this.searchRequest) ?
+                        vectorStoreService.search(this.userPromptTextField.getValue(),
+                                filterExpressionTextField.getValue()) : vectorStoreService.search(
+                        this.searchRequest)).stream()
                         .map(this::convertToViewDocument).toList(),
-                item -> convertToViewDocument(this.vectorStoreService.add(buildCustomChunk(item))),
+                item -> convertToViewDocument(this.vectorStoreService.add(List.of(buildCustomChunk(item))).getFirst()),
                 item -> convertToViewDocument(this.vectorStoreService.update(convertToDocument(item))),
                 item -> vectorStoreService.delete(
                         grid.getSelectedItems().stream().map(VectorStoreContentItem::getId).toList()));
@@ -265,15 +290,14 @@ public class VectorStoreContentView extends VerticalLayout {
                 .similarityThreshold(ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
                 .topK(ALL_SEARCH_REQUEST_OPTION.topK()).build();
         refreshGrid();
-        this.searchRequest = null;
+
     }
 
     public void showAllDocuments() {
-        searchRequest =
+        this.searchRequest =
                 new SearchRequest.Builder().similarityThreshold(ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
                         .topK(ALL_SEARCH_REQUEST_OPTION.topK()).build();
         refreshGrid();
-        searchRequest = null;
     }
 
     private void refreshGrid() {
@@ -285,6 +309,10 @@ public class VectorStoreContentView extends VerticalLayout {
                             .similarityThreshold(),
                     Objects.nonNull(this.searchRequest) ? ALL_SEARCH_REQUEST_OPTION.topK()
                             : vectorStoreService.getSearchRequestOption().topK()));
+            this.searchRequest = null;
+            this.persistentUiDataStorage.saveData(LAST_SEARCH_REQUEST_OPTION,
+                    new SearchRequestOption(this.userPromptTextField.getValue(),
+                            this.filterExpressionTextField.getValue()));
         } catch (Exception e) {
             VaadinUtils.showErrorNotification(e.getMessage());
         }

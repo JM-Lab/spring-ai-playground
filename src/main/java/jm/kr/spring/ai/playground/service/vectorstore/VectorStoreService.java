@@ -8,6 +8,7 @@ import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.embedding.EmbeddingOptionsBuilder;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -77,18 +78,24 @@ public class VectorStoreService {
         return this.vectorStore.similaritySearch(searchRequest);
     }
 
-    public void add(List<Document> documents) {
-        this.vectorStore.add(documents);
+    public void add(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
+        this.vectorStore.add(vectorStoreDocumentInfo.documentListSupplier().get());
+        vectorStoreDocumentInfo.changeDocumentListSupplier(
+                () -> vectorStore.similaritySearch(new SearchRequest.Builder().similarityThreshold(
+                                ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
+                        .topK(ALL_SEARCH_REQUEST_OPTION.topK()).filterExpression(new Filter.Expression(
+                                Filter.ExpressionType.EQ, new Filter.Key("docInfoId"),
+                                new Filter.Value(vectorStoreDocumentInfo.docInfoId()))).build()));
     }
 
-    public Document add(Document document) {
-        add(List.of(document));
-        return document;
+    public List<Document> add(List<Document> documents) {
+        this.vectorStore.add(documents);
+        return documents;
     }
 
     public Document update(Document document) {
         delete(List.of(document.getId()));
-        add(document);
+        add(List.of(document));
         return document;
     }
 

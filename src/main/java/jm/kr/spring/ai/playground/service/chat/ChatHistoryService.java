@@ -5,9 +5,10 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.DefaultChatOptions;
+import org.springframework.ai.chat.prompt.DefaultChatOptionsBuilder;
 import org.springframework.stereotype.Service;
 
-import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -20,31 +21,20 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ChatHistoryService {
 
-    public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";
-    public static final String CHAT_HISTORY_SELECT_EVENT = "CHAT_HISTORY_SELECT_EVENT";
-    public static final String CHAT_HISTORY_EMPTY_EVENT = "CHAT_HISTORY_EMPTY_EVENT";
-
     private final ChatMemory chatMemory;
 
     private final Map<String, ChatHistory> chatIdHistoryMap;
 
-    private final PropertyChangeSupport chatHistoryChangeSupport;
-
     public ChatHistoryService(ChatMemory chatMemory) {
         this.chatMemory = chatMemory;
         this.chatIdHistoryMap = new ConcurrentHashMap<>();
-        this.chatHistoryChangeSupport = new PropertyChangeSupport(this);
     }
 
-    public PropertyChangeSupport getChatHistoryChangeSupport() {
-        return this.chatHistoryChangeSupport;
-    }
-
-    public void updateChatHistory(ChatHistory chatHistory) {
+    public ChatHistory updateChatHistory(ChatHistory chatHistory) {
         String chatId = chatHistory.chatId();
         ChatHistory updatedChatHistory = changeChatHistory(chatHistory);
         this.chatIdHistoryMap.put(chatId, updatedChatHistory);
-        this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null, updatedChatHistory);
+        return updatedChatHistory;
     }
 
     private ChatHistory changeChatHistory(ChatHistory chatHistory) {
@@ -80,7 +70,17 @@ public class ChatHistoryService {
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
         String chatId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
-        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt, chatOptions,
+        new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
+                .maxTokens(chatOptions.getMaxTokens())
+                .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
+                .temperature(chatOptions.getTemperature())
+                .topK(chatOptions.getTopK()).topP(chatOptions.getTopP());
+        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt,
+                (DefaultChatOptions) new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
+                        .maxTokens(chatOptions.getMaxTokens())
+                        .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
+                        .temperature(chatOptions.getTemperature())
+                        .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build(),
                 () -> getMessageList(chatId));
     }
 

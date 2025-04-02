@@ -23,6 +23,7 @@ import reactor.core.publisher.SignalType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
@@ -44,7 +45,6 @@ public class ChatService {
     private final ChatClient.Builder chatClientBuilder;
     private final ChatMemory chatMemory;
     private final Map<String, ChatClient> chatClientCache;
-    private final List<Consumer<ChatHistory>> completeResponseConsumers;
     private final VectorStoreDocumentService vectorStoreDocumentService;
 
     public ChatService(ChatModel chatModel, ChatClient.Builder chatClientBuilder,
@@ -60,20 +60,15 @@ public class ChatService {
         this.chatMemory = chatMemory;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
         this.chatClientCache = new WeakHashMap<>();
-        this.completeResponseConsumers = new ArrayList<>();
     }
 
-    public ChatService registerCompleteResponseConsumer(Consumer<ChatHistory> completeResponseConsumer) {
-        this.completeResponseConsumers.add(completeResponseConsumer);
-        return this;
-    }
-
-    public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp, String filterExpression) {
+    public Flux<String> stream(ChatHistory chatHistory, String prompt, long timestamp, String filterExpression,
+            Consumer<ChatHistory> completeChatHistoryConsumer) {
         return streamWithRaw(chatHistory, prompt, timestamp, filterExpression).map(Generation::getOutput)
                 .map(AssistantMessage::getText)
                 .doFinally(signalType -> {
-                    if (SignalType.ON_COMPLETE.equals(signalType))
-                        this.completeResponseConsumers.forEach(consumer -> consumer.accept(chatHistory));
+                    if (Objects.nonNull(completeChatHistoryConsumer) && SignalType.ON_COMPLETE.equals(signalType))
+                        completeChatHistoryConsumer.accept(chatHistory);
                 });
     }
 

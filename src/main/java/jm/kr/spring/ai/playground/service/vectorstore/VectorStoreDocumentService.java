@@ -12,11 +12,11 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
-import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -30,10 +30,6 @@ import java.util.stream.IntStream;
 
 @Service
 public class VectorStoreDocumentService {
-
-    public static final String DOCUMENT_SELECTING_EVENT = "DOCUMENT_SELECTING_EVENT";
-    public static final String DOCUMENT_ADDING_EVENT = "DOCUMENT_ADDING_EVENT";
-    public static final String DOCUMENTS_DELETE_EVENT = "DOCUMENTS_DELETE_EVENT";
 
     public record TokenTextSplitInfo(int chunkSize, int minChunkSizeChars, int minChunkLengthToEmbed,
                                      int maxNumChunks, boolean keepSeparator) {}
@@ -50,20 +46,14 @@ public class VectorStoreDocumentService {
     private final TokenTextSplitter defaultTokenTextSplitter;
     private final Map<String, VectorStoreDocumentInfo> documentInfos = new ConcurrentHashMap<>();
 
-    private final PropertyChangeSupport documentInfoChangeSupport;
-
-    public VectorStoreDocumentService(@Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize) {
-        this.uploadDir = new File(System.getProperty("user.home"), "spring-ai-playground/vectorstore");
+    public VectorStoreDocumentService(Path springAiPlaygroundHomeDir,
+            @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize) {
+        this.uploadDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("docs").toFile();
         if (!uploadDir.exists())
             uploadDir.mkdirs();
         this.maxUploadSize = maxUploadSize;
         this.splitters = new WeakHashMap<>();
         this.defaultTokenTextSplitter = newTokenTextSplitter(DEFAULT_TOKEN_TEXT_SPLIT_INFO);
-        this.documentInfoChangeSupport = new PropertyChangeSupport(this);
-    }
-
-    public PropertyChangeSupport getDocumentInfoChangeSupport() {
-        return this.documentInfoChangeSupport;
     }
 
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
