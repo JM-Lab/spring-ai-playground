@@ -32,7 +32,6 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.model.Media;
 import org.springframework.ai.util.JacksonUtils;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.vaadin.crudui.crud.CrudOperation;
 import org.vaadin.crudui.crud.impl.GridCrud;
 import org.vaadin.crudui.form.CrudFormFactory;
@@ -50,6 +49,7 @@ import static com.vaadin.flow.component.grid.GridVariant.LUMO_ROW_STRIPES;
 import static com.vaadin.flow.component.grid.GridVariant.LUMO_WRAP_CELL_CONTENT;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.ALL_SEARCH_REQUEST_OPTION;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
+import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION;
 
 public class VectorStoreContentView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -285,10 +285,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
     }
 
     public void showDocuments(List<String> selectDocInfoIds) {
-        this.searchRequest = new SearchRequest.Builder().filterExpression(
-                        new FilterExpressionBuilder().in(DOC_INFO_ID, selectDocInfoIds.toArray()).build())
-                .similarityThreshold(ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
-                .topK(ALL_SEARCH_REQUEST_OPTION.topK()).build();
+        this.searchRequest = SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(selectDocInfoIds);
         refreshGrid();
 
     }

@@ -1,6 +1,8 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
 import com.vaadin.flow.component.notification.Notification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
@@ -30,6 +32,8 @@ import java.util.stream.IntStream;
 
 @Service
 public class VectorStoreDocumentService {
+
+    private static final Logger logger = LoggerFactory.getLogger(VectorStoreDocumentService.class);
 
     public record TokenTextSplitInfo(int chunkSize, int minChunkSizeChars, int minChunkLengthToEmbed,
                                      int maxNumChunks, boolean keepSeparator) {}
@@ -117,6 +121,7 @@ public class VectorStoreDocumentService {
     }
 
     public VectorStoreDocumentInfo updateDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo, String title) {
+        logger.info("Updating document info: {}", title);
         VectorStoreDocumentInfo updateVectorStoreDocumentInfo = vectorStoreDocumentInfo.newTitle(title);
         this.documentInfos.put(vectorStoreDocumentInfo.docInfoId(), updateVectorStoreDocumentInfo);
         return updateVectorStoreDocumentInfo;
