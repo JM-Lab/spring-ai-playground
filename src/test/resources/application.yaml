@@ -8,6 +8,7 @@ spring:
     default: openai
   ai:
     playground:
+      user-home:
       chat:
         system:
           prompt:

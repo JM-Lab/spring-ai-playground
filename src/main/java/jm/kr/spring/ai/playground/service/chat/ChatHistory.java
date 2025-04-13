@@ -14,12 +14,12 @@ public record ChatHistory(String chatId, String title, long createTimestamp, lon
     public static final String TIMESTAMP = "timestamp";
 
     public ChatHistory mutate(String title, long updateTimestamp) {
-        updateMessageTimestamp(updateTimestamp);
+        updateLastMessageTimestamp(updateTimestamp);
         return new ChatHistory(this.chatId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
                 this.chatOptions, this.messagesSupplier);
     }
 
-    private void updateMessageTimestamp(long updateTimestamp) {
+    public void updateLastMessageTimestamp(long updateTimestamp) {
         List<Message> messages = messagesSupplier.get();
         for (int i = messages.size() - 1; i >= 0; i--) {
             Map<String, Object> metadata = messages.get(i).getMetadata();
@@ -27,5 +27,10 @@ public record ChatHistory(String chatId, String title, long createTimestamp, lon
                 break;
             metadata.put(TIMESTAMP, updateTimestamp);
         }
+    }
+
+    public ChatHistory mutate(Supplier<List<Message>> messagesSupplier) {
+        return new ChatHistory(this.chatId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
+                this.chatOptions, messagesSupplier);
     }
 }

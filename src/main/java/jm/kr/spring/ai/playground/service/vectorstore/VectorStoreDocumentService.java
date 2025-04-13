@@ -53,8 +53,8 @@ public class VectorStoreDocumentService {
     public VectorStoreDocumentService(Path springAiPlaygroundHomeDir,
             @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize) {
         this.uploadDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("docs").toFile();
-        if (!uploadDir.exists())
-            uploadDir.mkdirs();
+        if (!this.uploadDir.exists())
+            this.uploadDir.mkdirs();
         this.maxUploadSize = maxUploadSize;
         this.splitters = new WeakHashMap<>();
         this.defaultTokenTextSplitter = newTokenTextSplitter(DEFAULT_TOKEN_TEXT_SPLIT_INFO);
@@ -81,7 +81,7 @@ public class VectorStoreDocumentService {
 
     public Map<String, List<Document>> extractDocumentItems(List<String> uploadedFileNames) {
         return uploadedFileNames.stream()
-                .map(fileName -> Map.entry(fileName, split(new FileSystemResource(new File(uploadDir,
+                .map(fileName -> Map.entry(fileName, split(new FileSystemResource(new File(this.uploadDir,
                         fileName))))).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -105,7 +105,7 @@ public class VectorStoreDocumentService {
     }
 
     public void addUploadedDocumentFile(String fileName, File uploadedFile) throws Exception {
-        File file = new File(uploadDir, fileName);
+        File file = new File(this.uploadDir, fileName);
         if (file.exists())
             throw new FileAlreadyExistsException("Already Exists - " + file.getAbsolutePath());
         Files.copy(uploadedFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -113,7 +113,7 @@ public class VectorStoreDocumentService {
     }
 
     public void removeUploadedDocumentFile(String fileName) throws IOException {
-        Files.deleteIfExists(new File(uploadDir, fileName).toPath());
+        Files.deleteIfExists(new File(this.uploadDir, fileName).toPath());
     }
 
     public DataSize getMaxUploadSize() {

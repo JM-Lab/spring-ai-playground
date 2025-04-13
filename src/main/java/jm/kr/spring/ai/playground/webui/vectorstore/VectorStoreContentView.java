@@ -74,7 +74,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        this.persistentUiDataStorage.loadData(LAST_SEARCH_REQUEST_OPTION, SearchRequestOption.class,
+        this.persistentUiDataStorage.loadData(LAST_SEARCH_REQUEST_OPTION, new TypeReference<SearchRequestOption>() {},
                 searchRequestOption -> {
                     if (Objects.nonNull(searchRequestOption)) {
                         this.userPromptTextField.setValue(searchRequestOption.query());
@@ -223,7 +223,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
         );
         grid.getColumns().forEach(column -> {
             column.setResizable(true);
-            column.setWidth(columnWidths.getOrDefault(column.getHeaderText(), "auto"));
+            column.setWidth(columnWidths.get(column.getHeaderText()));
         });
 
         CrudFormFactory<VectorStoreContentItem> crudFormFactory = this.gridCrud.getCrudFormFactory();

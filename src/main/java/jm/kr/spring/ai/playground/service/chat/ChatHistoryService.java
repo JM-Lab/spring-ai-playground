@@ -22,11 +22,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ChatHistoryService {
 
     private final ChatMemory chatMemory;
+    private final ChatHistoryPersistenceService chatHistoryPersistenceService;
 
     private final Map<String, ChatHistory> chatIdHistoryMap;
 
-    public ChatHistoryService(ChatMemory chatMemory) {
+    public ChatHistoryService(ChatMemory chatMemory, ChatHistoryPersistenceService chatHistoryPersistenceService) {
         this.chatMemory = chatMemory;
+        this.chatHistoryPersistenceService = chatHistoryPersistenceService;
         this.chatIdHistoryMap = new ConcurrentHashMap<>();
     }
 
@@ -65,6 +67,7 @@ public class ChatHistoryService {
     public void deleteChatHistory(String chatId) {
         this.chatMemory.clear(chatId);
         this.chatIdHistoryMap.remove(chatId);
+        this.chatHistoryPersistenceService.delete(chatId);
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
@@ -84,4 +87,14 @@ public class ChatHistoryService {
                 () -> getMessageList(chatId));
     }
 
+    public void putIfAbsentChatHistory(ChatHistory chatHistory) {
+        this.chatIdHistoryMap.computeIfAbsent(chatHistory.chatId(), chatId -> {
+            this.chatMemory.add(chatId, chatHistory.messagesSupplier().get());
+            return chatHistory.mutate(() -> getMessageList(chatId));
+        });
+    }
+
+    public ChatHistory getChatHistory(String chatId) {
+        return this.chatIdHistoryMap.get(chatId);
+    }
 }

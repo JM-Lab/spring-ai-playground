@@ -69,15 +69,16 @@ public class VectorStoreView extends Div {
             VectorStoreDocumentService vectorStoreDocumentService) {
         PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
         documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
-            if (Objects.isNull(changeEvent.getNewValue()) || ((Collection<?>) changeEvent.getNewValue()).isEmpty())
+            if (Objects.isNull(changeEvent.getNewValue()))
+                return;
+            Collection<VectorStoreDocumentInfo> newDocumentInfos =
+                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
+            if (newDocumentInfos.isEmpty())
                 return;
             switch (changeEvent.getPropertyName()) {
-                case DOCUMENT_ADDING_EVENT ->
-                        handleDocumentAdding((List<VectorStoreDocumentInfo>) changeEvent.getNewValue());
-                case DOCUMENT_SELECTING_EVENT ->
-                        handleDocumentSelecting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
-                case DOCUMENTS_DELETE_EVENT ->
-                        handleDocumentDeleting((Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue());
+                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
+                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
+                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
             }
         });
 
@@ -113,7 +114,7 @@ public class VectorStoreView extends Div {
         this.sidebarCollapsed = false;
     }
 
-    private void handleDocumentAdding(List<VectorStoreDocumentInfo> newEventDocumentInfos) {
+    private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
         newEventDocumentInfos.forEach(this.vectorStoreService::add);
         handleDocumentSelecting(newEventDocumentInfos);
     }

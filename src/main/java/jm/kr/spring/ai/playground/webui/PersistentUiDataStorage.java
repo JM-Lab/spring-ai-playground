@@ -1,6 +1,7 @@
 package jm.kr.spring.ai.playground.webui;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.page.WebStorage;
 import com.vaadin.flow.spring.annotation.UIScope;
@@ -33,11 +34,11 @@ public class PersistentUiDataStorage {
         }
     }
 
-    public <T> void loadData(String key, Class<T> type, Consumer<T> callback) {
+    public <T> void loadData(String key, TypeReference<T> typeReference, Consumer<T> callback) {
         WebStorage.getItem(LOCAL_STORAGE, key, jsonValue -> {
             if (jsonValue != null && !jsonValue.isBlank()) {
                 try {
-                    T data = objectMapper.readValue(jsonValue, type);
+                    T data = objectMapper.readValue(jsonValue, typeReference);
                     callback.accept(data);
                     logger.debug("Data loaded from localStorage. Key: {}", key);
                 } catch (JsonProcessingException e) {
@@ -51,9 +52,9 @@ public class PersistentUiDataStorage {
         });
     }
 
-    public <T> CompletableFuture<T> loadDataAsync(String key, Class<T> type) {
+    public <T> CompletableFuture<T> loadDataAsync(String key, TypeReference<T> typeReference) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        loadData(key, type, data -> future.complete(data));
+        loadData(key, typeReference, future::complete);
         return future;
     }
 

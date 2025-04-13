@@ -6,27 +6,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 @SpringBootTest
+@TestPropertySource(properties = {"spring.ai.playground.user-home=${java.io.tmpdir}"})
 class VectorStoreDocumentPersistenceServiceTest {
 
     @Autowired
     private VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService;
 
-    private Path tempDir;
     private List<VectorStoreDocumentInfo> sampleData;
 
     @BeforeEach
-    void setUp() throws IOException {
-        tempDir = Files.createTempDirectory("vectorstore_test");
+    void setUp() {
         sampleData = List.of(
                 new VectorStoreDocumentInfo(
                         "doc1", "First Document", System.currentTimeMillis(), System.currentTimeMillis(),
@@ -56,14 +54,8 @@ class VectorStoreDocumentPersistenceServiceTest {
     }
 
     @AfterEach
-    void tearDown() throws IOException {
-        Files.walk(tempDir)
-                .map(Path::toFile)
-                .forEach(file -> {
-                    if (!file.delete()) {
-                        System.err.println("Failed to delete " + file);
-                    }
-                });
+    void tearDown() {
+        vectorStoreDocumentPersistenceService.clear();
     }
 
     @Test

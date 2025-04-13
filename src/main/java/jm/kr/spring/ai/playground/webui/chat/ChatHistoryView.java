@@ -1,5 +1,6 @@
 package jm.kr.spring.ai.playground.webui.chat;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -47,20 +48,20 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        this.persistentUiDataStorage.loadData(LAST_SELECTED_CHAT_HISTORY, ChatHistory.class,
+        this.chatHistoryListBox.setItems(this.chatHistoryService.getChatHistoryList());
+        this.persistentUiDataStorage.loadData(LAST_SELECTED_CHAT_HISTORY, new TypeReference<ChatHistory>() {},
                 chatHistory -> {
                     if (Objects.nonNull(chatHistory))
-                        this.updateChatHistoryContent(chatHistory);
+                        this.chatHistoryListBox.setValue(chatHistoryService.getChatHistory(chatHistory.chatId()));
                 });
     }
 
-    public ChatHistoryView(PersistentUiDataStorage persistentUiDataStorage, ChatHistoryService chatHistoryService, PropertyChangeSupport chatHistoryChangeSupport) {
+    public ChatHistoryView(PersistentUiDataStorage persistentUiDataStorage, ChatHistoryService chatHistoryService,
+            PropertyChangeSupport chatHistoryChangeSupport) {
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.chatHistoryService = chatHistoryService;
         this.chatHistoryChangeSupport = chatHistoryChangeSupport;
-        this.chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_CHANGE_EVENT,
-                event -> updateChatHistoryContent((ChatHistory) event.getNewValue()));
-        setHeightFull();
+
         setSpacing(false);
         setMargin(false);
         getStyle().set("overflow", "hidden");
@@ -77,18 +78,20 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
             return title;
         }));
         this.chatHistoryListBox.addValueChangeListener(
-                event -> notifyChatHistoryUpdate(event.getOldValue(), event.getValue()));
+                event -> notifyChatHistorySelection(event.getOldValue(), event.getValue()));
         Scroller scroller = new Scroller(this.chatHistoryListBox);
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
         add(initChatHistoryHeader(), scroller);
     }
 
-    private void notifyChatHistoryUpdate(ChatHistory oldChatHistory, ChatHistory newChatHistory) {
+    private void notifyChatHistorySelection(ChatHistory oldChatHistory, ChatHistory newChatHistory) {
         if (Objects.isNull(newChatHistory))
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, null);
-        else if (Objects.nonNull(oldChatHistory) && !newChatHistory.equals(oldChatHistory))
+        else {
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, newChatHistory);
+            this.persistentUiDataStorage.saveData(LAST_SELECTED_CHAT_HISTORY, newChatHistory);
+        }
     }
 
     private Header initChatHistoryHeader() {
@@ -156,7 +159,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
 
             Button deleteButton = new Button("Delete", e -> {
                 this.chatHistoryService.deleteChatHistory(chatHistory.chatId());
-                this.updateChatHistoryContent(null);
+                this.changeChatHistoryContent(null);
                 dialog.close();
             });
             deleteButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
@@ -167,7 +170,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
         });
     }
 
-    private void updateChatHistoryContent(ChatHistory selectedChatHistory) {
+    public void changeChatHistoryContent(ChatHistory targetChatHistory) {
         VaadinUtils.getUi(this).access(() -> {
             this.chatHistoryListBox.removeAll();
             List<ChatHistory> chatHistoryList = this.chatHistoryService.getChatHistoryList();
@@ -176,9 +179,8 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
                 return;
             }
             this.chatHistoryListBox.setItems(chatHistoryList);
-            this.chatHistoryListBox.setValue(Objects.isNull(selectedChatHistory) ? chatHistoryList.getFirst() :
-                    selectedChatHistory);
-            this.persistentUiDataStorage.saveData(LAST_SELECTED_CHAT_HISTORY, this.chatHistoryListBox.getValue());
+            this.chatHistoryListBox.setValue(Objects.isNull(targetChatHistory) ? chatHistoryList.getFirst() :
+                    targetChatHistory);
         });
     }
 
@@ -186,7 +188,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
         this.chatHistoryListBox.clear();
     }
 
-    public Optional<ChatHistory> getCurrentChatHistoryAsOpt() {
+    private Optional<ChatHistory> getCurrentChatHistoryAsOpt() {
         return Optional.ofNullable(this.chatHistoryListBox.getValue());
     }
 

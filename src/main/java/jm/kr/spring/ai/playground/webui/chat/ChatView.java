@@ -65,8 +65,9 @@ public class ChatView extends Div {
                 event -> this.changeChatContent((ChatHistory) event.getNewValue()));
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_EMPTY_EVENT, event -> {
             if ((boolean) event.getNewValue())
-                this.changeChatContent(null);
+                addNewChatContent();
         });
+        setHeightFull();
         this.completeChatHistoryConsumer =
                 chatHistory -> chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_CHANGE_EVENT, null,
                         chatHistoryService.updateChatHistory(chatHistory));
@@ -83,6 +84,8 @@ public class ChatView extends Div {
 
         this.chatHistoryView =
                 new ChatHistoryView(persistentUiDataStorage, chatHistoryService, chatHistoryChangeSupport);
+        chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_CHANGE_EVENT,
+                event -> this.chatHistoryView.changeChatHistoryContent((ChatHistory) event.getNewValue()));
         this.splitLayout.addToPrimary(chatHistoryView);
         this.chatContentLayout = new VerticalLayout();
         this.chatContentLayout.setSpacing(false);
@@ -179,20 +182,17 @@ public class ChatView extends Div {
     }
 
     private void changeChatContent(ChatHistory chatHistory) {
-        if (Objects.isNull(chatHistory)) {
-            chatHistory = this.chatHistoryService.createChatHistory(this.chatService.getSystemPrompt(),
-                    this.chatService.getDefaultOptions());
-        }
-        if (Objects.nonNull(this.chatContentView) &&
-                chatHistory.chatId().equals(this.chatContentView.getChatId())) {
-            this.chatContentView.updateChatHistory(chatHistory);
+        if (Objects.isNull(chatHistory))
             return;
-        }
+
+        if (Objects.nonNull(this.chatContentView) &&
+                chatHistory.chatId().equals(this.chatContentView.getChatId()))
+            this.chatContentView.updateChatHistory(chatHistory);
+
         this.chatContentView = new ChatContentView(this.chatService, chatHistory, this.completeChatHistoryConsumer);
-        ChatOptions chatOptions = chatHistory.chatOptions();
         VaadinUtils.getUi(this).access(() -> {
             this.chatContentLayout.removeAll();
-            this.chatContentLayout.add(createChatContentHeader(chatOptions), this.chatContentView);
+            this.chatContentLayout.add(createChatContentHeader(chatHistory.chatOptions()), this.chatContentView);
         });
     }
 

@@ -29,14 +29,16 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
 
 public class ChatContentView extends VerticalLayout {
     private final VerticalLayout messageListLayout;
@@ -107,7 +109,7 @@ public class ChatContentView extends VerticalLayout {
         if (messages.isEmpty())
             return;
         ChatContentManager chatContentManager = new ChatContentManager(null, null, zoneIdFuture,
-                this.chatHistory.messagesSupplier());
+                this.chatHistory);
         messages.forEach(message -> chatContentManager.addMarkdownMessage(this.messageListLayout, message,
                 message.getMessageType()));
     }
@@ -121,7 +123,7 @@ public class ChatContentView extends VerticalLayout {
         this.userPromptTextArea.clear();
 
         ChatContentManager chatContentManager = new ChatContentManager(this.messageListLayout, userPrompt, zoneIdFuture,
-                this.chatHistory.messagesSupplier());
+                this.chatHistory);
         this.messageListLayout.add(chatContentManager.getBotResponse());
 
         UI ui = VaadinUtils.getUi(this);
@@ -159,7 +161,7 @@ public class ChatContentView extends VerticalLayout {
         private static final DateTimeFormatter DATE_TIME_FORMATTER =
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
         private final CompletableFuture<ZoneId> zoneIdFuture;
-        private Supplier<List<Message>> messagesSupplier;
+        private List<Message> messages;
         private VerticalLayout messageListLayout;
         private long startTimestamp;
         private long responseTimestamp;
@@ -171,13 +173,14 @@ public class ChatContentView extends VerticalLayout {
         private Accordion thinkAccordion;
 
         private ChatContentManager(VerticalLayout messageListLayout, String userPrompt,
-                CompletableFuture<ZoneId> zoneIdFuture, Supplier<List<Message>> messagesSupplier) {
+                CompletableFuture<ZoneId> zoneIdFuture, ChatHistory chatHistory) {
             this.zoneIdFuture = zoneIdFuture;
             if (Objects.isNull(messageListLayout))
                 return;
-            this.messagesSupplier = messagesSupplier;
+            this.messages = chatHistory.messagesSupplier().get();
             this.messageListLayout = messageListLayout;
             this.startTimestamp = System.currentTimeMillis();
+            chatHistory.updateLastMessageTimestamp(startTimestamp);
             MarkdownMessage userMarkdownMessage = buildMarkdownMessage(userPrompt, MessageType.USER, startTimestamp);
             this.messageListLayout.add(userMarkdownMessage);
             userMarkdownMessage.scrollIntoView();
@@ -189,20 +192,22 @@ public class ChatContentView extends VerticalLayout {
 
         private void addMarkdownMessage(VerticalLayout messageListLayout, Message message, MessageType messageType) {
             String text = message.getText();
-            Long thinkTimestamp = (Long) message.getMetadata().get(THINK_TIMESTAMP);
+            Map<String, Object> metadata = message.getMetadata();
+            Long thinkTimestamp = (Long) metadata.get(THINK_TIMESTAMP);
             if (Objects.nonNull(thinkTimestamp)) {
                 Matcher matcher = ThinkPattern.matcher(text);
                 if (matcher.find()) {
                     Accordion accordion = ChatContentManager.buildThinkAccordionPanel(new Accordion(),
                             buildMarkdownMessage(matcher.group(1),
-                                    getBotThinkResponseName((Long) message.getMetadata().get(RESPONSE_TIMESTAMP) -
+                                    getBotThinkResponseName((Long) metadata.get(RESPONSE_TIMESTAMP) -
                                             thinkTimestamp), thinkTimestamp));
                     accordion.close();
                     messageListLayout.add(accordion);
                     text = matcher.replaceAll("");
                 }
             }
-            messageListLayout.add(buildMarkdownMessage(text, messageType, responseTimestamp));
+            messageListLayout.add(
+                    buildMarkdownMessage(text, messageType, (Long) metadata.get(TIMESTAMP)));
         }
 
         private MarkdownMessage buildMarkdownMessage(String message, MessageType messageType, long epochMillis) {
@@ -296,18 +301,20 @@ public class ChatContentView extends VerticalLayout {
                 this.thinkAccordion = null;
                 this.botThinkResponse = null;
             }
+            Optional<Map<String, Object>> metadataAsOpt =
+                    Optional.of(this.messages).filter(Predicate.not(List::isEmpty)).map(List::getLast)
+                            .map(Message::getMetadata);
             if (Objects.nonNull(this.botThinkResponse)) {
-                setMetadata(THINK_TIMESTAMP, this.botThinkTimestamp);
+                metadataAsOpt.ifPresent(metadata -> metadata.put(THINK_TIMESTAMP, this.botThinkTimestamp));
                 this.botThinkResponse.getElement().setProperty("userName",
                         getBotThinkResponseName(this.responseTimestamp - this.botThinkTimestamp));
             }
-            setMetadata(RESPONSE_TIMESTAMP, this.responseTimestamp);
+            metadataAsOpt.ifPresent(metadata -> {
+                        metadata.put(RESPONSE_TIMESTAMP, this.responseTimestamp);
+                        metadata.put(TIMESTAMP, this.responseTimestamp);
+                    }
+            );
             this.botResponse.scrollIntoView();
-        }
-
-        private void setMetadata(String key, Object value) {
-            Optional.of(this.messagesSupplier.get()).filter(Predicate.not(List::isEmpty)).map(List::getLast)
-                    .map(Message::getMetadata).ifPresent(metadata -> metadata.put(key, value));
         }
 
         private static String getBotThinkResponseName(Long tookMillis) {
