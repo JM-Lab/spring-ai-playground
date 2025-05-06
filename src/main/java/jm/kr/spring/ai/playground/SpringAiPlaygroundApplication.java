@@ -4,7 +4,9 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Push;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
@@ -42,9 +44,15 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     }
 
     @Bean
+    @ConditionalOnMissingBean(ChatMemoryRepository.class)
+    public ChatMemoryRepository chatMemoryRepository() {
+        return new InMemoryChatMemoryRepository();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(ChatMemory.class)
-    public ChatMemory chatMemory() {
-        return new InMemoryChatMemory();
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
+        return MessageWindowChatMemory.builder().chatMemoryRepository(chatMemoryRepository).maxMessages(10).build();
     }
 
     @Bean

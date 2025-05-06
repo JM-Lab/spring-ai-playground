@@ -39,6 +39,7 @@ spring:
     playground:
       chat:
         models:
+          - hf.co/cherryDavid/HyperCLOVAX-SEED-Text-Instruct-1.5B-Q8_0-GGUF
           - gemma3
           - deepseek-r1:8b
           - mistral-small

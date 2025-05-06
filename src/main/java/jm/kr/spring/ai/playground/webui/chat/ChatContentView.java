@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
-import static jm.kr.spring.ai.playground.service.chat.ChatHistoryPersistenceService.CHAT_ID;
+import static jm.kr.spring.ai.playground.service.chat.ChatHistoryPersistenceService.CONVERSATION_ID;
 import static org.springframework.ai.chat.messages.MessageType.USER;
 
 public class ChatContentView extends VerticalLayout {
@@ -55,7 +55,7 @@ public class ChatContentView extends VerticalLayout {
     private final ChatService chatService;
     private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private final PersistentUiDataStorage persistentUiDataStorage;
-    private ChatHistory chatHistory;
+    private final ChatHistory chatHistory;
 
     public ChatContentView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
             ChatHistory chatHistory, Consumer<ChatHistory> completeChatHistoryConsumer) {
@@ -166,8 +166,8 @@ public class ChatContentView extends VerticalLayout {
 
     public String getSystemPrompt() {return this.chatHistory.systemPrompt();}
 
-    public String getChatId() {
-        return this.chatHistory.chatId();
+    public String getConversationId() {
+        return this.chatHistory.conversationId();
     }
 
     private class ChatContentManager {
@@ -177,7 +177,7 @@ public class ChatContentView extends VerticalLayout {
         private static final DateTimeFormatter DATE_TIME_FORMATTER =
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
         private final CompletableFuture<ZoneId> zoneIdFuture;
-        private Supplier<List<Message>> messagesSupplier;
+        private final Supplier<List<Message>> messagesSupplier;
         private VerticalLayout messageListLayout;
         private long startTimestamp;
         private long responseTimestamp;
@@ -281,6 +281,7 @@ public class ChatContentView extends VerticalLayout {
                 return;
 
             getBotResponse().appendMarkdown(content);
+            getBotResponse().scrollIntoView();
 
             if (!this.isThinking && this.isFirstAssistantResponse)
                 initBotResponse(System.currentTimeMillis());
@@ -317,7 +318,7 @@ public class ChatContentView extends VerticalLayout {
             Optional<Map<String, Object>> metadataAsOpt = messageList.map(List::getLast).map(Message::getMetadata);
             if (Objects.nonNull(this.botThinkResponse)) {
                 this.thinkAccordion.removeFromParent();
-                this.botResponse.appendMarkdown(this.botThinkResponse.getMarkdown());
+                this.botResponse.appendMarkdown(this.botThinkResponse.getElement().getText());
                 metadataAsOpt.ifPresent(metadata -> metadata.put(THINK_TIMESTAMP, this.botThinkTimestamp));
                 this.botThinkResponse.getElement().setProperty("userName",
                         getBotThinkResponseName(this.responseTimestamp - this.botThinkTimestamp));
@@ -329,9 +330,9 @@ public class ChatContentView extends VerticalLayout {
             this.botResponse.scrollIntoView();
         }
 
-        private void updateMetadata(Map<String, Object> metadata, long timetamp) {
-            metadata.put(CHAT_ID, getChatId());
-            metadata.put(TIMESTAMP, timetamp);
+        private void updateMetadata(Map<String, Object> metadata, long timestamp) {
+            metadata.put(CONVERSATION_ID, getConversationId());
+            metadata.put(TIMESTAMP, timestamp);
         }
 
         private static String getBotThinkResponseName(Long tookMillis) {

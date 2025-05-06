@@ -20,7 +20,7 @@ import java.util.Map;
 
 @Service
 public class ChatHistoryPersistenceService implements PersistenceServiceInterface<ChatHistory> {
-    public static final String CHAT_ID = "chatId";
+    public static final String CONVERSATION_ID = "conversationId";
 
     private static final Logger logger = LoggerFactory.getLogger(ChatHistoryPersistenceService.class);
 
@@ -44,12 +44,12 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
     @Override
     public String buildSaveDataAndReturnName(ChatHistory chatHistory, Map<String, Object> saveObjectMap) {
         saveObjectMap.put("messageList", chatHistory.messagesSupplier().get());
-        return chatHistory.chatId();
+        return chatHistory.conversationId();
     }
 
     @Override
     public ChatHistory convertTo(Map<String, Object> saveObjectMap) {
-        String chatId = saveObjectMap.get(CHAT_ID).toString();
+        String conversationId = saveObjectMap.get(CONVERSATION_ID).toString();
         String title = saveObjectMap.get("title").toString();
         long createTimestamp = ((Number) saveObjectMap.get("createTimestamp")).longValue();
         long updateTimestamp = ((Number) saveObjectMap.get("updateTimestamp")).longValue();
@@ -57,7 +57,7 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         DefaultChatOptions chatOptions =
                 OBJECT_MAPPER.convertValue(saveObjectMap.get("chatOptions"), DefaultChatOptions.class);
         List<Map<String, Object>> messageMapList = (List<Map<String, Object>>) saveObjectMap.get("messageList");
-        return new ChatHistory(chatId, title, createTimestamp, updateTimestamp, systemPrompt, chatOptions,
+        return new ChatHistory(conversationId, title, createTimestamp, updateTimestamp, systemPrompt, chatOptions,
                 () -> messageMapList.stream().map(this::convertToMessage).toList());
     }
 
@@ -74,8 +74,8 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         };
     }
 
-    public void delete(String chatId) {
-        getSaveDir().resolve(chatId).toFile().deleteOnExit();
+    public void delete(String conversationId) {
+        getSaveDir().resolve(conversationId).toFile().deleteOnExit();
     }
 
 }

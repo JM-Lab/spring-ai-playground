@@ -23,6 +23,7 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
@@ -51,6 +52,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @SpringComponent
 @UIScope
 @CssImport("./playground/vectorstore-styles.css")
+@RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
 @Route(value = "vector", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
