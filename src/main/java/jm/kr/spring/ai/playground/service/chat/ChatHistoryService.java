@@ -61,7 +61,7 @@ public class ChatHistoryService {
     }
 
     private List<Message> getMessages(String conversationId) {
-        return Optional.ofNullable(this.chatMemory.get(conversationId, Integer.MAX_VALUE)).orElseGet(ArrayList::new);
+        return Optional.ofNullable(this.chatMemory.get(conversationId)).orElseGet(ArrayList::new);
     }
 
     public void deleteChatHistory(String conversationId) {

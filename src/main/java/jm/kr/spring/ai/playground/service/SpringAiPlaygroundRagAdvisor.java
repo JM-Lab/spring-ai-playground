@@ -50,7 +50,7 @@ public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAr
     }
 
     private boolean isFilterExpressionMissing(AdvisedRequest advisedRequest) {
-        boolean isMissing = Objects.isNull(advisedRequest.advisorParams().get(RAG_FILTER_EXPRESSION));
+        boolean isMissing = Objects.isNull(advisedRequest.adviseContext().get(RAG_FILTER_EXPRESSION));
         if (isMissing)
             logger.debug("Document retrieval was skipped.");
         return isMissing;
@@ -58,7 +58,7 @@ public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAr
 
     private RetrievalAugmentationAdvisor buildRetrievalAugmentationAdvisor(AdvisedRequest advisedRequest) {
         return RetrievalAugmentationAdvisor.builder().documentRetriever(query -> vectorStoreService.search(query.text(),
-                advisedRequest.advisorParams().get(RAG_FILTER_EXPRESSION).toString())).build();
+                advisedRequest.adviseContext().get(RAG_FILTER_EXPRESSION).toString())).build();
     }
 
     private AdvisedResponse processOnFinishReason(AdvisedResponse advisedResponse) {

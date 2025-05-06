@@ -78,6 +78,7 @@ class SpringAiPlaygroundIT {
                 new SearchRequest.Builder().similarityThreshold(ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
                         .topK(ALL_SEARCH_REQUEST_OPTION.topK()).build());
         assertEquals(63, documents.size());
+
     }
 
     @Test
@@ -88,7 +89,7 @@ class SpringAiPlaygroundIT {
                 chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null)
                         .toStream().collect(Collectors.joining());
 
-        assertTrue(chatHistory.chatId().startsWith("Chat-"));
+        assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());
         assertTrue(0 < chatHistory.createTimestamp());
         assertTrue(0 < chatHistory.updateTimestamp());
@@ -116,7 +117,7 @@ class SpringAiPlaygroundIT {
         String prompt = "Hello World";
         String assistantText = chatService.call(chatHistory, prompt, null);
 
-        assertTrue(chatHistory.chatId().startsWith("Chat-"));
+        assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());
         assertTrue(0 < chatHistory.createTimestamp());
         assertTrue(0 < chatHistory.updateTimestamp());
