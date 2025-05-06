@@ -8,6 +8,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.DefaultChatOptionsBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -42,7 +43,7 @@ public class ChatHistoryServiceTest {
 
     @BeforeEach
     public void setUp() {
-        this.chatOptions = playgroundOptions.chat().chatOptions();
+        this.chatOptions = new DefaultChatOptionsBuilder().build();
     }
 
     @Test
@@ -57,16 +58,16 @@ public class ChatHistoryServiceTest {
         assertEquals(chatOptions.getMaxTokens(), chatHistory.chatOptions().getMaxTokens());
         assertEquals(chatOptions.getTopP(), chatHistory.chatOptions().getTopP());
         assertEquals(chatOptions.getStopSequences(), chatHistory.chatOptions().getStopSequences());
-        assertTrue(chatHistory.chatId().startsWith("Chat-"));
+        assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertEquals(chatHistory.createTimestamp(), chatHistory.updateTimestamp());
         assertNull(chatHistory.title());
-        assertTrue(chatMemory.get(chatHistory.chatId(), 100).isEmpty());
+        assertTrue(chatMemory.get(chatHistory.conversationId(), 100).isEmpty());
     }
 
     @Test
     public void testUpdateChatHistory() {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
-        this.chatMemory.add(chatHistory.chatId(), new UserMessage("User Message"));
+        this.chatMemory.add(chatHistory.conversationId(), new UserMessage("User Message"));
         chatHistoryService.updateChatHistory(chatHistory);
         String updatedTitle = "Updated Title";
         ChatHistory newChatHistory = chatHistory.mutate("Updated Title", chatHistory.updateTimestamp());
@@ -77,9 +78,9 @@ public class ChatHistoryServiceTest {
         }
         chatHistoryService.updateChatHistory(newChatHistory);
         ChatHistory updatedChatHistory = chatHistoryService.getChatHistoryList().stream()
-                .filter(h -> h.chatId().equals(newChatHistory.chatId())).findFirst().orElseThrow();
+                .filter(h -> h.conversationId().equals(newChatHistory.conversationId())).findFirst().orElseThrow();
 
-        assertEquals(chatHistory.chatId(), updatedChatHistory.chatId());
+        assertEquals(chatHistory.conversationId(), updatedChatHistory.conversationId());
         assertEquals(chatHistory.systemPrompt(), updatedChatHistory.systemPrompt());
         assertEquals(chatHistory.chatOptions(), updatedChatHistory.chatOptions());
         assertEquals(chatHistory.messagesSupplier(), updatedChatHistory.messagesSupplier());
@@ -92,24 +93,24 @@ public class ChatHistoryServiceTest {
     @Test
     public void testGetChatHistoryList() {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
-        assertNull(chatHistoryService.getChatHistoryList().stream().filter(h -> h.chatId().equals(chatHistory.chatId()))
+        assertNull(chatHistoryService.getChatHistoryList().stream().filter(h -> h.conversationId().equals(chatHistory.conversationId()))
                 .findFirst().orElse(null));
-        this.chatMemory.add(chatHistory.chatId(), new UserMessage("User Message"));
+        this.chatMemory.add(chatHistory.conversationId(), new UserMessage("User Message"));
         chatHistoryService.updateChatHistory(chatHistory);
         assertEquals("User Message",
-                chatHistoryService.getChatHistoryList().stream().filter(h -> h.chatId().equals(chatHistory.chatId()))
+                chatHistoryService.getChatHistoryList().stream().filter(h -> h.conversationId().equals(chatHistory.conversationId()))
                         .findFirst().orElseThrow().title());
     }
 
     @Test
     public void testDeleteChatHistory() {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("To Delete", chatOptions);
-        String chatId = chatHistory.chatId();
+        String conversationId = chatHistory.conversationId();
 
-        chatHistoryService.deleteChatHistory(chatId);
+        chatHistoryService.deleteChatHistory(conversationId);
         List<ChatHistory> historyList = chatHistoryService.getChatHistoryList();
 
-        assertFalse(historyList.stream().anyMatch(h -> h.chatId().equals(chatId)));
+        assertFalse(historyList.stream().anyMatch(h -> h.conversationId().equals(conversationId)));
     }
 
     @Test
@@ -119,16 +120,16 @@ public class ChatHistoryServiceTest {
         chatHistoryChangeSupport.addPropertyChangeListener(listener);
 
         ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
-        String chatId = chatHistory.chatId();
-        chatMemory.add(chatId, new UserMessage("User Message"));
-        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_CHANGE_EVENT, null, chatId);
+        String conversationId = chatHistory.conversationId();
+        chatMemory.add(conversationId, new UserMessage("User Message"));
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_CHANGE_EVENT, null, conversationId);
 
         chatHistoryService.updateChatHistory(chatHistory.mutate("", System.currentTimeMillis()));
 
-        chatHistoryService.deleteChatHistory(chatId);
-        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_EMPTY_EVENT, null, chatId);
+        chatHistoryService.deleteChatHistory(conversationId);
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_EMPTY_EVENT, null, conversationId);
 
-        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_SELECT_EVENT, null, chatId);
+        chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_SELECT_EVENT, null, conversationId);
 
         ArgumentCaptor<PropertyChangeEvent> eventCaptor = ArgumentCaptor.forClass(PropertyChangeEvent.class);
         verify(listener, times(3)).propertyChange(eventCaptor.capture());
@@ -137,15 +138,15 @@ public class ChatHistoryServiceTest {
 
         assertTrue(events.stream().anyMatch(
                 e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_CHANGE_EVENT) && e.getOldValue() == null &&
-                        e.getNewValue().equals(chatId)));
+                        e.getNewValue().equals(conversationId)));
 
         assertTrue(events.stream().anyMatch(
                 e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_SELECT_EVENT) && e.getOldValue() == null &&
-                        e.getNewValue().equals(chatId)));
+                        e.getNewValue().equals(conversationId)));
 
         assertTrue(events.stream().anyMatch(
                 e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_EMPTY_EVENT) && e.getOldValue() == null &&
-                        e.getNewValue().equals(chatId)));
+                        e.getNewValue().equals(conversationId)));
 
     }
 }

@@ -24,25 +24,25 @@ public class ChatHistoryService {
     private final ChatMemory chatMemory;
     private final ChatHistoryPersistenceService chatHistoryPersistenceService;
 
-    private final Map<String, ChatHistory> chatIdHistoryMap;
+    private final Map<String, ChatHistory> conversationIdHistoryMap;
 
     public ChatHistoryService(ChatMemory chatMemory, ChatHistoryPersistenceService chatHistoryPersistenceService) {
         this.chatMemory = chatMemory;
         this.chatHistoryPersistenceService = chatHistoryPersistenceService;
-        this.chatIdHistoryMap = new ConcurrentHashMap<>();
+        this.conversationIdHistoryMap = new ConcurrentHashMap<>();
     }
 
     public ChatHistory updateChatHistory(ChatHistory chatHistory) {
-        String chatId = chatHistory.chatId();
+        String conversationId = chatHistory.conversationId();
         ChatHistory updatedChatHistory = changeChatHistory(chatHistory);
-        this.chatIdHistoryMap.put(chatId, updatedChatHistory);
+        this.conversationIdHistoryMap.put(conversationId, updatedChatHistory);
         return updatedChatHistory;
     }
 
     private ChatHistory changeChatHistory(ChatHistory chatHistory) {
         if (Objects.isNull(chatHistory.title()) || chatHistory.title().isBlank())
             return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
-        return this.chatIdHistoryMap.get(chatHistory.chatId()).mutate(chatHistory.title(), System.currentTimeMillis());
+        return this.conversationIdHistoryMap.get(chatHistory.conversationId()).mutate(chatHistory.title(), System.currentTimeMillis());
     }
 
     private String extractTitle(List<Message> messageList) {
@@ -56,45 +56,45 @@ public class ChatHistoryService {
     }
 
     public List<ChatHistory> getChatHistoryList() {
-        return this.chatIdHistoryMap.values().stream()
+        return this.conversationIdHistoryMap.values().stream()
                 .sorted(Comparator.comparingLong(ChatHistory::updateTimestamp).reversed()).toList();
     }
 
-    private List<Message> getMessageList(String chatId) {
-        return Optional.ofNullable(this.chatMemory.get(chatId, Integer.MAX_VALUE)).orElseGet(ArrayList::new);
+    private List<Message> getMessages(String conversationId) {
+        return Optional.ofNullable(this.chatMemory.get(conversationId, Integer.MAX_VALUE)).orElseGet(ArrayList::new);
     }
 
-    public void deleteChatHistory(String chatId) {
-        this.chatMemory.clear(chatId);
-        this.chatIdHistoryMap.remove(chatId);
-        this.chatHistoryPersistenceService.delete(chatId);
+    public void deleteChatHistory(String conversationId) {
+        this.chatMemory.clear(conversationId);
+        this.conversationIdHistoryMap.remove(conversationId);
+        this.chatHistoryPersistenceService.delete(conversationId);
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
-        String chatId = "Chat-" + UUID.randomUUID();
+        String conversationId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
         new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
                 .maxTokens(chatOptions.getMaxTokens())
                 .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
                 .temperature(chatOptions.getTemperature())
                 .topK(chatOptions.getTopK()).topP(chatOptions.getTopP());
-        return new ChatHistory(chatId, null, timestamp, timestamp, systemPrompt,
+        return new ChatHistory(conversationId, null, timestamp, timestamp, systemPrompt,
                 (DefaultChatOptions) new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
                         .maxTokens(chatOptions.getMaxTokens())
                         .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
                         .temperature(chatOptions.getTemperature())
                         .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build(),
-                () -> getMessageList(chatId));
+                () -> getMessages(conversationId));
     }
 
     public void putIfAbsentChatHistory(ChatHistory chatHistory) {
-        this.chatIdHistoryMap.computeIfAbsent(chatHistory.chatId(), chatId -> {
-            this.chatMemory.add(chatId, chatHistory.messagesSupplier().get());
-            return chatHistory.mutate(() -> getMessageList(chatId));
+        this.conversationIdHistoryMap.computeIfAbsent(chatHistory.conversationId(), conversationId -> {
+            this.chatMemory.add(conversationId, chatHistory.messagesSupplier().get());
+            return chatHistory.mutate(() -> getMessages(conversationId));
         });
     }
 
-    public ChatHistory getChatHistory(String chatId) {
-        return this.chatIdHistoryMap.get(chatId);
+    public ChatHistory getChatHistory(String conversationId) {
+        return this.conversationIdHistoryMap.get(conversationId);
     }
 }

@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
-import static jm.kr.spring.ai.playground.service.chat.ChatHistoryPersistenceService.CHAT_ID;
+import static jm.kr.spring.ai.playground.service.chat.ChatHistoryPersistenceService.CONVERSATION_ID;
 import static org.springframework.ai.chat.messages.MessageType.USER;
 
 public class ChatContentView extends VerticalLayout {
@@ -166,8 +166,8 @@ public class ChatContentView extends VerticalLayout {
 
     public String getSystemPrompt() {return this.chatHistory.systemPrompt();}
 
-    public String getChatId() {
-        return this.chatHistory.chatId();
+    public String getConversationId() {
+        return this.chatHistory.conversationId();
     }
 
     private class ChatContentManager {
@@ -330,7 +330,7 @@ public class ChatContentView extends VerticalLayout {
         }
 
         private void updateMetadata(Map<String, Object> metadata, long timetamp) {
-            metadata.put(CHAT_ID, getChatId());
+            metadata.put(CONVERSATION_ID, getConversationId());
             metadata.put(TIMESTAMP, timetamp);
         }
 

@@ -7,7 +7,6 @@ import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -40,6 +39,7 @@ import java.util.stream.Collectors;
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
+import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE;
 import static org.springframework.ai.chat.client.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
 
 @Service
@@ -99,7 +99,7 @@ public class ChatService {
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
             String filterExpression) {
         return buildChatClient(chatHistory).prompt().user(prompt).advisors(advisor -> {
-            advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatHistory.chatId());
+            advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatHistory.conversationId());
             advisor.param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100);
             if (StringUtils.hasText(filterExpression))
                 advisor.param(RAG_FILTER_EXPRESSION, filterExpression);
@@ -107,10 +107,10 @@ public class ChatService {
     }
 
     private ChatClient buildChatClient(ChatHistory chatHistory) {
-        return this.chatClientCache.computeIfAbsent(chatHistory.chatId(), id -> {
+        return this.chatClientCache.computeIfAbsent(chatHistory.conversationId(), conversationId -> {
             List<Advisor> advisors = new ArrayList<>(this.advisors);
-            advisors.addFirst(new MessageChatMemoryAdvisor(this.chatMemory, id,
-                    AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE));
+            advisors.addFirst(MessageChatMemoryAdvisor.builder(this.chatMemory)
+                    .chatMemoryRetrieveSize(DEFAULT_CHAT_MEMORY_RESPONSE_SIZE).conversationId(conversationId).build());
             return this.chatClientBuilder.clone().defaultAdvisors(advisors).defaultOptions(chatHistory.chatOptions())
                     .build();
         });
@@ -134,8 +134,8 @@ public class ChatService {
                             metadata.put(CHAT_META, new ChatMeta(chatResponseMetadata.getModel(),
                                     chatResponseMetadata.getUsage(), chatResponseMetadata.get(DOCUMENT_CONTEXT)));
                         },
-                        () -> logger.error("No user message found in chat history to update metadata. [chatId={}]",
-                                chatHistory.chatId()));
+                        () -> logger.error("No user message found in chat history to update metadata. [conversationId={}]",
+                                chatHistory.conversationId()));
         return chatResponse;
     }
 

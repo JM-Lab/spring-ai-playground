@@ -31,7 +31,7 @@ class ChatHistoryPersistenceServiceTest {
 
     @Test
     void testSaveAndLoadChatHistory() throws IOException {
-        String chatId = "chat-001";
+        String conversationId = "chat-001";
         String title = "Test Chat";
         long timestamp = System.currentTimeMillis();
         String systemPrompt = "You are a helpful assistant.";
@@ -44,13 +44,13 @@ class ChatHistoryPersistenceServiceTest {
         );
 
         ChatHistory history =
-                new ChatHistory(chatId, title, timestamp, timestamp, systemPrompt, chatOptions, () -> messages);
+                new ChatHistory(conversationId, title, timestamp, timestamp, systemPrompt, chatOptions, () -> messages);
 
         chatHistoryPersistenceService.save(history);
 
         ChatHistory loadedHistory = chatHistoryPersistenceService.loads().getFirst();
 
-        assertThat(loadedHistory.chatId()).isEqualTo(chatId);
+        assertThat(loadedHistory.conversationId()).isEqualTo(conversationId);
         assertThat(loadedHistory.title()).isEqualTo(title);
         assertThat(loadedHistory.createTimestamp()).isEqualTo(timestamp);
         assertThat(loadedHistory.updateTimestamp()).isEqualTo(timestamp);

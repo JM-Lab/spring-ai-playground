@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public record ChatHistory(String chatId, String title, long createTimestamp, long updateTimestamp, String systemPrompt,
+public record ChatHistory(String conversationId, String title, long createTimestamp, long updateTimestamp, String systemPrompt,
                           DefaultChatOptions chatOptions, @JsonIgnore Supplier<List<Message>> messagesSupplier) {
 
     public static final String TIMESTAMP = "timestamp";
 
     public ChatHistory mutate(String title, long updateTimestamp) {
         updateLastMessageTimestamp(updateTimestamp);
-        return new ChatHistory(this.chatId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
+        return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
                 this.chatOptions, this.messagesSupplier);
     }
 
@@ -30,7 +30,7 @@ public record ChatHistory(String chatId, String title, long createTimestamp, lon
     }
 
     public ChatHistory mutate(Supplier<List<Message>> messagesSupplier) {
-        return new ChatHistory(this.chatId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
+        return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
                 this.chatOptions, messagesSupplier);
     }
 }
