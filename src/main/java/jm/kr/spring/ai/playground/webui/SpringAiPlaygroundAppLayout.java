@@ -34,9 +34,9 @@ public class SpringAiPlaygroundAppLayout extends AppLayout {
         Tabs tabs = new Tabs();
         addToNavbar(titleLayout, tabs);
 
-        this.tabContents = Map.of("Chat Models", ChatView.class, "Vector Databases", VectorStoreView.class);
-        tabs.add(new Tab("Chat Models"));
-        tabs.add(new Tab("Vector Databases"));
+        this.tabContents = Map.of("Vector Database", VectorStoreView.class, "Chat", ChatView.class);
+        tabs.add(new Tab("Vector Database"));
+        tabs.add(new Tab("Chat"));
         tabs.addSelectedChangeListener(
                 event -> UI.getCurrent().navigate(tabContents.get(event.getSelectedTab().getLabel())));
 

@@ -55,7 +55,7 @@ public class ChatContentView extends VerticalLayout {
     private final ChatService chatService;
     private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private final PersistentUiDataStorage persistentUiDataStorage;
-    private ChatHistory chatHistory;
+    private final ChatHistory chatHistory;
 
     public ChatContentView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
             ChatHistory chatHistory, Consumer<ChatHistory> completeChatHistoryConsumer) {
@@ -177,7 +177,7 @@ public class ChatContentView extends VerticalLayout {
         private static final DateTimeFormatter DATE_TIME_FORMATTER =
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
         private final CompletableFuture<ZoneId> zoneIdFuture;
-        private Supplier<List<Message>> messagesSupplier;
+        private final Supplier<List<Message>> messagesSupplier;
         private VerticalLayout messageListLayout;
         private long startTimestamp;
         private long responseTimestamp;
@@ -281,6 +281,7 @@ public class ChatContentView extends VerticalLayout {
                 return;
 
             getBotResponse().appendMarkdown(content);
+            getBotResponse().scrollIntoView();
 
             if (!this.isThinking && this.isFirstAssistantResponse)
                 initBotResponse(System.currentTimeMillis());
@@ -317,7 +318,7 @@ public class ChatContentView extends VerticalLayout {
             Optional<Map<String, Object>> metadataAsOpt = messageList.map(List::getLast).map(Message::getMetadata);
             if (Objects.nonNull(this.botThinkResponse)) {
                 this.thinkAccordion.removeFromParent();
-                this.botResponse.appendMarkdown(this.botThinkResponse.getMarkdown());
+                this.botResponse.appendMarkdown(this.botThinkResponse.getElement().getText());
                 metadataAsOpt.ifPresent(metadata -> metadata.put(THINK_TIMESTAMP, this.botThinkTimestamp));
                 this.botThinkResponse.getElement().setProperty("userName",
                         getBotThinkResponseName(this.responseTimestamp - this.botThinkTimestamp));
@@ -329,9 +330,9 @@ public class ChatContentView extends VerticalLayout {
             this.botResponse.scrollIntoView();
         }
 
-        private void updateMetadata(Map<String, Object> metadata, long timetamp) {
+        private void updateMetadata(Map<String, Object> metadata, long timestamp) {
             metadata.put(CONVERSATION_ID, getConversationId());
-            metadata.put(TIMESTAMP, timetamp);
+            metadata.put(TIMESTAMP, timestamp);
         }
 
         private static String getBotThinkResponseName(Long tookMillis) {
