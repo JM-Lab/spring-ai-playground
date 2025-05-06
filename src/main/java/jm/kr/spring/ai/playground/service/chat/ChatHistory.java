@@ -1,67 +1,25 @@
 package jm.kr.spring.ai.playground.service.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.DefaultChatOptions;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class ChatHistory {
+public record ChatHistory(String conversationId, String title, long createTimestamp, long updateTimestamp, String systemPrompt,
+                          DefaultChatOptions chatOptions, @JsonIgnore Supplier<List<Message>> messagesSupplier) {
+
     public static final String TIMESTAMP = "timestamp";
-    private final String chatId;
-    private String title;
-    private final long createTimestamp;
-    private long updateTimestamp;
-    private final String systemPrompt;
-    private final ChatOptions chatOptions;
-    private final Supplier<List<Message>> messagesSupplier;
 
-    public ChatHistory(String chatId, long createTimestamp, long updateTimestamp, String systemPrompt,
-            ChatOptions chatOptions, Supplier<List<Message>> messagesSupplier) {
-        this.chatId = chatId;
-        this.createTimestamp = createTimestamp;
-        this.updateTimestamp = updateTimestamp;
-        this.systemPrompt = systemPrompt;
-        this.chatOptions = chatOptions;
-        this.messagesSupplier = messagesSupplier;
+    public ChatHistory mutate(String title, long updateTimestamp) {
+        updateLastMessageTimestamp(updateTimestamp);
+        return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
+                this.chatOptions, this.messagesSupplier);
     }
 
-    public String getChatId() {
-        return chatId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public long getCreateTimestamp() {
-        return createTimestamp;
-    }
-
-    public long getUpdateTimestamp() {
-        return updateTimestamp;
-    }
-
-    public String getSystemPrompt() {
-        return systemPrompt;
-    }
-
-    public ChatOptions getChatOptions() {
-        return chatOptions;
-    }
-
-    public Supplier<List<Message>> getMessagesSupplier() {
-        return messagesSupplier;
-    }
-
-    public ChatHistory setTitle(String title) {
-        this.title = title;
-        return this;
-    }
-
-    public ChatHistory setUpdateTimestamp(long updateTimestamp) {
-        this.updateTimestamp = updateTimestamp;
+    public void updateLastMessageTimestamp(long updateTimestamp) {
         List<Message> messages = messagesSupplier.get();
         for (int i = messages.size() - 1; i >= 0; i--) {
             Map<String, Object> metadata = messages.get(i).getMetadata();
@@ -69,7 +27,10 @@ public class ChatHistory {
                 break;
             metadata.put(TIMESTAMP, updateTimestamp);
         }
-        return this;
     }
 
+    public ChatHistory mutate(Supplier<List<Message>> messagesSupplier) {
+        return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
+                this.chatOptions, messagesSupplier);
+    }
 }

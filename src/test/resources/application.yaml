@@ -8,9 +8,9 @@ spring:
     virtual:
       enabled: true
   application:
-    name: spring-ai-playground
+    name: spring-ai-playground-test
   profiles:
-    default: ollama
+    default: openai
   ai:
     playground:
       user-home:
@@ -32,15 +32,13 @@ spring:
         pull-model-strategy: when_missing
       chat:
         options:
-          model: deepseek-r1:8b
+          model: mistral
       embedding:
         options:
           model: bge-m3
     playground:
       chat:
         models:
-          - hf.co/cherryDavid/HyperCLOVAX-SEED-Text-Instruct-1.5B-Q8_0-GGUF
-          - gemma3
           - deepseek-r1:8b
           - mistral-small
           - llama3.2
@@ -51,7 +49,6 @@ spring:
           - qwen2
           - qwen2.5
           - mixtral
-
 ---
 spring:
   config:
@@ -66,6 +63,9 @@ spring:
           model: o1-mini
     playground:
       chat:
+        systemPrompt: |-
+          systemPromptText
+          you are a helpful assistant
         models:
           - o1-mini
           - o1
@@ -77,3 +77,10 @@ spring:
           - gpt-4
           - gpt-4-32k
           - gpt-4-turbo
+        chatOptions:
+          model: "gpt-4"
+          temperature: 0.7
+          maxTokens: 1000
+          topP: 0.9
+          frequencyPenalty: 0.0
+          presencePenalty: 0.6
