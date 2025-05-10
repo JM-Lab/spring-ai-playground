@@ -3,29 +3,22 @@ package jm.kr.spring.ai.playground.service;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
 import org.springframework.ai.chat.client.advisor.api.AdvisedResponse;
-import org.springframework.ai.chat.client.advisor.api.CallAroundAdvisor;
-import org.springframework.ai.chat.client.advisor.api.CallAroundAdvisorChain;
-import org.springframework.ai.chat.client.advisor.api.StreamAroundAdvisor;
-import org.springframework.ai.chat.client.advisor.api.StreamAroundAdvisorChain;
-import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
-import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.client.advisor.api.BaseAdvisor;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import static jm.kr.spring.ai.playground.service.chat.ChatService.RAG_FILTER_EXPRESSION;
-import static org.springframework.ai.chat.client.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
+import static org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
 
 @Service
-public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAroundAdvisor {
+public class SpringAiPlaygroundRagAdvisor implements BaseAdvisor {
 
     private static final Logger logger = LoggerFactory.getLogger(SpringAiPlaygroundRagAdvisor.class);
 
@@ -36,17 +29,19 @@ public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAr
     }
 
     @Override
-    public AdvisedResponse aroundCall(AdvisedRequest advisedRequest, CallAroundAdvisorChain chain) {
-        return isFilterExpressionMissing(advisedRequest) ? chain.nextAroundCall(advisedRequest) :
-                loggingRetrievedDocuments(buildRetrievalAugmentationAdvisor(advisedRequest)
-                        .aroundCall(advisedRequest, chain));
+    public AdvisedRequest before(AdvisedRequest advisedRequest) {
+        return isFilterExpressionMissing(advisedRequest) ? advisedRequest :
+                buildRetrievalAugmentationAdvisor(advisedRequest).before(advisedRequest);
     }
 
     @Override
-    public Flux<AdvisedResponse> aroundStream(AdvisedRequest advisedRequest, StreamAroundAdvisorChain chain) {
-        return isFilterExpressionMissing(advisedRequest) ? chain.nextAroundStream(advisedRequest) :
-                buildRetrievalAugmentationAdvisor(advisedRequest)
-                        .aroundStream(advisedRequest, chain).map(this::processOnFinishReason);
+    public AdvisedResponse after(AdvisedResponse advisedResponse) {
+        return loggingRetrievedDocuments(advisedResponse);
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
     }
 
     private boolean isFilterExpressionMissing(AdvisedRequest advisedRequest) {
@@ -61,13 +56,6 @@ public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAr
                 advisedRequest.adviseContext().get(RAG_FILTER_EXPRESSION).toString())).build();
     }
 
-    private AdvisedResponse processOnFinishReason(AdvisedResponse advisedResponse) {
-        return advisedResponse.response().getResults().stream().map(Optional::ofNullable)
-                .filter(opt -> opt.map(Generation::getMetadata).map(
-                        ChatGenerationMetadata::getFinishReason).filter(StringUtils::hasText).isPresent())
-                .anyMatch(Optional::isPresent) ? loggingRetrievedDocuments(advisedResponse) : advisedResponse;
-    }
-
     private static AdvisedResponse loggingRetrievedDocuments(AdvisedResponse advisedResponse) {
         printSearchResults(Optional.ofNullable(advisedResponse.adviseContext().get(DOCUMENT_CONTEXT))
                 .stream().map(documents -> (List<Document>) documents).flatMap(List::stream).toList());
@@ -80,15 +68,5 @@ public class SpringAiPlaygroundRagAdvisor implements CallAroundAdvisor, StreamAr
             Document document = results.get(i);
             logger.debug("Retrieved Document {}, Score: {}\n{}", i + 1, document.getScore(), document.getText());
         }
-    }
-
-    @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
-    }
-
-    @Override
-    public int getOrder() {
-        return 0;
     }
 }

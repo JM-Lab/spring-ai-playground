@@ -7,6 +7,7 @@ import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -40,7 +41,7 @@ import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE;
-import static org.springframework.ai.chat.client.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
+import static org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
 
 @Service
 public class ChatService {
@@ -88,12 +89,12 @@ public class ChatService {
     }
 
     public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression) {
-        AtomicReference<ChatResponse> lastChatResponse = new AtomicReference<>();
-        return getChatClientRequestSpec(chatHistory, prompt, filterExpression).stream().chatResponse()
+        AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
+        return getChatClientRequestSpec(chatHistory, prompt, filterExpression).stream().chatClientResponse()
                 .doOnNext(lastChatResponse::set).doFinally(signalType -> {
                     if (SignalType.ON_COMPLETE.equals(signalType))
                         applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
-                }).map(ChatResponse::getResult);
+                }).map(ChatClientResponse::chatResponse).map(ChatResponse::getResult);
     }
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
@@ -122,17 +123,19 @@ public class ChatService {
 
     public Generation callWithRaw(ChatHistory chatHistory, String prompt, String filterExpression) {
         return applyChatResponseMetadataToLastUserMessage(chatHistory,
-                getChatClientRequestSpec(chatHistory, prompt, filterExpression).call().chatResponse()).getResult();
+                getChatClientRequestSpec(chatHistory, prompt, filterExpression).call()
+                        .chatClientResponse()).getResult();
     }
 
     private ChatResponse applyChatResponseMetadataToLastUserMessage(ChatHistory chatHistory,
-            ChatResponse chatResponse) {
+            ChatClientResponse chatClientResponse) {
+        ChatResponse chatResponse = chatClientResponse.chatResponse();
         chatHistory.messagesSupplier().get().reversed().stream()
                 .filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
                 .map(Message::getMetadata).ifPresentOrElse(metadata -> {
                             ChatResponseMetadata chatResponseMetadata = chatResponse.getMetadata();
-                            metadata.put(CHAT_META, new ChatMeta(chatResponseMetadata.getModel(),
-                                    chatResponseMetadata.getUsage(), chatResponseMetadata.get(DOCUMENT_CONTEXT)));
+                            metadata.put(CHAT_META, new ChatMeta(chatResponseMetadata.getModel(), chatResponseMetadata.getUsage(),
+                                    (List<Document>) chatClientResponse.context().get(DOCUMENT_CONTEXT)));
                         },
                         () -> logger.error("No user message found in chat history to update metadata. [conversationId={}]",
                                 chatHistory.conversationId()));
