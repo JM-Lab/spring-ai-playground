@@ -12,6 +12,8 @@ spring:
   profiles:
     default: ollama
   ai:
+    model:
+      chat: ${spring.profiles.default}
     playground:
       user-home:
       chat:
@@ -39,7 +41,7 @@ spring:
     playground:
       chat:
         models:
-          - hf.co/cherryDavid/HyperCLOVAX-SEED-Text-Instruct-1.5B-Q8_0-GGUF
+          - hf.co/rippertnt/HyperCLOVAX-SEED-Text-Instruct-1.5B-Q4_K_M-GGUF
           - gemma3
           - deepseek-r1:8b
           - mistral-small

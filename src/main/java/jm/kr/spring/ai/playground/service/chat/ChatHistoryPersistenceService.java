@@ -67,9 +67,9 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         Map<String, Object> metadata =
                 (Map<String, Object>) saveObjectMap.computeIfAbsent("metadata", key -> Map.of());
         return switch (messageType) {
-            case USER -> new UserMessage(content, List.of(), metadata);
+            case USER -> UserMessage.builder().text(content).metadata(metadata).build();
             case ASSISTANT -> new AssistantMessage(content, metadata);
-            case SYSTEM -> new SystemMessage(content);
+            case SYSTEM -> SystemMessage.builder().text(content).metadata(metadata).build();
             case TOOL -> new ToolResponseMessage(List.of()); // todo check TOOL response
         };
     }

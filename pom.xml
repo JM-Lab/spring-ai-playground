@@ -10,7 +10,7 @@
     </parent>
     <groupId>jm.kr</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>Spring AI Playground</name>
     <description>spring-ai-playground</description>
     <url>https://github.com/JM-Lab/spring-ai-playground</url>
@@ -36,8 +36,8 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>24.7.3</vaadin.version>
-        <spring-ai.version>1.0.0-M8</spring-ai.version>
+        <vaadin.version>24.8.0</vaadin.version>
+        <spring-ai.version>1.0.0</spring-ai.version>
     </properties>
     <repositories>
         <repository>
@@ -80,11 +80,6 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-rag</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-vector-store</artifactId>
         </dependency>
 
         <dependency>

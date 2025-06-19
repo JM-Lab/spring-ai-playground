@@ -8,9 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
@@ -26,21 +23,16 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.DEFAULT_CHAT_MEMORY_RESPONSE_SIZE;
+import static org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID;
 import static org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
 
 @Service
@@ -52,31 +44,22 @@ public class ChatService {
 
     public record ChatMeta(String model, Usage usage, List<Document> retrievedDocuments) {}
 
-    private final List<Advisor> advisors;
     private final String systemPrompt;
     private final List<String> models;
     private final ChatModel chatModel;
     private final ChatOptions chatOptions;
-    private final ChatClient.Builder chatClientBuilder;
-    private final ChatMemory chatMemory;
-    private final Map<String, ChatClient> chatClientCache;
+    private final ChatClient chatClient;
     private final VectorStoreDocumentService vectorStoreDocumentService;
 
-    public ChatService(ChatModel chatModel, ChatClient.Builder chatClientBuilder,
-            SpringAiPlaygroundOptions playgroundOptions, List<Advisor> advisors, ChatMemory chatMemory,
+    public ChatService(ChatModel chatModel, ChatClient chatClient, SpringAiPlaygroundOptions playgroundOptions,
             VectorStoreDocumentService vectorStoreDocumentService) {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
         this.models = playgroundOptions.chat().models();
         this.chatModel = chatModel;
         this.chatOptions = Optional.ofNullable((ChatOptions) playgroundOptions.chat().chatOptions())
                 .orElseGet(chatModel::getDefaultOptions);
-        this.advisors = advisors;
-        Optional.ofNullable(this.systemPrompt).filter(Predicate.not(String::isBlank))
-                .ifPresent(chatClientBuilder::defaultSystem);
-        this.chatClientBuilder = chatClientBuilder;
-        this.chatMemory = chatMemory;
+        this.chatClient = chatClient;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
-        this.chatClientCache = new WeakHashMap<>();
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
@@ -99,22 +82,15 @@ public class ChatService {
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
             String filterExpression) {
-        return buildChatClient(chatHistory).prompt().user(prompt).advisors(advisor -> {
-            advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatHistory.conversationId());
-            advisor.param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100);
-            if (StringUtils.hasText(filterExpression))
-                advisor.param(RAG_FILTER_EXPRESSION, filterExpression);
-        });
-    }
-
-    private ChatClient buildChatClient(ChatHistory chatHistory) {
-        return this.chatClientCache.computeIfAbsent(chatHistory.conversationId(), conversationId -> {
-            List<Advisor> advisors = new ArrayList<>(this.advisors);
-            advisors.addFirst(MessageChatMemoryAdvisor.builder(this.chatMemory)
-                    .chatMemoryRetrieveSize(DEFAULT_CHAT_MEMORY_RESPONSE_SIZE).conversationId(conversationId).build());
-            return this.chatClientBuilder.clone().defaultAdvisors(advisors).defaultOptions(chatHistory.chatOptions())
-                    .build();
-        });
+        ChatClient.ChatClientRequestSpec chatClientRequestSpec =
+                this.chatClient.prompt().user(prompt).options(chatHistory.chatOptions())
+                        .advisors(advisor -> {
+                            advisor.param(CONVERSATION_ID, chatHistory.conversationId());
+                            if (StringUtils.hasText(filterExpression))
+                                advisor.param(RAG_FILTER_EXPRESSION, filterExpression);
+                        });
+        return Optional.ofNullable(chatHistory.systemPrompt()).filter(Predicate.not(String::isBlank))
+                .map(chatClientRequestSpec::system).orElse(chatClientRequestSpec);
     }
 
     public String call(ChatHistory chatHistory, String prompt, String filterExpression) {

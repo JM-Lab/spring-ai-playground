@@ -61,7 +61,7 @@ public class ChatHistoryServiceTest {
         assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertEquals(chatHistory.createTimestamp(), chatHistory.updateTimestamp());
         assertNull(chatHistory.title());
-        assertTrue(chatMemory.get(chatHistory.conversationId(), 100).isEmpty());
+        assertTrue(chatMemory.get(chatHistory.conversationId()).isEmpty());
     }
 
     @Test
