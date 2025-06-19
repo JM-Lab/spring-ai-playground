@@ -2,7 +2,10 @@ package jm.kr.spring.ai.playground;
 
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Push;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
@@ -56,6 +59,12 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     }
 
     @Bean
+    @ConditionalOnMissingBean(MessageChatMemoryAdvisor.class)
+    public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
+        return MessageChatMemoryAdvisor.builder(chatMemory).build();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(VectorStore.class)
     public VectorStore vectorStore(EmbeddingModel embeddingModel) {
         return SimpleVectorStore.builder(embeddingModel).build();
@@ -77,6 +86,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     @Bean
     public SimpleLoggerAdvisor simpleLoggerAdvisor() {
         return new SimpleLoggerAdvisor();
+    }
+
+    @Bean
+    public ChatClient chatClient(ChatClient.Builder chatClientBuilder, Advisor[] advisors) {
+        return chatClientBuilder.defaultAdvisors(advisors).build();
     }
 
 }

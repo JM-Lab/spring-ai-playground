@@ -97,13 +97,12 @@ class ChatServiceTest {
     @Test
     void testGetChatModelProvider() {
         ChatModel chatModel = new MockLlmProviderChatModel();
-        ChatClient.Builder chatClientBuilder = mock(ChatClient.Builder.class);
+        ChatClient chatClient = mock(ChatClient.class);
         SpringAiPlaygroundOptions playgroundOptions =
                 new SpringAiPlaygroundOptions(new SpringAiPlaygroundOptions.Chat("systemPrompt", List.of(
                         "MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
         ChatMemory chatMemory = mock(ChatMemory.class);
-        ChatService service = new ChatService(chatModel, chatClientBuilder, playgroundOptions, List.of(), chatMemory,
-                vectorStoreDocumentService);
+        ChatService service = new ChatService(chatModel, chatClient, playgroundOptions, vectorStoreDocumentService);
         assertEquals("MockLlmProvider", service.getChatModelProvider());
     }
 

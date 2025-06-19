@@ -3,11 +3,13 @@ package jm.kr.spring.ai.playground.service;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
-import org.springframework.ai.chat.client.advisor.api.AdvisedResponse;
+import org.springframework.ai.chat.client.ChatClientRequest;
+import org.springframework.ai.chat.client.ChatClientResponse;
+import org.springframework.ai.chat.client.advisor.api.AdvisorChain;
 import org.springframework.ai.chat.client.advisor.api.BaseAdvisor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,37 +31,37 @@ public class SpringAiPlaygroundRagAdvisor implements BaseAdvisor {
     }
 
     @Override
-    public AdvisedRequest before(AdvisedRequest advisedRequest) {
-        return isFilterExpressionMissing(advisedRequest) ? advisedRequest :
-                buildRetrievalAugmentationAdvisor(advisedRequest).before(advisedRequest);
+    public ChatClientRequest before(ChatClientRequest chatClientRequest, AdvisorChain advisorChain) {
+        return isFilterExpressionMissing(chatClientRequest) ? chatClientRequest :
+                loggingRetrievedDocuments(buildRetrievalAugmentationAdvisor(chatClientRequest).before(chatClientRequest, advisorChain));
+    }
+
+    private ChatClientRequest loggingRetrievedDocuments(ChatClientRequest chatClientRequest) {
+        printSearchResults(Optional.ofNullable(chatClientRequest.context().get(DOCUMENT_CONTEXT))
+                .stream().map(documents -> (List<Document>) documents).flatMap(List::stream).toList());
+        return chatClientRequest;
     }
 
     @Override
-    public AdvisedResponse after(AdvisedResponse advisedResponse) {
-        return loggingRetrievedDocuments(advisedResponse);
+    public ChatClientResponse after(ChatClientResponse chatClientResponse, AdvisorChain advisorChain) {
+        return chatClientResponse;
     }
 
     @Override
     public int getOrder() {
-        return 0;
+        return Ordered.LOWEST_PRECEDENCE - 1;
     }
 
-    private boolean isFilterExpressionMissing(AdvisedRequest advisedRequest) {
-        boolean isMissing = Objects.isNull(advisedRequest.adviseContext().get(RAG_FILTER_EXPRESSION));
+    private boolean isFilterExpressionMissing(ChatClientRequest chatClientRequest) {
+        boolean isMissing = Objects.isNull(chatClientRequest.context().get(RAG_FILTER_EXPRESSION));
         if (isMissing)
             logger.debug("Document retrieval was skipped.");
         return isMissing;
     }
 
-    private RetrievalAugmentationAdvisor buildRetrievalAugmentationAdvisor(AdvisedRequest advisedRequest) {
+    private RetrievalAugmentationAdvisor buildRetrievalAugmentationAdvisor(ChatClientRequest chatClientRequest) {
         return RetrievalAugmentationAdvisor.builder().documentRetriever(query -> vectorStoreService.search(query.text(),
-                advisedRequest.adviseContext().get(RAG_FILTER_EXPRESSION).toString())).build();
-    }
-
-    private static AdvisedResponse loggingRetrievedDocuments(AdvisedResponse advisedResponse) {
-        printSearchResults(Optional.ofNullable(advisedResponse.adviseContext().get(DOCUMENT_CONTEXT))
-                .stream().map(documents -> (List<Document>) documents).flatMap(List::stream).toList());
-        return advisedResponse;
+                chatClientRequest.context().get(RAG_FILTER_EXPRESSION).toString())).build();
     }
 
     private static void printSearchResults(List<Document> results) {
@@ -69,4 +71,5 @@ public class SpringAiPlaygroundRagAdvisor implements BaseAdvisor {
             logger.debug("Retrieved Document {}, Score: {}\n{}", i + 1, document.getScore(), document.getText());
         }
     }
+
 }
