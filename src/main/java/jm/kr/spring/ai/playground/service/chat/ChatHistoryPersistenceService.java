@@ -25,6 +25,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -35,13 +36,18 @@ import java.util.Map;
 
 @Service
 public class ChatHistoryPersistenceService implements PersistenceServiceInterface<ChatHistory> {
-    public static final String CONVERSATION_ID = "conversationId";
 
     private static final Logger logger = LoggerFactory.getLogger(ChatHistoryPersistenceService.class);
+    public static final String CONVERSATION_ID = "conversationId";
+    private static final String MESSAGE_LIST = "messageList";
 
     private final Path saveDir;
+    private final ChatHistoryService chatHistoryService;
 
-    public ChatHistoryPersistenceService(Path springAiPlaygroundHomeDir) throws IOException {
+    public ChatHistoryPersistenceService(Path springAiPlaygroundHomeDir,
+            @Lazy ChatHistoryService chatHistoryService) throws
+            IOException {
+        this.chatHistoryService = chatHistoryService;
         this.saveDir = springAiPlaygroundHomeDir.resolve("chat").resolve("save");
         Files.createDirectories(this.saveDir);
     }
@@ -57,8 +63,12 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
     }
 
     @Override
-    public String buildSaveDataAndReturnName(ChatHistory chatHistory, Map<String, Object> saveObjectMap) {
-        saveObjectMap.put("messageList", chatHistory.messagesSupplier().get());
+    public void buildSaveData(ChatHistory chatHistory, Map<String, Object> saveObjectMap) {
+        saveObjectMap.put(MESSAGE_LIST, chatHistory.messagesSupplier().get());
+    }
+
+    @Override
+    public String buildSaveFileName(ChatHistory chatHistory) {
         return chatHistory.conversationId();
     }
 
@@ -71,7 +81,7 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         String systemPrompt = saveObjectMap.computeIfAbsent("systemPrompt", s -> "").toString();
         DefaultChatOptions chatOptions =
                 OBJECT_MAPPER.convertValue(saveObjectMap.get("chatOptions"), DefaultChatOptions.class);
-        List<Map<String, Object>> messageMapList = (List<Map<String, Object>>) saveObjectMap.get("messageList");
+        List<Map<String, Object>> messageMapList = (List<Map<String, Object>>) saveObjectMap.get(MESSAGE_LIST);
         return new ChatHistory(conversationId, title, createTimestamp, updateTimestamp, systemPrompt, chatOptions,
                 () -> messageMapList.stream().map(this::convertToMessage).toList());
     }
@@ -89,8 +99,14 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         };
     }
 
-    public void delete(String conversationId) {
-        getSaveDir().resolve(conversationId).toFile().deleteOnExit();
+    @Override
+    public void onStart() throws IOException {
+        this.loads().forEach(chatHistoryService::putIfAbsentChatHistory);
     }
 
+    @Override
+    public void onShutdown() throws IOException {
+        for (ChatHistory chatHistory : chatHistoryService.getChatHistoryList())
+            save(chatHistory);
+    }
 }

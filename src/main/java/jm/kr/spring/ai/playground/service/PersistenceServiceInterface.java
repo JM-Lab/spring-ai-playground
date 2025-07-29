@@ -16,7 +16,9 @@
 package jm.kr.spring.ai.playground.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -26,37 +28,57 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public interface PersistenceServiceInterface<T> {
 
     TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
-    ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    ObjectMapper OBJECT_MAPPER = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     Path getSaveDir();
 
     Logger getLogger();
 
-    String buildSaveDataAndReturnName(T saveObject, Map<String, Object> saveObjectMap);
+    void buildSaveData(T saveObject, Map<String, Object> saveObjectMap);
+
+    String buildSaveFileName(T saveObject);
 
     T convertTo(Map<String, Object> saveObjectMap);
 
+    void onStart() throws IOException;
+
+    void onShutdown() throws IOException;
+
     default void save(T saveObject) throws IOException {
+        Path saveDir = getSaveDir();
+        String simpleName = saveObject.getClass().getSimpleName();
+        Files.createDirectories(saveDir);
         Map<String, Object> saveObjectMap = OBJECT_MAPPER.convertValue(saveObject, MAP_TYPE_REFERENCE);
-        File file = getSaveDir().resolve(buildSaveDataAndReturnName(saveObject, saveObjectMap) + ".json").toFile();
-        getLogger().info("Saving {} to file: {}", saveObject.getClass().getSimpleName(), file.getAbsolutePath());
+        buildSaveData(saveObject, saveObjectMap);
+        File file = saveDir.resolve(buildFileName(saveObject)).toFile();
+
+        getLogger().info("Saving {} to file: {}", simpleName, file.getAbsolutePath());
         OBJECT_MAPPER.writeValue(file, saveObjectMap);
+    }
+
+    private @NotNull String buildFileName(T saveObject) {
+        return buildSaveFileName(saveObject) + ".json";
     }
 
     default List<T> loads() throws IOException {
         List<T> saveObjectList = new ArrayList<>();
         try (Stream<Path> paths = Files.list(getSaveDir())) {
-            List<File> fileList = paths.map(Path::toFile)
+            List<File> fileList = paths.map(Path::toFile).filter(Predicate.not(File::isHidden))
                     .peek(file -> getLogger().info("Load file : {}", file.getAbsolutePath())).toList();
             for (File file : fileList)
                 saveObjectList.add(convertTo(OBJECT_MAPPER.readValue(file, MAP_TYPE_REFERENCE)));
         }
         return saveObjectList;
+    }
+
+    default void delete(T saveObject) {
+        getSaveDir().resolve(buildFileName(saveObject)).toFile().deleteOnExit();
     }
 
     default void clear() {

@@ -10,9 +10,10 @@ spring:
   application:
     name: spring-ai-playground-test
   profiles:
-    default: openai
+    default: openai, mcp
   ai:
     playground:
+      persistence: false
       user-home:
       chat:
         system:
@@ -84,3 +85,21 @@ spring:
           topP: 0.9
           frequencyPenalty: 0.0
           presencePenalty: 0.6
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mcp
+  ai:
+    mcp:
+      client:
+        type: SYNC  # MCP Client 타입
+        initialized: true
+        stdio:
+          connections:
+            weather-mcp-server:
+              command: /Users/jm/myenv/bin/python  # MCP 서버 실행 Python 경로
+              args:
+                - -m
+                - mcp_weather_server  # MCP 서버 실행 인자

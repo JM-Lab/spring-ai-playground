@@ -57,7 +57,8 @@ public class ChatHistoryService {
     private ChatHistory changeChatHistory(ChatHistory chatHistory) {
         if (Objects.isNull(chatHistory.title()) || chatHistory.title().isBlank())
             return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
-        return this.conversationIdHistoryMap.get(chatHistory.conversationId()).mutate(chatHistory.title(), System.currentTimeMillis());
+        return this.conversationIdHistoryMap.get(chatHistory.conversationId())
+                .mutate(chatHistory.title(), System.currentTimeMillis());
     }
 
     private String extractTitle(List<Message> messageList) {
@@ -88,17 +89,13 @@ public class ChatHistoryService {
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
         String conversationId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
-        new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
-                .maxTokens(chatOptions.getMaxTokens())
-                .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
-                .temperature(chatOptions.getTemperature())
-                .topK(chatOptions.getTopK()).topP(chatOptions.getTopP());
-        return new ChatHistory(conversationId, null, timestamp, timestamp, systemPrompt,
+        DefaultChatOptions defaultChatOptions =
                 (DefaultChatOptions) new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
                         .maxTokens(chatOptions.getMaxTokens())
                         .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
                         .temperature(chatOptions.getTemperature())
-                        .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build(),
+                        .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build();
+        return new ChatHistory(conversationId, null, timestamp, timestamp, systemPrompt, defaultChatOptions,
                 () -> getMessages(conversationId));
     }
 
