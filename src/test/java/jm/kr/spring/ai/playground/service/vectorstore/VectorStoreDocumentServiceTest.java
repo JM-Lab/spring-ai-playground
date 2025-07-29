@@ -86,7 +86,7 @@ class VectorStoreDocumentServiceTest {
         assertEquals("New Title", updatedInfo.title());
         assertEquals(addedInfo.docInfoId(), updatedInfo.docInfoId());
 
-        service.deleteDocumentInfo(addedInfo.docInfoId());
+        service.deleteDocumentInfo(addedInfo);
         assertFalse(service.getDocumentList().contains(updatedInfo));
     }
 
@@ -138,7 +138,7 @@ class VectorStoreDocumentServiceTest {
         List<VectorStoreDocumentInfo> docList = service.getDocumentList();
         documentInfoChangeSupport.firePropertyChange(VectorStoreView.DOCUMENT_SELECTING_EVENT, null, docList);
 
-        service.deleteDocumentInfo(docInfo.docInfoId());
+        service.deleteDocumentInfo(docInfo);
         documentInfoChangeSupport.firePropertyChange(VectorStoreView.DOCUMENTS_DELETE_EVENT, docInfo, null);
 
         ArgumentCaptor<PropertyChangeEvent> eventCaptor = ArgumentCaptor.forClass(PropertyChangeEvent.class);

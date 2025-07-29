@@ -21,7 +21,6 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
-import org.springframework.ai.chat.prompt.DefaultChatOptionsBuilder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -80,17 +79,17 @@ public class ChatHistoryService {
         return Optional.ofNullable(this.chatMemory.get(conversationId)).orElseGet(ArrayList::new);
     }
 
-    public void deleteChatHistory(String conversationId) {
-        this.chatMemory.clear(conversationId);
-        this.conversationIdHistoryMap.remove(conversationId);
-        this.chatHistoryPersistenceService.delete(conversationId);
+    public void deleteChatHistory(ChatHistory chatHistory) {
+        this.chatMemory.clear(chatHistory.conversationId());
+        this.conversationIdHistoryMap.remove(chatHistory.conversationId());
+        this.chatHistoryPersistenceService.delete(chatHistory);
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
         String conversationId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
         DefaultChatOptions defaultChatOptions =
-                (DefaultChatOptions) new DefaultChatOptionsBuilder().frequencyPenalty(chatOptions.getFrequencyPenalty())
+                (DefaultChatOptions) ChatOptions.builder().frequencyPenalty(chatOptions.getFrequencyPenalty())
                         .maxTokens(chatOptions.getMaxTokens())
                         .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
                         .temperature(chatOptions.getTemperature())

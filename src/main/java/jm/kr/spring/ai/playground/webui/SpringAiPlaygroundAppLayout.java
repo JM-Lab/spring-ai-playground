@@ -27,6 +27,7 @@ import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.PageTitle;
 import jm.kr.spring.ai.playground.webui.chat.ChatView;
+import jm.kr.spring.ai.playground.webui.mcp.McpView;
 import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
 
 import java.util.Map;
@@ -49,7 +50,9 @@ public class SpringAiPlaygroundAppLayout extends AppLayout {
         Tabs tabs = new Tabs();
         addToNavbar(titleLayout, tabs);
 
-        this.tabContents = Map.of("Vector Database", VectorStoreView.class, "Chat", ChatView.class);
+        this.tabContents =
+                Map.of("MCP", McpView.class, "Vector Database", VectorStoreView.class, "Chat", ChatView.class);
+        tabs.add(new Tab("MCP"));
         tabs.add(new Tab("Vector Database"));
         tabs.add(new Tab("Chat"));
         tabs.addSelectedChangeListener(

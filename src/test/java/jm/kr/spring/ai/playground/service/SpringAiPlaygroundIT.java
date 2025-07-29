@@ -18,6 +18,8 @@ package jm.kr.spring.ai.playground.service;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatHistoryService;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
+import jm.kr.spring.ai.playground.service.mcp.McpServerInfo;
+import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,8 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,6 +41,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +54,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
-@ActiveProfiles("ollama")
+@ActiveProfiles({"openai", "ollama", "mcp"})
 class SpringAiPlaygroundIT {
 
     @Autowired
     private ChatService chatService;
+
+    @Autowired
+    private McpClientService mcpClientService;
 
     @Autowired
     private VectorStoreDocumentService vectorStoreDocumentService;
@@ -69,7 +77,7 @@ class SpringAiPlaygroundIT {
         Collection<Document> documents = vectorStoreService.search(
                 new SearchRequest.Builder().similarityThreshold(ALL_SEARCH_REQUEST_OPTION.similarityThreshold())
                         .topK(ALL_SEARCH_REQUEST_OPTION.topK()).build());
-        if (documents.size() > 0)
+        if (!documents.isEmpty())
             return;
 
         Resource resource = new ClassPathResource("wikipedia-hurricane-milton-page.pdf");
@@ -101,8 +109,8 @@ class SpringAiPlaygroundIT {
         ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
         String prompt = "Hello World";
         String assistantText =
-                chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null)
-                        .toStream().collect(Collectors.joining());
+                chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null, null,
+                        null).toStream().collect(Collectors.joining());
 
         assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());
@@ -130,7 +138,40 @@ class SpringAiPlaygroundIT {
     void testCall() {
         ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
         String prompt = "Hello World";
-        String assistantText = chatService.call(chatHistory, prompt, null);
+        String assistantText = chatService.call(chatHistory, prompt, null, null, null);
+
+        assertTrue(chatHistory.conversationId().startsWith("Chat-"));
+        assertNull(chatHistory.title());
+        assertTrue(0 < chatHistory.createTimestamp());
+        assertTrue(0 < chatHistory.updateTimestamp());
+        assertNull(chatHistory.systemPrompt());
+        List<Message> messages = chatHistory.messagesSupplier().get();
+        assertEquals(2, messages.size());
+        Message messagesFirst = messages.getFirst();
+        assertEquals(MessageType.USER, messagesFirst.getMessageType());
+        ChatService.ChatMeta chatMeta = (ChatService.ChatMeta) messagesFirst.getMetadata().get(CHAT_META);
+        assertEquals("mistral", chatMeta.model());
+        assertNull(chatMeta.retrievedDocuments());
+        Usage usage = chatMeta.usage();
+        assertTrue(0 < usage.getCompletionTokens());
+        assertTrue(0 < usage.getPromptTokens());
+        assertTrue(0 < usage.getTotalTokens());
+
+        Message last = messages.getLast();
+        assertEquals(MessageType.ASSISTANT, last.getMessageType());
+        assertEquals(assistantText, last.getText());
+    }
+
+    @Test
+    void testCallwithMcp() {
+        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
+        List<ToolCallback> toolCallbacks = mcpClientService.buildToolCallbackProviders(
+                        chatService.getLiveMcpServerInfos().stream().peek(mcpClientService::startMcpClient)
+                                .toArray(McpServerInfo[]::new)).stream()
+                .map(ToolCallbackProvider::getToolCallbacks).flatMap(Arrays::stream).toList();
+
+        String prompt = "What is the weather in Seoul?";
+        String assistantText = chatService.call(chatHistory, prompt, null, toolCallbacks, System.out::println);
 
         assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());
