@@ -27,7 +27,6 @@ import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
-import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -107,11 +106,6 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder, Advisor[] advisors) {
         return chatClientBuilder.defaultAdvisors(advisors).build();
-    }
-
-    @Bean
-    public ToolCallingManager toolCallingManager() {
-        return ToolCallingManager.builder().build();
     }
 
 }

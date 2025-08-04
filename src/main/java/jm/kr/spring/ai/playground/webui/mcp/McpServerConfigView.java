@@ -1,3 +1,18 @@
+/*
+ * Copyright © 2025 Jemin Huh (hjm1980@gmail.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package jm.kr.spring.ai.playground.webui.mcp;
 
 import com.vaadin.flow.component.button.Button;
@@ -13,6 +28,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.TextField;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfo;
+import jm.kr.spring.ai.playground.service.mcp.McpServerInfoService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpTransportType;
 import jm.kr.spring.ai.playground.webui.JsonEditorWrapper;
@@ -42,6 +58,7 @@ public class McpServerConfigView extends VerticalLayout {
     private final Map<McpTransportType, JsonEditorWrapper> editors = new EnumMap<>(McpTransportType.class);
 
     private final McpServerInfo mcpServerInfo;
+    private final McpServerInfoService mcpServerInfoService;
     private final McpClientService mcpClientService;
     private final PropertyChangeSupport mcpServerInfoChangeSupport;
 
@@ -58,9 +75,10 @@ public class McpServerConfigView extends VerticalLayout {
     private String originalJson;
 
 
-    public McpServerConfigView(McpServerInfo mcpServerInfo, McpClientService mcpClientService,
-            PropertyChangeSupport mcpServerInfoChangeSupport) {
+    public McpServerConfigView(McpServerInfo mcpServerInfo, McpServerInfoService mcpServerInfoService,
+            McpClientService mcpClientService, PropertyChangeSupport mcpServerInfoChangeSupport) {
         this.mcpServerInfo = mcpServerInfo;
+        this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
         this.mcpServerInfoChangeSupport = mcpServerInfoChangeSupport;
         buildLayout();
@@ -228,12 +246,20 @@ public class McpServerConfigView extends VerticalLayout {
 
         buildMcpServerInfoFromForm(
                 uiMcpServerInfo -> {
+                    if (this.mcpServerInfoService.getMcpServerInfos().get(uiMcpServerInfo.mcpTransportType()).stream()
+                            .map(McpServerInfo::serverName).filter(uiMcpServerInfo.serverName()::equals).findAny()
+                            .isPresent()) {
+                        VaadinUtils.showErrorNotification("Failed to save : MCP connection already exists with name " +
+                                uiMcpServerInfo.serverName());
+                        return;
+                    }
+
                     try {
                         this.mcpClientService.startMcpClient(uiMcpServerInfo);
                         this.mcpServerInfoChangeSupport.firePropertyChange(MCP_CONNECTION_CHANGE_EVENT,
                                 mcpServerInfo, uiMcpServerInfo);
                     } catch (Exception e) {
-                        VaadinUtils.showErrorNotification("Failed to Connect : " + e.getMessage());
+                        VaadinUtils.showErrorNotification("Failed to connect : " + e.getMessage());
                     }
                 });
     }

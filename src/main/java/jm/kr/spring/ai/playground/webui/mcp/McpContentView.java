@@ -22,6 +22,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfo;
+import jm.kr.spring.ai.playground.service.mcp.McpServerInfoService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 
@@ -33,8 +34,8 @@ public class McpContentView extends VerticalLayout {
     static final String LAST_SELECTED_MCP_CONNECTION = "lastSelectedMcpConnection";
     private final McpServerInfo mcpServerInfo;
 
-    public McpContentView(McpServerInfo mcpServerInfo, McpClientService mcpClientService,
-            PropertyChangeSupport mcpServerInfoChangeSupport) {
+    public McpContentView(McpServerInfo mcpServerInfo, McpServerInfoService mcpServerInfoService,
+            McpClientService mcpClientService, PropertyChangeSupport mcpServerInfoChangeSupport) {
         this.mcpServerInfo = mcpServerInfo;
 
         setSizeFull();
@@ -42,8 +43,8 @@ public class McpContentView extends VerticalLayout {
         setPadding(false);
         getStyle().set("overflow", "auto");
 
-        McpServerConfigView mcpServerConfigView = new McpServerConfigView(mcpServerInfo, mcpClientService,
-                mcpServerInfoChangeSupport);
+        McpServerConfigView mcpServerConfigView = new McpServerConfigView(mcpServerInfo, mcpServerInfoService,
+                mcpClientService, mcpServerInfoChangeSupport);
         mcpServerConfigView.setWidthFull();
         add(mcpServerConfigView);
 
