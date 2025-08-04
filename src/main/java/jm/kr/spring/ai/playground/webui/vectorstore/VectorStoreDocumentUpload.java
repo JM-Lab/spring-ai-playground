@@ -19,15 +19,20 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.UploadI18N;
-import com.vaadin.flow.component.upload.receivers.FileBuffer;
+import com.vaadin.flow.component.upload.UploadI18N.Uploading;
+import com.vaadin.flow.server.streams.TransferContext;
+import com.vaadin.flow.server.streams.TransferProgressListener;
+import com.vaadin.flow.server.streams.UploadHandler;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentService;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class VectorStoreDocumentUpload extends VerticalLayout {
 
@@ -38,6 +43,7 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
     public VectorStoreDocumentUpload(VectorStoreDocumentService vectorStoreDocumentService) {
         this.vectorStoreDocumentService = vectorStoreDocumentService;
         this.uploadedFileNames = new ArrayList<>();
+
         Paragraph hint = new Paragraph(
                 "Please upload a single PDF, DOC/DOCX, or PPT/PPTX file with a maximum size of " +
                         this.vectorStoreDocumentService.getMaxUploadSize().toMegabytes() + "MB");
@@ -49,48 +55,126 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
     }
 
     private Upload createUpload() {
-        FileBuffer fileBuffer = new FileBuffer();
-        Upload upload = new Upload(fileBuffer);
-        upload.setWidthFull();
-        upload.setAcceptedFileTypes(".pdf", ".doc", ".docx", ".ppt", ".pptx");
-        upload.setMaxFiles(1);
-        upload.setMaxFileSize(Long.valueOf(this.vectorStoreDocumentService.getMaxUploadSize().toBytes()).intValue());
-        upload.setDropAllowed(true);
+        // TransferProgressListener 구현
+        TransferProgressListener progressListener = new TransferProgressListener() {
+            @Override
+            public void onComplete(TransferContext context, long transferredBytes) {
+                String fileName = context.fileName();
+                VaadinUtils.showInfoNotification("Successfully uploaded: " + fileName);
+            }
 
-        upload.addFileRejectedListener(event -> VaadinUtils.showErrorNotification(event.getErrorMessage()));
+            @Override
+            public void onError(TransferContext context, IOException reason) {
+                String fileName = context.fileName();
+                VaadinUtils.showErrorNotification("Upload failed: " + fileName + " - " + reason.getMessage());
+            }
 
-        UploadExamplesI18N i18n = new UploadExamplesI18N();
-        i18n.getAddFiles().setOne("Upload Document...");
-        i18n.getDropFiles().setOne("Drop document here");
-        i18n.getError().setIncorrectFileType(
-                "The provided file does not have the correct format.");
-        upload.setI18n(i18n);
+            @Override
+            public long progressReportInterval() {
+                return 1024 * 1024;
+            }
+        };
 
-        upload.addSucceededListener(succeededEvent -> {
+        UploadHandler inMemoryHandler = UploadHandler.inMemory((metadata, data) -> {
+            String fileName = metadata.fileName();
             try {
-                String fileName = succeededEvent.getFileName();
-                File uploadedFile = fileBuffer.getFileData().getFile();
-                this.vectorStoreDocumentService.addUploadedDocumentFile(fileName, uploadedFile);
+                File tempFile = File.createTempFile("upload-", "-" + fileName);
+                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                    fos.write(data);
+                }
+                this.vectorStoreDocumentService.addUploadedDocumentFile(fileName, tempFile);
                 this.uploadedFileNames.add(fileName);
+
+                tempFile.deleteOnExit();
             } catch (Exception e) {
                 VaadinUtils.showErrorNotification("Failed to save file: " + e.getMessage());
                 throw new RuntimeException(e);
             }
-        });
+        }, progressListener);
 
-        upload.addFileRemovedListener(fileRemovedEvent -> {
-            try {
-                String fileName = fileRemovedEvent.getFileName();
-                this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
-                this.uploadedFileNames.remove(fileName);
-            } catch (IOException e) {
-                VaadinUtils.showErrorNotification("Failed to delete file: " + e.getMessage());
-            }
-        });
+        Upload upload = new Upload(inMemoryHandler);
+        upload.setWidthFull();
+        upload.setAcceptedFileTypes("application/pdf", ".pdf",
+                "application/msword", ".doc",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx",
+                "application/vnd.ms-powerpoint", ".ppt",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx");
+        upload.setMaxFiles(1);
+        upload.setMaxFileSize((int) this.vectorStoreDocumentService.getMaxUploadSize().toBytes());
+        upload.setDropAllowed(true);
 
-        upload.addFailedListener(
-                event -> VaadinUtils.showErrorNotification("Failed to upload: " + event.getFileName()));
+        upload.addFileRejectedListener(event -> VaadinUtils.showErrorNotification(event.getErrorMessage()));
+
+
+        upload.getElement().addEventListener("file-remove",
+                event -> Optional.ofNullable(event.getEventData().getString("event.detail.file.name"))
+                        .ifPresent(fileName -> {
+                            try {
+                                this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
+                                this.uploadedFileNames.remove(fileName);
+                            } catch (IOException e) {
+                                VaadinUtils.showErrorNotification("Failed to delete file: " + e.getMessage());
+                            }
+                        })).addEventData("event.detail.file.name");
+
+        upload.setI18n(createI18n());
+
         return upload;
+    }
+
+    private UploadI18N createI18n() {
+        UploadI18N i18n = new UploadI18N();
+
+        UploadI18N.AddFiles addFiles = new UploadI18N.AddFiles();
+        addFiles.setOne("Upload Document...");
+        addFiles.setMany("Upload Documents...");
+        i18n.setAddFiles(addFiles);
+
+        UploadI18N.DropFiles dropFiles = new UploadI18N.DropFiles();
+        dropFiles.setOne("Drop document here");
+        dropFiles.setMany("Drop documents here");
+        i18n.setDropFiles(dropFiles);
+
+        UploadI18N.Error error = new UploadI18N.Error();
+        error.setTooManyFiles("Too many files. Please upload only one file.");
+        error.setFileIsTooBig("File is too big. Maximum size is " +
+                this.vectorStoreDocumentService.getMaxUploadSize().toMegabytes() + "MB.");
+        error.setIncorrectFileType("The provided file does not have the correct format. " +
+                "Please upload PDF, DOC/DOCX, or PPT/PPTX files only.");
+        i18n.setError(error);
+
+        Uploading uploading = buildUploading();
+
+        i18n.setUploading(uploading);
+
+        UploadI18N.Units units = new UploadI18N.Units();
+        units.setSize(List.of("B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"));
+        i18n.setUnits(units);
+
+        return i18n;
+    }
+
+    private static @NotNull Uploading buildUploading() {
+        Uploading uploading = new Uploading();
+
+        Uploading.Status status = new Uploading.Status();
+        status.setConnecting("Connecting...");
+        status.setStalled("Stalled");
+        status.setProcessing("Processing file...");
+        status.setHeld("Queued");
+        uploading.setStatus(status);
+
+        Uploading.RemainingTime remainingTime = new Uploading.RemainingTime();
+        remainingTime.setPrefix("remaining time: ");
+        remainingTime.setUnknown("unknown remaining time");
+        uploading.setRemainingTime(remainingTime);
+
+        Uploading.Error uploadingError = new Uploading.Error();
+        uploadingError.setServerUnavailable("Server unavailable. Please try again later.");
+        uploadingError.setUnexpectedServerError("Upload failed due to server error. Please try again.");
+        uploadingError.setForbidden("Upload forbidden. Please check file permissions.");
+        uploading.setError(uploadingError);
+        return uploading;
     }
 
     public void clearFileList() {
@@ -99,31 +183,6 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
     }
 
     public List<String> getUploadedFileNames() {
-        return this.uploadedFileNames;
-    }
-
-    public static class UploadExamplesI18N extends UploadI18N {
-        public UploadExamplesI18N() {
-            setDropFiles(new DropFiles().setOne("Drop file here")
-                    .setMany("Drop files here"));
-            setAddFiles(new AddFiles().setOne("Upload File...")
-                    .setMany("Upload Files..."));
-            setError(new Error().setTooManyFiles("Too Many Files.")
-                    .setFileIsTooBig("File is Too Big.")
-                    .setIncorrectFileType("Incorrect File Type."));
-            setUploading(new Uploading()
-                    .setStatus(new Uploading.Status().setConnecting("Connecting...")
-                            .setStalled("Stalled")
-                            .setProcessing("Processing File...").setHeld("Queued"))
-                    .setRemainingTime(new Uploading.RemainingTime()
-                            .setPrefix("remaining time: ")
-                            .setUnknown("unknown remaining time"))
-                    .setError(new Uploading.Error()
-                            .setServerUnavailable("Upload failed, please try again later")
-                            .setUnexpectedServerError("Upload failed")
-                            .setForbidden("Upload forbidden")));
-            setUnits(new Units().setSize(Arrays.asList("B", "kB", "MB", "GB", "TB",
-                    "PB", "EB", "ZB", "YB")));
-        }
+        return List.copyOf(this.uploadedFileNames);
     }
 }
