@@ -39,6 +39,7 @@ import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatHistoryService;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
+import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.webui.PersistentUiDataStorage;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
@@ -66,6 +67,7 @@ public class ChatView extends Div {
     private final ChatService chatService;
     private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private final ChatHistoryService chatHistoryService;
+    private final McpClientService mcpClientService;
     private final ChatHistoryView chatHistoryView;
     private final SplitLayout splitLayout;
     private final VerticalLayout chatContentLayout;
@@ -74,10 +76,11 @@ public class ChatView extends Div {
     private ChatContentView chatContentView;
 
     public ChatView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
-            ChatHistoryService chatHistoryService) {
+            ChatHistoryService chatHistoryService, McpClientService mcpClientService) {
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
+        this.mcpClientService = mcpClientService;
 
         PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_SELECT_EVENT,
@@ -202,7 +205,7 @@ public class ChatView extends Div {
             return;
 
         this.chatContentView = new ChatContentView(this.persistentUiDataStorage, this.chatService, chatHistory,
-                this.completeChatHistoryConsumer);
+                this.completeChatHistoryConsumer, this.mcpClientService);
         VaadinUtils.getUi(this).access(() -> {
             this.chatContentLayout.removeAll();
             this.chatContentLayout.add(createChatContentHeader(chatHistory.chatOptions()), this.chatContentView);

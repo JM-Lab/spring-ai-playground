@@ -67,7 +67,8 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
         this.persistentUiDataStorage.loadData(LAST_SELECTED_CHAT_HISTORY, new TypeReference<ChatHistory>() {},
                 chatHistory -> {
                     if (Objects.nonNull(chatHistory))
-                        this.chatHistoryListBox.setValue(chatHistoryService.getChatHistory(chatHistory.conversationId()));
+                        this.chatHistoryListBox.setValue(
+                                chatHistoryService.getChatHistory(chatHistory.conversationId()));
                 });
     }
 
@@ -103,7 +104,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
     private void notifyChatHistorySelection(ChatHistory oldChatHistory, ChatHistory newChatHistory) {
         if (Objects.isNull(newChatHistory))
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, null);
-        else {
+        else if (!newChatHistory.equals(oldChatHistory)) {
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, newChatHistory);
             this.persistentUiDataStorage.saveData(LAST_SELECTED_CHAT_HISTORY, newChatHistory);
         }
@@ -173,7 +174,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
             dialog.add("Are you sure you want to delete this history permanently?");
 
             Button deleteButton = new Button("Delete", e -> {
-                this.chatHistoryService.deleteChatHistory(chatHistory.conversationId());
+                this.chatHistoryService.deleteChatHistory(chatHistory);
                 this.changeChatHistoryContent(null);
                 dialog.close();
             });
@@ -182,6 +183,7 @@ public class ChatHistoryView extends VerticalLayout implements BeforeEnterObserv
             dialog.getFooter().add(deleteButton);
 
             dialog.open();
+            deleteButton.focus();
         });
     }
 

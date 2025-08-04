@@ -25,7 +25,6 @@ import com.vaadin.flow.component.textfield.TextArea;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
 import java.util.List;
-import java.util.Objects;
 
 public class ChatModelSettingView extends VerticalLayout {
     private final TextArea systemPromptTextArea;
@@ -45,128 +44,229 @@ public class ChatModelSettingView extends VerticalLayout {
         String model = chatOption.getModel();
         modelComboBox = new ComboBox<>("Model");
         modelComboBox.setItems(models);
-        modelComboBox.setValue(model);
+        if (model != null) {
+            modelComboBox.setValue(model);
+        }
         modelComboBox.setAllowCustomValue(true);
         add(modelComboBox);
 
         this.systemPromptTextArea = new TextArea("System Prompt");
-        if (Objects.nonNull(systemPrompt))
-            this.systemPromptTextArea.setValue(systemPrompt);
         this.systemPromptTextArea.setWidthFull();
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            this.systemPromptTextArea.setValue(systemPrompt);
+        }
         add(systemPromptTextArea);
 
         this.maxTokensInput = new IntegerField("Max Tokens");
-        Integer maxTokens = chatOption.getMaxTokens();
         this.maxTokensInput.setMin(1);
-        this.maxTokensInput.setValue(maxTokens);
         this.maxTokensInput.setI18n(new IntegerField.IntegerFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Quantity must be at least 1"));
+        Integer maxTokens = chatOption.getMaxTokens();
+        if (maxTokens != null) {
+            this.maxTokensInput.setValue(maxTokens);
+        }
         add(maxTokensInput);
 
         this.temperatureInput = new NumberField("Temperature");
-        Double temperature = chatOption.getTemperature();
         this.temperatureInput.setMin(0);
         this.temperatureInput.setMax(1);
-        this.temperatureInput.setValue(temperature);
         this.temperatureInput.setI18n(new NumberField.NumberFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Quantity must be at least 0")
                 .setMaxErrorMessage("Value cannot exceed 1"));
+
         RangeInput temperatureSlider = new RangeInput();
         temperatureSlider.setStep(0.1);
         temperatureSlider.setMin(0);
         temperatureSlider.setMax(1);
-        if (Objects.nonNull(temperature))
+
+        Double temperature = chatOption.getTemperature();
+        if (temperature != null) {
+            this.temperatureInput.setValue(temperature);
             temperatureSlider.setValue(temperature);
+        } else {
+            this.temperatureInput.setValue(0.7);
+            temperatureSlider.setValue(0.7);
+        }
+
         temperatureSlider.setWidthFull();
-        temperatureSlider.addValueChangeListener(e -> this.temperatureInput.setValue(e.getValue()));
-        this.temperatureInput.addValueChangeListener(e -> temperatureSlider.setValue(e.getValue()));
+        final boolean[] isUpdating = {false};
+        temperatureSlider.addValueChangeListener(e -> {
+            if (!isUpdating[0]) {
+                isUpdating[0] = true;
+                this.temperatureInput.setValue(e.getValue());
+                isUpdating[0] = false;
+            }
+        });
+        this.temperatureInput.addValueChangeListener(e -> {
+            if (!isUpdating[0] && e.getValue() != null) {
+                isUpdating[0] = true;
+                temperatureSlider.setValue(e.getValue());
+                isUpdating[0] = false;
+            }
+        });
         add(temperatureInput, temperatureSlider);
 
         this.topPInput = new NumberField("Top P");
-        Double topP = chatOption.getTopP();
         this.topPInput.setMin(0);
         this.topPInput.setMax(1);
-        if (Objects.nonNull(topP))
-            this.topPInput.setValue(topP);
         this.topPInput.setI18n(new NumberField.NumberFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Value must be at least 0")
                 .setMaxErrorMessage("Value cannot exceed 1"));
+
         RangeInput topPSlider = new RangeInput();
         topPSlider.setMin(0);
         topPSlider.setMax(1);
-        if (Objects.nonNull(topP))
+        topPSlider.setStep(0.1);
+
+        Double topP = chatOption.getTopP();
+        if (topP != null) {
+            this.topPInput.setValue(topP);
             topPSlider.setValue(topP);
+        } else {
+            this.topPInput.setValue(1.0);
+            topPSlider.setValue(1.0);
+        }
+
         topPSlider.setWidthFull();
-        topPSlider.addValueChangeListener(e -> this.topPInput.setValue(e.getValue()));
-        this.topPInput.addValueChangeListener(e -> topPSlider.setValue(e.getValue()));
+        final boolean[] isUpdatingTopP = {false};
+        topPSlider.addValueChangeListener(e -> {
+            if (!isUpdatingTopP[0]) {
+                isUpdatingTopP[0] = true;
+                this.topPInput.setValue(e.getValue());
+                isUpdatingTopP[0] = false;
+            }
+        });
+        this.topPInput.addValueChangeListener(e -> {
+            if (!isUpdatingTopP[0] && e.getValue() != null) {
+                isUpdatingTopP[0] = true;
+                topPSlider.setValue(e.getValue());
+                isUpdatingTopP[0] = false;
+            }
+        });
         add(topPInput, topPSlider);
 
         this.topKInput = new IntegerField("Top K");
-        Integer topK = chatOption.getTopK();
         this.topKInput.setMin(1);
-        this.topKInput.setMax(100); // Assuming the range is 0 to 100
-        if (Objects.nonNull(topK))
-            this.topKInput.setValue(topK);
+        this.topKInput.setMax(100);
         this.topKInput.setI18n(new IntegerField.IntegerFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Value must be at least 1")
                 .setMaxErrorMessage("Value cannot exceed 100"));
+
         RangeInput topKSlider = new RangeInput();
         topKSlider.setStep(1.0);
-        topKSlider.setMin(0);
+        topKSlider.setMin(1);
         topKSlider.setMax(100);
-        if (Objects.nonNull(topK))
+
+        Integer topK = chatOption.getTopK();
+        if (topK != null) {
+            this.topKInput.setValue(topK);
             topKSlider.setValue(topK.doubleValue());
+        } else {
+            this.topKInput.setValue(50);
+            topKSlider.setValue(50.0);
+        }
+
         topKSlider.setWidthFull();
-        topKSlider.addValueChangeListener(e -> this.topKInput.setValue(e.getValue().intValue()));
-        this.topKInput.addValueChangeListener(e -> topKSlider.setValue(e.getValue().doubleValue()));
+        final boolean[] isUpdatingTopK = {false};
+        topKSlider.addValueChangeListener(e -> {
+            if (!isUpdatingTopK[0]) {
+                isUpdatingTopK[0] = true;
+                this.topKInput.setValue(e.getValue().intValue());
+                isUpdatingTopK[0] = false;
+            }
+        });
+        this.topKInput.addValueChangeListener(e -> {
+            if (!isUpdatingTopK[0] && e.getValue() != null) {
+                isUpdatingTopK[0] = true;
+                topKSlider.setValue(e.getValue().doubleValue());
+                isUpdatingTopK[0] = false;
+            }
+        });
         add(topKInput, topKSlider);
 
         this.frequencyPenaltyInput = new NumberField("Frequency Penalty");
-        Double frequencyPenalty = chatOption.getFrequencyPenalty();
         this.frequencyPenaltyInput.setMin(-2);
         this.frequencyPenaltyInput.setMax(2);
-        if (Objects.nonNull(frequencyPenalty))
-            this.frequencyPenaltyInput.setValue(frequencyPenalty);
         this.frequencyPenaltyInput.setI18n(new NumberField.NumberFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Value must be at least -2")
                 .setMaxErrorMessage("Value cannot exceed 2"));
+
         RangeInput frequencyPenaltySlider = new RangeInput();
         frequencyPenaltySlider.setStep(0.1);
         frequencyPenaltySlider.setMin(-2);
         frequencyPenaltySlider.setMax(2);
-        if (Objects.nonNull(frequencyPenalty))
+
+        Double frequencyPenalty = chatOption.getFrequencyPenalty();
+        if (frequencyPenalty != null) {
+            this.frequencyPenaltyInput.setValue(frequencyPenalty);
             frequencyPenaltySlider.setValue(frequencyPenalty);
+        } else {
+            this.frequencyPenaltyInput.setValue(0.0);
+            frequencyPenaltySlider.setValue(0.0);
+        }
+
         frequencyPenaltySlider.setWidthFull();
-        frequencyPenaltySlider.addValueChangeListener(e -> this.frequencyPenaltyInput.setValue(e.getValue()));
-        this.frequencyPenaltyInput.addValueChangeListener(e -> frequencyPenaltySlider.setValue(e.getValue()));
+        final boolean[] isUpdatingFreq = {false};
+        frequencyPenaltySlider.addValueChangeListener(e -> {
+            if (!isUpdatingFreq[0]) {
+                isUpdatingFreq[0] = true;
+                this.frequencyPenaltyInput.setValue(e.getValue());
+                isUpdatingFreq[0] = false;
+            }
+        });
+        this.frequencyPenaltyInput.addValueChangeListener(e -> {
+            if (!isUpdatingFreq[0] && e.getValue() != null) {
+                isUpdatingFreq[0] = true;
+                frequencyPenaltySlider.setValue(e.getValue());
+                isUpdatingFreq[0] = false;
+            }
+        });
         add(frequencyPenaltyInput, frequencyPenaltySlider);
 
         this.presencePenaltyInput = new NumberField("Presence Penalty");
-        Double presencePenalty = chatOption.getPresencePenalty();
         this.presencePenaltyInput.setMin(-2);
         this.presencePenaltyInput.setMax(2);
-        if (Objects.nonNull(presencePenalty))
-            this.presencePenaltyInput.setValue(presencePenalty);
         this.presencePenaltyInput.setI18n(new NumberField.NumberFieldI18n()
                 .setBadInputErrorMessage("Invalid number format")
                 .setMinErrorMessage("Value must be at least -2")
                 .setMaxErrorMessage("Value cannot exceed 2"));
+
         RangeInput presencePenaltySlider = new RangeInput();
         presencePenaltySlider.setStep(0.1);
         presencePenaltySlider.setMin(-2);
         presencePenaltySlider.setMax(2);
-        if (Objects.nonNull(presencePenalty))
-            presencePenaltySlider.setValue(presencePenalty);
-        presencePenaltySlider.setWidthFull();
-        presencePenaltySlider.addValueChangeListener(e -> this.presencePenaltyInput.setValue(e.getValue()));
-        this.presencePenaltyInput.addValueChangeListener(e -> presencePenaltySlider.setValue(e.getValue()));
-        add(presencePenaltyInput, presencePenaltySlider);
 
+        Double presencePenalty = chatOption.getPresencePenalty();
+        if (presencePenalty != null) {
+            this.presencePenaltyInput.setValue(presencePenalty);
+            presencePenaltySlider.setValue(presencePenalty);
+        } else {
+            this.presencePenaltyInput.setValue(0.0);
+            presencePenaltySlider.setValue(0.0);
+        }
+
+        presencePenaltySlider.setWidthFull();
+        final boolean[] isUpdatingPres = {false};
+        presencePenaltySlider.addValueChangeListener(e -> {
+            if (!isUpdatingPres[0]) {
+                isUpdatingPres[0] = true;
+                this.presencePenaltyInput.setValue(e.getValue());
+                isUpdatingPres[0] = false;
+            }
+        });
+        this.presencePenaltyInput.addValueChangeListener(e -> {
+            if (!isUpdatingPres[0] && e.getValue() != null) {
+                isUpdatingPres[0] = true;
+                presencePenaltySlider.setValue(e.getValue());
+                isUpdatingPres[0] = false;
+            }
+        });
+        add(presencePenaltyInput, presencePenaltySlider);
     }
 
     public String getSystemPromptTextArea() {
@@ -174,9 +274,15 @@ public class ChatModelSettingView extends VerticalLayout {
     }
 
     public ChatOptions getChatOptions() {
-        return ChatOptions.builder().model(modelComboBox.getValue()).maxTokens(maxTokensInput.getValue())
-                .temperature(temperatureInput.getValue()).topP(topPInput.getValue()).topK(topKInput.getValue())
-                .frequencyPenalty(frequencyPenaltyInput.getValue()).presencePenalty(presencePenaltyInput.getValue())
+        return ChatOptions.builder()
+                .model(modelComboBox.getValue())
+                .maxTokens(maxTokensInput.getValue())
+                .temperature(temperatureInput.getValue())
+                .topP(topPInput.getValue())
+                .topK(topKInput.getValue())
+                .frequencyPenalty(frequencyPenaltyInput.getValue())
+                .presencePenalty(presencePenaltyInput.getValue())
                 .build();
     }
 }
+
