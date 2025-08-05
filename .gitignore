@@ -43,3 +43,4 @@ vite.generated.ts
 !/src/main/frontend/playground
 /node_modules/
 /src/main/bundles/
+/log

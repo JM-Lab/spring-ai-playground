@@ -64,9 +64,11 @@ class ChatServiceTest {
                 Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage(prompt))))));
 
         assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", null, null).toStream().collect(Collectors.joining()));
+                chatService.stream(chatHistory, "Test Chat", null, null, null, null).toStream()
+                        .collect(Collectors.joining()));
         assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", FILTER_EXPRESSION + " in ['a', 'b']", null).toStream()
+                chatService.stream(chatHistory, "Test Chat", FILTER_EXPRESSION + " in ['a', 'b']", null, null, null)
+                        .toStream()
                         .collect(Collectors.joining()));
     }
 
@@ -80,7 +82,7 @@ class ChatServiceTest {
         when(chatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage(prompt)))));
 
-        assertEquals(prompt, chatService.call(chatHistory, prompt, null));
+        assertEquals(prompt, chatService.call(chatHistory, prompt, null, null, null));
     }
 
     @Test
@@ -117,7 +119,8 @@ class ChatServiceTest {
                 new SpringAiPlaygroundOptions(new SpringAiPlaygroundOptions.Chat("systemPrompt", List.of(
                         "MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
         ChatMemory chatMemory = mock(ChatMemory.class);
-        ChatService service = new ChatService(chatModel, chatClient, playgroundOptions, vectorStoreDocumentService);
+        ChatService service = new ChatService(chatModel, chatClient, playgroundOptions, vectorStoreDocumentService,
+                null);
         assertEquals("MockLlmProvider", service.getChatModelProvider());
     }
 

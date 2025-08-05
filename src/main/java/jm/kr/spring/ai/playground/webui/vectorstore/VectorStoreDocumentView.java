@@ -168,7 +168,7 @@ public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnt
 
         Button deleteButton = new Button("Delete", e -> {
             for (VectorStoreDocumentInfo documentInfo : selectedItems)
-                this.vectorStoreDocumentService.deleteDocumentInfo(documentInfo.docInfoId());
+                this.vectorStoreDocumentService.deleteDocumentInfo(documentInfo);
             this.updateDocumentContent();
             this.documentInfoChangeSupport.firePropertyChange(DOCUMENTS_DELETE_EVENT, null, selectedItems);
             dialog.close();

@@ -1,0 +1,12 @@
+.wrap-grid::part(body-cell),
+.wrap-grid::part(header-cell) {
+    white-space: normal;      /* Wrap */
+    overflow : visible;
+    text-overflow: initial;
+    word-break: break-word;
+    line-height: 1.35em;
+}
+
+.wrap-grid::part(row) {
+    height: auto;
+}

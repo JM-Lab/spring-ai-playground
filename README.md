@@ -1,14 +1,8 @@
 # Spring AI Playground
 
-![Spring AI Playground Demo](spring-ai-playground.gif)
+**Spring AI Playground** is a self-hosted web UI that simplifies AI experimentation and testing. It provides Java developers with an intuitive interface for working with **large language models (LLMs)**, **vector databases**, **prompt engineering**, and **Model Context Protocol (MCP)** integrations.
 
-**Spring AI Playground** is a self-hosted web UI designed to simplify AI experimentation, integration, and testing. 
-It provides Java developers with an intuitive interface to experiment with large language models (LLMs), vector 
-databases, and prompt engineering.
-
-Inspired by popular LLM playgrounds, Spring AI Playground leverages the power of **Spring AI** to support leading AI model providers.
-It also includes tools for testing retrieval-augmented generation (RAG) workflows and other advanced AI capabilities.
-The goal is to make AI more accessible to Java developers, helping them quickly prototype and build **Spring AI-based applications**.
+Built on **Spring AI**, it supports leading model providers and includes comprehensive tools for testing **retrieval-augmented generation (RAG)** workflows and MCP integrations. The goal is to make AI more accessible to developers, helping them quickly prototype **Spring AI-based applications** with enhanced contextual awareness and external tool capabilities.
 
 ## Quick Start
 
@@ -21,7 +15,7 @@ Open http://localhost:8080 in your browser.
 
 ## Auto-configurations
 
-Spring AI Playground is configured to use **Ollama** by default for local LLM and embedding models. No API keys are 
+Spring AI Playground uses Ollama by default for local LLM and embedding models. No API keys are 
 required, which makes it easy to get started.
 
 ## AI Models
@@ -36,7 +30,7 @@ Switching to **OpenAI** is a primary example of how you can use a different AI m
 
 To switch to OpenAI, follow these steps:
 
-1. **Modify the [`pom.xml`](./pom.xml) file**:
+- **Modify the [`pom.xml`](./pom.xml) file**:
    
    - Remove the Ollama dependency:
      ```xml
@@ -54,7 +48,7 @@ To switch to OpenAI, follow these steps:
      </dependency>
      ```
 
-2. **Update [`application.yaml`](./src/main/resources/application.yaml)**:  
+- **Update [`application.yaml`](./src/main/resources/application.yaml)**:  
 
    - Update the following configuration to set OpenAI as the default profile:
      ```yaml 
@@ -65,6 +59,87 @@ To switch to OpenAI, follow these steps:
          openai:
            api-key: your-openai-api-key
      ```
+
+## MCP (Model Context Protocol) Playground
+
+![Spring AI MCP Playground Demo](spring-ai-playground-mcp.png)
+
+Spring AI Playground now includes a comprehensive **MCP (Model Context Protocol) Playground** that provides a visual 
+interface for managing connections to external tools through AI models. This feature leverages Spring AI's Model Context Protocol implementation to offer client-side capabilities.
+
+### Key Features
+
+- **Connection Management**: Configure and manage MCP connections with multiple transport types including STREAMABLE HTTP, STDIO, and SSE (Server-Sent Events).
+- **Server Configuration**: Configure connections to MCP servers with customizable names, descriptions, and connection parameters.
+- **MCP Inspector**: Explore available tools and their capabilities with detailed information including:
+    - Tool names and descriptions
+    - Required arguments and parameters
+    - Action definitions and specifications
+- **Interactive Tool Testing**: Execute MCP tools directly from the playground with real-time results and execution history.
+
+> **STREAMABLE HTTP** officially introduced in the MCP v2025‑03‑26 specification (March 26, 2025) — is a 
+> single-endpoint HTTP transport that replaces the former HTTP+SSE setup. Clients send JSON‑RPC via POST to /mcp, while responses may optionally use an SSE-style stream, with session‑ID tracking and resumable connections.
+
+### Getting Started with MCP
+
+1. **Configure MCP Server Connection**:
+    - Access the MCP Playground from the main interface
+    - Set up your MCP server connection with the appropriate transport type and connection details
+
+2. **Explore Available Tools**:
+    - Use the MCP Inspector to browse available tools and their specifications
+    - Review tool descriptions, required arguments, and expected parameters
+    - Understand the capabilities of your MCP server connection setup
+
+3. **Test Tool Execution**:
+    - Select tools from the inspector and execute them with appropriate arguments
+    - Monitor execution results and review the execution history
+    - Debug and refine your MCP integration based on real-time feedback
+
+This MCP Playground provides developers with a powerful visual tool for prototyping, testing, and debugging Model Context Protocol integrations, making it easier to build sophisticated AI applications with contextual awareness.
+
+## Chat Using MCP
+
+![Spring AI Chat Using MCP Demo](spring-ai-playground-chat-mcp.gif)
+
+Spring AI Playground now provides seamless integration with MCP (Model Context Protocol) tools directly within the chat interface, enabling you to enhance AI conversations with external tools. Here's how you can leverage this powerful feature:
+
+1. **Set Up Your MCP Connections**:
+- First, configure your MCP servers through the MCP Playground interface.
+- Define your MCP connections with appropriate transport types (STREAMABLE HTTP, STDIO, or SSE).
+- Set up server configurations including names, descriptions, and connection parameters.
+- Test your tools in the MCP Inspector to ensure they're working correctly.
+
+2. **Select MCP Connections in the Chat Page**:
+- Choose one or more MCP connections from the dropdown menu to enable tool access for your conversations.
+- Only the selected MCP connections are available for the AI to use during the chat session. If no connections are selected, MCP tools will not be accessible.
+
+3. **Send a Message**:
+- Enter your prompts in the chat input, and request actions that require external tools or capabilities.
+- The AI model will automatically determine when to use available MCP tools based on your conversation context and requirements.
+- Tools will be executed automatically, and their results will be integrated into the AI's responses.
+
+4. **Review and Refine**:
+- Examine the generated responses, which now incorporate information and actions from your MCP tools.
+- Adjust your MCP connection selection or refine your tool configurations to further improve the functionality and relevance of the responses.
+- Monitor tool execution and results to optimize your MCP integration.
+
+### Ollama Tool-Enabled Models
+
+> **⚠️ Important for Ollama Users**  
+> When using Ollama as your AI provider, ensure you're using a **tool-enabled model** that supports external function calling. Not all Ollama models support MCP tool integration.
+
+#### How to Verify Tool Support
+
+1. **Check Model Compatibility**: Visit the [Ollama Models page](https://ollama.com/search?c=tools) and filter by "Tools" category
+2. **Pull the Model**: Ensure you have the latest version using `ollama pull <model-name>`
+3. **Test in MCP Playground**: Use the MCP Inspector to verify tool functionality before chat integration
+
+> **Tip**  
+> Models like **Qwen 3** and **DeepSeek-R1** offer advanced reasoning capabilities with visible thought processes, making them particularly effective for complex MCP tool workflows.
+
+This integration enables developers to quickly prototype and test tool-enhanced AI interactions, bringing the power of external systems and capabilities directly into your Spring AI conversations through the Model Context Protocol.
+
 ## Vector Database
 
 ![Spring AI Vector Database Playground Demo](spring-ai-playground-vectordb.gif)
@@ -81,7 +156,7 @@ To switch to OpenAI, follow these steps:
 
 - **Custom Chunk Input**: Directly input and chunk custom text for embedding, allowing detailed RAG pipeline testing.
 - **Document Uploads**: Upload files such as **PDFs, Word documents, and PowerPoint presentations**, and benefit from an end-to-end process of **text extraction → chunking → embedding**.
-- **Search and Scoring**: Perform vector similarity searches and visualize results with **accuracy scores (0-1)** for easy evaluation.
+- **Search and Scoring**: Perform vector similarity searches and visualize results with **similarity scores (0-1)** for easy evaluation.
 - **Spring AI Filter Expressions**: Utilize metadata-based filtering (e.g., `author == 'John' && year >= 2023`) to narrow search scopes and refine query results.
 
 These features, combined with Spring AI's flexibility, provide a comprehensive playground for vector database testing and advanced integration into your applications.
@@ -104,7 +179,7 @@ Spring AI Playground now offers a fully integrated RAG (Retrieval-Augmented Gene
     - Enter your prompts in the chat input
     - The system retrieves the most relevant content from your selected documents and uses it to generate a contextual, knowledge-grounded response.
 
-5. **Review and Refine**:
+4. **Review and Refine**:
     - Examine the generated responses, which now incorporate information from your vector database
     - Adjust your document selection or refine your queries to further improve the quality and relevance of the responses
 
@@ -113,9 +188,6 @@ This seamless integration enables developers to quickly prototype and optimize k
 ## Upcoming Features
 
 Here are some features we are planning to develop for future releases of Spring AI Playground:
-
-- **MCP (Model Context Protocol)**:  
-  A user interface implementing Spring AI's Model Context Protocol for both client and server sides. This feature will provide a visual way to manage context between AI models and applications, allowing developers to configure, monitor, and debug model context flows with an intuitive interface.
 
 - **Observability**:  
   Introducing tools to track and monitor AI performance, usage, and errors for better management and debugging.

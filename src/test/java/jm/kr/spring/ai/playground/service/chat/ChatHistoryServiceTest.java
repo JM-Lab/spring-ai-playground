@@ -122,7 +122,7 @@ public class ChatHistoryServiceTest {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("To Delete", chatOptions);
         String conversationId = chatHistory.conversationId();
 
-        chatHistoryService.deleteChatHistory(conversationId);
+        chatHistoryService.deleteChatHistory(chatHistory);
         List<ChatHistory> historyList = chatHistoryService.getChatHistoryList();
 
         assertFalse(historyList.stream().anyMatch(h -> h.conversationId().equals(conversationId)));
@@ -141,7 +141,7 @@ public class ChatHistoryServiceTest {
 
         chatHistoryService.updateChatHistory(chatHistory.mutate("", System.currentTimeMillis()));
 
-        chatHistoryService.deleteChatHistory(conversationId);
+        chatHistoryService.deleteChatHistory(chatHistory);
         chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_EMPTY_EVENT, null, conversationId);
 
         chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_SELECT_EVENT, null, conversationId);

@@ -38,7 +38,6 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
@@ -47,6 +46,7 @@ import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService;
 import jm.kr.spring.ai.playground.webui.PersistentUiDataStorage;
 import jm.kr.spring.ai.playground.webui.SpringAiPlaygroundAppLayout;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingOptions;
 
@@ -67,7 +67,6 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @SpringComponent
 @UIScope
 @CssImport("./playground/vectorstore-styles.css")
-@RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
 @Route(value = "vector", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
@@ -84,20 +83,6 @@ public class VectorStoreView extends Div {
 
     public VectorStoreView(PersistentUiDataStorage persistentUiDataStorage, VectorStoreService vectorStoreService,
             VectorStoreDocumentService vectorStoreDocumentService) {
-        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
-        documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
-            if (Objects.isNull(changeEvent.getNewValue()))
-                return;
-            Collection<VectorStoreDocumentInfo> newDocumentInfos =
-                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
-            if (newDocumentInfos.isEmpty())
-                return;
-            switch (changeEvent.getPropertyName()) {
-                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
-                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
-                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
-            }
-        });
 
         setSizeFull();
 
@@ -111,7 +96,7 @@ public class VectorStoreView extends Div {
         this.vectorStoreDocumentService = vectorStoreDocumentService;
 
         this.vectorStoreDocumentView =
-                new VectorStoreDocumentView(vectorStoreDocumentService, documentInfoChangeSupport);
+                new VectorStoreDocumentView(vectorStoreDocumentService, buildPropertyChangeSupport());
         this.splitLayout.addToPrimary(this.vectorStoreDocumentView);
         this.vectorStoreContentView = new VectorStoreContentView(persistentUiDataStorage, vectorStoreService);
         this.vectorStoreContentView.setSpacing(false);
@@ -129,6 +114,24 @@ public class VectorStoreView extends Div {
 
         this.splitLayout.addToSecondary(vectorStoreContentLayout);
         this.sidebarCollapsed = false;
+    }
+
+    private @NotNull PropertyChangeSupport buildPropertyChangeSupport() {
+        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
+        documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
+            if (Objects.isNull(changeEvent.getNewValue()))
+                return;
+            Collection<VectorStoreDocumentInfo> newDocumentInfos =
+                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
+            if (newDocumentInfos.isEmpty())
+                return;
+            switch (changeEvent.getPropertyName()) {
+                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
+                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
+                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
+            }
+        });
+        return documentInfoChangeSupport;
     }
 
     private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
@@ -236,20 +239,7 @@ public class VectorStoreView extends Div {
             });
         });
 
-        EmbeddingOptions embeddingOptions = this.vectorStoreService.getEmbeddingOptions();
-        H4 embeddingModelServiceText = new H4(Objects.nonNull(embeddingOptions.getDimensions())
-                ? String.format("%s - %s - %d", this.vectorStoreService.getEmbeddingModelServiceName(),
-                embeddingOptions.getModel(), embeddingOptions.getDimensions())
-                : String.format("%s - %s", this.vectorStoreService.getEmbeddingModelServiceName(),
-                embeddingOptions.getModel()));
-
-
-        embeddingModelServiceText.getStyle().set("white-space", "nowrap");
-        Div embeddingModelServiceTextDiv = new Div(embeddingModelServiceText);
-        embeddingModelServiceTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
-                .set("align-items", "center").set("height", "100%");
-
-        HorizontalLayout vectorStoreLabelLayout = new HorizontalLayout(embeddingModelServiceTextDiv);
+        HorizontalLayout vectorStoreLabelLayout = new HorizontalLayout(buildEmbeddingModelServiceTextDiv());
         vectorStoreLabelLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         vectorStoreLabelLayout.setWidthFull();
         horizontalLayout.add(vectorStoreLabelLayout);
@@ -276,6 +266,24 @@ public class VectorStoreView extends Div {
 
         horizontalLayout.add(searchSettingMenuBar);
         return horizontalLayout;
+    }
+
+    private @NotNull Div buildEmbeddingModelServiceTextDiv() {
+        H4 embeddingModelServiceText = buildEmbeddingModelServiceText();
+        embeddingModelServiceText.getStyle().set("white-space", "nowrap");
+        Div embeddingModelServiceTextDiv = new Div(embeddingModelServiceText);
+        embeddingModelServiceTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
+                .set("align-items", "center").set("height", "100%");
+        return embeddingModelServiceTextDiv;
+    }
+
+    private @NotNull H4 buildEmbeddingModelServiceText() {
+        EmbeddingOptions embeddingOptions = this.vectorStoreService.getEmbeddingOptions();
+        return new H4(Objects.nonNull(embeddingOptions.getDimensions())
+                ? String.format("%s - %s - %d", this.vectorStoreService.getEmbeddingModelServiceName(),
+                embeddingOptions.getModel(), embeddingOptions.getDimensions())
+                : String.format("%s - %s", this.vectorStoreService.getEmbeddingModelServiceName(),
+                embeddingOptions.getModel()));
     }
 
 }

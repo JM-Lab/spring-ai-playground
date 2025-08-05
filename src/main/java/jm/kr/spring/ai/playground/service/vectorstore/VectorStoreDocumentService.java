@@ -16,6 +16,7 @@
 package jm.kr.spring.ai.playground.service.vectorstore;
 
 import com.vaadin.flow.component.notification.Notification;
+import jm.kr.spring.ai.playground.service.SharedDataReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -46,9 +47,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
-public class VectorStoreDocumentService {
+public class VectorStoreDocumentService implements SharedDataReader<List<VectorStoreDocumentInfo>> {
 
     private static final Logger logger = LoggerFactory.getLogger(VectorStoreDocumentService.class);
+
+    @Override
+    public List<VectorStoreDocumentInfo> read() {
+        return getDocumentList();
+    }
 
     public record TokenTextSplitInfo(int chunkSize, int minChunkSizeChars, int minChunkLengthToEmbed,
                                      int maxNumChunks, boolean keepSeparator) {}
@@ -152,8 +158,8 @@ public class VectorStoreDocumentService {
         return updateVectorStoreDocumentInfo;
     }
 
-    public void deleteDocumentInfo(String docId) {
-        this.documentInfos.remove(docId);
+    public void deleteDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
+        this.documentInfos.remove(vectorStoreDocumentInfo.docInfoId());
     }
 
     public List<VectorStoreDocumentInfo> getDocumentList() {

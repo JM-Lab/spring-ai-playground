@@ -21,40 +21,73 @@ import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import jm.kr.spring.ai.playground.webui.chat.ChatView;
+import jm.kr.spring.ai.playground.webui.mcp.McpView;
 import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @PageTitle("Spring AI Playground")
-public class SpringAiPlaygroundAppLayout extends AppLayout {
+public class SpringAiPlaygroundAppLayout extends AppLayout
+        implements BeforeEnterObserver {
 
-    private final Map<String, Class<? extends Component>> tabContents;
+    private final Tabs tabs;
+    private final Map<Tab, Class<? extends Component>> tabToView = new LinkedHashMap<>();
+    private final Map<Class<? extends Component>, Tab> viewToTab = new HashMap<>();
 
     public SpringAiPlaygroundAppLayout() {
         HorizontalLayout titleLayout = new HorizontalLayout();
         titleLayout.setPadding(true);
         titleLayout.setSpacing(true);
         titleLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        Image springImg = new Image("https://spring.io/img/projects/spring.svg", "Spring AI Playground");
+        Image springImg = new Image("https://spring.io/img/projects/spring-ai.svg", "Spring AI Playground");
         springImg.getStyle().set("width", "var(--lumo-icon-size-m)").set("height", "var(--lumo-icon-size-m)");
         Div springImgDiv = new Div(springImg);
         springImgDiv.getStyle().set("display", "flex").set("justify-content", "center").set("align-items", "center");
-        titleLayout.add(springImgDiv, new H3("Spring AI Playground"));
-        Tabs tabs = new Tabs();
-        addToNavbar(titleLayout, tabs);
+        H3 title = new H3("Spring AI Playground");
+        title.getStyle().set("margin", "0").set("white-space", "nowrap");
+        titleLayout.add(springImgDiv, title);
+        addToNavbar(titleLayout);
 
-        this.tabContents = Map.of("Vector Database", VectorStoreView.class, "Chat", ChatView.class);
-        tabs.add(new Tab("Vector Database"));
-        tabs.add(new Tab("Chat"));
-        tabs.addSelectedChangeListener(
-                event -> UI.getCurrent().navigate(tabContents.get(event.getSelectedTab().getLabel())));
+        this.tabs = new Tabs();
+        createTab("MCP", VaadinIcon.TOOLBOX, McpView.class);
+        createTab("Vector Database", VaadinIcon.SEARCH_PLUS, VectorStoreView.class);
+        createTab("Chat", VaadinIcon.CHAT, ChatView.class);
+        this.tabs.setWidthFull();
+        addToNavbar(tabs);
 
+        this.tabs.addSelectedChangeListener(event -> {
+            Class<? extends Component> targetView = this.tabToView.get(event.getSelectedTab());
+            if (targetView != null) {
+                UI.getCurrent().navigate(targetView);
+            }
+        });
     }
 
+    private void createTab(String label, VaadinIcon icon, Class<? extends Component> viewClass) {
+        Tab tab = new Tab(icon.create(), new Span(label));
+        this.tabs.add(tab);
+        this.tabToView.put(tab, viewClass);
+        this.viewToTab.put(viewClass, tab);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        Class<?> navigationTarget = event.getNavigationTarget();
+        Tab tab = this.viewToTab.get(navigationTarget);
+        if (tab != null) {
+            this.tabs.setSelectedTab(tab);
+        }
+    }
 }

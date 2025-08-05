@@ -2,6 +2,7 @@ logging:
   level:
     org.springframework.ai.chat.client.advisor.*: DEBUG
     jm.kr.spring.ai.playground.service.*: DEBUG
+    org.springframework.ai.mcp: DEBUG
 
 spring:
   threads:
@@ -10,9 +11,10 @@ spring:
   application:
     name: spring-ai-playground-test
   profiles:
-    default: openai
+    default: openai, ollama, mcp
   ai:
     playground:
+      persistence: false
       user-home:
       chat:
         system:
@@ -58,9 +60,11 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
-        enabled: false
+        enabled: true
         options:
-          model: o1-mini
+          model: gpt-4
+          base-url: https://models.github.ai/inference
+          completions-path: /chat/completions
     playground:
       chat:
         systemPrompt: |-
@@ -84,3 +88,30 @@ spring:
           topP: 0.9
           frequencyPenalty: 0.0
           presencePenalty: 0.6
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mcp
+  ai:
+    mcp:
+      client:
+        enabled: true
+        type: SYNC
+        stdio:
+          connections:
+            weather-mcp-server:
+              command: /Users/jm/myenv/bin/python
+              args:
+                - -m
+                - mcp_weather_server
+#            local-mcp-server:
+#              command: /usr/bin/java
+#              args:
+#                - -jar
+#                - /Users/jm/git/spring-ai-fast-campus-course/fast-campus-course-mcp-server/target/fast-campus-course-mcp-server-0.0.1-SNAPSHOT.jar
+#                - --spring.main.banner-mode=off
+#                - --logging.pattern.console=
+#                - --spring.ai.mcp.server.stdio=true
+#                - --spring.main.web-application-type=none
