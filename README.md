@@ -6,12 +6,27 @@ Built on **Spring AI**, it supports leading model providers and includes compreh
 
 ## Quick Start
 
+### Prerequisites
+- Java 21 or later installed (required for building the project).
+- Ollama running on your machine (refer to AI Models).
+- Docker installed and running on your machine. (only if you choose to run the application using Docker)
+
+### Running Locally
 Build and run the app:
 ```
 ./mvnw clean install
 ./mvnw spring-boot:run
 ```
-Open http://localhost:8080 in your browser.
+
+### Running with Docker
+Run the following command to build the Docker image:
+
+```
+./mvnw spring-boot:build-image -Pproduction -DskipTests=true -Dspring-boot.build-image.imageName=jmlab/spring-ai-playgorund:latest 
+docker run -p 8080:8080 -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 jmlab/spring-ai-playgorund:latest        
+```
+> The environment variable **SPRING_AI_OLLAMA_BASE_URL** is set to http://host.docker.internal:11434 to connect to 
+> Ollama running on your host machine. If Ollama is running on a different port or host, adjust the URL accordingly.
 
 ## Auto-configurations
 

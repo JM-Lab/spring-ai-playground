@@ -192,9 +192,9 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <phase>validate</phase>  <!-- 빌드 단계에서 실행 -->
+                        <phase>validate</phase>
                         <goals>
-                            <goal>format</goal>  <!-- 헤더 추가/업데이트 -->
+                            <goal>format</goal>
                         </goals>
                     </execution>
                 </executions>
