@@ -137,6 +137,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.vaadin.addons</groupId>
+            <artifactId>googleanalyticstracker</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>

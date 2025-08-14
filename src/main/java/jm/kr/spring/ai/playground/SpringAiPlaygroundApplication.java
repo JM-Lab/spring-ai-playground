@@ -15,8 +15,10 @@
  */
 package jm.kr.spring.ai.playground;
 
+import com.vaadin.flow.component.dependency.JavaScript;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Push;
+import com.vaadin.flow.server.PWA;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -43,6 +45,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 @Push
+@PWA(name = "Spring AI Playground", shortName = "Playground", offlinePath = "offline.html")
+@JavaScript("./playground/pwa-installer.js")
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class SpringAiPlaygroundApplication implements AppShellConfigurator {

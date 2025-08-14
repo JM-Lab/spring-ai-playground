@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Offline | Spring AI Playground</title>
+    <style>
+        :root {
+            --lumo-font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+            --lumo-base-color: #fff;
+            --lumo-body-text-color: hsl(214, 35%, 15%);
+            --lumo-primary-color: hsl(214, 90%, 52%);
+            --lumo-primary-text-color: #fff;
+            --lumo-secondary-text-color: hsl(214, 20%, 47%);
+            --lumo-shade-5pct: rgba(33, 43, 54, 0.05);
+            --lumo-shade-10pct: rgba(33, 43, 54, 0.1);
+            --lumo-space-m: 1rem;
+            --lumo-space-l: 1.5rem;
+            --lumo-border-radius-m: 0.25em;
+            --lumo-border-radius-l: 0.5em;
+        }
+
+        html {
+            color-scheme: light;
+        }
+
+        body {
+            font-family: var(--lumo-font-family);
+            color: var(--lumo-body-text-color);
+            background-color: var(--lumo-base-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100svh;
+            margin: 0;
+            padding: var(--lumo-space-l);
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .content {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--lumo-space-l);
+        }
+
+        .icon {
+            color: var(--lumo-secondary-text-color);
+            width: 48px;
+            height: 48px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: var(--lumo-space-m) 0 0;
+        }
+
+        p {
+            color: var(--lumo-secondary-text-color);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .cmd-container {
+            position: relative;
+            background-color: var(--lumo-shade-5pct);
+            border-radius: var(--lumo-border-radius-l);
+            padding: var(--lumo-space-m);
+            text-align: left;
+            margin-top: 0.5rem;
+        }
+
+        .cmd-container pre {
+            margin: 0;
+            padding-right: 3rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.4rem;
+            border-radius: var(--lumo-border-radius-m);
+            border: none;
+            background-color: transparent;
+            color: var(--lumo-secondary-text-color);
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--lumo-shade-10pct);
+            color: var(--lumo-body-text-color);
+        }
+
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .copy-btn .copy-text {
+            font-size: 0.875rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: var(--lumo-space-m);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.7rem 1.2rem;
+            border-radius: var(--lumo-border-radius-l);
+            text-decoration: none;
+            border: 1px solid transparent;
+            background-color: var(--lumo-primary-color);
+            color: var(--lumo-primary-text-color);
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: hsl(214, 90%, 48%);
+        }
+
+        .link {
+            color: var(--lumo-primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.7rem 1.2rem;
+            border-radius: var(--lumo-border-radius-l);
+        }
+
+        .link:hover {
+            text-decoration: underline;
+            background-color: var(--lumo-shade-5pct);
+        }
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-1.48 0-2.85.43-4.01 1.17l-1.46-1.46C7.93 2.71 9.89 2 12 2c4.42 0 8 3.58 8 8 0 .28-.02.56-.05.83l1.83 1.83C21.98 12.49 22 12.25 22 12c0-2.76-2.24-5-5-5-.41 0-.81.05-1.2.14zM2.41 1.58L1.14 2.86l3.54 3.54C4.68 6.72 4.34 7.15 4 7.62 2.38 8.36 1.25 10.06 1.25 12c0 2.76 2.24 5 5 5h9.75l2 2H6.25c-3.45 0-6.25-2.8-6.25-6.25 0-2.31 1.27-4.32 3.11-5.41L1.14 2.86zM6.25 15c-1.66 0-3-1.34-3-3s1.34-3 3-3l.75 0 7.5 7.5H6.25z"/>
+        </svg>
+    </div>
+
+    <div class="header">
+        <h1>You are offline</h1>
+        <p>Please check your internet connection or ensure the server is running.</p>
+    </div>
+
+    <div class="docker-info">
+        <h3>Running with Docker</h3>
+        <p>You can run the application using the following command:</p>
+        <div class="cmd-container">
+            <pre id="dockerCommand">docker run -p 8282:8282 -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 jmlab/spring-ai-playground:latest</pre>
+            <button class="copy-btn" id="copyBtn" title="Copy to clipboard">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+                <span class="copy-text">Copy</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a class="link" href="https://github.com/JM-Lab/spring-ai-playground" target="_blank" rel="noopener">Project Repository</a>
+        <button class="btn" id="retryBtn" type="button">Retry Connection</button>
+    </div>
+</div>
+
+<script>
+    function goHomeIfOnline() {
+        if (navigator.onLine) {
+            window.location.replace("/");
+        }
+    }
+
+    window.addEventListener("online", goHomeIfOnline);
+    goHomeIfOnline();
+
+    document.getElementById("retryBtn")?.addEventListener("click", () => {
+        fetch("/", {method: "HEAD", cache: "no-store"})
+            .then(response => {
+                if (response.ok) {
+                    window.location.replace("/");
+                } else {
+                    alert("Still cannot connect to the server. Please check your network or server status.");
+                }
+            })
+            .catch(() => {
+                alert("Still cannot connect to the server. Please check your network or server status.");
+            });
+    });
+
+    const copyButton = document.getElementById('copyBtn');
+    const dockerCommand = document.getElementById('dockerCommand');
+
+    if (copyButton && dockerCommand) {
+        const originalButtonContent = copyButton.innerHTML;
+
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(dockerCommand.innerText)
+                .then(() => {
+                    copyButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                        </svg>
+                        <span class="copy-text">Copied!</span>
+                    `;
+                    setTimeout(() => {
+                        copyButton.innerHTML = originalButtonContent;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy command.');
+                });
+        });
+    }
+</script>
+</body>
+</html>

@@ -33,6 +33,7 @@ import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.popover.PopoverVariant;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
@@ -56,6 +57,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @SpringComponent
 @UIScope
 @CssImport("./playground/chat-styles.css")
+@PageTitle("Chat | Spring AI Playground")
 @Route(value = "chat", layout = SpringAiPlaygroundAppLayout.class)
 public class ChatView extends Div {
 
