@@ -5,6 +5,12 @@
 Built on **Spring AI**, it supports leading model providers and includes comprehensive tools for testing **retrieval-augmented generation (RAG)** workflows and MCP integrations. The goal is to make AI more accessible to developers, helping them quickly prototype **Spring AI-based applications** with enhanced contextual awareness and external tool capabilities.
 
 ## Quick Start
+### Getting Started
+First, clone the Spring AI Playground project from GitHub:
+```
+git clone https://github.com/JM-Lab/spring-ai-playground.git
+cd spring-ai-playground
+```
 
 ### Prerequisites
 - Java 21 or later installed (required for building the project).
