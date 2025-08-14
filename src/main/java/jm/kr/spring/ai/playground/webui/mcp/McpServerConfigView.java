@@ -247,8 +247,7 @@ public class McpServerConfigView extends VerticalLayout {
         buildMcpServerInfoFromForm(
                 uiMcpServerInfo -> {
                     if (this.mcpServerInfoService.getMcpServerInfos().get(uiMcpServerInfo.mcpTransportType()).stream()
-                            .map(McpServerInfo::serverName).filter(uiMcpServerInfo.serverName()::equals).findAny()
-                            .isPresent()) {
+                            .map(McpServerInfo::serverName).anyMatch(uiMcpServerInfo.serverName()::equals)) {
                         VaadinUtils.showErrorNotification("Failed to save : MCP connection already exists with name " +
                                 uiMcpServerInfo.serverName());
                         return;

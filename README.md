@@ -11,22 +11,38 @@ Built on **Spring AI**, it supports leading model providers and includes compreh
 - Ollama running on your machine (refer to AI Models).
 - Docker installed and running on your machine. (only if you choose to run the application using Docker)
 
-### Running Locally
-Build and run the app:
-```
-./mvnw clean install
-./mvnw spring-boot:run
-```
-
-### Running with Docker
+### Running with Docker (Recommended)
 Run the following command to build the Docker image:
 
 ```
-./mvnw spring-boot:build-image -Pproduction -DskipTests=true -Dspring-boot.build-image.imageName=jmlab/spring-ai-playgorund:latest 
-docker run -p 8080:8080 -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 jmlab/spring-ai-playgorund:latest        
+./mvnw spring-boot:build-image -Pproduction -DskipTests=true -Dspring-boot.build-image.imageName=jmlab/spring-ai-playground:latest 
+docker run -p 8282:8282 -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 jmlab/spring-ai-playground:latest        
 ```
+Then, open http://localhost:8282 in your browser to access the application.
+
 > The environment variable **SPRING_AI_OLLAMA_BASE_URL** is set to http://host.docker.internal:11434 to connect to 
 > Ollama running on your host machine. If Ollama is running on a different port or host, adjust the URL accordingly.
+
+### Running Locally (Optional)
+Build and run the app:
+```
+./mvnw clean install -Pproduction -DskipTests=true
+./mvnw spring-boot:run
+```
+
+### PWA Installation
+
+> **Note**: Complete either the Docker or Local installation steps above before proceeding with PWA installation.
+
+**Spring AI Playground** comes with Progressive Web App (PWA) capabilities, allowing you to install it as a standalone application on your device for a native app-like experience.
+
+#### Installing as PWA
+
+1. Open the application in your web browser at `http://localhost:8282`
+2. Install using one of the following methods:
+    - Browser PWA Install Popup: Most modern browsers will automatically show a PWA installation popup or prompt in the address bar
+    - Install PWA Button: Look for the "Install PWA" button on the application's home page and click it
+3. Follow the installation wizard to complete the setup and add the app to your device
 
 ## Auto-configurations
 
@@ -38,6 +54,15 @@ To enable Ollama, ensure it is installed and running on your system. Refer to th
 
 ### Support for All Major AI Model Providers
 Spring AI Playground supports all major AI model providers, including Anthropic, OpenAI, Microsoft, Amazon, Google, and Ollama. For more details on the available implementations, visit the [Spring AI Chat Models Reference Documentation](https://docs.spring.io/spring-ai/reference/api/chatmodel.html#_available_implementations).
+
+### Selecting and Configuring Ollama Models
+When running Spring AI Playground with the **`ollama`** profile, you can configure the default chat and embedding models, as well as the list of available models in the playground UI, by updating your configuration file (`application.yaml`).
+> **Notes:**
+>- `pull-model-strategy: when_missing` ensures that the configured models are automatically pulled from Ollama if they are not already available locally.
+>- `playground.chat.models` controls which models appear in the model selection dropdown in the web UI.
+>- Changing the `chat.options.model` or `embedding.options.model` here updates the defaults used by the application.
+
+> **Pre‑pull Recommended Ollama Models** to avoid delays when first using a model, pre-pull it with Ollama before starting Spring AI Playground.
 
 ### Switching to OpenAI
 
@@ -92,7 +117,7 @@ interface for managing connections to external tools through AI models. This fea
     - Action definitions and specifications
 - **Interactive Tool Testing**: Execute MCP tools directly from the playground with real-time results and execution history.
 
-> **STREAMABLE HTTP** officially introduced in the MCP v2025‑03‑26 specification (March 26, 2025) — is a 
+> **Note**: **STREAMABLE HTTP** officially introduced in the MCP v2025‑03‑26 specification (March 26, 2025) — is a 
 > single-endpoint HTTP transport that replaces the former HTTP+SSE setup. Clients send JSON‑RPC via POST to /mcp, while responses may optionally use an SSE-style stream, with session‑ID tracking and resumable connections.
 
 ### Getting Started with MCP
@@ -204,13 +229,32 @@ This seamless integration enables developers to quickly prototype and optimize k
 
 Here are some features we are planning to develop for future releases of Spring AI Playground:
 
-- **Observability**:  
-  Introducing tools to track and monitor AI performance, usage, and errors for better management and debugging.
+### Spring AI Agent
 
-- **Authentication**:  
-  Implementing login and security features to control access to the Spring AI Playground.
+Build production-ready AI Agents by combining Model Context Protocol (MCP) for external tool integration, Retrieval-Augmented Generation (RAG) for knowledge retrieval, and Chat for natural interaction — all inside a single, unified workflow.
 
-- **Multimodal Support**:  
-  Supporting embedding, image, audio, and moderation models from Spring AI
+Inspired by the [Effective Agents patterns from Spring AI](https://docs.spring.io/spring-ai/reference/api/effective-agents.html#_best_practices_and_recommendations), developers can:
+
+1. **Prototype** agents in Spring AI Playground with MCP tools, vector DBs, and RAG-enhanced chat
+2. **Refine** agent logic, contextual memory, and tool orchestration
+3. **Export** configurations directly to Spring AI Agent YAML/Java settings
+4. **Build & Package** as Docker-ready Spring AI Agent applications
+5. **Deploy** seamlessly from local experimentation to production environments
+6. **Test** deployed Spring AI Agents directly from the Playground UI using interactive Chat
+
+This streamlined approach enables going from concept to tested, cloud-ready deployment with minimal friction.
+
+### Observability
+
+Introducing tools to track and monitor AI performance, usage, and errors for better management and debugging.
+
+### Authentication
+
+Implementing login and security features to control access to the Spring AI Playground.
+
+### Multimodal Support
+
+Supporting embedding, image, audio, and moderation models from Spring AI.
+
 
 These features will help make Spring AI Playground even better for testing and building AI projects.

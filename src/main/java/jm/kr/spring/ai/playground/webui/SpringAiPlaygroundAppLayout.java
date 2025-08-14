@@ -31,14 +31,17 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import jm.kr.spring.ai.playground.webui.chat.ChatView;
+import jm.kr.spring.ai.playground.webui.home.HomeView;
 import jm.kr.spring.ai.playground.webui.mcp.McpView;
 import jm.kr.spring.ai.playground.webui.vectorstore.VectorStoreView;
+import org.vaadin.googleanalytics.tracking.EnableGoogleAnalytics;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @PageTitle("Spring AI Playground")
+@EnableGoogleAnalytics("G-52TGT1G9B3")
 public class SpringAiPlaygroundAppLayout extends AppLayout
         implements BeforeEnterObserver {
 
@@ -51,8 +54,8 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         titleLayout.setPadding(true);
         titleLayout.setSpacing(true);
         titleLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        Image springImg = new Image("https://spring.io/img/projects/spring-ai.svg", "Spring AI Playground");
-        springImg.getStyle().set("width", "var(--lumo-icon-size-m)").set("height", "var(--lumo-icon-size-m)");
+        Image springImg = new Image("icons/icon.png", "Spring AI Playground");
+        springImg.getStyle().set("width", "var(--lumo-icon-size-l)").set("height", "var(--lumo-icon-size-l)");
         Div springImgDiv = new Div(springImg);
         springImgDiv.getStyle().set("display", "flex").set("justify-content", "center").set("align-items", "center");
         H3 title = new H3("Spring AI Playground");
@@ -61,6 +64,7 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         addToNavbar(titleLayout);
 
         this.tabs = new Tabs();
+        createTab("Home", VaadinIcon.HOME, HomeView.class);
         createTab("MCP", VaadinIcon.TOOLBOX, McpView.class);
         createTab("Vector Database", VaadinIcon.SEARCH_PLUS, VectorStoreView.class);
         createTab("Chat", VaadinIcon.CHAT, ChatView.class);
@@ -88,6 +92,8 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         Tab tab = this.viewToTab.get(navigationTarget);
         if (tab != null) {
             this.tabs.setSelectedTab(tab);
+        } else {
+            this.tabs.setSelectedTab(this.viewToTab.get(HomeView.class));
         }
     }
 }

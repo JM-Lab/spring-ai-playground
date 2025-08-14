@@ -28,8 +28,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfo;
@@ -47,7 +47,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
-@RouteAlias(value = "", layout = SpringAiPlaygroundAppLayout.class)
+@PageTitle("MCP")
 @Route(value = "mcp", layout = SpringAiPlaygroundAppLayout.class)
 public class McpView extends Div {
 
