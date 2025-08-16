@@ -118,7 +118,7 @@ public class VectorStoreView extends Div {
         this.sidebarCollapsed = false;
     }
 
-    private @NotNull PropertyChangeSupport buildPropertyChangeSupport() {
+    private PropertyChangeSupport buildPropertyChangeSupport() {
         PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
         documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
             if (Objects.isNull(changeEvent.getNewValue()))
@@ -210,8 +210,8 @@ public class VectorStoreView extends Div {
             }
             Map<String, List<Document>> uploadedDocumentItems =
                     this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames);
-            Set<Document> chunks =
-                    uploadedDocumentItems.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+            List<Document> chunks =
+                    uploadedDocumentItems.values().stream().flatMap(List::stream).toList();
             if (chunks.isEmpty()) {
                 VaadinUtils.showInfoNotification("No chunks found");
                 return;

@@ -175,6 +175,7 @@ public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnt
         });
         deleteButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         deleteButton.getStyle().set("margin-right", "auto");
+        deleteButton.focus();
         dialog.getFooter().add(deleteButton);
 
         dialog.open();

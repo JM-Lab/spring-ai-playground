@@ -25,6 +25,7 @@ import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TextSplitter;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -71,17 +72,20 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
 
     private final Map<String, TokenTextSplitter> splitters;
     private final TokenTextSplitter defaultTokenTextSplitter;
-    private final Map<String, VectorStoreDocumentInfo> documentInfos = new ConcurrentHashMap<>();
+    private final VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService;
+    private final Map<String, VectorStoreDocumentInfo> documentInfos;
 
     public VectorStoreDocumentService(Path springAiPlaygroundHomeDir,
-            @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize, ResourceLoader resourceLoader) throws
-            IOException {
+            @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize, ResourceLoader resourceLoader,
+            @Lazy VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService) throws IOException {
         this.uploadDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("docs");
         this.resourceLoader = resourceLoader;
+        this.vectorStoreDocumentPersistenceService = vectorStoreDocumentPersistenceService;
         Files.createDirectories(uploadDir);
         this.maxUploadSize = maxUploadSize;
         this.splitters = new WeakHashMap<>();
         this.defaultTokenTextSplitter = newTokenTextSplitter(DEFAULT_TOKEN_TEXT_SPLIT_INFO);
+        this.documentInfos = new ConcurrentHashMap<>();
     }
 
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
@@ -160,6 +164,7 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
 
     public void deleteDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
         this.documentInfos.remove(vectorStoreDocumentInfo.docInfoId());
+        this.vectorStoreDocumentPersistenceService.delete(vectorStoreDocumentInfo);
     }
 
     public List<VectorStoreDocumentInfo> getDocumentList() {

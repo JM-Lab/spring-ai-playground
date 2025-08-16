@@ -104,7 +104,8 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
         if (this.vectorStore instanceof SimpleVectorStore) {
             boolean savedFileExists = this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile().exists();
             if (savedFileExists)
-                ((SimpleVectorStore) vectorStore).load(this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
+                ((SimpleVectorStore) vectorStore).load(
+                        this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
             needToAdd.set(!savedFileExists);
         }
         loads().forEach(vectorStoreDocumentInfo -> {
@@ -122,6 +123,13 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
     public void onShutdown() throws IOException {
         for (VectorStoreDocumentInfo vectorStoreDocumentInfo : vectorStoreDocumentService.getDocumentList())
             save(vectorStoreDocumentInfo);
-        ((SimpleVectorStore) vectorStore).save(this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
+        ((SimpleVectorStore) vectorStore).save(
+                this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
+    }
+
+    @Override
+    public void delete(VectorStoreDocumentInfo saveObject) {
+        PersistenceServiceInterface.super.delete(saveObject);
+        getSaveDir().resolve(saveObject.documentPath()).toFile().deleteOnExit();
     }
 }

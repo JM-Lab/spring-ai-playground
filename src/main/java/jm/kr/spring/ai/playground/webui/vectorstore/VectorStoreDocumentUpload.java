@@ -55,7 +55,6 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
     }
 
     private Upload createUpload() {
-        // TransferProgressListener 구현
         TransferProgressListener progressListener = new TransferProgressListener() {
             @Override
             public void onComplete(TransferContext context, long transferredBytes) {
@@ -107,15 +106,18 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
 
 
         upload.getElement().addEventListener("file-remove",
-                event -> Optional.ofNullable(event.getEventData().getString("event.detail.file.name"))
-                        .ifPresent(fileName -> {
-                            try {
-                                this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
-                                this.uploadedFileNames.remove(fileName);
-                            } catch (IOException e) {
-                                VaadinUtils.showErrorNotification("Failed to delete file: " + e.getMessage());
-                            }
-                        })).addEventData("event.detail.file.name");
+                event -> {
+                    String string = event.getEventData().getString("event.detail.file.name");
+                    Optional.ofNullable(string)
+                            .ifPresent(fileName -> {
+                                try {
+                                    this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
+                                    this.uploadedFileNames.remove(fileName);
+                                } catch (IOException e) {
+                                    VaadinUtils.showErrorNotification("Failed to delete file: " + e.getMessage());
+                                }
+                            });
+                }).addEventData("event.detail.file.name");
 
         upload.setI18n(createI18n());
 
