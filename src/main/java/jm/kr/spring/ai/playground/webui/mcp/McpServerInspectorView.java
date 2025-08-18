@@ -174,12 +174,12 @@ public class McpServerInspectorView extends VerticalLayout {
         Map<String, Object> args = new LinkedHashMap<>();
 
         for (var entry : fields.entrySet()) {
-            String k = entry.getKey();
+            String key = entry.getKey();
             TextField tf = entry.getValue();
-            String v = tf.getValue().trim();
+            String value = tf.getValue().trim();
 
-            boolean required = tool.required().contains(k);
-            if (required && v.isEmpty()) {
+            boolean required = tool.required().contains(key);
+            if (required && value.isEmpty()) {
                 tf.setInvalid(true);
                 tf.setErrorMessage(ARG_REQUIRED);
                 return;
@@ -187,7 +187,13 @@ public class McpServerInspectorView extends VerticalLayout {
                 tf.setInvalid(false);
                 tf.setErrorMessage(null);
             }
-            args.put(k, v);
+            if (!value.isEmpty()) {
+                try {
+                    args.put(key, Integer.parseInt(value));
+                } catch (NumberFormatException e) {
+                    args.put(key, value);
+                }
+            }
         }
 
         writeLog("[%s] Executing %s result:%n".formatted(now(), tool.name()));
@@ -217,8 +223,7 @@ public class McpServerInspectorView extends VerticalLayout {
 
     private void writeLog(String text) {
         historyArea.setValue(historyArea.getValue() + text);
-        historyArea.getElement().executeJs(
-                "this.inputElement && (this.inputElement.scrollTop = this.inputElement.scrollHeight);");
+        historyArea.scrollToEnd();
     }
 
     private ToolInfo toToolInfo(McpSchema.Tool tool) {

@@ -102,10 +102,8 @@ class McpServerInfoServiceTest {
         assertEquals(1, serverInfos.get(McpTransportType.SSE).size());
         assertEquals(1, serverInfos.get(McpTransportType.STREAMABLE_HTTP).size());
 
-        McpServerInfo deletedMcpServerInfo =
-                mcpServerInfoService.deleteMcpServerInfo(newMcpServerInfo.mcpTransportType(),
-                        newMcpServerInfo.serverName());
-        assertEquals(newMcpServerInfo, deletedMcpServerInfo);
+        mcpServerInfoService.deleteMcpServerInfo(newMcpServerInfo.mcpTransportType(),
+                newMcpServerInfo.serverName());
 
         serverInfos = mcpServerInfoService.getMcpServerInfos();
         assertTrue(serverInfos.containsKey(McpTransportType.STDIO));

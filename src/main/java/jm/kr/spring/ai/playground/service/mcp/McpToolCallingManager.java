@@ -51,9 +51,8 @@ public class McpToolCallingManager implements ToolCallingManager {
         Consumer<Object> mcpProcessMessageConsumer =
                 (Consumer<Object>) toolCallingChatOptions.getToolContext().get(MCP_PROCESS_MESSAGE_CONSUMER);
 
-        prompt.getInstructions().stream()
-                .filter(m -> m instanceof UserMessage)
-                .forEach(msg -> mcpProcessMessageConsumer.accept(formatUserMessageForMcp((UserMessage) msg)));
+        prompt.getInstructions().stream().filter(m -> m instanceof UserMessage).reduce((first, second) -> second)
+                .ifPresent(msg -> mcpProcessMessageConsumer.accept(formatUserMessageForMcp((UserMessage) msg)));
 
         chatResponse.getResults().stream()
                 .flatMap(result -> result.getOutput().getToolCalls().stream())
@@ -69,8 +68,7 @@ public class McpToolCallingManager implements ToolCallingManager {
     }
 
     private Object formatToolCallForMcp(ToolCall toolCall) {
-        return new McpAssistantToolCall(
-                "assistant",
+        return new McpAssistantToolCall("assistant",
                 List.of(new McpToolCall(toolCall.id(), toolCall.name(), toolCall.arguments()))
         );
     }
@@ -78,11 +76,7 @@ public class McpToolCallingManager implements ToolCallingManager {
     private Object formatToolResultForMcp(Message lastMessage) {
         if (lastMessage instanceof ToolResponseMessage toolResponseMessage) {
             ToolResponseMessage.ToolResponse toolResponse = toolResponseMessage.getResponses().getLast();
-            return new McpToolResult(
-                    "tool",
-                    toolResponse.name(),
-                    toolResponse.id(),
-                    toolResponse.responseData()
+            return new McpToolResult("tool", toolResponse.name(), toolResponse.id(), toolResponse.responseData()
             );
         } else {
             return "MCP processing error: conversationHistory last message is not ToolResponseMessage. Actual type: " +

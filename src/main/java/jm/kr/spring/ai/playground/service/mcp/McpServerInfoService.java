@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jm.kr.spring.ai.playground.service.SharedDataReader;
 import jm.kr.spring.ai.playground.service.mcp.client.McpClientPropertiesService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpTransportType;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -32,10 +33,12 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
 
     private final ObjectMapper objectMapper;
     private final Map<McpTransportType, Map<String, McpServerInfo>> typeMcpServerInfosMap;
+    private final McpServerInfoPersistenceService mcpServerInfoPersistenceService;
 
-    public McpServerInfoService(ObjectMapper objectMapper,
-            McpClientPropertiesService<?>[] mcpClientPropertiesServices) {
+    public McpServerInfoService(ObjectMapper objectMapper, McpClientPropertiesService<?>[] mcpClientPropertiesServices,
+            @Lazy McpServerInfoPersistenceService mcpServerInfoPersistenceService) {
         this.objectMapper = objectMapper;
+        this.mcpServerInfoPersistenceService = mcpServerInfoPersistenceService;
         this.typeMcpServerInfosMap = Arrays.stream(mcpClientPropertiesServices)
                 .collect(Collectors.toMap(McpClientPropertiesService::getTransportType,
                         mcpClientPropertiesService -> mcpClientPropertiesService.getDefaultConnections().entrySet()
@@ -72,8 +75,10 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
                 null);
     }
 
-    public McpServerInfo deleteMcpServerInfo(McpTransportType transportType, String serverName) {
-        return this.typeMcpServerInfosMap.get(transportType).remove(serverName);
+    public void deleteMcpServerInfo(McpTransportType transportType, String serverName) {
+        McpServerInfo mcpServerInfo = this.typeMcpServerInfosMap.get(transportType).remove(serverName);
+        if (mcpServerInfo != null)
+            this.mcpServerInfoPersistenceService.delete(mcpServerInfo);
     }
 
     public McpServerInfo updateMcpServerInfo(McpTransportType transportType, String serverName,

@@ -39,6 +39,7 @@ import com.vaadin.flow.internal.Pair;
 import jm.kr.spring.ai.playground.service.chat.ChatHistory;
 import jm.kr.spring.ai.playground.service.chat.ChatService;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfo;
+import jm.kr.spring.ai.playground.service.mcp.McpToolCallingManager.McpToolResult;
 import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpTransportType;
 import jm.kr.spring.ai.playground.service.vectorstore.VectorStoreDocumentInfo;
@@ -79,6 +80,7 @@ public class ChatContentView extends VerticalLayout {
     private static final String LAST_SELECTED_RAG_DOC_INFO_IDS = "lastSelectedRagDocInfoIds";
     private static final String LAST_SELECTED_MCP_CONNECTION_INFOS = "lastSelectedMcpConnectionInfos";
     private final VerticalLayout messageListLayout;
+    private final Scroller messageScroller;
     private final TextArea userPromptTextArea;
     private final MultiSelectComboBox<VectorStoreDocumentInfo> documentsComboBox;
     private final MultiSelectComboBox<McpServerInfo> mcpToolProviderComboBox;
@@ -102,8 +104,8 @@ public class ChatContentView extends VerticalLayout {
         this.messageListLayout.setSpacing(false);
         this.messageListLayout.setPadding(false);
 
-        Scroller messageScroller = new Scroller(this.messageListLayout);
-        messageScroller.setSizeFull();
+        this.messageScroller = new Scroller(this.messageListLayout);
+        this.messageScroller.setSizeFull();
 
         this.mcpToolProviderComboBox = new MultiSelectComboBox<>();
         this.mcpToolProviderComboBox.setPlaceholder("No MCP Connections for Tools");
@@ -237,6 +239,7 @@ public class ChatContentView extends VerticalLayout {
                         toolCallbacks, o -> ui.access(() -> chatContentManager.appendMcpToolProcessMessage(o)))
                 .doFinally(signalType -> ui.access(() -> {
                     chatContentManager.doFinally();
+                    this.messageScroller.scrollToBottom();
                     this.userPromptTextArea.setEnabled(true);
                     this.userPromptTextArea.focus();
                 })).subscribe(content -> ui.access(() -> chatContentManager.append(content)));
@@ -303,6 +306,8 @@ public class ChatContentView extends VerticalLayout {
                 this.mcpToolProcessMessagesBuilder = new StringBuilder();
             this.mcpToolProcessMessagesBuilder.append(markdownSnippet);
             this.mcpToolProcessMessage.scrollIntoView();
+            if (content instanceof McpToolResult)
+                this.mcpToolProcessDetails.setOpened(false);
         }
 
         private MarkdownMessage getMcpToolProcessMessage(VerticalLayout messageListLayout, long timestamp) {
@@ -431,9 +436,6 @@ public class ChatContentView extends VerticalLayout {
 
             if (!this.isThinking && this.isFirstAssistantResponse)
                 initBotResponse(System.currentTimeMillis());
-
-            if (!this.isFirstAssistantResponse && Objects.nonNull(this.mcpToolProcessMessage))
-                this.mcpToolProcessDetails.setOpened(false);
 
             if (botResponse == this.botResponse)
                 this.botResponse.removeClassName("blink");
