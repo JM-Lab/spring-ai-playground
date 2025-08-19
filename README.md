@@ -4,7 +4,41 @@
 
 Built on **Spring AI**, it supports leading model providers and includes comprehensive tools for testing **retrieval-augmented generation (RAG)** workflows and MCP integrations. The goal is to make AI more accessible to developers, helping them quickly prototype **Spring AI-based applications** with enhanced contextual awareness and external tool capabilities.
 
+## Table of Contents
+- [Quick Start](#quick-start)
+   - [Prerequisites](#prerequisites)
+   - [Getting Started](#getting-started)
+   - [Running the Application](#running-the-application)
+      - [Running with Docker (Recommended)](#running-with-docker-recommended)
+      - [Cleaning Up Docker](#cleaning-up-docker)
+      - [Running Locally (Optional)](#running-locally-optional)
+   - [PWA Installation](#pwa-installation)
+- [Auto-configuration](#auto-configuration)
+- [AI Models](#ai-models)
+   - [Support for Major AI Model Providers](#support-for-major-ai-model-providers)
+   - [Selecting and Configuring Ollama Models](#selecting-and-configuring-ollama-models)
+   - [Switching to OpenAI](#switching-to-openai)
+- [MCP (Model Context Protocol) Playground](#mcp-model-context-protocol-playground)
+   - [Key Features](#key-features)
+   - [Getting Started with MCP](#getting-started-with-mcp)
+- [Chat Using MCP](#chat-using-mcp)
+   - [Ollama Tool-Enabled Models](#ollama-tool-enabled-models)
+- [Vector Database](#vector-database)
+   - [Support for Major Vector Database Providers](#support-for-major-vector-database-providers)
+   - [Vector Database Playground Features](#vector-database-playground-features)
+- [Chat Using RAG](#chat-using-rag)
+- [Upcoming Features](#upcoming-features)
+   - [Spring AI Agent](#spring-ai-agent)
+   - [Observability](#observability)
+   - [Authentication](#authentication)
+   - [Multimodal Support](#multimodal-support)
+
 ## Quick Start
+### Prerequisites
+- Java 21 or later installed (required for building the project).
+- Ollama running on your machine (refer to AI Models).
+- Docker installed and running on your machine. (only if you choose to run the application using Docker)
+
 ### Getting Started
 First, clone the Spring AI Playground project from GitHub:
 ```
@@ -12,29 +46,48 @@ git clone https://github.com/JM-Lab/spring-ai-playground.git
 cd spring-ai-playground
 ```
 
-### Prerequisites
-- Java 21 or later installed (required for building the project).
-- Ollama running on your machine (refer to AI Models).
-- Docker installed and running on your machine. (only if you choose to run the application using Docker)
+### Running the Application
+#### Running with Docker (Recommended)
+1. Build the Docker Image:
+   ```
+   ./mvnw spring-boot:build-image -Pproduction -DskipTests=true \
+   -Dspring-boot.build-image.env.RUN_IMAGE_USER=spring \
+   -Dspring-boot.build-image.imageName=jmlab/spring-ai-playground:latest
+   ```
+2. Run the Docker Container:
+   ```
+   docker run -d -p 8282:8282 --name spring-ai-playground \
+   -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+   -v spring-ai-playground:/home/spring/spring-ai-playground \
+   --restart unless-stopped \
+   jmlab/spring-ai-playground:latest
+   ```
+3. Access the Application:
+   Open http://localhost:8282 in your browser.
 
-### Running with Docker (Recommended)
-Run the following command to build the Docker image:
+> ***Notes:***
+>- Data Persistence: Application data is stored in the spring-ai-playground Docker volume, ensuring data persists even if the container is removed.
+>- Ollama Connection: The environment variable SPRING_AI_OLLAMA_BASE_URL is set to http://host.docker.internal:11434. Adjust the URL if Ollama runs on a different host or port.
+>- Automatic Restart: The --restart unless-stopped option ensures the container restarts automatically unless manually stopped with docker stop.
+> - ***For Linux Users:*** The `host.docker.internal` DNS name may not be available on all Linux distributions. If you encounter connection issues, you may need to use `--network="host"` in your `docker run` command or replace `host.docker.internal` with your host machine's IP address on the Docker bridge network (e.g., `172.17.0.1`).
 
-```
-./mvnw spring-boot:build-image -Pproduction -DskipTests=true -Dspring-boot.build-image.imageName=jmlab/spring-ai-playground:latest 
-docker run -p 8282:8282 -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 jmlab/spring-ai-playground:latest        
-```
-Then, open http://localhost:8282 in your browser to access the application.
+#### Cleaning Up Docker
+- To stop and remove the Docker container, image, and volume:
+   ```
+   docker stop spring-ai-playground
+   docker rm spring-ai-playground
+   docker rmi jmlab/spring-ai-playground:latest
+   docker volume rm spring-ai-playground
+   ```
 
-> The environment variable **SPRING_AI_OLLAMA_BASE_URL** is set to http://host.docker.internal:11434 to connect to 
-> Ollama running on your host machine. If Ollama is running on a different port or host, adjust the URL accordingly.
-
-### Running Locally (Optional)
-Build and run the app:
-```
-./mvnw clean install -Pproduction -DskipTests=true
-./mvnw spring-boot:run
-```
+#### Running Locally (Optional)
+1. **Build and Run the Application**:
+   ```
+   ./mvnw clean install -Pproduction -DskipTests=true
+   ./mvnw spring-boot:run
+   ```
+2. **Access the Application**:
+   Open `http://localhost:8282` in your browser.
 
 ### PWA Installation
 
@@ -50,7 +103,7 @@ Build and run the app:
     - Install PWA Button: Look for the "Install PWA" button on the application's home page and click it
 3. Follow the installation wizard to complete the setup and add the app to your device
 
-## Auto-configurations
+## Auto-configuration
 
 Spring AI Playground uses Ollama by default for local LLM and embedding models. No API keys are 
 required, which makes it easy to get started.
@@ -58,7 +111,7 @@ required, which makes it easy to get started.
 ## AI Models
 To enable Ollama, ensure it is installed and running on your system. Refer to the [Spring AI Ollama Chat Prerequisites](https://docs.spring.io/spring-ai/reference/api/chat/ollama-chat.html#_prerequisites) for setup details.
 
-### Support for All Major AI Model Providers
+### Support for Major AI Model Providers
 Spring AI Playground supports all major AI model providers, including Anthropic, OpenAI, Microsoft, Amazon, Google, and Ollama. For more details on the available implementations, visit the [Spring AI Chat Models Reference Documentation](https://docs.spring.io/spring-ai/reference/api/chatmodel.html#_available_implementations).
 
 ### Selecting and Configuring Ollama Models
@@ -182,7 +235,7 @@ Spring AI Playground now provides seamless integration with MCP (Model Context P
 3. **Test in MCP Playground**: Use the MCP Inspector to verify tool functionality before chat integration
 
 > **Tip**  
-> Models like **Qwen 3** and **DeepSeek-R1** offer advanced reasoning capabilities with visible thought processes, making them particularly effective for complex MCP tool workflows.
+> Models like **OpenAI GPT-OSS**, **Qwen 3**, and **DeepSeek-R1** offer advanced reasoning capabilities with visible thought processes, making them particularly effective for complex MCP tool workflows.
 
 This integration enables developers to quickly prototype and test tool-enhanced AI interactions, bringing the power of external systems and capabilities directly into your Spring AI conversations through the Model Context Protocol.
 
@@ -195,7 +248,7 @@ This integration enables developers to quickly prototype and test tool-enhanced 
 - **Multi-Provider Testing**: Switch between vector database providers without code changes
 - **Syntax Standardization**: Query different databases using Spring AI's unified interface
 
-### Support for All Major Vector Database Providers
+### Support for Major Vector Database Providers
 [Vector Database providers](https://docs.spring.io/spring-ai/reference/api/vectordbs.html#_vectorstore_implementations) including Apache Cassandra, Azure Cosmos DB, Azure Vector Search, Chroma, Elasticsearch, GemFire, MariaDB, Milvus, MongoDB Atlas, Neo4j, OpenSearch, Oracle, PostgreSQL/PGVector, Pinecone, Qdrant, Redis, SAP Hana, Typesense and Weaviate.
 
 ### Vector Database Playground Features
