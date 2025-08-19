@@ -53,7 +53,7 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>24.8.5</vaadin.version>
+        <vaadin.version>24.8.6</vaadin.version>
         <spring-ai.version>1.1.0-SNAPSHOT</spring-ai.version>
     </properties>
     <repositories>
@@ -97,7 +97,7 @@
         <dependency>
             <groupId>in.virit</groupId>
             <artifactId>viritin</artifactId>
-            <version>2.16.0</version>
+            <version>2.19.1</version>
         </dependency>
         <dependency>
             <groupId>org.vaadin.crudui</groupId>
