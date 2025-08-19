@@ -71,6 +71,11 @@ cd spring-ai-playground
 >- Automatic Restart: The --restart unless-stopped option ensures the container restarts automatically unless manually stopped with docker stop.
 > - ***For Linux Users:*** The `host.docker.internal` DNS name may not be available on all Linux distributions. If you encounter connection issues, you may need to use `--network="host"` in your `docker run` command or replace `host.docker.internal` with your host machine's IP address on the Docker bridge network (e.g., `172.17.0.1`).
 
+> ⚠️ **MCP STDIO Transport Limitation**  
+> While Docker is recommended for most scenarios, it is not suitable for testing MCP STDIO transport. MCP STDIO transport requires direct process-to-process communication, which containerized environments cannot provide reliably.  
+>
+> If you plan to test the MCP STDIO transport, please use the [Running Locally (Optional)](#running-locally-optional) instead.
+
 #### Cleaning Up Docker
 - To stop and remove the Docker container, image, and volume:
    ```
