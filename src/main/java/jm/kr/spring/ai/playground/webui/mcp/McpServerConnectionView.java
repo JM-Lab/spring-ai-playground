@@ -134,6 +134,11 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
     }
 
     private void notifyMcpServerInfoSelection(McpServerInfo oldMcpServerInfo, McpServerInfo newMcpServerInfo) {
+        if(Objects.isNull(newMcpServerInfo))
+            return;
+        this.mcpServerInfoListBoxMap.values().stream()
+                .filter(mcpServerInfoListBox -> !newMcpServerInfo.equals(mcpServerInfoListBox.getValue()))
+                .forEach(ListBox::clear);
         this.mcpServerInfoChangeSupport.firePropertyChange(MCP_CONNECTION_SELECT_EVENT, oldMcpServerInfo,
                 newMcpServerInfo);
         this.persistentUiDataStorage.saveData(McpContentView.LAST_SELECTED_MCP_CONNECTION, newMcpServerInfo);
@@ -175,6 +180,7 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
             deleteButton.getStyle().set("margin-right", "auto");
             dialog.getFooter().add(deleteButton);
             dialog.open();
+            deleteButton.focus();
         });
     }
 
@@ -188,7 +194,8 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
     }
 
     private Optional<McpServerInfo> getCurrentMcpConnectionAsOpt() {
-        return Optional.ofNullable(this.mcpServerInfoListBoxMap.get(McpTransportType.STDIO).getValue());
+        return this.mcpServerInfoListBoxMap.values().stream().map(ListBox::getValue).filter(Objects::nonNull)
+                .findFirst();
     }
 
 }

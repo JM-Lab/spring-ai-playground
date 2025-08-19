@@ -83,12 +83,13 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
 
     public McpServerInfo updateMcpServerInfo(McpTransportType transportType, String serverName,
             McpServerInfo updateMcpServerInfo) {
-        Map<String, McpServerInfo> mcpServerInfoMap =
-                this.typeMcpServerInfosMap.get(updateMcpServerInfo.mcpTransportType());
-        if (mcpServerInfoMap.containsKey(updateMcpServerInfo.serverName()))
+        if (this.typeMcpServerInfosMap.get(transportType).containsKey(updateMcpServerInfo.serverName()))
             throw new RuntimeException("MCP Server already exists with name " + updateMcpServerInfo.serverName());
-        deleteMcpServerInfo(transportType, serverName);
-        mcpServerInfoMap.put(updateMcpServerInfo.serverName(), updateMcpServerInfo);
+        if (transportType.equals(updateMcpServerInfo.mcpTransportType()) &&
+                serverName.equals(updateMcpServerInfo.serverName()))
+            deleteMcpServerInfo(transportType, serverName);
+        this.typeMcpServerInfosMap.get(updateMcpServerInfo.mcpTransportType())
+                .put(updateMcpServerInfo.serverName(), updateMcpServerInfo);
         return updateMcpServerInfo;
     }
 

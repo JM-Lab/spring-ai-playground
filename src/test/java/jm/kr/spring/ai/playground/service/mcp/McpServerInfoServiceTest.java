@@ -85,7 +85,7 @@ class McpServerInfoServiceTest {
         assertTrue(serverInfos.containsKey(McpTransportType.STDIO));
         assertTrue(serverInfos.containsKey(McpTransportType.SSE));
         assertTrue(serverInfos.containsKey(McpTransportType.STREAMABLE_HTTP));
-        assertEquals(0, serverInfos.get(McpTransportType.STDIO).size());
+        assertEquals(1, serverInfos.get(McpTransportType.STDIO).size());
         assertEquals(0, serverInfos.get(McpTransportType.SSE).size());
         assertEquals(1, serverInfos.get(McpTransportType.STREAMABLE_HTTP).size());
 
@@ -98,7 +98,7 @@ class McpServerInfoServiceTest {
         assertTrue(serverInfos.containsKey(McpTransportType.STDIO));
         assertTrue(serverInfos.containsKey(McpTransportType.SSE));
         assertTrue(serverInfos.containsKey(McpTransportType.STREAMABLE_HTTP));
-        assertEquals(0, serverInfos.get(McpTransportType.STDIO).size());
+        assertEquals(1, serverInfos.get(McpTransportType.STDIO).size());
         assertEquals(1, serverInfos.get(McpTransportType.SSE).size());
         assertEquals(1, serverInfos.get(McpTransportType.STREAMABLE_HTTP).size());
 
@@ -109,7 +109,7 @@ class McpServerInfoServiceTest {
         assertTrue(serverInfos.containsKey(McpTransportType.STDIO));
         assertTrue(serverInfos.containsKey(McpTransportType.SSE));
         assertTrue(serverInfos.containsKey(McpTransportType.STREAMABLE_HTTP));
-        assertEquals(0, serverInfos.get(McpTransportType.STDIO).size());
+        assertEquals(1, serverInfos.get(McpTransportType.STDIO).size());
         assertEquals(0, serverInfos.get(McpTransportType.SSE).size());
         assertEquals(1, serverInfos.get(McpTransportType.STREAMABLE_HTTP).size());
 
