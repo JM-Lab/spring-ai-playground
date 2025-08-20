@@ -51,14 +51,13 @@ cd spring-ai-playground
 1. Build the Docker Image:
    ```
    ./mvnw spring-boot:build-image -Pproduction -DskipTests=true \
-   -Dspring-boot.build-image.env.RUN_IMAGE_USER=spring \
    -Dspring-boot.build-image.imageName=jmlab/spring-ai-playground:latest
    ```
 2. Run the Docker Container:
    ```
    docker run -d -p 8282:8282 --name spring-ai-playground \
    -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-   -v spring-ai-playground:/home/spring/spring-ai-playground \
+   -v spring-ai-playground:/home \
    --restart unless-stopped \
    jmlab/spring-ai-playground:latest
    ```

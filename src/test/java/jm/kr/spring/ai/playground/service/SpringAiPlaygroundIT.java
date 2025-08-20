@@ -85,7 +85,7 @@ class SpringAiPlaygroundIT {
         Files.createDirectories(uploadDir);
 
         String filename = resource.getFilename();
-        Path targetPath = uploadDir.resolve(filename);
+        Path targetPath = vectorStoreDocumentService.buildUploadFilePath(filename);
 
         try (var in = resource.getInputStream()) {
             Files.copy(in, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);

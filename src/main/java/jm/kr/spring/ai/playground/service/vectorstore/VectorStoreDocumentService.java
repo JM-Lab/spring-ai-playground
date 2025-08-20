@@ -15,7 +15,6 @@
  */
 package jm.kr.spring.ai.playground.service.vectorstore;
 
-import com.vaadin.flow.component.notification.Notification;
 import jm.kr.spring.ai.playground.service.SharedDataReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +36,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -90,15 +90,19 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
 
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
         long createTimestamp = System.currentTimeMillis();
-        File uploadedDocumentFile = uploadDir.resolve(documentFileName).toFile();
+        File uploadedDocumentFile = buildUploadFilePath(documentFileName).toFile();
         String docInfoId = VectorStoreService.DOC_INFO_ID + "-" + UUID.randomUUID();
         List<Document> documentList = IntStream.range(0, uploadedDocumentItems.size()).boxed()
                 .map(i -> copyNewDocument(docInfoId, i, uploadedDocumentItems.get(i))).toList();
         VectorStoreDocumentInfo vectorStoreDocumentInfo =
-                new VectorStoreDocumentInfo(docInfoId, uploadedDocumentFile.getName(), createTimestamp, createTimestamp,
-                        uploadedDocumentFile.getPath(), () -> documentList);
+                new VectorStoreDocumentInfo(docInfoId, documentFileName, createTimestamp, createTimestamp,
+                        documentFileName, uploadedDocumentFile.getPath(), () -> documentList);
         this.documentInfos.put(docInfoId, vectorStoreDocumentInfo);
         return vectorStoreDocumentInfo;
+    }
+
+    public Path buildUploadFilePath(String fileName) {
+        return this.uploadDir.resolve(encodeFileName(fileName));
     }
 
     private Document copyNewDocument(String docInfoId, Integer index, Document uploadedDocument) {
@@ -109,7 +113,7 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
 
     public Map<String, List<Document>> extractDocumentItems(List<String> uploadedFileNames) {
         return uploadedFileNames.stream().map(fileName -> Map.entry(fileName,
-                        split(resolveResource(this.uploadDir.resolve(fileName).toFile().getPath()))))
+                        split(resolveResource(buildUploadFilePath(fileName).toFile().getPath()))))
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -125,7 +129,10 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
     }
 
     private List<Document> split(TextSplitter textSplitter, DocumentReader documentReader) {
-        return textSplitter.split(documentReader.read());
+        List<Document> documentList = textSplitter.split(documentReader.read());
+        documentList.forEach(document -> document.getMetadata().computeIfPresent("source",
+                (key, value) -> decodeFileName(value.toString())));
+        return documentList;
     }
 
     public List<Document> split(Resource resource, TokenTextSplitInfo tokenTextSplitInfo) {
@@ -140,15 +147,32 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
     }
 
     public void addUploadedDocumentFile(String fileName, File uploadedFile) throws Exception {
-        File file = this.uploadDir.resolve(fileName).toFile();
+        File file = buildUploadFilePath(fileName).toFile();
         if (file.exists())
-            throw new FileAlreadyExistsException("Already Exists - " + file.getAbsolutePath());
+            throw new FileAlreadyExistsException("Already Exists - " + fileName);
         Files.copy(uploadedFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        Notification.show("File uploaded successfully to: " + fileName);
     }
 
+    private String[] splitNameAndExt(String fileName) {
+        int dotIdx = fileName.lastIndexOf(".");
+        return dotIdx != -1 ? new String[]{fileName.substring(0, dotIdx), fileName.substring(dotIdx)} : new String[]{
+                fileName, ""};
+    }
+
+    String encodeFileName(String fileName) {
+        String[] parts = splitNameAndExt(fileName);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(parts[0].getBytes()) +
+                parts[1];
+    }
+
+    String decodeFileName(String encodedFileName) {
+        String[] parts = splitNameAndExt(encodedFileName);
+        return new String(Base64.getUrlDecoder().decode(parts[0])) + parts[1];
+    }
+
+
     public void removeUploadedDocumentFile(String fileName) throws IOException {
-        Files.deleteIfExists(this.uploadDir.resolve(fileName));
+        Files.deleteIfExists(buildUploadFilePath(fileName));
     }
 
     public DataSize getMaxUploadSize() {

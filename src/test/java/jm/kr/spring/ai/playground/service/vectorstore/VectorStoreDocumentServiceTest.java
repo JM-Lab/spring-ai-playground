@@ -60,12 +60,12 @@ class VectorStoreDocumentServiceTest {
         try {
             service.addUploadedDocumentFile(fileName, tempFile);
         } catch (Exception e) {
-            assertTrue(e.getMessage().startsWith("UI instance is not available."));
+            assertEquals("Already Exists - upload-test.txt", e.getMessage());
         }
-        assertTrue(Files.exists(uploadedPath));
+        assertTrue(Files.exists(service.getUploadDir().resolve(service.encodeFileName(fileName))));
 
         service.removeUploadedDocumentFile(fileName);
-        assertFalse(Files.exists(uploadedPath));
+        assertFalse(Files.exists(service.getUploadDir().resolve(service.encodeFileName(fileName))));
     }
 
     @Test
@@ -92,7 +92,7 @@ class VectorStoreDocumentServiceTest {
 
     @Test
     void testTextSplitting() {
-        Path testFilePath = service.getUploadDir().resolve("test-split.txt");
+        Path testFilePath = service.getUploadDir().resolve(service.encodeFileName("test-split.txt"));
         File testFile = testFilePath.toFile();
         if (testFile.exists()) {
             testFile.delete();
@@ -112,6 +112,7 @@ class VectorStoreDocumentServiceTest {
         Resource testResource = new FileSystemResource(testFile);
         List<Document> defaultSplit = service.extractDocumentItems(List.of("test-split.txt")).get("test-split.txt");
         assertEquals(1, defaultSplit.size());
+        assertEquals("test-split.txt", defaultSplit.getFirst().getMetadata().get("source"));
 
         VectorStoreDocumentService.TokenTextSplitInfo customConfig =
                 new VectorStoreDocumentService.TokenTextSplitInfo(50, 10, 2, 500, false);

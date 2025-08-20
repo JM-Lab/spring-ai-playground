@@ -59,6 +59,7 @@ public class VectorStoreService {
     }
 
     private final ApplicationContext applicationContext;
+    private final VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService;
 
     private final AbstractEmbeddingModel embeddingModel;
     private final VectorStore vectorStore;
@@ -66,11 +67,12 @@ public class VectorStoreService {
     private EmbeddingOptions embeddingOptions;
 
     public VectorStoreService(EmbeddingModel embeddingModel, VectorStore vectorStore,
-            @Lazy ApplicationContext applicationContext) {
+            @Lazy ApplicationContext applicationContext, @Lazy VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService) {
         this.embeddingModel = (AbstractEmbeddingModel) embeddingModel;
         this.vectorStore = vectorStore;
         this.searchRequestOption = new SearchRequestOption(0.6, DEFAULT_TOP_K);
         this.applicationContext = applicationContext;
+        this.vectorStoreDocumentPersistenceService = vectorStoreDocumentPersistenceService;
     }
 
     public SearchRequestOption getSearchRequestOption() {
@@ -117,6 +119,7 @@ public class VectorStoreService {
 
     public void delete(List<String> documentIds) {
         this.vectorStore.delete(documentIds);
+        this.vectorStoreDocumentPersistenceService.delete(documentIds);
     }
 
     public String getEmbeddingModelServiceName() {

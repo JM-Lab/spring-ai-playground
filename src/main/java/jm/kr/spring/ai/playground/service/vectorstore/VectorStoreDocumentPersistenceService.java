@@ -80,13 +80,14 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
         String title = vectorStoreDocumentInfoMap.get("title").toString();
         long createTimestamp = ((Number) vectorStoreDocumentInfoMap.get("createTimestamp")).longValue();
         long updateTimestamp = ((Number) vectorStoreDocumentInfoMap.get("updateTimestamp")).longValue();
+        String documentFileName = vectorStoreDocumentInfoMap.computeIfAbsent("documentFileName", key -> "").toString();
         String documentPath = vectorStoreDocumentInfoMap.computeIfAbsent("documentPath", key -> "").toString();
         List<Map<String, Object>> documentMapList =
                 (List<Map<String, Object>>) vectorStoreDocumentInfoMap.get("documentList");
         List<Document> documentList =
                 documentMapList.stream().map(this::convertToDocument).collect(Collectors.toList());
-        return new VectorStoreDocumentInfo(docInfoId, title, createTimestamp, updateTimestamp, documentPath,
-                () -> documentList);
+        return new VectorStoreDocumentInfo(docInfoId, title, createTimestamp, updateTimestamp, documentFileName,
+                documentPath, () -> documentList);
     }
 
     public void clear() {
@@ -130,6 +131,15 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
     @Override
     public void delete(VectorStoreDocumentInfo saveObject) {
         PersistenceServiceInterface.super.delete(saveObject);
-        getSaveDir().resolve(saveObject.documentPath()).toFile().deleteOnExit();
+        try {
+            this.vectorStoreDocumentService.removeUploadedDocumentFile(saveObject.getDocumentFileName());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void delete(List<String> documentIds) {
+        this.vectorStoreDocumentService.getDocumentList().stream()
+                .filter(document -> documentIds.contains(document.docInfoId())).forEach(this::delete);
     }
 }

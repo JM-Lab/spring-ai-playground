@@ -41,25 +41,22 @@ class VectorStoreDocumentPersistenceServiceTest {
     @BeforeEach
     void setUp() {
         sampleData = List.of(
-                new VectorStoreDocumentInfo(
-                        "doc1", "First Document", System.currentTimeMillis(), System.currentTimeMillis(),
-                        "/path/to/doc1.txt",
+                new VectorStoreDocumentInfo("doc1", "First Document", System.currentTimeMillis(),
+                        System.currentTimeMillis(), "doc1.txt", "/path/to/doc1.txt",
                         () -> List.of(
                                 new Document("Sample text content 1", Map.of("source", "user-input")),
                                 new Document("Another sample text", Map.of("source", "system-generated"))
                         )
                 ),
-                new VectorStoreDocumentInfo(
-                        "doc2", "Second Document", System.currentTimeMillis(), System.currentTimeMillis(),
-                        "/path/to/doc2.txt",
+                new VectorStoreDocumentInfo("doc2", "Second Document", System.currentTimeMillis(),
+                        System.currentTimeMillis(), "doc2.txt", "/path/to/doc2.txt",
                         () -> List.of(
                                 new Document("Text from second document", Map.of("source", "user-upload")),
                                 new Document("Additional content", Map.of("source", "AI-generated"))
                         )
                 ),
-                new VectorStoreDocumentInfo(
-                        "doc3", "Third Document", System.currentTimeMillis(), System.currentTimeMillis(),
-                        "/path/to/doc3.txt",
+                new VectorStoreDocumentInfo("doc3", "Third Document", System.currentTimeMillis(),
+                        System.currentTimeMillis(), "doc3.txt", "/path/to/doc3.txt",
                         () -> List.of(
                                 new Document("Random text snippet", Map.of("source", "manual-input")),
                                 new Document("Final text block", Map.of("source", "api-response"))

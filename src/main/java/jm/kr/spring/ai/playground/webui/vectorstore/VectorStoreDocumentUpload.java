@@ -28,8 +28,8 @@ import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -77,16 +77,14 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
         UploadHandler inMemoryHandler = UploadHandler.inMemory((metadata, data) -> {
             String fileName = metadata.fileName();
             try {
-                File tempFile = File.createTempFile("upload-", "-" + fileName);
-                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                    fos.write(data);
-                }
+                File tempFile = File.createTempFile("upload-", ".tmp");
+                Files.write(tempFile.toPath(), data);
                 this.vectorStoreDocumentService.addUploadedDocumentFile(fileName, tempFile);
                 this.uploadedFileNames.add(fileName);
-
-                tempFile.deleteOnExit();
+                tempFile.delete();
             } catch (Exception e) {
-                VaadinUtils.showErrorNotification("Failed to save file: " + e.getMessage());
+                this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
+                clearFileList();
                 throw new RuntimeException(e);
             }
         }, progressListener);

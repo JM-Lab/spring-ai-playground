@@ -28,21 +28,22 @@ public class VectorStoreDocumentInfo {
     private final String title;
     private final long createTimestamp;
     private final long updateTimestamp;
+    private final String documentFileName;
     private final String documentPath;
     @JsonIgnore
     private Supplier<List<Document>> documentListSupplier;
 
     public VectorStoreDocumentInfo(String docInfoId, String title, long createTimestamp, long updateTimestamp,
-            String documentPath, Supplier<List<Document>> documentListSupplier) {
+            String documentFileName, String documentPath, Supplier<List<Document>> documentListSupplier) {
         this.docInfoId = docInfoId;
         this.title = title;
         this.createTimestamp = createTimestamp;
         this.updateTimestamp = updateTimestamp;
+        this.documentFileName = documentFileName;
         this.documentPath = documentPath;
         this.documentListSupplier = documentListSupplier;
     }
 
-    // 필드명과 동일한 메서드 제공 (record 스타일)
     public String docInfoId() {
         return docInfoId;
     }
@@ -59,6 +60,10 @@ public class VectorStoreDocumentInfo {
         return updateTimestamp;
     }
 
+    public String getDocumentFileName() {
+        return documentFileName;
+    }
+
     public String documentPath() {
         return documentPath;
     }
@@ -71,9 +76,8 @@ public class VectorStoreDocumentInfo {
         this.documentListSupplier = documentListSupplier;
     }
 
-    // 새로운 제목으로 변경하는 메서드
     public VectorStoreDocumentInfo newTitle(String newTitle) {
         return new VectorStoreDocumentInfo(docInfoId, newTitle, createTimestamp, System.currentTimeMillis(),
-                documentPath, documentListSupplier);
+                documentFileName, documentPath, documentListSupplier);
     }
 }
