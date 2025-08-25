@@ -24,6 +24,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
+import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.details.DetailsVariant;
 import com.vaadin.flow.component.html.Span;
@@ -76,6 +77,7 @@ import static jm.kr.spring.ai.playground.service.chat.ChatHistory.TIMESTAMP;
 import static jm.kr.spring.ai.playground.service.chat.ChatHistoryPersistenceService.CONVERSATION_ID;
 import static org.springframework.ai.chat.messages.MessageType.USER;
 
+@JsModule("./playground/chat-stt.js")
 public class ChatContentView extends VerticalLayout {
     private static final String LAST_SELECTED_RAG_DOC_INFO_IDS = "lastSelectedRagDocInfoIds";
     private static final String LAST_SELECTED_MCP_CONNECTION_INFOS = "lastSelectedMcpConnectionInfos";
@@ -134,15 +136,37 @@ public class ChatContentView extends VerticalLayout {
         this.userPromptTextArea.setValueChangeMode(ValueChangeMode.EAGER);
         this.userPromptTextArea.setClearButtonVisible(true);
         CompletableFuture<ZoneId> zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
+        this.userPromptTextArea.setId("sttTextArea");
+
+        Icon micIcon = VaadinIcon.MICROPHONE.create();
+        micIcon.getStyle().set("width", "var(--lumo-icon-size-l)");
+        micIcon.getStyle().set("height", "var(--lumo-icon-size-l)");
+        Button micButton = new Button(micIcon);
+        micButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        micButton.setTooltipText("Voice input");
+        micButton.setId("micButton");
+        micButton.addClickListener(e ->
+                micButton.getElement().executeJs("window.STTModule.toggle($0, $1)",
+                        this.userPromptTextArea.getId().get(),
+                        micButton.getId().get())
+        );
 
         Icon icon = VaadinIcon.ARROW_CIRCLE_UP.create();
         icon.getStyle().set("width", "var(--lumo-icon-size-l)");
         icon.getStyle().set("height", "var(--lumo-icon-size-l)");
         Button submitButton = new Button(icon);
         submitButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        submitButton.addClickListener(buttonClickEvent -> inputEvent(zoneIdFuture));
+        submitButton.addClickListener(e -> {
+            userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, value -> {
+                inputEvent(zoneIdFuture, value);
+            });
+        });
         submitButton.setTooltipText("Submit");
-        this.userPromptTextArea.setSuffixComponent(submitButton);
+
+        HorizontalLayout suffix = new HorizontalLayout(micButton, submitButton);
+        suffix.setSpacing(false);
+        suffix.setPadding(false);
+        this.userPromptTextArea.setSuffixComponent(suffix);
 
         this.userPromptTextArea.addKeyDownListener(Key.ENTER, event -> {
             if (!event.isComposing() && !event.getModifiers().contains(KeyModifier.SHIFT))
@@ -212,8 +236,7 @@ public class ChatContentView extends VerticalLayout {
                 });
     }
 
-    private void inputEvent(CompletableFuture<ZoneId> zoneIdFuture) {
-        String userPrompt = this.userPromptTextArea.getValue();
+    private void inputEvent(CompletableFuture<ZoneId> zoneIdFuture, String userPrompt) {
         if (userPrompt.isBlank())
             return;
         this.userPromptTextArea.setEnabled(false);
