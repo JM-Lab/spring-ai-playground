@@ -52,6 +52,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.vaadin.firitin.components.messagelist.MarkdownMessage;
+import reactor.core.Disposable;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -91,6 +92,7 @@ public class ChatContentView extends VerticalLayout {
     private final PersistentUiDataStorage persistentUiDataStorage;
     private final ChatHistory chatHistory;
     private final McpClientService mcpClientService;
+    private Disposable currentStream;
 
     public ChatContentView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
             ChatHistory chatHistory, Consumer<ChatHistory> completeChatHistoryConsumer,
@@ -138,9 +140,7 @@ public class ChatContentView extends VerticalLayout {
         CompletableFuture<ZoneId> zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
         this.userPromptTextArea.setId("sttTextArea");
 
-        Icon micIcon = VaadinIcon.MICROPHONE.create();
-        micIcon.getStyle().set("width", "var(--lumo-icon-size-l)");
-        micIcon.getStyle().set("height", "var(--lumo-icon-size-l)");
+        Icon micIcon = VaadinUtils.styledLargeIcon(VaadinIcon.MICROPHONE.create());
         Button micButton = new Button(micIcon);
         micButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         micButton.setTooltipText("Voice input");
@@ -151,16 +151,9 @@ public class ChatContentView extends VerticalLayout {
                         micButton.getId().get())
         );
 
-        Icon icon = VaadinIcon.ARROW_CIRCLE_UP.create();
-        icon.getStyle().set("width", "var(--lumo-icon-size-l)");
-        icon.getStyle().set("height", "var(--lumo-icon-size-l)");
-        Button submitButton = new Button(icon);
+        Icon submitIcon = VaadinUtils.styledLargeIcon(VaadinIcon.ARROW_CIRCLE_UP.create());
+        Button submitButton = new Button(submitIcon);
         submitButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        submitButton.addClickListener(e -> {
-            userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, value -> {
-                inputEvent(zoneIdFuture, value);
-            });
-        });
         submitButton.setTooltipText("Submit");
 
         HorizontalLayout suffix = new HorizontalLayout(micButton, submitButton);
@@ -173,11 +166,11 @@ public class ChatContentView extends VerticalLayout {
                 submitButton.click();
         });
 
-        Icon ragIcon = VaadinUtils.styledIcon(VaadinIcon.SEARCH_PLUS.create());
+        Icon ragIcon = VaadinUtils.styledLargeIcon(VaadinIcon.SEARCH_PLUS.create());
         ragIcon.setTooltipText("Select documents in VectorDB");
         ragIcon.addSingleClickListener(event -> this.documentsComboBox.setOpened(true));
         ragIcon.getStyle().set("margin-right", "0px");
-        Icon toolIcon = VaadinUtils.styledIcon(VaadinIcon.TOOLBOX.create());
+        Icon toolIcon = VaadinUtils.styledLargeIcon(VaadinIcon.TOOLBOX.create());
         toolIcon.setTooltipText("Select documents in VectorDB");
         toolIcon.getStyle().set("margin-right", "0px");
         toolIcon.addSingleClickListener(event -> this.mcpToolProviderComboBox.setOpened(true));
@@ -194,7 +187,7 @@ public class ChatContentView extends VerticalLayout {
 
 
         HorizontalLayout userInputMenuLayout = new HorizontalLayout(toolLayout, ragLayout);
-        VerticalLayout userInputLayout = new VerticalLayout(this.userPromptTextArea, userInputMenuLayout);
+        VerticalLayout userInputLayout = new VerticalLayout(userInputMenuLayout, this.userPromptTextArea);
         userInputLayout.setWidthFull();
         userInputLayout.setMargin(false);
         userInputLayout.setSpacing(false);
@@ -213,6 +206,30 @@ public class ChatContentView extends VerticalLayout {
                 this.chatHistory);
         messages.forEach(message -> chatContentManager.initMarkdownMessage(this.messageListLayout, message,
                 message.getMessageType()));
+        submitButton.addClickListener(e -> {
+            if (this.currentStream != null && !this.currentStream.isDisposed()) {
+                this.currentStream.dispose();
+                this.currentStream = null;
+                submitButton.setIcon(submitIcon);
+                this.userPromptTextArea.setReadOnly(false);
+                micButton.setEnabled(true);
+                return;
+            }
+            this.userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, userPrompt -> {
+                if (userPrompt.isBlank())
+                    return;
+                this.userPromptTextArea.getElement().executeJs("this.value='';");
+                this.userPromptTextArea.clear();
+                this.userPromptTextArea.setReadOnly(true);
+                micButton.setEnabled(false);
+                Icon stopIcon = VaadinUtils.styledLargeIcon(VaadinIcon.STOP.create());
+                submitButton.setIcon(stopIcon);
+                submitButton.setTooltipText("Stop");
+                this.currentStream = inputEvent(zoneIdFuture, userPrompt);
+            });
+        });
+
+
         this.messageListLayout.getChildren().toList().getLast().scrollIntoView();
         this.persistentUiDataStorage.loadData(LAST_SELECTED_RAG_DOC_INFO_IDS, new TypeReference<Set<String>>() {},
                 docInfoIds -> {
@@ -236,12 +253,7 @@ public class ChatContentView extends VerticalLayout {
                 });
     }
 
-    private void inputEvent(CompletableFuture<ZoneId> zoneIdFuture, String userPrompt) {
-        if (userPrompt.isBlank())
-            return;
-        this.userPromptTextArea.setEnabled(false);
-        this.userPromptTextArea.clear();
-
+    private Disposable inputEvent(CompletableFuture<ZoneId> zoneIdFuture, String userPrompt) {
         ChatContentManager chatContentManager = new ChatContentManager(this.messageListLayout, userPrompt, zoneIdFuture,
                 this.chatHistory);
         this.messageListLayout.add(chatContentManager.getBotResponse());
@@ -257,14 +269,16 @@ public class ChatContentView extends VerticalLayout {
                         Collectors.mapping(McpServerInfo::serverName, Collectors.toList()))));
 
         UI ui = VaadinUtils.getUi(this);
-        this.chatService.stream(this.chatHistory, userPrompt,
+        return this.chatService.stream(this.chatHistory, userPrompt,
                         this.chatService.buildFilterExpression(selectedDocInfoIds), this.completeChatHistoryConsumer,
                         toolCallbacks, o -> ui.access(() -> chatContentManager.appendMcpToolProcessMessage(o)))
                 .doFinally(signalType -> ui.access(() -> {
                     chatContentManager.doFinally();
                     this.messageScroller.scrollToBottom();
+                    this.userPromptTextArea.setReadOnly(false);
                     this.userPromptTextArea.setEnabled(true);
                     this.userPromptTextArea.focus();
+                    this.currentStream = null;
                 })).subscribe(content -> ui.access(() -> chatContentManager.append(content)));
     }
 
@@ -513,6 +527,7 @@ public class ChatContentView extends VerticalLayout {
                 this.mcpToolProcessMessagesBuilder = null;
             }
             metadataAsOpt.ifPresent(metadata -> updateMetadata(metadata, this.responseTimestamp));
+            this.botResponse.removeClassName("blink");
             this.botResponse.scrollIntoView();
         }
 

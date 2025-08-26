@@ -47,6 +47,12 @@ public interface VaadinUtils {
         return icon;
     }
 
+    static Icon styledLargeIcon(Icon icon) {
+        icon.getStyle().set("width", "var(--lumo-icon-size-l)");
+        icon.getStyle().set("height", "var(--lumo-icon-size-l)");
+        return icon;
+    }
+
     static Button styledButton(String toolTip, Icon icon, ComponentEventListener<ClickEvent<Button>> clickListener) {
         Button styledButton = Objects.isNull(icon) ? new Button() : new Button(styledIcon(icon));
         if (Objects.nonNull(toolTip))
