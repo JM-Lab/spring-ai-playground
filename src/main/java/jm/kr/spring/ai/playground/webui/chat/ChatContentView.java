@@ -156,15 +156,38 @@ public class ChatContentView extends VerticalLayout {
         submitButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         submitButton.setTooltipText("Submit");
 
-        HorizontalLayout suffix = new HorizontalLayout(micButton, submitButton);
-        suffix.setSpacing(false);
-        suffix.setPadding(false);
-        this.userPromptTextArea.setSuffixComponent(suffix);
+        submitButton.addClickListener(e -> {
+            if (this.currentStream != null && !this.currentStream.isDisposed()) {
+                this.currentStream.dispose();
+                this.currentStream = null;
+                submitButton.setIcon(submitIcon);
+                this.userPromptTextArea.setReadOnly(false);
+                micButton.setEnabled(true);
+                return;
+            }
+            this.userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, userPrompt -> {
+                if (userPrompt.isBlank())
+                    return;
+                this.userPromptTextArea.getElement().executeJs("this.value='';");
+                this.userPromptTextArea.clear();
+                this.userPromptTextArea.setReadOnly(true);
+                micButton.setEnabled(false);
+                Icon stopIcon = VaadinUtils.styledLargeIcon(VaadinIcon.STOP.create());
+                submitButton.setIcon(stopIcon);
+                submitButton.setTooltipText("Stop");
+                this.currentStream = inputEvent(zoneIdFuture, userPrompt);
+            });
+        });
 
         this.userPromptTextArea.addKeyDownListener(Key.ENTER, event -> {
             if (!event.isComposing() && !event.getModifiers().contains(KeyModifier.SHIFT))
                 submitButton.click();
         });
+
+        HorizontalLayout suffix = new HorizontalLayout(micButton, submitButton);
+        suffix.setSpacing(false);
+        suffix.setPadding(false);
+        this.userPromptTextArea.setSuffixComponent(suffix);
 
         Icon ragIcon = VaadinUtils.styledLargeIcon(VaadinIcon.SEARCH_PLUS.create());
         ragIcon.setTooltipText("Select documents in VectorDB");
@@ -206,29 +229,6 @@ public class ChatContentView extends VerticalLayout {
                 this.chatHistory);
         messages.forEach(message -> chatContentManager.initMarkdownMessage(this.messageListLayout, message,
                 message.getMessageType()));
-        submitButton.addClickListener(e -> {
-            if (this.currentStream != null && !this.currentStream.isDisposed()) {
-                this.currentStream.dispose();
-                this.currentStream = null;
-                submitButton.setIcon(submitIcon);
-                this.userPromptTextArea.setReadOnly(false);
-                micButton.setEnabled(true);
-                return;
-            }
-            this.userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, userPrompt -> {
-                if (userPrompt.isBlank())
-                    return;
-                this.userPromptTextArea.getElement().executeJs("this.value='';");
-                this.userPromptTextArea.clear();
-                this.userPromptTextArea.setReadOnly(true);
-                micButton.setEnabled(false);
-                Icon stopIcon = VaadinUtils.styledLargeIcon(VaadinIcon.STOP.create());
-                submitButton.setIcon(stopIcon);
-                submitButton.setTooltipText("Stop");
-                this.currentStream = inputEvent(zoneIdFuture, userPrompt);
-            });
-        });
-
 
         this.messageListLayout.getChildren().toList().getLast().scrollIntoView();
         this.persistentUiDataStorage.loadData(LAST_SELECTED_RAG_DOC_INFO_IDS, new TypeReference<Set<String>>() {},

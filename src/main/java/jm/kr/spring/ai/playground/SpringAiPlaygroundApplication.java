@@ -17,7 +17,10 @@ package jm.kr.spring.ai.playground;
 
 import com.vaadin.flow.component.dependency.JavaScript;
 import com.vaadin.flow.component.page.AppShellConfigurator;
+import com.vaadin.flow.component.page.Inline;
 import com.vaadin.flow.component.page.Push;
+import com.vaadin.flow.component.page.TargetElement;
+import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -53,6 +56,25 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
         SpringApplication.run(SpringAiPlaygroundApplication.class, args);
+    }
+
+    @Override
+    public void configurePage(AppShellSettings settings) {
+        String gtmContainerId = "GTM-PVX8227Q";
+        String gtmScript = String.format(
+                "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':"
+                        + "new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],"
+                        + "j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src="
+                        + "'https://www.googletagmanager.com/gtm.js?id='+i+dl;"
+                        + "f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','%s');",
+                gtmContainerId
+        );
+        settings.addInlineWithContents(Inline.Position.PREPEND, gtmScript, Inline.Wrapping.JAVASCRIPT);
+
+        String gtmNoscript = String.format(
+                "<noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=%s\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript>",
+                gtmContainerId);
+        settings.addInlineWithContents(TargetElement.BODY, Inline.Position.PREPEND, gtmNoscript, Inline.Wrapping.NONE);
     }
 
     @Bean
