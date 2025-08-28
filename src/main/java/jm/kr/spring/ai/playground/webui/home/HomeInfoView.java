@@ -21,6 +21,7 @@ import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -30,14 +31,47 @@ import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.ListItem;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.UnorderedList;
+import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.markdown.Markdown;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import jm.kr.spring.ai.playground.webui.VaadinUtils;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 public class HomeInfoView extends Div {
 
+    public static final String UPDATE_GUIDE;
+
+    static {
+        try (var is = HomeInfoView.class.getClassLoader().getResourceAsStream("update-guide.md")) {
+            if (is == null) {
+                throw new IllegalArgumentException("update-guide.md not found in resources");
+            }
+            UPDATE_GUIDE = new String(is.readAllBytes());
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static String cachedCommitMessage;
+    private static Instant cachedCommitTime;
+    private static Instant lastFetchedTime;
+
+    private final Span latestCommitSpan;
     private final Button installButton;
 
     public HomeInfoView() {
@@ -50,6 +84,39 @@ public class HomeInfoView extends Div {
         contentLayout.getStyle()
                 .set("padding-left", "2rem")
                 .set("padding-right", "2rem");
+        add(contentLayout);
+
+        HorizontalLayout latestCommitLayout = new HorizontalLayout();
+        latestCommitLayout.setWidthFull();
+        latestCommitLayout.getStyle()
+                .set("padding", "1rem")
+                .set("background-color", "#f0f0f0")
+                .set("border-radius", "0.5rem")
+                .set("align-items", "center");
+
+        Icon infoIcon = VaadinUtils.styledLargeIcon(VaadinIcon.INFO_CIRCLE.create());
+
+        latestCommitSpan = new Span("Loading recent update...");
+        latestCommitSpan.getStyle()
+                .set("fontWeight", "600")
+                .set("color", "var(--lumo-primary-text-color)")
+                .set("padding", "0.1rem 0.4rem")
+                .set("borderRadius", "var(--lumo-border-radius-m)");
+
+        latestCommitLayout.add(infoIcon, latestCommitSpan);
+        contentLayout.add(latestCommitLayout);
+        loadLatestCommit();
+
+        Details updateGuide = new Details();
+        updateGuide.setSummary(new Span("Update Guide"));
+        updateGuide.getSummary().getElement().getStyle()
+                .set("font-weight", "bold")
+                .set("color", "var(--lumo-primary-text-color)");
+
+        Markdown markdown = new Markdown(UPDATE_GUIDE);
+        updateGuide.add(markdown);
+        updateGuide.setOpened(false);
+        contentLayout.add(updateGuide);
 
         contentLayout.add(new H1("Welcome to Spring AI Playground"));
         contentLayout.add(new Paragraph(
@@ -141,4 +208,56 @@ public class HomeInfoView extends Div {
         return container;
     }
 
+    private void loadLatestCommit() {
+        if (cachedCommitMessage != null && lastFetchedTime != null) {
+            Duration diff = Duration.between(lastFetchedTime, Instant.now());
+            if (diff.toMinutes() < 60) {
+                latestCommitSpan.setText(formatCommitDisplay(cachedCommitMessage, cachedCommitTime));
+                return;
+            }
+        }
+
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI("https://api.github.com/repos/JM-Lab/spring-ai-playground/commits?per_page=1"))
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                String body = response.body();
+
+                String message = body.split("\"message\":\"")[1].split("\"")[0];
+                message = cleanCommitMessage(message);
+
+                String dateStr = body.split("\"date\":\"")[1].split("\"")[0];
+                Instant commitTime = Instant.parse(dateStr);
+
+                cachedCommitMessage = message;
+                cachedCommitTime = commitTime;
+                lastFetchedTime = Instant.now();
+
+                latestCommitSpan.setText(formatCommitDisplay(message, commitTime));
+            } else {
+                latestCommitSpan.setText("Failed to fetch recent update, status: " + response.statusCode());
+            }
+        } catch (Exception e) {
+            latestCommitSpan.setText("Error fetching recent update");
+            e.printStackTrace();
+        }
+    }
+
+    private String cleanCommitMessage(String message) {
+        return message.replaceAll("(?i)(?:\\\\n\\s*)*Signed-off-by:.*", "").trim();
+    }
+
+    private String formatCommitDisplay(String message, Instant commitTime) {
+        if (commitTime == null) {
+            return "Recent Update: " + message;
+        }
+        ZonedDateTime localTime = commitTime.atZone(ZoneId.systemDefault());
+        String formattedTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(localTime);
+        return "Recent Update (" + formattedTime + "): " + message;
+    }
 }
