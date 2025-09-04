@@ -18,6 +18,7 @@ Built on **Spring AI**, it supports leading model providers and includes compreh
    - [Support for Major AI Model Providers](#support-for-major-ai-model-providers)
    - [Selecting and Configuring Ollama Models](#selecting-and-configuring-ollama-models)
    - [Switching to OpenAI](#switching-to-openai)
+     - [Switching to OpenAI-Compatible Servers](#switching-to-openai-compatible-servers)
 - [MCP (Model Context Protocol) Playground](#mcp-model-context-protocol-playground)
    - [Key Features](#key-features)
    - [Getting Started with MCP](#getting-started-with-mcp)
@@ -162,6 +163,76 @@ To switch to OpenAI, follow these steps:
          openai:
            api-key: your-openai-api-key
      ```
+
+#### Switching to OpenAI-Compatible Servers
+You can connect Spring AI to OpenAI-compatible servers such as `llama.cpp`, `TabbyAPI`, or `LM Studio` by adding the following configuration to `application.yml`:
+
+```yaml
+spring:
+  ai:
+    openai:
+      # Set your actual API key here.
+      # If your server does not require authentication, use a placeholder string (e.g., "not-used").
+      api-key: "not-used"
+      # Base URL including scheme, host, and port only. Do NOT append /v1, as Spring AI will automatically add the path.
+      # Ensure the port matches your server’s configuration, as defaults may vary.
+      base-url: "http://localhost:8080"
+      chat:
+        options:
+          # Specify the model ID exposed by your server (e.g., "mistral" for LM Studio). Check your server’s documentation or /models endpoint for available models.
+          model: "your-model-name"
+        # Optional: Override the completions endpoint if your server uses a custom path (default: "/v1/chat/completions").
+        # completions-path: "/custom/chat/completions"
+```
+
+**Configuration Details:**
+- `api-key`: Required by Spring AI. Use your real API key or a placeholder string if authentication is not required.
+- `base-url`: The server URL up to host and port, without trailing version/path segments.
+- `model`: Must match the model name exposed by your server (e.g., mistral, gpt2).
+- `completions-path`: Override only if your server uses a non-standard endpoint path for chat completions (default: `/v1/chat/completions`).
+
+**Server-Specific Examples:**
+
+**llama.cpp server:**
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: "not-used"
+      base-url: "http://localhost:8080"
+      chat:
+        options:
+          model: "your-model-name"
+```
+
+**TabbyAPI:**
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: "not-used"  # Replace with an actual key if authentication is enabled in TabbyAPI settings
+      base-url: "http://localhost:5000"
+      chat:
+        options:
+          model: "your-exllama-model"
+```
+
+**LM Studio:**
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: "not-used"
+      base-url: "http://localhost:1234"
+      chat:
+        options:
+          model: "your-loaded-model"
+```
+
+> **Note**:  
+> Ensure your server fully adheres to OpenAI’s API specification for best compatibility.
+Streaming support works automatically if your server supports Server-Sent Events. Verify your server’s capabilities.
+Check your server’s documentation or /models endpoint to find the correct model name.
 
 ## MCP (Model Context Protocol) Playground
 
