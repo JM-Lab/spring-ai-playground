@@ -1,3 +1,5 @@
+vaadin:
+  pushmode: automatic
 server:
   port: 8282
 logging:
@@ -15,6 +17,12 @@ spring:
   profiles:
     default: mcp, ollama
   ai:
+    mcp:
+      server:
+        name: spring-ai-playground-tool-mcp
+        protocol: STREAMABLE
+        type: SYNC
+        request-timeout: 30
     model:
       chat: ollama
       embedding: ollama

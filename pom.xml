@@ -23,11 +23,11 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.3</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
     <groupId>jm.kr</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.1.1-M2</version>
+    <version>0.2.0</version>
     <name>Spring AI Playground</name>
     <description>spring-ai-playground</description>
     <url>https://github.com/JM-Lab/spring-ai-playground</url>
@@ -53,8 +53,8 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>24.9.3</vaadin.version>
-        <spring-ai.version>1.1.0-M2</spring-ai.version>
+        <vaadin.version>24.9.6</vaadin.version>
+        <spring-ai.version>1.1.0</spring-ai.version>
     </properties>
     <repositories>
         <repository>
@@ -94,15 +94,42 @@
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-spring-boot-starter</artifactId>
         </dependency>
+
         <dependency>
             <groupId>in.virit</groupId>
             <artifactId>viritin</artifactId>
-            <version>2.19.1</version>
+            <version>2.21.1</version>
         </dependency>
+
         <dependency>
             <groupId>org.vaadin.crudui</groupId>
             <artifactId>crudui</artifactId>
             <version>7.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.hilerio</groupId>
+            <artifactId>ace-widget</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>prettier</artifactId>
+            <version>3.6.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js</artifactId>
+            <version>25.0.1</version>
+            <type>pom</type>
+        </dependency>
+
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-scriptengine</artifactId>
+            <version>25.0.1</version>
         </dependency>
 
         <dependency>
@@ -123,6 +150,11 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
         </dependency>
 
         <dependency>
@@ -188,7 +220,6 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>5.0.0</version>
                 <configuration>
-                    <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
                     <properties>
                         <owner>Jemin Huh</owner>
                         <email>hjm1980@gmail.com</email>
@@ -197,10 +228,15 @@
                     <mapping>
                         <java>SLASHSTAR_STYLE</java>
                     </mapping>
-                    <includes>
-                        <include>**/*.java</include>
-                        <include>**/*.xml</include>
-                    </includes>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+                            <includes>
+                                <include>**/*.java</include>
+                                <include>**/*.xml</include>
+                            </includes>
+                        </licenseSet>
+                    </licenseSets>
                 </configuration>
                 <executions>
                     <execution>
@@ -211,6 +247,7 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
 

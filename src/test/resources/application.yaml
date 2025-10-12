@@ -13,6 +13,11 @@ spring:
   profiles:
     default: openai, ollama, mcp
   ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        type: SYNC
+        request-timeout: 30
     playground:
       persistence: false
       user-home:
