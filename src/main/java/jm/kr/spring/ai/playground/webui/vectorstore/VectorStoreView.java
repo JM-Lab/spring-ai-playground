@@ -178,10 +178,10 @@ public class VectorStoreView extends Div {
         });
         horizontalLayout.add(toggleButton);
 
-        Button newDocumentButton = styledButton("New Document", VaadinIcon.FILE_ADD.create(), null);
+        Button newDocumentButton = styledButton("New Document & ETL Pipeline", VaadinIcon.FILE_ADD.create(), null);
         horizontalLayout.add(newDocumentButton);
 
-        Popover newDocumentPopover = headerPopover(newDocumentButton, "Upload Document");
+        Popover newDocumentPopover = headerPopover(newDocumentButton, "New Document & ETL Pipeline");
         newDocumentPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
         newDocumentPopover.setPosition(PopoverPosition.BOTTOM_END);
         newDocumentPopover.setModal(true);
@@ -191,15 +191,22 @@ public class VectorStoreView extends Div {
         vectorStoreDocumentUpload.getStyle().set("padding", "0 var(--lumo-space-m) 0 var(--lumo-space-m)");
         newDocumentPopover.add(vectorStoreDocumentUpload);
 
-        HorizontalLayout chunkDocumentHorizontalLayout = new HorizontalLayout();
-        vectorStoreDocumentUpload.add(chunkDocumentHorizontalLayout);
-        chunkDocumentHorizontalLayout.setWidthFull();
-        chunkDocumentHorizontalLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        chunkDocumentHorizontalLayout.getStyle().set("padding", "var(--lumo-space-m) 0 var(--lumo-space-m) 0");
-
         Button chunkDocumentButton = new Button("Chunk Document");
         chunkDocumentButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
-        chunkDocumentHorizontalLayout.add(chunkDocumentButton);
+
+        HorizontalLayout buttonLayout = new HorizontalLayout(chunkDocumentButton);
+        buttonLayout.setWidthFull();
+        buttonLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+
+        VectorStoreDocumentTokenChunkInfo vectorStoreDocumentTokenChunkInfo = new VectorStoreDocumentTokenChunkInfo();
+
+        VerticalLayout outerLayout = new VerticalLayout(vectorStoreDocumentTokenChunkInfo, buttonLayout);
+        outerLayout.setPadding(false);
+        outerLayout.setSpacing(false);
+        outerLayout.setWidthFull();
+
+        vectorStoreDocumentUpload.add(outerLayout);
+
         chunkDocumentButton.addClickListener(buttonClickEvent -> {
             newDocumentPopover.close();
             List<String> uploadedFileNames = new ArrayList<>(vectorStoreDocumentUpload.getUploadedFileNames());
@@ -208,8 +215,10 @@ public class VectorStoreView extends Div {
                 VaadinUtils.showInfoNotification("No uploaded files found");
                 return;
             }
+
             Map<String, List<Document>> uploadedDocumentItems =
-                    this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames);
+                    this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames,
+                            vectorStoreDocumentService.newTokenTextSplitter(vectorStoreDocumentTokenChunkInfo.collectInput()));
             List<Document> chunks =
                     uploadedDocumentItems.values().stream().flatMap(List::stream).toList();
             if (chunks.isEmpty()) {

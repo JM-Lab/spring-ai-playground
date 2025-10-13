@@ -58,8 +58,10 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
         TransferProgressListener progressListener = new TransferProgressListener() {
             @Override
             public void onComplete(TransferContext context, long transferredBytes) {
-                String fileName = context.fileName();
-                VaadinUtils.showInfoNotification("Successfully uploaded: " + fileName);
+                if (!uploadedFileNames.isEmpty()) {
+                    String fileName = context.fileName();
+                    VaadinUtils.showInfoNotification("Successfully uploaded: " + fileName);
+                }
             }
 
             @Override
@@ -85,6 +87,7 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
             } catch (Exception e) {
                 this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
                 clearFileList();
+                VaadinUtils.showErrorNotification("Upload failed: " + fileName + " - " + e.getMessage());
                 throw new RuntimeException(e);
             }
         }, progressListener);

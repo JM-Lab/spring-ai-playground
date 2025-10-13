@@ -110,7 +110,8 @@ class VectorStoreDocumentServiceTest {
         }
 
         Resource testResource = new FileSystemResource(testFile);
-        List<Document> defaultSplit = service.extractDocumentItems(List.of("test-split.txt")).get("test-split.txt");
+        List<Document> defaultSplit = service.extractDocumentItems(List.of("test-split.txt"),
+                service.getDefaultTokenTextSplitter()).get("test-split.txt");
         assertEquals(1, defaultSplit.size());
         assertEquals("test-split.txt", defaultSplit.getFirst().getMetadata().get("source"));
 

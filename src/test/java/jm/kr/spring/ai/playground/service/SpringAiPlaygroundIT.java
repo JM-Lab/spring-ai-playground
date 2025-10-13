@@ -93,7 +93,7 @@ class SpringAiPlaygroundIT {
         targetPath.toFile().deleteOnExit();
         List<String> uploadedFileNames = List.of(filename);
         Map<String, List<Document>> uploadedDocumentItems =
-                this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames);
+                this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames, this.vectorStoreDocumentService.getDefaultTokenTextSplitter());
         uploadedDocumentItems.entrySet().stream()
                 .map(entry -> this.vectorStoreDocumentService.putNewDocument(entry.getKey(), entry.getValue()))
                 .forEach(this.vectorStoreService::add);
