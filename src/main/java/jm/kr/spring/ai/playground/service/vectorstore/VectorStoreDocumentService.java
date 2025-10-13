@@ -88,6 +88,10 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
         this.documentInfos = new ConcurrentHashMap<>();
     }
 
+    public TokenTextSplitter getDefaultTokenTextSplitter() {
+        return this.defaultTokenTextSplitter;
+    }
+
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
         long createTimestamp = System.currentTimeMillis();
         File uploadedDocumentFile = buildUploadFilePath(documentFileName).toFile();
@@ -111,9 +115,9 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
         return new Document(index + "-" + docInfoId, uploadedDocument.getText(), metadata);
     }
 
-    public Map<String, List<Document>> extractDocumentItems(List<String> uploadedFileNames) {
+    public Map<String, List<Document>> extractDocumentItems(List<String> uploadedFileNames, TextSplitter textSplitter) {
         return uploadedFileNames.stream().map(fileName -> Map.entry(fileName,
-                        split(resolveResource(buildUploadFilePath(fileName).toFile().getPath()))))
+                        split(resolveResource(buildUploadFilePath(fileName).toFile().getPath()), textSplitter)))
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -124,8 +128,8 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
         return resourceLoader.getResource("file:" + path);
     }
 
-    private List<Document> split(Resource resource) {
-        return split(this.defaultTokenTextSplitter, new TikaDocumentReader(resource));
+    private List<Document> split(Resource resource, TextSplitter textSplitter) {
+        return split(textSplitter, new TikaDocumentReader(resource));
     }
 
     private List<Document> split(TextSplitter textSplitter, DocumentReader documentReader) {
@@ -140,7 +144,7 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
                 key -> newTokenTextSplitter(tokenTextSplitInfo)), new TikaDocumentReader(resource));
     }
 
-    private TokenTextSplitter newTokenTextSplitter(TokenTextSplitInfo tokenTextSplitInfo) {
+    public TokenTextSplitter newTokenTextSplitter(TokenTextSplitInfo tokenTextSplitInfo) {
         return new TokenTextSplitter(tokenTextSplitInfo.chunkSize(), tokenTextSplitInfo.minChunkSizeChars(),
                 tokenTextSplitInfo.minChunkLengthToEmbed(), tokenTextSplitInfo.maxNumChunks(),
                 tokenTextSplitInfo.keepSeparator());

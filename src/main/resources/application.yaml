@@ -41,7 +41,7 @@ spring:
           model: qwen3
       embedding:
         options:
-          model: bge-m3
+          model: qwen3-embedding:0.6b
     playground:
       chat:
         models:

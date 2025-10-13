@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpSseClientProperties.SseParameters;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStdioClientProperties.Parameters;
@@ -55,7 +56,7 @@ public interface McpClientPropertiesService<P> {
                 }
                 case STDIO -> {
                     Parameters parameters = objectMapper.readValue(parametersAsJson, Parameters.class);
-                    yield new StdioClientTransport(parameters.toServerParameters());
+                    yield new StdioClientTransport(parameters.toServerParameters(), new JacksonMcpJsonMapper(objectMapper));
                 }
             };
         } catch (Exception e) {
