@@ -39,7 +39,7 @@ public class SpringAiPlaygroundPersistenceManager {
 
     @PostConstruct
     public void onStartup() {
-        logger.info("SpringAiPlaygroundLifecycleManager started.");
+        logger.info("SpringAiPlaygroundPersistenceManager started.");
         for (PersistenceServiceInterface persistenceService : persistenceServices) {
             try {
                 persistenceService.onStart();
@@ -51,7 +51,7 @@ public class SpringAiPlaygroundPersistenceManager {
 
     @PreDestroy
     public void onShutdown() {
-        logger.info("SpringAiPlaygroundLifecycleManager shutting down");
+        logger.info("SpringAiPlaygroundPersistenceManager shutting down");
         for (PersistenceServiceInterface persistenceService : persistenceServices) {
             try {
                 persistenceService.onShutdown();

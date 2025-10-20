@@ -17,6 +17,7 @@ spring:
   ai:
     model:
       chat: ollama
+      embedding: ollama
     playground:
       user-home:
       chat:

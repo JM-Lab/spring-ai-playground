@@ -20,7 +20,6 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.AbstractEmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
-import org.springframework.ai.embedding.EmbeddingOptionsBuilder;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
@@ -39,11 +38,12 @@ import static org.springframework.ai.vectorstore.SearchRequest.SIMILARITY_THRESH
 
 @Service
 public class VectorStoreService {
+    private static final String ALL_QUERY = "all";
     public static final String DOC_INFO_ID = "docInfoId";
     public static final SearchRequestOption ALL_SEARCH_REQUEST_OPTION =
             new SearchRequestOption(SIMILARITY_THRESHOLD_ACCEPT_ALL, 10000);
     public static final Function<List<String>, SearchRequest> SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION =
-            docInfoIds -> new SearchRequest.Builder().similarityThreshold(
+            docInfoIds -> new SearchRequest.Builder().query(ALL_QUERY).similarityThreshold(
                             ALL_SEARCH_REQUEST_OPTION.similarityThreshold()).topK(ALL_SEARCH_REQUEST_OPTION.topK())
                     .filterExpression(new FilterExpressionBuilder().in(DOC_INFO_ID, docInfoIds.toArray()).build())
                     .build();
@@ -67,7 +67,8 @@ public class VectorStoreService {
     private EmbeddingOptions embeddingOptions;
 
     public VectorStoreService(EmbeddingModel embeddingModel, VectorStore vectorStore,
-            @Lazy ApplicationContext applicationContext, @Lazy VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService) {
+            @Lazy ApplicationContext applicationContext,
+            @Lazy VectorStoreDocumentPersistenceService vectorStoreDocumentPersistenceService) {
         this.embeddingModel = (AbstractEmbeddingModel) embeddingModel;
         this.vectorStore = vectorStore;
         this.searchRequestOption = new SearchRequestOption(0.6, DEFAULT_TOP_K);
@@ -97,7 +98,8 @@ public class VectorStoreService {
     }
 
     public List<Document> search(SearchRequest searchRequest) {
-        return this.vectorStore.similaritySearch(searchRequest);
+        return this.vectorStore.similaritySearch(searchRequest.getQuery().isBlank() ?
+                SearchRequest.from(searchRequest).query(ALL_QUERY).build() : searchRequest);
     }
 
     public void add(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
@@ -136,7 +138,7 @@ public class VectorStoreService {
                             } catch (Exception e) {
                                 throw new RuntimeException(e);
                             }
-                        }).map(o -> (EmbeddingOptions) o).orElseGet(EmbeddingOptionsBuilder.builder()::build));
+                        }).map(o -> (EmbeddingOptions) o).orElseGet(EmbeddingOptions.builder()::build));
     }
 
 }
