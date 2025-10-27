@@ -107,7 +107,7 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Bean
     @ConditionalOnMissingBean(VectorStore.class)
-    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+    public SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel) {
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 

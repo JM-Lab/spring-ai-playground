@@ -125,8 +125,6 @@ public class VectorStoreView extends Div {
                 return;
             Collection<VectorStoreDocumentInfo> newDocumentInfos =
                     (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
-            if (newDocumentInfos.isEmpty())
-                return;
             switch (changeEvent.getPropertyName()) {
                 case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
                 case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
@@ -218,7 +216,8 @@ public class VectorStoreView extends Div {
 
             Map<String, List<Document>> uploadedDocumentItems =
                     this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames,
-                            vectorStoreDocumentService.newTokenTextSplitter(vectorStoreDocumentTokenChunkInfo.collectInput()));
+                            vectorStoreDocumentService.newTokenTextSplitter(
+                                    vectorStoreDocumentTokenChunkInfo.collectInput()));
             List<Document> chunks =
                     uploadedDocumentItems.values().stream().flatMap(List::stream).toList();
             if (chunks.isEmpty()) {
@@ -290,11 +289,12 @@ public class VectorStoreView extends Div {
 
     private @NotNull H4 buildEmbeddingModelServiceText() {
         EmbeddingOptions embeddingOptions = this.vectorStoreService.getEmbeddingOptions();
-        return new H4(Objects.nonNull(embeddingOptions.getDimensions())
-                ? String.format("%s - %s - %d", this.vectorStoreService.getEmbeddingModelServiceName(),
-                embeddingOptions.getModel(), embeddingOptions.getDimensions())
-                : String.format("%s - %s", this.vectorStoreService.getEmbeddingModelServiceName(),
-                embeddingOptions.getModel()));
+        return new H4(Objects.nonNull(embeddingOptions.getDimensions()) ?
+                String.format("%s - %s: %s - %d", this.vectorStoreService.getVectorStoreName(),
+                        vectorStoreService.getEmbeddingModelServiceName(), embeddingOptions.getModel(),
+                        embeddingOptions.getDimensions()) :
+                String.format("%s - %s: %s", this.vectorStoreService.getVectorStoreName(),
+                        this.vectorStoreService.getEmbeddingModelServiceName(), embeddingOptions.getModel()));
     }
 
 }

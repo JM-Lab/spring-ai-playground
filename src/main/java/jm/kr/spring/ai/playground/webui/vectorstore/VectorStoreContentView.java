@@ -308,7 +308,8 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
     }
 
     public void showDocuments(List<String> selectDocInfoIds) {
-        this.searchRequest = SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(selectDocInfoIds);
+        this.searchRequest = selectDocInfoIds.isEmpty() ? null :
+                SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(selectDocInfoIds);
         refreshGrid();
 
     }

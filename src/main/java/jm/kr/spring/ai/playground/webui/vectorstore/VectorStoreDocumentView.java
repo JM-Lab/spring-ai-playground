@@ -87,8 +87,6 @@ public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnt
             return title;
         }));
         this.documentListBox.addValueChangeListener(event -> Optional.ofNullable(event.getValue())
-                .filter(vectorStoreDocumentInfos -> this.documentListBox.getSelectedItems()
-                        .equals(vectorStoreDocumentInfos))
                 .ifPresent(documentInfos -> this.documentInfoChangeSupport.firePropertyChange(DOCUMENT_SELECTING_EVENT,
                         event.getOldValue(), documentInfos)));
         add(initDocumentViewHeader(), this.documentListBox);

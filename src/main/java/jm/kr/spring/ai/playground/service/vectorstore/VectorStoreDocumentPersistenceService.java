@@ -23,12 +23,14 @@ import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static jm.kr.spring.ai.playground.service.vectorstore.VectorStoreService.SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION;
@@ -45,7 +47,9 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
 
     public VectorStoreDocumentPersistenceService(Path springAiPlaygroundHomeDir, VectorStore vectorStore,
             VectorStoreDocumentService vectorStoreDocumentService) throws IOException {
-        this.saveDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("save");
+        this.saveDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("save").resolve(
+                Optional.ofNullable(vectorStore.getName()).filter(Predicate.not(String::isBlank))
+                        .orElse("VectorStore"));
         Files.createDirectories(this.saveDir);
         this.simpleVectorstoreSaveDir = springAiPlaygroundHomeDir.resolve("vectorstore").resolve("simpleVectorStore");
         Files.createDirectories(this.simpleVectorstoreSaveDir);
@@ -101,19 +105,14 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
 
     @Override
     public void onStart() throws IOException {
-        AtomicBoolean needToAdd = new AtomicBoolean();
-        if (this.vectorStore instanceof SimpleVectorStore) {
-            boolean savedFileExists = this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile().exists();
-            if (savedFileExists)
-                ((SimpleVectorStore) vectorStore).load(
-                        this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
-            needToAdd.set(!savedFileExists);
+        File savedSimpleVectorStoreDataFile = this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile();
+        if (savedSimpleVectorStoreDataFile.exists() &&
+                this.vectorStore instanceof SimpleVectorStore simpleVectorStore) {
+            simpleVectorStore.load(this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
         }
         loads().forEach(vectorStoreDocumentInfo -> {
             vectorStoreDocumentService.updateDocumentInfo(vectorStoreDocumentInfo,
                     vectorStoreDocumentInfo.title());
-            if (needToAdd.get())
-                this.vectorStore.add(vectorStoreDocumentInfo.documentListSupplier().get());
             vectorStoreDocumentInfo.changeDocumentListSupplier(() -> this.vectorStore.similaritySearch(
                     SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(
                             List.of(vectorStoreDocumentInfo.docInfoId()))));
@@ -124,8 +123,11 @@ public class VectorStoreDocumentPersistenceService implements PersistenceService
     public void onShutdown() throws IOException {
         for (VectorStoreDocumentInfo vectorStoreDocumentInfo : vectorStoreDocumentService.getDocumentList())
             save(vectorStoreDocumentInfo);
-        ((SimpleVectorStore) vectorStore).save(
-                this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
+        if (!vectorStoreDocumentService.getDocumentList().isEmpty() &&
+                this.vectorStore instanceof SimpleVectorStore simpleVectorStore)
+            simpleVectorStore.save(this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile());
+        else
+            this.simpleVectorstoreSaveDir.resolve(SIMPLE_VECTOR_STORE_JSON).toFile().deleteOnExit();
     }
 
     @Override

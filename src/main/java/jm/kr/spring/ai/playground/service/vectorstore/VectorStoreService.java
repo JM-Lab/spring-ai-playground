@@ -128,6 +128,10 @@ public class VectorStoreService {
         return this.embeddingModel.getClass().getSimpleName().replace("EmbeddingModel", "");
     }
 
+    public String getVectorStoreName() {
+        return this.vectorStore.getName();
+    }
+
     public EmbeddingOptions getEmbeddingOptions() {
         return Optional.ofNullable(this.embeddingOptions)
                 .orElseGet(() -> this.embeddingOptions = Arrays.stream(this.applicationContext.getBeanDefinitionNames())
