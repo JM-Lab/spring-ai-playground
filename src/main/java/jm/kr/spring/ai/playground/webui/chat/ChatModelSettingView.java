@@ -32,7 +32,6 @@ public class ChatModelSettingView extends VerticalLayout {
     private final IntegerField maxTokensInput;
     private final NumberField temperatureInput;
     private final NumberField topPInput;
-    private final IntegerField topKInput;
     private final NumberField frequencyPenaltyInput;
     private final NumberField presencePenaltyInput;
 
@@ -148,46 +147,6 @@ public class ChatModelSettingView extends VerticalLayout {
         });
         add(topPInput, topPSlider);
 
-        this.topKInput = new IntegerField("Top K");
-        this.topKInput.setMin(1);
-        this.topKInput.setMax(100);
-        this.topKInput.setI18n(new IntegerField.IntegerFieldI18n()
-                .setBadInputErrorMessage("Invalid number format")
-                .setMinErrorMessage("Value must be at least 1")
-                .setMaxErrorMessage("Value cannot exceed 100"));
-
-        RangeInput topKSlider = new RangeInput();
-        topKSlider.setStep(1.0);
-        topKSlider.setMin(1);
-        topKSlider.setMax(100);
-
-        Integer topK = chatOption.getTopK();
-        if (topK != null) {
-            this.topKInput.setValue(topK);
-            topKSlider.setValue(topK.doubleValue());
-        } else {
-            this.topKInput.setValue(50);
-            topKSlider.setValue(50.0);
-        }
-
-        topKSlider.setWidthFull();
-        final boolean[] isUpdatingTopK = {false};
-        topKSlider.addValueChangeListener(e -> {
-            if (!isUpdatingTopK[0]) {
-                isUpdatingTopK[0] = true;
-                this.topKInput.setValue(e.getValue().intValue());
-                isUpdatingTopK[0] = false;
-            }
-        });
-        this.topKInput.addValueChangeListener(e -> {
-            if (!isUpdatingTopK[0] && e.getValue() != null) {
-                isUpdatingTopK[0] = true;
-                topKSlider.setValue(e.getValue().doubleValue());
-                isUpdatingTopK[0] = false;
-            }
-        });
-        add(topKInput, topKSlider);
-
         this.frequencyPenaltyInput = new NumberField("Frequency Penalty");
         this.frequencyPenaltyInput.setMin(-2);
         this.frequencyPenaltyInput.setMax(2);
@@ -279,7 +238,6 @@ public class ChatModelSettingView extends VerticalLayout {
                 .maxTokens(maxTokensInput.getValue())
                 .temperature(temperatureInput.getValue())
                 .topP(topPInput.getValue())
-                .topK(topKInput.getValue())
                 .frequencyPenalty(frequencyPenaltyInput.getValue())
                 .presencePenalty(presencePenaltyInput.getValue())
                 .build();

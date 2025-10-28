@@ -61,9 +61,8 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
-        enabled: false
         options:
-          model: o1-mini
+          model: gpt-4.1-nano
     playground:
       chat:
         models:

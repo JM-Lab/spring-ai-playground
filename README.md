@@ -140,7 +140,7 @@ To switch to OpenAI, follow these steps:
      ```xml
      <dependency>
         <groupId>org.springframework.ai</groupId>
-        <artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
+        <artifactId>spring-ai-starter-model-ollama</artifactId>
      </dependency>
      ```
 
@@ -148,7 +148,7 @@ To switch to OpenAI, follow these steps:
      ```xml
      <dependency>
         <groupId>org.springframework.ai</groupId>
-        <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        <artifactId>spring-ai-starter-model-openai</artifactId>
      </dependency>
      ```
 

@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
-import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -91,8 +90,10 @@ public class ChatService {
             Consumer<Object> mcpToolProcessMessageConsumer) {
         return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer).map(
                         Generation::getOutput)
-                .map(AssistantMessage::getText).doFinally(signalType -> {
-                    if (Objects.nonNull(completeChatHistoryConsumer) && SignalType.ON_COMPLETE.equals(signalType))
+                .map(assistantMessage -> Optional.ofNullable(assistantMessage.getText()).orElse(""))
+                .doFinally(signalType -> {
+                    if (Objects.nonNull(completeChatHistoryConsumer) &&
+                            (SignalType.ON_COMPLETE.equals(signalType) || SignalType.CANCEL.equals(signalType)))
                         completeChatHistoryConsumer.accept(chatHistory);
                 });
     }
@@ -101,12 +102,15 @@ public class ChatService {
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer) {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         return getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                mcpToolProcessMessageConsumer).stream()
-                .chatClientResponse()
-                .doOnNext(lastChatResponse::set).doFinally(signalType -> {
-                    if (SignalType.ON_COMPLETE.equals(signalType))
-                        applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
-                }).map(ChatClientResponse::chatResponse).map(ChatResponse::getResult);
+                mcpToolProcessMessageConsumer).stream().chatClientResponse().map(chatClientResponse -> {
+            Generation generation = chatClientResponse.chatResponse().getResult();
+            if (Objects.nonNull(generation.getOutput().getText()))
+                lastChatResponse.set(chatClientResponse);
+            return generation;
+        }).doFinally(signalType -> {
+            if (SignalType.ON_COMPLETE.equals(signalType))
+                applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
+        });
     }
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
@@ -117,7 +121,7 @@ public class ChatService {
                                 .maxTokens(chatOptions.getMaxTokens())
                                 .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
                                 .temperature(chatOptions.getTemperature())
-                                .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build())
+                                .topP(chatOptions.getTopP()).build())
                 .advisors(advisor -> {
                     advisor.param(CONVERSATION_ID, chatHistory.conversationId());
                     if (StringUtils.hasText(filterExpression))

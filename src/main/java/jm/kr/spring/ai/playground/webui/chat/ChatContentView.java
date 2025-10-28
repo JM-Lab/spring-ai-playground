@@ -272,14 +272,22 @@ public class ChatContentView extends VerticalLayout {
         return this.chatService.stream(this.chatHistory, userPrompt,
                         this.chatService.buildFilterExpression(selectedDocInfoIds), this.completeChatHistoryConsumer,
                         toolCallbacks, o -> ui.access(() -> chatContentManager.appendMcpToolProcessMessage(o)))
-                .doFinally(signalType -> ui.access(() -> {
-                    chatContentManager.doFinally();
-                    this.messageScroller.scrollToBottom();
-                    this.userPromptTextArea.setReadOnly(false);
-                    this.userPromptTextArea.setEnabled(true);
-                    this.userPromptTextArea.focus();
-                    this.currentStream = null;
-                })).subscribe(content -> ui.access(() -> chatContentManager.append(content)));
+                .doFinally(signalType -> ui.access(() -> doFinally(chatContentManager)))
+                .doOnError(throwable -> ui.access(() -> {
+                    VaadinUtils.showErrorNotification(throwable.getMessage());
+                    doFinally(chatContentManager);
+                }))
+                .subscribe(content -> ui.access(() -> chatContentManager.append(content)));
+    }
+
+    private void doFinally(ChatContentManager chatContentManager) {
+        chatContentManager.doFinally();
+        this.messageScroller.scrollToBottom();
+        this.userPromptTextArea.setReadOnly(false);
+        this.userPromptTextArea.setEnabled(true);
+        this.userPromptTextArea.focus();
+        this.currentStream.dispose();
+        this.currentStream = null;
     }
 
     public ChatOptions getChatOption() {
@@ -504,7 +512,7 @@ public class ChatContentView extends VerticalLayout {
         public void doFinally() {
             Optional<List<Message>> messageList =
                     Optional.of(this.messagesSupplier.get()).filter(Predicate.not(List::isEmpty))
-                            .map(list -> list.subList(list.size() - 2, list.size()));
+                            .map(list -> list.subList(Math.max(0, list.size() - 2), list.size()));
             messageList.map(List::getFirst).filter(message -> USER.equals(message.getMessageType()))
                     .map(Message::getMetadata).ifPresent(metadata -> updateMetadata(metadata, this.startTimestamp));
             Optional<Map<String, Object>> metadataAsOpt = messageList.map(List::getLast).map(Message::getMetadata);
