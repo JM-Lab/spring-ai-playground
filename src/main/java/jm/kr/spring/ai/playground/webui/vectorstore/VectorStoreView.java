@@ -69,7 +69,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @UIScope
 @CssImport("./playground/vectorstore-styles.css")
 @PageTitle("Vector Database")
-@Route(value = "vector", layout = SpringAiPlaygroundAppLayout.class)
+@Route(value = "vector-database", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
     public static final String DOCUMENT_SELECTING_EVENT = "DOCUMENT_SELECTING_EVENT";

@@ -47,9 +47,9 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
-@PageTitle("MCP")
-@Route(value = "mcp", layout = SpringAiPlaygroundAppLayout.class)
-public class McpView extends Div {
+@PageTitle("MCP Server")
+@Route(value = "mcp-server", layout = SpringAiPlaygroundAppLayout.class)
+public class McpServerView extends Div {
 
     public static final String MCP_CONNECTION_SELECT_EVENT = "MCP_CONNECTION_SELECT_EVENT";
     public static final String MCP_CONNECTION_CHANGE_EVENT = "MCP_CONNECTION_CHANGE_EVENT";
@@ -65,7 +65,7 @@ public class McpView extends Div {
     private boolean sidebarCollapsed;
     private McpContentView mcpContentView;
 
-    public McpView(PersistentUiDataStorage persistentUiDataStorage, McpServerInfoService mcpServerInfoService,
+    public McpServerView(PersistentUiDataStorage persistentUiDataStorage, McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService) {
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
@@ -144,9 +144,9 @@ public class McpView extends Div {
         });
         horizontalLayout.add(toggleButton);
 
-        Button newChatButton = styledButton("New Mcp Connection", VaadinIcon.CONNECT.create(),
+        Button newMcpConnectionButton = styledButton("New Mcp Connection", VaadinIcon.CONNECT.create(),
                 event -> addNewMcpServerDetails());
-        horizontalLayout.add(newChatButton);
+        horizontalLayout.add(newMcpConnectionButton);
 
         H4 mcpServerInfoText = new H4("MCP Server Info");
         mcpServerInfoText.getStyle().set("white-space", "nowrap");
