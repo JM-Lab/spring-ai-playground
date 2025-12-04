@@ -48,8 +48,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static jm.kr.spring.ai.playground.webui.mcp.McpView.MCP_CONNECTION_DELETE_EVENT;
-import static jm.kr.spring.ai.playground.webui.mcp.McpView.MCP_CONNECTION_SELECT_EVENT;
+import static jm.kr.spring.ai.playground.webui.mcp.McpServerView.MCP_CONNECTION_DELETE_EVENT;
+import static jm.kr.spring.ai.playground.webui.mcp.McpServerView.MCP_CONNECTION_SELECT_EVENT;
 
 public class McpServerConnectionView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -145,7 +145,7 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
     }
 
     private Header initMcpServerInfoHeader() {
-        Span appName = new Span("MCP Connections");
+        Span appName = new Span("MCP Server Connections");
         appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
 
         MenuBar menuBar = new MenuBar();

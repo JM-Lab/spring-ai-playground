@@ -20,6 +20,8 @@ import jm.kr.spring.ai.playground.service.mcp.client.McpClientService;
 import jm.kr.spring.ai.playground.service.mcp.client.McpTransportType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.context.WebServerInitializedEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -27,19 +29,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @Service
-public class McpServerInfoPersistenceService implements PersistenceServiceInterface<McpServerInfo> {
+public class McpServerInfoPersistenceService implements PersistenceServiceInterface<McpServerInfo>,
+        ApplicationListener<WebServerInitializedEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(McpServerInfoPersistenceService.class);
 
     private final Path saveDir;
     private final McpServerInfoService mcpServerInfoService;
     private final McpClientService mcpClientService;
-    private final Set<McpServerInfo> defaultMcpServerInfos;
+    private final List<McpServerInfo> mcpServerInfos;
 
     public McpServerInfoPersistenceService(Path springAiPlaygroundHomeDir, McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService) throws IOException {
@@ -47,9 +48,7 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
         Files.createDirectories(this.saveDir);
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
-        this.defaultMcpServerInfos =
-                this.mcpServerInfoService.getMcpServerInfos().values().stream().flatMap(List::stream)
-                        .collect(Collectors.toSet());
+        this.mcpServerInfos = this.loads();
     }
 
     @Override
@@ -86,17 +85,22 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
 
     @Override
     public void onStart() throws IOException {
-        defaultMcpServerInfos.stream().parallel().forEach(mcpClientService::startMcpClient);
-        this.loads().stream().peek(mcpClientService::startMcpClient).forEach(
+        this.mcpServerInfos.forEach(
                 mcpServerInfo -> this.mcpServerInfoService.updateMcpServerInfo(mcpServerInfo.mcpTransportType(),
                         mcpServerInfo.serverName(), mcpServerInfo));
+    }
 
+    @Override
+    public void onApplicationEvent(WebServerInitializedEvent event) {
+        this.mcpServerInfos.parallelStream().forEach(mcpClientService::startMcpClient);
     }
 
     @Override
     public void onShutdown() throws IOException {
         for (McpServerInfo mcpServerInfo : this.mcpServerInfoService.getMcpServerInfos().values().stream()
-                .flatMap(List::stream).filter(Predicate.not(defaultMcpServerInfos::contains)).toList())
+                .flatMap(List::stream)
+                .filter(Predicate.not(this.mcpServerInfoService.getDefaultMcpServerInfo()::equals)).toList())
             save(mcpServerInfo);
     }
+
 }
