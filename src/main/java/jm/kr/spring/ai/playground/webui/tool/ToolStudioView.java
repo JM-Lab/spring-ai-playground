@@ -107,7 +107,7 @@ public class ToolStudioView extends Div {
         this.toolContentLayout.setHeightFull();
         this.toolContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
                 .set("flex-direction", "column").set("align-items", "stretch");
-        this.toolContentHeader = createToolContentHeader("Tool Studio");
+        this.toolContentHeader = createToolContentHeader();
 
         this.splitLayout.addToSecondary(this.toolContentLayout);
         this.sidebarCollapsed = false;
@@ -133,7 +133,7 @@ public class ToolStudioView extends Div {
         });
     }
 
-    private HorizontalLayout createToolContentHeader(String displayName) {
+    private HorizontalLayout createToolContentHeader() {
         HorizontalLayout horizontalLayout = new HorizontalLayout();
         horizontalLayout.setSpacing(false);
         horizontalLayout.setMargin(false);
@@ -163,7 +163,7 @@ public class ToolStudioView extends Div {
         horizontalLayout.add(newToolButton);
 
 
-        H4 toolInfoText = new H4(displayName);
+        H4 toolInfoText = new H4("Tool Studio");
         toolInfoText.getStyle().set("white-space", "nowrap");
         Div toolInfoTextDiv = new Div(toolInfoText);
         toolInfoTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
@@ -174,12 +174,12 @@ public class ToolStudioView extends Div {
         toolInfoLabelLayout.setWidthFull();
         horizontalLayout.add(toolInfoLabelLayout);
 
-        Icon toolMcpServerSettingIcon = styledIcon(VaadinIcon.COG_O.create());
+        Icon toolMcpServerSettingIcon = styledIcon(VaadinIcon.TOOLBOX.create());
         toolMcpServerSettingIcon.getStyle().set("marginRight", "var(--lumo-space-l)");
         String toolMcpServerSetting = "Tool MCP Server Setting";
         toolMcpServerSettingIcon.setTooltipText(toolMcpServerSetting);
         Popover toolMcpServerSettingPopover = headerPopover(toolMcpServerSettingIcon, toolMcpServerSetting);
-        toolMcpServerSettingPopover.setWidth("400px");
+        toolMcpServerSettingPopover.setWidth("600px");
         toolMcpServerSettingPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
         toolMcpServerSettingPopover.setPosition(PopoverPosition.BOTTOM);
         toolMcpServerSettingPopover.setModal(true);

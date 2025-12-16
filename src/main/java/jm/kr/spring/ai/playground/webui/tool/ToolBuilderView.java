@@ -117,7 +117,7 @@ public class ToolBuilderView extends VerticalLayout {
         if (Objects.nonNull(toolSpec)) {
             toolNameField.setValue(toolSpec.name());
             toolDescriptionField.setValue(toolSpec.description());
-            toolSpec.params().forEach(addParameterForm(paramForms.size() + 1)::updateFields);
+            toolSpec.params().forEach(param -> addParameterForm(paramForms.size() + 1).updateFields(param));
             this.javascriptToolPlaygroundView.updateContents(toolSpec.staticVariables(), toolSpec.code());
         } else {
             addDefaultParameterForm();

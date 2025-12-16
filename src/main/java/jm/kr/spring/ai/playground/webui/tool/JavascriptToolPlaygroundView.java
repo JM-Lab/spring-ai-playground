@@ -76,7 +76,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         setSpacing(true);
 
         ace = new AceEditor();
-        ace.setMinlines(25);
+        ace.setMinlines(35);
         ace.setSizeFull();
         ace.setTheme(AceTheme.monokai);
         ace.setMode(AceMode.javascript);
@@ -252,20 +252,15 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                     }
                     formatButton.setEnabled(true);
                 }),
-                error -> {
-                    UI.getCurrent().access(() -> {
-                        VaadinUtils.showErrorNotification("JS Error: " + error);
-                        formatButton.setEnabled(true);
-                    });
-                }
+                error -> UI.getCurrent().access(() -> {
+                    VaadinUtils.showErrorNotification("JS Error: " + error);
+                    formatButton.setEnabled(true);
+                })
         );
     }
 
     private Object convertValueForType(Object testValue, JsonSchemaType type) throws JsonProcessingException {
-        if (testValue instanceof String strValue) {
-            if (testValue == null || strValue.trim().isEmpty()) {
-                return null;
-            }
+        if (Objects.nonNull(testValue) && testValue instanceof String strValue && !strValue.isBlank()) {
             return switch (type) {
                 case STRING -> strValue;
                 case NUMBER -> Double.parseDouble(strValue);
@@ -281,7 +276,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     }
 
     public boolean runTest() {
-        return this.testRunButton.isEnabled() ? runTestJavascript() : false;
+        return this.testRunButton.isEnabled() && runTestJavascript();
     }
 
     private boolean runTestJavascript() {
@@ -346,8 +341,8 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     public void updateContents(List<Map.Entry<String, String>> staticVariables, String code) {
         this.staticVarForms.clear();
         this.staticVarsContainer.removeAll();
-        int i = 0;
-        staticVariables.forEach(addStaticVariableForm(++i)::update);
+        for (int i = 0; i < staticVariables.size(); i++)
+            addStaticVariableForm(i).update(staticVariables.get(i));
         this.ace.setValue(code);
     }
 }

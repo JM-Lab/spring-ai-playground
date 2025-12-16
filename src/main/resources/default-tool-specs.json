@@ -1,0 +1,199 @@
+[
+  {
+    "toolId":          "7ebe085b-6af5-420c-b368-b938aaad2553",
+    "name":            "getWeather",
+    "description":     "Get the current weather for a location",
+    "staticVariables": [],
+    "params":          [
+      {
+        "name":        "location",
+        "description": "City, state, or country (e.g., San Francisco)",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "seoul"
+      }
+    ],
+    "code":            "/**\n * NOTE TO DEVELOPERS:\n * This code runs on JavaScript (ECMAScript 2023) inside the JVM.\n * It is NOT a browser or Node.js environment.\n *\n * Unavailable APIs:\n * - Browser APIs: fetch, XMLHttpRequest, DOM (window/document), timers, etc.\n * - Node.js APIs: require(), module, process, built-in modules, etc.\n *\n * Available features:\n * - Java interop via Java.type() (e.g., java.net.*, java.io.*, etc.)\n * - console.log (output captured by the host)\n *\n * Execution model:\n * - Your script is wrapped in an async function.\n * - The value you return becomes the final tool result.\n */\n\n// Use Java standard HTTP classes from JavaScript\nvar URL = Java.type('java.net.URL');\nvar BufferedReader = Java.type('java.io.BufferedReader');\nvar InputStreamReader = Java.type('java.io.InputStreamReader');\n\n// 1) Call wttr.in with JSON format (j1)\nvar url = new URL('https://wttr.in/' + location.trim().replace(/ +/g, '+') + '?format=j1');\nvar conn = url.openConnection();\nconn.setRequestMethod('GET');\nconn.setConnectTimeout(10000);\nvar reader;\n\ntry {\n  conn.setReadTimeout(10000);\n\n  // 2) Read the full JSON response as a string\n  reader = new BufferedReader(\n    new InputStreamReader(conn.getInputStream(), 'UTF-8')\n  );\n  var line;\n  var sb = '';\n  while ((line = reader.readLine()) !== null) {\n    sb += line;\n  }\n} finally {\n  if (reader != null) {\n    reader.close();\n  }\n}\n\n// 3) Parse JSON string into a JavaScript object\nvar data = JSON.parse(sb);\n\n// 4) Extract only the fields we want:\n//    - location name\n//    - temperature (Celsius)\n//    - humidity\n//    - wind speed\n//    - wind direction\nvar areaName =\n  data.nearest_area &&\n  data.nearest_area[0] &&\n  data.nearest_area[0].areaName &&\n  data.nearest_area[0].areaName[0] &&\n  data.nearest_area[0].areaName[0].value;\n\nvar current = data.current_condition && data.current_condition[0];\n\nvar tempC = current && current.temp_C;\nvar humidity = current && current.humidity;\nvar windKmph = current && current.windspeedKmph;\nvar windDir = current && current.winddir16Point; // e.g. N, NE, E, SE, ...\n\n// Build strings for wind speed & direction\nvar windSpeedText = windKmph != null ? windKmph + ' km/h' : null;\nvar windDirText = windDir != null ? windDir : null;\n\n// 5) Build a small summary object\nvar summary = {\n  location: areaName || location,\n  tempC: tempC || null,\n  humidity: humidity || null,\n  windSpeed: windSpeedText,\n  windDirection: windDirText,\n};\n\n// 6) Return a compact JSON string to Java\nreturn JSON.stringify(summary);\n",
+    "codeType":        "Javascript",
+    "createTimestamp": 1764239241024,
+    "updateTimestamp": 1764239241024
+  },
+  {
+    "toolId":          "edfcbbb5-023f-4a6a-8452-08d0507c9735",
+    "name":            "extractPageContent",
+    "description":     "Extracts and cleans the main textual content from a given web page URL by removing ads, navigation, scripts, and other unnecessary elements.\n\nReturns a structured JSON object containing:\n- title (string): The title of the page.\n- content (string): The cleaned body text with reference markers (e.g., '[1]') for links.\n- links (array): A list of link objects corresponding to the markers, each containing {index, text, url, linkTitle}.",
+    "staticVariables": [],
+    "params":          [
+      {
+        "name":        "pageUrl",
+        "description": "extract content from web url",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "https://spring.io/projects/spring-ai"
+      }
+    ],
+    "code":            "const Jsoup = Java.type('org.jsoup.Jsoup');\n\n// 1. Connect to the page and create a Document object (Blocking I/O)\n// Assumes 'pageUrl' is provided by the execution context.\nconst doc = Jsoup.connect(pageUrl)\n    .userAgent(\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\")\n    .timeout(30000) // Set timeout to 30 seconds\n    .get();\n\n// 2. List of CSS selectors for unnecessary elements to remove\nconst junkSelectors = [\n    // Technical elements\n    \"script\", \"style\", \"noscript\", \"iframe\", \"svg\", \"link\", \"meta\",\n    \n    // Structural elements (navigation, footer, etc.)\n    \"header\", \"footer\", \"nav\", \"aside\", \n    \n    // Ads and banners (matching class/ID patterns)\n    \".ad\", \".ads\", \".advertisement\", \".banner\", \n    \"[id*='ad-']\", \"[class*='ad-']\", \"[class*='banner']\",\n    \n    // Popups, sidebars, widgets\n    \".popup\", \".modal\", \".sidebar\", \"#sidebar\", \".widget\", \n    \".cookie-consent\", \".newsletter-signup\",\n    \n    // Social media, comments, meta info\n    \".social-share\", \".share-buttons\", \".comments\", \"#comments\", \n    \".meta\", \".author-info\", \".related-posts\"\n];\n\n// Remove all unnecessary elements\njunkSelectors.forEach(selector => {\n    doc.select(selector).remove();\n});\n\n// 3. Extract page title\n// If the title tag is empty, try to find the first h1 tag\nlet pageTitle = doc.title();\nif (!pageTitle || pageTitle.trim() === \"\") {\n    const h1 = doc.select(\"h1\").first();\n    if (h1) pageTitle = h1.text();\n}\n\n// 4. Identify the main content area\n// Priority: <article> -> <main> -> Common content IDs/Classes -> body\nlet mainContent = doc.select(\"article\").first();\n\nif (!mainContent) {\n    mainContent = doc.select(\"main\").first();\n}\n\nif (!mainContent) {\n    const contentSelectors = [\n        \"#content\", \".content\", \n        \"#main-content\", \".main-content\", \n        \".post-body\", \".entry-content\", \n        \"#article-body\", \".article-body\"\n    ];\n    \n    for (const selector of contentSelectors) {\n        const element = doc.select(selector).first();\n        if (element) {\n            mainContent = element;\n            break;\n        }\n    }\n}\n\n// If no specific content area is found, use the cleaned body\nif (!mainContent) {\n    mainContent = doc.body();\n}\n\n// 5. Extract links and insert reference markers ([n]) into the content\nconst links = [];\nconst linkElements = mainContent.select(\"a[href]\");\n\nlet linkIndex = 1;\n\nfor (let i = 0; i < linkElements.size(); i++) {\n    const el = linkElements.get(i);\n    const url = el.attr(\"abs:href\"); // Get absolute URL\n    const text = el.text().trim();\n    \n    // Extract the title attribute of the link (<a href=\"...\" title=\"...\">)\n    const linkAttrTitle = el.attr(\"title\").trim();\n\n    // Process only if URL is valid and has some meaningful content (text, image, or title)\n    if (url && (text.length > 0 || el.select(\"img\").size() > 0 || linkAttrTitle.length > 0)) {\n        \n        links.push({\n            index: linkIndex,\n            text: text || \"[Image Link]\", // Use placeholder if text is empty\n            url: url,\n            linkTitle: linkAttrTitle // Include tooltip/title info\n        });\n\n        // Insert reference number after the link text (e.g., \"Click here [1]\")\n        el.after(\" [\" + linkIndex + \"]\");\n        \n        linkIndex++;\n    }\n}\n\n// 6. Preprocess for preserving line breaks (readability)\n// Append newline characters after block-level elements\nconst blockTags = [\"p\", \"div\", \"br\", \"h1\", \"h2\", \"h3\", \"h4\", \"h5\", \"h6\", \"li\"];\nblockTags.forEach(tag => {\n    const elements = mainContent.select(tag);\n    for (let i = 0; i < elements.size(); i++) {\n        elements.get(i).append(\"\\\\n\");\n    }\n});\n\n// 7. Extract final text (includes markers like [n])\nlet cleanContent = mainContent.text().trim();\n\n// 8. Construct result object and return as JSON string\nconst result = {\n    title: pageTitle,      // Page title\n    content: cleanContent, // Main content body with link markers\n    links: links           // List of link details\n};\n\nreturn JSON.stringify(result);\n",
+    "codeType":        "Javascript",
+    "createTimestamp": 1764239241031,
+    "updateTimestamp": 1764239241031
+  },
+  {
+    "toolId":          "edfcbbb5-023f-4a6a-8452-08d0547c9735",
+    "name":            "googlePseSearch",
+    "description":     "Performs a web search using Google Programmable Search Engine (PSE).\n\nGiven a search query, this tool retrieves relevant web pages from Google’s search index,\nreturning titles, links, and snippets as raw JSON data.\n\nUseful for:\n- Finding up-to-date information on a given topic\n- Retrieving external knowledge for RAG pipelines\n- Augmenting AI agents with real-world web search results",
+    "staticVariables": [
+      {
+        "googleApiKey": "${GOOGLE_API_KEY}"
+      },
+      {
+        "pseId": "${PSE_ID}"
+      }
+    ],
+    "params":          [
+      {
+        "name":        "query",
+        "description": "The search query text to look up on the web using Google PSE",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "kpop idol"
+      },
+      {
+        "name":        "resultNum",
+        "description": "",
+        "required":    false,
+        "type":        "INTEGER",
+        "testValue":   ""
+      }
+    ],
+    "code":            "/**\n * Google Programmable Search Engine (PSE) Search Tool\n *\n * Runtime environment:\n * - JavaScript (ECMAScript 2023) running on the JVM\n * - No browser or Node.js APIs available\n * - Uses Java standard library via Java.type()\n *\n * How to obtain required credentials:\n *\n * 1. Google API Key\n *    - Create a project in Google Cloud Console\n *    - Enable \"Custom Search API\"\n *    - Create an API key\n *    Docs:\n *    https://developers.google.com/custom-search/v1/overview\n *    https://console.cloud.google.com/apis/credentials\n *\n * 2. Programmable Search Engine (PSE) ID (cx)\n *    - Create a Programmable Search Engine\n *    - Configure searchable sites (or entire web)\n *    - Copy the Search Engine ID\n *    Docs:\n *    https://programmablesearchengine.google.com/controlpanel/all\n */\n\nconst URL = Java.type(\"java.net.URL\");\nconst URLEncoder = Java.type(\"java.net.URLEncoder\");\nconst BufferedReader = Java.type(\"java.io.BufferedReader\");\nconst InputStreamReader = Java.type(\"java.io.InputStreamReader\");\nconst StringBuilder = Java.type(\"java.lang.StringBuilder\");\n\n/**\n * Executes a Google PSE search request.\n *\n * @param {Object} options\n * @param {string} options.apiKey - Google API key\n * @param {string} options.cx - Programmable Search Engine ID\n * @param {string} options.query - Search query text\n * @param {number} [options.start=1] - Start index (1-based)\n * @param {number} [options.num=10] - Number of results (1~10)\n * @returns {Object} HTTP status code and raw JSON response body\n */\nfunction googlePseSearch(options) {\n  const apiKey = options.apiKey;\n  const cx = options.cx;\n  const query = options.query;\n  const start = options.start || 1;\n  const num = options.num || 3;\n\n  if (!apiKey || !cx || !query) {\n    throw new Error(\"apiKey, cx, and query are required parameters.\");\n  }\n\n  const encodedQuery = URLEncoder.encode(query, \"UTF-8\");\n\n  const urlString =\n    \"https://www.googleapis.com/customsearch/v1\" +\n    \"?key=\" + apiKey +\n    \"&cx=\" + cx +\n    \"&q=\" + encodedQuery +\n    \"&start=\" + start +\n    \"&num=\" + num;\n\n  const url = new URL(urlString);\n  const connection = url.openConnection();\n  connection.setRequestMethod(\"GET\");\n  connection.setConnectTimeout(10000);\n  connection.setReadTimeout(10000);\n\n  const statusCode = connection.getResponseCode();\n  const inputStream =\n    statusCode >= 200 && statusCode < 300\n      ? connection.getInputStream()\n      : connection.getErrorStream();\n\n  const reader = new BufferedReader(new InputStreamReader(inputStream, \"UTF-8\"));\n  const responseBuilder = new StringBuilder();\n\n  let line;\n  while ((line = reader.readLine()) !== null) {\n    responseBuilder.append(line);\n  }\n\n  reader.close();\n  connection.disconnect();\n\n  return {\n    status: statusCode,\n    body: responseBuilder.toString()\n  };\n}\n\nconst result = googlePseSearch({\n  apiKey: googleApiKey,\n  cx: pseId,\n  query: query,\n  num: resultNum\n});\n\nconsole.log(\"HTTP Status:\", result.status);\nreturn result.body;",
+    "codeType":        "Javascript",
+    "createTimestamp": 1764239241031,
+    "updateTimestamp": 1764239241031
+  },
+  {
+    "toolId":          "edfcbbb5-023f-4a6a-8452-08d0547c9736",
+    "name":            "openaiResponseGenerator",
+    "description":     "Generates a natural language response using the latest OpenAI models via the Responses API.\nThe tool accepts a user prompt and an optional model selection, then returns a high-quality\nresponse suitable for reasoning, explanation, summarization, and agent workflows.",
+    "staticVariables": [
+      {
+        "apiKey": "${OPENAI_API_KEY}"
+      }
+    ],
+    "params":          [
+      {
+        "name":        "prompt",
+        "description": "The user-provided text prompt that will be sent to the OpenAI model as input.",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "Explain why the OpenAI Responses API is preferred over Chat Completions."
+      },
+      {
+        "name":        "model",
+        "description": "",
+        "required":    false,
+        "type":        "STRING",
+        "testValue":   ""
+      }
+    ],
+    "code":            "/**\n * OpenAI Responses API Tool (Latest API)\n *\n * Runtime environment:\n * - JavaScript (ECMAScript 2023) running on the JVM\n * - No browser or Node.js APIs available\n * - Uses Java standard library via Java.type()\n *\n * How to obtain and configure OpenAI API Key:\n *\n * 1. Sign in to OpenAI Dashboard\n * 2. Create an API key\n * 3. Store the API key as an environment variable (recommended)\n *\n * Example:\n *   export OPENAI_API_KEY=\"sk-xxxx\"\n *\n * Docs:\n * https://platform.openai.com/docs/overview\n * https://platform.openai.com/docs/api-reference/responses\n * https://platform.openai.com/api-keys\n */\n \nconst URL = Java.type(\"java.net.URL\");\nconst OutputStreamWriter = Java.type(\"java.io.OutputStreamWriter\");\nconst BufferedReader = Java.type(\"java.io.BufferedReader\");\nconst InputStreamReader = Java.type(\"java.io.InputStreamReader\");\nconst StringBuilder = Java.type(\"java.lang.StringBuilder\");\n\nfunction openaiResponse(options) {\n  if (!apiKey) {\n    throw new Error(\"OPENAI_API_KEY environment variable is not set.\");\n  }\n\n  const requestBody = JSON.stringify(options);\n\n  const url = new URL(\"https://api.openai.com/v1/responses\");\n  const conn = url.openConnection();\n  conn.setRequestMethod(\"POST\");\n  conn.setDoOutput(true);\n  conn.setConnectTimeout(20000);\n  conn.setReadTimeout(20000);\n  conn.setRequestProperty(\"Authorization\", \"Bearer \" + apiKey);\n  conn.setRequestProperty(\"Content-Type\", \"application/json; charset=UTF-8\");\n\n  const writer = new OutputStreamWriter(conn.getOutputStream(), \"UTF-8\");\n  writer.write(requestBody);\n  writer.flush();\n  writer.close();\n\n  const status = conn.getResponseCode();\n  const stream =\n    status >= 200 && status < 300\n      ? conn.getInputStream()\n      : conn.getErrorStream();\n\n  const reader = new BufferedReader(new InputStreamReader(stream, \"UTF-8\"));\n  const response = new StringBuilder();\n  let line;\n  while ((line = reader.readLine()) !== null) {\n    response.append(line);\n  }\n\n  reader.close();\n  conn.disconnect();\n\n  return {\n    status: status,\n    body: response.toString()\n  };\n}\n\nconst result = openaiResponse({\n    model: model || 'gpt-4.1-nano',\n    input: prompt,\n\n    // System-level instruction\n    // instructions: \"You are a helpful assistant.\",\n\n    // top_p: 1.0,\n    // max_output_tokens: 1024,\n\n    // Output / reasoning options\n    // response_format: { type: \"text\" },\n    // reasoning: { effort: \"medium\" },\n\n    // Tool calling (disabled)\n    // tools: [],\n    // tool_choice: \"auto\",\n\n    // Request metadata\n    // metadata: { source: \"ai-tool\" }\n  });\n\nconsole.log(\"HTTP Status:\", result.status);\nreturn result.body;",
+    "codeType":        "Javascript",
+    "createTimestamp": 1764239241031,
+    "updateTimestamp": 1764239241031
+  },
+  {
+    "toolId":          "edfcbbb5-023f-4a6a-8452-08d0547c9737",
+    "name":            "sendSlackMessage",
+    "description":     "Sends a message to a Slack channel using an Incoming Webhook URL.",
+    "staticVariables": [
+      {
+        "slackWebhookUrl": "${SLACK_WEBHOOK_URL}"
+      }
+    ],
+    "params":          [
+      {
+        "name":        "text",
+        "description": "The plain text message to post to the Slack channel.",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "Slack message sent via WebClient \uD83D\uDD14"
+      }
+    ],
+    "code":            "/**\n * Send a Slack message using Spring WebClient.\n *\n * SETUP (Slack):\n * 1. Create a Slack App at https://api.slack.com/apps\n * 2. Enable \"Incoming Webhooks\"\n * 3. Add a webhook to a workspace and select a channel\n * 4. Use it as an environment variable:\n *    export SLACK_WEBHOOK_PATH=T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX\n *\n * ENVIRONMENT:\n * - JavaScript (ECMAScript 2023) running on JVM\n * - Spring WebFlux (WebClient) available\n */\n\nconst WebClient = Java.type(\n  'org.springframework.web.reactive.function.client.WebClient'\n);\nconst MediaType = Java.type('org.springframework.http.MediaType');\nconst Duration = Java.type('java.time.Duration');\n\nif (!slackWebhookUrl || !text) {\n  throw new Error('webhookPath and text are required.');\n}\n\nconst client = WebClient.builder()\n  .baseUrl('https://hooks.slack.com/services/' + slackWebhookUrl)\n  .build();\n\nconst jsonBody = JSON.stringify({\n  text: text,\n});\n\ntry {\n  client\n    .post()\n    .contentType(MediaType.APPLICATION_JSON)\n    .bodyValue(jsonBody)\n    .retrieve()\n    .toBodilessEntity()\n    .timeout(Duration.ofSeconds(5))\n    .block();\n\n  return { status: 'ok' };\n} catch (e) {\n    return {\n    status: \"error\",\n    message: 'Failed to send Slack message: ' + e\n  };\n}\n",
+    "codeType":        "Javascript",
+    "createTimestamp": 1764239241031,
+    "updateTimestamp": 1764239241031
+  },
+  {
+    "toolId":          "42d2a91b-c356-4c9b-be33-f1e1e95d6782",
+    "name":            "getCurrentTime",
+    "description":     "Returns the current time in ISO 8601 format. If the user specifies a city, country, or location, the agent should first map it to an IANA time zone and supply it via the timeZone parameter. If no time zone is provided, UTC is used.",
+    "staticVariables": [],
+    "params":          [
+      {
+        "name":        "timeZone",
+        "description": "IANA time zone identifier (e.g., Asia/Seoul)",
+        "required":    false,
+        "type":        "STRING",
+        "testValue":   "Asia/Seoul"
+      }
+    ],
+    "code":            "/**\n * Returns the current time formatted as ISO-8601 with timezone offset.\n *\n * - If a timezone is provided, the offset format (+HH:MM / -HH:MM) is used.\n * - If no timezone is provided, UTC time with 'Z' is returned.\n *\n * JavaScript standard APIs only.\n */\n\nconst now = new Date();\n\n// Format date/time parts in target timezone\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone,\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit',\n  hour12: false,\n}).formatToParts(now);\n\nconst m = {};\nfor (const p of parts) {\n  m[p.type] = p.value;\n}\n\n// Milliseconds\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\n\n// Local time interpreted as UTC millis\nconst localAsUtc = Date.UTC(\n  m.year,\n  Number(m.month) - 1,\n  m.day,\n  m.hour,\n  m.minute,\n  m.second\n);\n\n// Actual UTC millis\nconst actualUtc = now.getTime();\n\nconst offsetMinutes = Math.round((localAsUtc - actualUtc) / 60000);\n\nconst sign = offsetMinutes >= 0 ? '+' : '-';\nconst abs = Math.abs(offsetMinutes);\nconst hh = String(Math.floor(abs / 60)).padStart(2, '0');\nconst mm = String(abs % 60).padStart(2, '0');\n\nreturn (\n  `${m.year}-${m.month}-${m.day}` +\n  `T${m.hour}:${m.minute}:${m.second}.${ms}` +\n  `${sign}${hh}:${mm}`\n);\n",
+    "codeType":        "Javascript",
+    "createTimestamp": 1765800328375,
+    "updateTimestamp": 1765800328375
+  },
+  {
+    "toolId":          "3eb36ae5-4bea-4452-a1c5-abb44b720f16",
+    "name":            "buildGoogleCalendarCreateLink",
+    "description":     "Builds a Google Calendar \"Add Event\" URL with prefilled fields.\n\nThe tool only generates a URL; the user must open it and click \"Save\" in Google Calendar.\n\nIf the user provides a rough input for date, time, or location \n(e.g., \"tomorrow 10am\", \"Seoul\", \"New York\"), the agent is expected\nto parse and convert these inputs into proper ISO-8601 date strings \nfor start/end and a valid IANA time zone identifier for timeZone \nbefore passing them to this tool.",
+    "staticVariables": [],
+    "params":          [
+      {
+        "name":        "title",
+        "description": "Event title shown in Google Calendar.",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "Meeting"
+      },
+      {
+        "name":        "start",
+        "description": "Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:00).",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "2025-12-16T10:00:00+09:00"
+      },
+      {
+        "name":        "end",
+        "description": "Event end time. Must be after start. The agent should ensure proper ISO-8601 format(e.g., 2025-12-16T10:00:00+09:00).",
+        "required":    true,
+        "type":        "STRING",
+        "testValue":   "2025-12-16T11:00:00+09:00"
+      },
+      {
+        "name":        "details",
+        "description": "Optional event description or agenda.",
+        "required":    false,
+        "type":        "STRING",
+        "testValue":   ""
+      },
+      {
+        "name":        "location",
+        "description": "Optional event location text. The agent can resolve rough location names to standard city names if needed.",
+        "required":    false,
+        "type":        "STRING",
+        "testValue":   ""
+      },
+      {
+        "name":        "timeZone",
+        "description": "IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone before calling this tool.",
+        "required":    false,
+        "type":        "STRING",
+        "testValue":   ""
+      }
+    ],
+    "code":            "/**\n * Build a Google Calendar \"Add event\" URL (action=TEMPLATE).\n *\n * This tool ONLY generates a URL.\n * The user must open the link and click \"Save\" in Google Calendar.\n *\n * INPUT NOTES:\n * - start / end: Date object or ISO-8601 string parseable by Date()\n * - dates are encoded in UTC (Google Calendar requirement)\n * - timeZone (ctz) controls UI display, not the UTC timestamps\n *\n */\n\nfunction toDate(v) {\n  const d = v instanceof Date ? v : new Date(String(v));\n  if (isNaN(d.getTime())) {\n    throw new Error('Invalid date value: ' + v);\n  }\n  return d;\n}\n\n// Google Calendar expects UTC timestamps like: 20251216T010000Z\nfunction formatAsUtcCompact(d) {\n  return d\n    .toISOString()\n    .replace(/[-:]/g, '')\n    .replace(/\\.\\d{3}Z$/, 'Z');\n}\n\nconst s = toDate(start);\nconst e = toDate(end);\n\nif (e <= s) {\n  throw new Error('end must be after start');\n}\n\nconst base = 'https://www.google.com/calendar/render?action=TEMPLATE';\nconst params = [];\n\nparams.push('text=' + encodeURIComponent(String(title || '')));\nparams.push(\n  'dates=' +\n    encodeURIComponent(formatAsUtcCompact(s) + '/' + formatAsUtcCompact(e))\n);\n\nif (details) params.push('details=' + encodeURIComponent(String(details)));\nif (location) params.push('location=' + encodeURIComponent(String(location)));\nif (timeZone) params.push('ctz=' + encodeURIComponent(String(timeZone)));\n\nreturn base + '&' + params.join('&');\n",
+    "codeType":        "Javascript",
+    "createTimestamp": 1765801820195,
+    "updateTimestamp": 1765801820195
+  }
+]
