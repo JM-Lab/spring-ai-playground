@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.annotation.PreDestroy;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfoService;
 import jm.kr.spring.ai.playground.service.tool.JsToolExecutor.JsExecutionParams;
 import jm.kr.spring.ai.playground.service.tool.JsToolExecutor.JsExecutionResult;
@@ -31,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.McpToolUtils;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -45,11 +45,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
-public class ToolSpecService {
+public class ToolSpecService implements SmartLifecycle {
 
     public record ToolMcpServerSetting(boolean autoAdd, Set<String> exposedToolIds) {}
 
@@ -75,6 +74,11 @@ public class ToolSpecService {
         this.jsToolExecutor = new JsToolExecutor();
     }
 
+    public ToolSpec update(ToolSpec toolSpec) {
+        return update(toolSpec.toolId(), toolSpec.name(), toolSpec.description(), toolSpec.staticVariables(),
+                toolSpec.params(), toolSpec.code(), toolSpec.codeType());
+    }
+
     public ToolSpec update(String toolId, String toolName, String toolDescription,
             List<Map.Entry<String, String>> staticVariables, List<ToolParamSpec> toolParamSpecs, String jsCode,
             ToolSpec.CodeType codeType) {
@@ -86,28 +90,35 @@ public class ToolSpecService {
                         staticVariables.toString()) || !Objects.equals(toolSpec.params().toString(),
                 toolParamSpecs.toString()) || !Objects.equals(toolSpec.code(), jsCode) ||
                 !Objects.equals(toolSpec.codeType(), codeType)) {
-            Function<Map<String, Object>, Object> executor = toolParams -> executeTool(toolName, staticVariables,
-                    jsCode, toolParams).result();
-            ToolSpec newToolSpec =
-                    new ToolSpec(toolId, toolName, toolDescription, staticVariables, toolParamSpecs, jsCode, codeType,
-                            FunctionToolCallback.builder(toolName, executor).description(toolDescription)
-                                    .inputSchema(toJsonSchema(toolParamSpecs))
-                                    .inputType(MAP_PARAMETERIZED_TYPE_REFERENCE).build());
-            toolIdSpecs.put(toolId, newToolSpec);
-            logger.info("Tool spec {}: toolId={}, name={}", isNew ? "created" : "updated", toolId, toolName);
-            if (Objects.nonNull(toolSpec))
-                getMcpToolList().stream().filter(tool -> tool.name().equals(toolSpec.name())).findFirst()
-                        .map(McpSchema.Tool::name).ifPresent(this::removeMcpTool);
-            if (this.toolMcpServerSetting.autoAdd() &&
-                    getMcpToolList().stream().noneMatch(tool -> tool.name().equals(newToolSpec.name()))) {
-                addMcpTool(newToolSpec);
-                HashSet<String> exposedToolIds = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
-                exposedToolIds.add(newToolSpec.toolId());
-                this.toolMcpServerSetting = new ToolMcpServerSetting(true, exposedToolIds);
-            }
-            return newToolSpec;
+            return update(toolId, toolName, toolDescription, staticVariables, toolParamSpecs, jsCode, codeType,
+                    toolSpec);
         }
         return toolSpec;
+    }
+
+    private ToolSpec update(String toolId, String toolName, String toolDescription,
+            List<Map.Entry<String, String>> staticVariables, List<ToolParamSpec> toolParamSpecs, String jsCode,
+            ToolSpec.CodeType codeType, ToolSpec toolSpec) {
+        Function<Map<String, Object>, Object> executor = toolParams -> executeTool(toolName, staticVariables,
+                jsCode, toolParams).result();
+        ToolSpec newToolSpec =
+                new ToolSpec(toolId, toolName, toolDescription, staticVariables, toolParamSpecs, jsCode, codeType,
+                        FunctionToolCallback.builder(toolName, executor).description(toolDescription)
+                                .inputSchema(toJsonSchema(toolParamSpecs).toPrettyString())
+                                .inputType(MAP_PARAMETERIZED_TYPE_REFERENCE).build());
+        toolIdSpecs.put(toolId, newToolSpec);
+        logger.info("Update Tool spec: toolId={}, name={}", toolId, toolName);
+        if (Objects.nonNull(toolSpec))
+            getMcpToolList().stream().filter(tool -> tool.name().equals(toolSpec.name())).findFirst()
+                    .map(McpSchema.Tool::name).ifPresent(this::removeMcpTool);
+        if (this.toolMcpServerSetting.autoAdd() &&
+                getMcpToolList().stream().noneMatch(tool -> tool.name().equals(newToolSpec.name()))) {
+            addMcpTool(newToolSpec);
+            HashSet<String> exposedToolIds = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
+            exposedToolIds.add(newToolSpec.toolId());
+            this.toolMcpServerSetting = new ToolMcpServerSetting(true, exposedToolIds);
+        }
+        return newToolSpec;
     }
 
     public void addMcpTool(ToolSpec toolSpec) {
@@ -138,7 +149,7 @@ public class ToolSpecService {
         return toolIdSpecs.values().stream().filter(toolSpec -> toolSpec.name().equals(name)).findFirst();
     }
 
-    private String toJsonSchema(List<ToolParamSpec> toolParamSpecs) {
+    public ObjectNode toJsonSchema(List<ToolParamSpec> toolParamSpecs) {
         ObjectNode schema = JsonNodeFactory.instance.objectNode();
         schema.put("type", "object");
         ObjectNode properties = schema.putObject("properties");
@@ -154,7 +165,7 @@ public class ToolSpecService {
                 requiredArray.add(param.name());
             }
         }
-        return schema.toPrettyString();
+        return schema;
     }
 
     public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
@@ -194,18 +205,22 @@ public class ToolSpecService {
         Set<String> toExposeToolNames =
                 toolMcpServerSetting.exposedToolIds().stream().map(toolIdSpecs::get).map(ToolSpec::name)
                         .collect(Collectors.toSet());
-        getMcpToolList().stream().map(McpSchema.Tool::name).filter(Predicate.not(toExposeToolNames::contains))
-                .forEach(this::removeMcpTool);
-        Set<String> exposedToolNames = getMcpToolList().stream().map(toolIdSpecs::get).map(ToolSpec::name)
-                .collect(Collectors.toSet());
-        toExposeToolNames.stream().filter(Predicate.not(exposedToolNames::contains))
-                .forEach(name -> toolIdSpecs.values().stream().filter(toolSpec -> name.equals(toolSpec.name()))
-                        .findFirst().ifPresent(this::addMcpTool));
+        Set<String> currentExposedToolNames =
+                getMcpToolList().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
+        currentExposedToolNames.stream().filter(name -> !toExposeToolNames.contains(name)).forEach(this::removeMcpTool);
+        toExposeToolNames.stream().filter(name -> !currentExposedToolNames.contains(name))
+                .map(name -> toolIdSpecs.values().stream().filter(spec -> name.equals(spec.name())).findFirst())
+                .flatMap(Optional::stream).forEach(this::addMcpTool);
         logger.info("Tool MCP server setting updated: exposedToolNames={}", toExposeToolNames);
     }
 
-    @PreDestroy
-    private void shutdownMcpServer() {
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void stop() {
         logger.info("Shutting down MCP servers...");
         if (Objects.nonNull(this.mcpSyncServer)) {
             logger.info("Closing McpSyncServer");
@@ -215,6 +230,21 @@ public class ToolSpecService {
             logger.info("Closing McpAsyncServer");
             this.mcpAsyncServer.close();
         }
+    }
+
+    @Override
+    public boolean isRunning() {
+        return true;
+    }
+
+    @Override
+    public int getPhase() {
+        return Integer.MIN_VALUE;
+    }
+
+    @Override
+    public boolean isAutoStartup() {
+        return true;
     }
 
 }

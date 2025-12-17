@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hilerio.ace.AceEditor;
 import com.hilerio.ace.AceMode;
 import com.hilerio.ace.AceTheme;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dependency.JavaScript;
@@ -54,8 +55,23 @@ import java.util.function.Supplier;
 @JavaScript("./prettier-plugin-estree.js")
 public class JavascriptToolPlaygroundView extends VerticalLayout {
 
-    private final FlexLayout staticVarsContainer;
-    private final List<StaticVariableForm> staticVarForms;
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        attachEvent.getUI().getPage().executeJs("""
+                window.PRETTIER_DEFAULT_OPTIONS = {
+                  parser: "babel",
+                  printWidth: 200,
+                  tabWidth: 2,
+                  semi: true,
+                  singleQuote: true,
+                  trailingComma: "es5",
+                  proseWrap: "never"
+                };
+                """);
+    }
+
+    private final FlexLayout staticVaribaleContainer;
+    private final List<StaticVariableForm> staticVariableForms;
     private final AceEditor ace;
     private final TextArea consoleTextArea;
     private final Button testRunButton;
@@ -69,7 +85,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         this.objectMapper = objectMapper;
         this.toolSpecService = toolSpecService;
         this.currentToolParamsSupplier = currentToolParamsSupplier;
-        this.staticVarForms = new ArrayList<>();
+        this.staticVariableForms = new ArrayList<>();
 
         setSizeFull();
         setPadding(false);
@@ -100,10 +116,26 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                  *
                  * Execution model:
                  * - Your script is wrapped in an async function.
-                 * - The value you return becomes the final tool result.
+                 * - You MUST return a value (this becomes the tool result).
+                 * - The script is stateless and runs fresh on every call.
                  */
-                function add(a,b){ return a+b }
-                add(2,3);
+                
+                /* ===== Example: Hello World + JVM JS Engine Info — delete and replace ===== */
+                const ScriptEngineManager = Java.type('javax.script.ScriptEngineManager');
+                const manager = new ScriptEngineManager();
+                const engine =
+                  manager.getEngineByName('javascript') || manager.getEngineByName('js');
+                
+                return {
+                  message: 'Hello World from Spring AI Playground 👋',
+                  timestamp: new Date().toISOString(),
+                  jsEngine: {
+                    name: engine.getFactory().getEngineName(),
+                    version: engine.getFactory().getEngineVersion(),
+                    language: engine.getFactory().getLanguageName(),
+                    languageVersion: engine.getFactory().getLanguageVersion(),
+                  },
+                };
                 """;
         ace.setValue(exampleJs);
         ace.getElement().getStyle()
@@ -150,11 +182,11 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                 new HorizontalLayout(new H5("Static Variables"), staticHint);
         staticVarsHeader.setAlignItems(Alignment.BASELINE);
 
-        this.staticVarsContainer = new FlexLayout();
-        staticVarsContainer.setFlexDirection(FlexLayout.FlexDirection.COLUMN);
-        staticVarsContainer.setWidthFull();
+        this.staticVaribaleContainer = new FlexLayout();
+        staticVaribaleContainer.setFlexDirection(FlexLayout.FlexDirection.COLUMN);
+        staticVaribaleContainer.setWidthFull();
 
-        VerticalLayout staticVarsSection = new VerticalLayout(staticVarsHeader, staticVarsContainer);
+        VerticalLayout staticVarsSection = new VerticalLayout(staticVarsHeader, staticVaribaleContainer);
         staticVarsSection.setPadding(false);
         staticVarsSection.setSpacing(true);
         staticVarsSection.setWidthFull();
@@ -177,42 +209,41 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
 
     private StaticVariableForm addStaticVariableForm(int index) {
         StaticVariableForm staticVariableForm = new StaticVariableForm(index, this::removeStaticVariableForm,
-                () -> addStaticVariableForm(staticVarForms.size() + 1));
-        staticVarForms.add(staticVariableForm);
-        staticVarsContainer.add(staticVariableForm);
+                () -> addStaticVariableForm(staticVariableForms.size() + 1));
+        staticVariableForms.add(staticVariableForm);
+        staticVaribaleContainer.add(staticVariableForm);
         updateStaticVariableButtons();
         return staticVariableForm;
     }
 
     private void removeStaticVariableForm(StaticVariableForm form) {
-        if (staticVarForms.size() <= 1) {
+        if (staticVariableForms.size() <= 1) {
             return;
         }
 
-        staticVarsContainer.remove(form);
-        staticVarForms.remove(form);
+        staticVaribaleContainer.remove(form);
+        staticVariableForms.remove(form);
 
-        for (int i = 0; i < staticVarForms.size(); i++) {
-            staticVarForms.get(i).updateIndex(i + 1);
+        for (int i = 0; i < staticVariableForms.size(); i++) {
+            staticVariableForms.get(i).updateIndex(i + 1);
         }
 
         updateStaticVariableButtons();
     }
 
     private void updateStaticVariableButtons() {
-        boolean hasMultiple = staticVarForms.size() > 1;
-
-        for (int i = 0; i < staticVarForms.size(); i++) {
-            StaticVariableForm form = staticVarForms.get(i);
-            boolean isLast = (i == staticVarForms.size() - 1);
-
+        int size = staticVariableForms.size();
+        boolean hasMultiple = size > 1;
+        for (int i = 0; i < size; i++) {
+            StaticVariableForm form = staticVariableForms.get(i);
+            boolean isLast = (i == size - 1);
             form.setAddButtonVisible(isLast);
             form.setDeleteButtonVisible(hasMultiple);
         }
     }
 
     public List<Map.Entry<String, String>> getStaticVariables() {
-        return staticVarForms.stream().map(staticVariableForm -> {
+        return staticVariableForms.stream().map(staticVariableForm -> {
             String key = staticVariableForm.getKey().trim();
             return !key.isBlank() ? Map.entry(key, staticVariableForm.getValue()) : null;
         }).filter(Objects::nonNull).toList();
@@ -339,10 +370,14 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     }
 
     public void updateContents(List<Map.Entry<String, String>> staticVariables, String code) {
-        this.staticVarForms.clear();
-        this.staticVarsContainer.removeAll();
-        for (int i = 0; i < staticVariables.size(); i++)
-            addStaticVariableForm(i).update(staticVariables.get(i));
+        this.staticVariableForms.clear();
+        this.staticVaribaleContainer.removeAll();
+        if (!staticVariables.isEmpty()) {
+            for (int i = 0; i < staticVariables.size(); i++)
+                addStaticVariableForm(i).update(staticVariables.get(i));
+        } else {
+            addDefaultStaticVariableForm();
+        }
         this.ace.setValue(code);
     }
 }

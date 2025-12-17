@@ -186,8 +186,8 @@ public class ToolParameterForm extends VerticalLayout {
     }
 
     public ToolParamSpec getToolParamSpec() {
-        return !hasValidationErrors() ? new ToolParamSpec(nameField.getValue(), descriptionField.getValue(),
-                requiredField.getValue(), typeField.getValue(), testValueField.getValue()) : null;
+        return hasValidationErrors() ? null : new ToolParamSpec(nameField.getValue(), descriptionField.getValue(),
+                requiredField.getValue(), typeField.getValue(), testValueField.getValue());
     }
 
     private boolean hasValidationErrors() {

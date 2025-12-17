@@ -15,12 +15,16 @@
  */
 package jm.kr.spring.ai.playground.service.tool;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jm.kr.spring.ai.playground.service.PersistenceServiceInterface;
 import jm.kr.spring.ai.playground.service.tool.ToolSpecService.ToolMcpServerSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,6 +33,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -42,16 +47,21 @@ public class ToolSpecPersistenceService implements
 
     private final Path saveDir;
     private final ToolSpecService toolSpecService;
-    private final Set<ToolSpec> defaultToolSpecs;
+    private final List<ToolSpec> defaultToolSpecs;
     private final List<ToolSpecsMcpServerSetting> toolSpecsMcpServerSettings;
 
-    public ToolSpecPersistenceService(Path springAiPlaygroundHomeDir, ToolSpecService toolSpecService) throws
+    public ToolSpecPersistenceService(Path springAiPlaygroundHomeDir, ToolSpecService toolSpecService,
+            @Value("${spring.application.default-tool-location:}")
+            String defaultToolSpecsLocation, ObjectMapper objectMapper, ResourceLoader resourceLoader) throws
             IOException {
         this.saveDir = springAiPlaygroundHomeDir.resolve("tool").resolve("save");
         Files.createDirectories(this.saveDir);
         this.toolSpecService = toolSpecService;
         this.toolSpecsMcpServerSettings = this.loads();
-        this.defaultToolSpecs = Set.of();
+        Resource resource = resourceLoader.getResource(defaultToolSpecsLocation);
+        this.defaultToolSpecs = !defaultToolSpecsLocation.isBlank() && resource.exists() ?
+                objectMapper.readValue(resource.getInputStream(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, ToolSpec.class)) : List.of();
     }
 
     @Override
@@ -82,20 +92,21 @@ public class ToolSpecPersistenceService implements
     @Override
     public void onStart() throws IOException {
         if (!toolSpecsMcpServerSettings.isEmpty())
-            this.toolSpecService.setToolMcpServerSetting(toolSpecsMcpServerSettings.get(0).toolMcpServerSetting());
+            this.toolSpecService.setToolMcpServerSetting(toolSpecsMcpServerSettings.getFirst().toolMcpServerSetting());
     }
 
     @Override
     public void onApplicationEvent(WebServerInitializedEvent event) {
         Stream.concat(defaultToolSpecs.stream(),
                         toolSpecsMcpServerSettings.stream().map(ToolSpecsMcpServerSetting::toolSpecs).flatMap(List::stream))
-                .forEach(toolSpec -> toolSpecService.update(toolSpec.toolId(), toolSpec.name(), toolSpec.description()
-                        , toolSpec.staticVariables(), toolSpec.params(), toolSpec.code(), toolSpec.codeType()));
+                .forEach(toolSpecService::update);
     }
 
     @Override
     public void onShutdown() throws IOException {
-        save(new ToolSpecsMcpServerSetting(this.toolSpecService.getToolSpecList(),
+        Set<String> toolIdSet = this.defaultToolSpecs.stream().map(ToolSpec::toolId).collect(Collectors.toSet());
+        save(new ToolSpecsMcpServerSetting(this.toolSpecService.getToolSpecList().stream()
+                .filter(toolSpec -> !toolIdSet.contains(toolSpec.toolId())).toList(),
                 this.toolSpecService.getToolMcpServerSetting()));
     }
 }

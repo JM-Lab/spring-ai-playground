@@ -16,6 +16,8 @@
 package jm.kr.spring.ai.playground.webui.tool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H4;
@@ -33,19 +35,23 @@ import jm.kr.spring.ai.playground.webui.VaadinUtils;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static jm.kr.spring.ai.playground.webui.tool.ToolStudioView.TOOL_CHANGE_EVENT;
 
 public class ToolBuilderView extends VerticalLayout {
+
+    private static final Pattern TOOL_NAME_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
 
     private final ToolSpec toolSpec;
     private final PropertyChangeSupport toolChangeSupport;
     private final ToolSpecService toolSpecService;
     private final HorizontalLayout paramsContainer;
     private final List<ToolParameterForm> paramForms;
+    private final TextField toolNameField;
     private final JavascriptToolPlaygroundView javascriptToolPlaygroundView;
 
     public ToolBuilderView(ToolSpec toolSpec, PropertyChangeSupport toolChangeSupport, ToolSpecService toolSpecService,
@@ -59,10 +65,30 @@ public class ToolBuilderView extends VerticalLayout {
         setSpacing(true);
         setMargin(false);
 
-        TextField toolNameField = new TextField("Tool Name");
-        toolNameField.setPlaceholder("e.g., getWeather");
-        toolNameField.setRequired(true);
-        toolNameField.setWidthFull();
+        this.toolNameField = new TextField("Tool Name");
+        this.toolNameField.setPlaceholder(
+                "Letters, numbers, and '_' only. Must start with a letter. e.g., getWeather or get_weather");
+        this.toolNameField.setRequired(true);
+        this.toolNameField.setWidthFull();
+
+        this.toolNameField.addValueChangeListener(e -> {
+            String value = e.getValue();
+
+            if (value == null || value.isBlank()) {
+                this.toolNameField.setInvalid(true);
+                this.toolNameField.setErrorMessage("Tool Name is required.");
+                return;
+            }
+
+            if (!TOOL_NAME_PATTERN.matcher(value).matches()) {
+                this.toolNameField.setInvalid(true);
+                this.toolNameField.setErrorMessage(
+                        "Use letters, numbers, and '_' only. Must start with a letter.");
+                return;
+            }
+
+            this.toolNameField.setInvalid(false);
+        });
 
         TextArea toolDescriptionField = new TextArea("Tool Description");
         toolDescriptionField.setPlaceholder("e.g., Get the current weather for a location");
@@ -88,11 +114,11 @@ public class ToolBuilderView extends VerticalLayout {
         parametersSection.setSpacing(true);
         parametersSection.setWidthFull();
 
-        this.javascriptToolPlaygroundView =
-                new JavascriptToolPlaygroundView(objectMapper, toolSpecService, this::getCurrentToolParams);
+        this.javascriptToolPlaygroundView = new JavascriptToolPlaygroundView(objectMapper, toolSpecService,
+                () -> getCurrentToolParamsAsOpt().orElseGet(List::of));
         this.javascriptToolPlaygroundView.setHeightFull();
 
-        VerticalLayout scrollArea = new VerticalLayout(toolNameField, toolDescriptionField, parametersSection,
+        VerticalLayout scrollArea = new VerticalLayout(this.toolNameField, toolDescriptionField, parametersSection,
                 javascriptToolPlaygroundView);
         scrollArea.setPadding(false);
         scrollArea.setSpacing(true);
@@ -115,10 +141,12 @@ public class ToolBuilderView extends VerticalLayout {
         add(scrollArea, bottomMenuLayout);
 
         if (Objects.nonNull(toolSpec)) {
-            toolNameField.setValue(toolSpec.name());
+            this.toolNameField.setValue(toolSpec.name());
             toolDescriptionField.setValue(toolSpec.description());
-            toolSpec.params().forEach(param -> addParameterForm(paramForms.size() + 1).updateFields(param));
-            this.javascriptToolPlaygroundView.updateContents(toolSpec.staticVariables(), toolSpec.code());
+            if (!toolSpec.params().isEmpty()) {
+                toolSpec.params().forEach(param -> addParameterForm(paramForms.size() + 1).updateFields(param));
+                this.javascriptToolPlaygroundView.updateContents(toolSpec.staticVariables(), toolSpec.code());
+            }
         } else {
             addDefaultParameterForm();
         }
@@ -167,32 +195,56 @@ public class ToolBuilderView extends VerticalLayout {
 
     private void testAndUpdateTool(TextField nameField, TextArea descriptionField) {
         String toolName = nameField.getValue();
-        String toolDescription = descriptionField.getValue();
 
-        if (toolName.isBlank()) {
-            VaadinUtils.showErrorNotification("Tool Name is required.");
+        if (this.toolNameField.isInvalid()) {
+            VaadinUtils.showErrorNotification("Please fix the Tool Name.");
+            this.toolNameField.focus();
             return;
         }
         if (Objects.isNull(this.toolSpec) && toolSpecService.getToolSpecAsOpt(toolName).isPresent()) {
             VaadinUtils.showErrorNotification("A tool with this name already exists.");
+            this.toolNameField.focus();
             return;
         }
 
-        List<Map.Entry<String, String>> staticVariables = this.javascriptToolPlaygroundView.getStaticVariables();
-        List<ToolParamSpec> currentToolParams = getCurrentToolParams();
-        String currentJsCode = this.javascriptToolPlaygroundView.getCurrentJsCode();
-
-        if (this.javascriptToolPlaygroundView.runTest()) {
-            ToolSpec registeredToolSpec = toolSpecService.update(
-                    Objects.nonNull(this.toolSpec) ? this.toolSpec.toolId() : UUID.randomUUID().toString(), toolName,
-                    toolDescription, staticVariables, currentToolParams, currentJsCode, ToolSpec.CodeType.Javascript);
-            VaadinUtils.showInfoNotification("Tool '" + toolName + "' registered successfully!");
-            this.toolChangeSupport.firePropertyChange(TOOL_CHANGE_EVENT, this.toolSpec, registeredToolSpec);
-        }
+        String toolDescription = descriptionField.getValue();
+        getCurrentToolParamsAsOpt().filter(toolParamSpecs -> this.javascriptToolPlaygroundView.runTest())
+                .ifPresent(toolParamSpecs -> {
+                    ToolSpec registeredToolSpec = toolSpecService.update(
+                            Objects.nonNull(this.toolSpec) ? this.toolSpec.toolId() : UUID.randomUUID().toString(),
+                            toolName, toolDescription, this.javascriptToolPlaygroundView.getStaticVariables(),
+                            toolParamSpecs, this.javascriptToolPlaygroundView.getCurrentJsCode(),
+                            ToolSpec.CodeType.Javascript);
+                    VaadinUtils.showInfoNotification("Tool '" + toolName + "' registered successfully!");
+                    this.toolChangeSupport.firePropertyChange(TOOL_CHANGE_EVENT, this.toolSpec, registeredToolSpec);
+                });
     }
 
-    public List<ToolParamSpec> getCurrentToolParams() {
-        return paramForms.stream().map(ToolParameterForm::getToolParamSpec).filter(Objects::nonNull).toList();
+    public Optional<List<ToolParamSpec>> getCurrentToolParamsAsOpt() {
+        int size = paramForms.size();
+        List<ToolParamSpec> result = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            ToolParamSpec spec = paramForms.get(i).getToolParamSpec();
+            if (size == 1 && spec == null) {
+                return Optional.of(result);
+            }
+            if (spec == null) {
+                VaadinUtils.showErrorNotification("Parameter #" + (i + 1) + " is invalid");
+                return Optional.empty();
+            }
+            result.add(spec);
+        }
+        return Optional.of(result);
+    }
+
+    public Optional<String> getCurrentToolSpecJsonAsOpt() {
+        return getCurrentToolParamsAsOpt().map(toolParamSpecs -> {
+            ObjectNode schema = JsonNodeFactory.instance.objectNode();
+            schema.put("name", Optional.ofNullable(toolSpec).map(ToolSpec::name).orElse(""));
+            schema.put("description", Optional.ofNullable(toolSpec).map(ToolSpec::description).orElse(""));
+            schema.putIfAbsent("parameters", this.toolSpecService.toJsonSchema(toolParamSpecs));
+            return schema.toPrettyString();
+        });
     }
 
 }

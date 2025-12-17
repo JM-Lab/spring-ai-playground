@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.icon.Icon;
@@ -33,6 +34,7 @@ import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.popover.PopoverVariant;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.annotation.SpringComponent;
@@ -161,6 +163,11 @@ public class ToolStudioView extends Div {
         Button newToolButton =
                 styledButton("New Tool", VaadinIcon.TOOLS.create(), event -> displayNewToolDesignView());
         horizontalLayout.add(newToolButton);
+        String exportToolSpecificationTitle = "Export Tool Specification";
+        Button exportToolSpecButton = styledButton(exportToolSpecificationTitle, VaadinIcon.FILE_CODE.create(),
+                event -> this.toolBuilderView.getCurrentToolSpecJsonAsOpt().ifPresent(currentToolSpecJson ->
+                        openToolSpecDialog(exportToolSpecificationTitle, currentToolSpecJson)));
+        horizontalLayout.add(newToolButton, exportToolSpecButton);
 
 
         H4 toolInfoText = new H4("Tool Studio");
@@ -213,5 +220,55 @@ public class ToolStudioView extends Div {
 
         horizontalLayout.add(toolMcpServerSettingMenuBar);
         return horizontalLayout;
+    }
+
+    private void openToolSpecDialog(String exportToolSpecificationTitle, String toolSpecJson) {
+        Dialog dialog = VaadinUtils.headerDialog(exportToolSpecificationTitle);
+        dialog.setWidth("800px");
+        dialog.setHeight("800px");
+        dialog.setCloseOnEsc(true);
+        dialog.setCloseOnOutsideClick(true);
+
+        H4 title = new H4("Tool Specification (JSON)");
+
+        TextArea jsonArea = new TextArea();
+        jsonArea.setValue(toolSpecJson);
+        jsonArea.setReadOnly(true);
+        jsonArea.setWidthFull();
+        jsonArea.setHeight("100%");
+
+        jsonArea.getStyle()
+                .set("font-family", "monospace")
+                .set("font-size", "13px")
+                .set("overflow", "auto");
+
+        Button copyButton = new Button("Copy", VaadinIcon.COPY.create(), e -> {
+            copyToClipboard(toolSpecJson);
+            dialog.close();
+        });
+        copyButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button closeButton = new Button("Close", VaadinIcon.CLOSE.create(), e -> dialog.close());
+
+        HorizontalLayout footer =
+                new HorizontalLayout(copyButton, closeButton);
+        footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        footer.setWidthFull();
+        footer.getStyle().set("flex-shrink", "0");
+
+        VerticalLayout content =
+                new VerticalLayout(title, jsonArea, footer);
+        content.setPadding(false);
+        content.setSpacing(true);
+        content.setSizeFull();
+        content.setFlexGrow(1, jsonArea);
+
+        dialog.add(content);
+        dialog.open();
+    }
+
+    private void copyToClipboard(String text) {
+        VaadinUtils.getUi(this).getPage().executeJs("navigator.clipboard.writeText($0)", text);
+        VaadinUtils.showInfoNotification("Tool specification copied to clipboard.");
     }
 }
