@@ -47,6 +47,7 @@ import jm.kr.spring.ai.playground.webui.VaadinUtils;
 
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
+import java.util.Optional;
 
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.headerPopover;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
@@ -54,7 +55,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
-@PageTitle("Tool")
+@PageTitle("Tool | Spring AI Playground")
 @Route(value = "tool-studio", layout = SpringAiPlaygroundAppLayout.class)
 public class ToolStudioView extends Div {
 
@@ -84,7 +85,8 @@ public class ToolStudioView extends Div {
 
         this.toolListView = new ToolListView(persistentUiDataStorage, toolSpecService, toolChangeSupport);
         toolChangeSupport.addPropertyChangeListener(TOOL_SELECT_EVENT,
-                event -> this.changeToolContent((ToolSpec) event.getNewValue()));
+                event -> Optional.ofNullable(event.getNewValue()).map(value -> (ToolSpec) value)
+                        .ifPresent(this::changeToolContent));
         toolChangeSupport.addPropertyChangeListener(TOOL_CHANGE_EVENT,
                 event -> this.toolListView.changeToolContent((ToolSpec) event.getNewValue()));
         toolChangeSupport.addPropertyChangeListener(TOOL_EMPTY_EVENT, event -> {
@@ -128,6 +130,9 @@ public class ToolStudioView extends Div {
         } else {
             this.toolBuilderView =
                     new ToolBuilderView(toolSpec, toolChangeSupport, toolSpecService, objectMapper);
+            if (Objects.isNull(toolSpec.toolId())) {
+                this.toolListView.clearSelectTool();
+            }
         }
         VaadinUtils.getUi(this).access(() -> {
             this.toolContentLayout.removeAll();
@@ -163,12 +168,9 @@ public class ToolStudioView extends Div {
         Button newToolButton =
                 styledButton("New Tool", VaadinIcon.TOOLS.create(), event -> displayNewToolDesignView());
         horizontalLayout.add(newToolButton);
-        String exportToolSpecificationTitle = "Export Tool Specification";
-        Button exportToolSpecButton = styledButton(exportToolSpecificationTitle, VaadinIcon.FILE_CODE.create(),
-                event -> this.toolBuilderView.getCurrentToolSpecJsonAsOpt().ifPresent(currentToolSpecJson ->
-                        openToolSpecDialog(exportToolSpecificationTitle, currentToolSpecJson)));
-        horizontalLayout.add(newToolButton, exportToolSpecButton);
-
+        Button copyAndNewToolButton = styledButton("Copy And New Tool", VaadinIcon.COPY_O.create(),
+                event -> changeToolContent(this.toolBuilderView.copyCurrentToolSpec()));
+        horizontalLayout.add(newToolButton, copyAndNewToolButton);
 
         H4 toolInfoText = new H4("Tool Studio");
         toolInfoText.getStyle().set("white-space", "nowrap");
@@ -213,9 +215,15 @@ public class ToolStudioView extends Div {
             }
         });
 
+        String exportToolSpecificationTitle = "Export Tool Specification";
+        Button exportToolSpecButton = styledButton(exportToolSpecificationTitle, VaadinIcon.FILE_CODE.create(),
+                event -> this.toolBuilderView.getCurrentToolSpecJsonAsOpt().ifPresent(currentToolSpecJson ->
+                        openToolSpecDialog(exportToolSpecificationTitle, currentToolSpecJson)));
+
         MenuBar toolMcpServerSettingMenuBar = new MenuBar();
         toolMcpServerSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
         toolMcpServerSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+        toolMcpServerSettingMenuBar.addItem(exportToolSpecButton);
         toolMcpServerSettingMenuBar.addItem(toolMcpServerSettingIcon);
 
         horizontalLayout.add(toolMcpServerSettingMenuBar);

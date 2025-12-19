@@ -35,9 +35,14 @@ public class ToolMcpServerSettingView extends VerticalLayout {
         setSpacing(true);
 
         this.autoAddCheckbox = new Checkbox("Enable Auto-Add Tools");
+        this.autoAddCheckbox.setHelperText(
+                "Automatically register newly created tools with the built-in MCP server."
+        );
 
-        this.toolSelector = new MultiSelectComboBox<>("Select Tools");
-        this.toolSelector.setPlaceholder("Select tools to enable...");
+        this.toolSelector = new MultiSelectComboBox<>("Registered Tools");
+        this.toolSelector.setHelperText(
+                "Tools currently registered with the built-in MCP server."
+        );
         this.toolSelector.setWidth("100%");
         this.toolSelector.setMaxWidth("600px");
         this.toolSelector.setClearButtonVisible(true);

@@ -52,6 +52,7 @@ public class ToolBuilderView extends VerticalLayout {
     private final HorizontalLayout paramsContainer;
     private final List<ToolParameterForm> paramForms;
     private final TextField toolNameField;
+    private final TextArea toolDescriptionField;
     private final JavascriptToolPlaygroundView javascriptToolPlaygroundView;
 
     public ToolBuilderView(ToolSpec toolSpec, PropertyChangeSupport toolChangeSupport, ToolSpecService toolSpecService,
@@ -90,9 +91,9 @@ public class ToolBuilderView extends VerticalLayout {
             this.toolNameField.setInvalid(false);
         });
 
-        TextArea toolDescriptionField = new TextArea("Tool Description");
-        toolDescriptionField.setPlaceholder("e.g., Get the current weather for a location");
-        toolDescriptionField.setWidthFull();
+        this.toolDescriptionField = new TextArea("Tool Description");
+        this.toolDescriptionField.setPlaceholder("e.g., Get the current weather for a location");
+        this.toolDescriptionField.setWidthFull();
 
         Span paramsHint =
                 new Span("Structured tool parameters defined in the tool spec and passed by the LLM at call time");
@@ -210,11 +211,12 @@ public class ToolBuilderView extends VerticalLayout {
         String toolDescription = descriptionField.getValue();
         getCurrentToolParamsAsOpt().filter(toolParamSpecs -> this.javascriptToolPlaygroundView.runTest())
                 .ifPresent(toolParamSpecs -> {
-                    ToolSpec registeredToolSpec = toolSpecService.update(
-                            Objects.nonNull(this.toolSpec) ? this.toolSpec.toolId() : UUID.randomUUID().toString(),
-                            toolName, toolDescription, this.javascriptToolPlaygroundView.getStaticVariables(),
-                            toolParamSpecs, this.javascriptToolPlaygroundView.getCurrentJsCode(),
-                            ToolSpec.CodeType.Javascript);
+                    ToolSpec registeredToolSpec =
+                            toolSpecService.update(Optional.ofNullable(this.toolSpec).map(ToolSpec::toolId)
+                                            .orElseGet(() -> UUID.randomUUID().toString()),
+                                    toolName, toolDescription, this.javascriptToolPlaygroundView.getStaticVariables(),
+                                    toolParamSpecs, this.javascriptToolPlaygroundView.getCurrentJsCode(),
+                                    ToolSpec.CodeType.Javascript);
                     VaadinUtils.showInfoNotification("Tool '" + toolName + "' registered successfully!");
                     this.toolChangeSupport.firePropertyChange(TOOL_CHANGE_EVENT, this.toolSpec, registeredToolSpec);
                 });
@@ -245,6 +247,13 @@ public class ToolBuilderView extends VerticalLayout {
             schema.putIfAbsent("parameters", this.toolSpecService.toJsonSchema(toolParamSpecs));
             return schema.toPrettyString();
         });
+    }
+
+    public ToolSpec copyCurrentToolSpec() {
+        return new ToolSpec(null, this.toolNameField.getValue() + "_COPY",
+                this.toolDescriptionField.getValue(), this.javascriptToolPlaygroundView.getStaticVariables(),
+                this.getCurrentToolParamsAsOpt().orElseGet(List::of),
+                this.javascriptToolPlaygroundView.getCurrentJsCode(), ToolSpec.CodeType.Javascript, null);
     }
 
 }
