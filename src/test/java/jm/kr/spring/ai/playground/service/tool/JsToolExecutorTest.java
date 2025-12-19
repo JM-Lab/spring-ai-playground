@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Set;
 
+import static jm.kr.spring.ai.playground.SpringAiPlaygroundOptions.JsSandbox;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -35,7 +37,9 @@ public class JsToolExecutorTest {
 
     @BeforeEach
     void setUp() {
-        executor = new JsToolExecutor();
+        executor = new JsToolExecutor(null, new JsSandbox(true, false, false, false, 50_000L,
+                Set.of("java.lang.*", "java.math.*", "java.time.*", "java.util.*", "java.text.*", "java.net.*",
+                        "java.io.*", "org.jsoup.*")));
     }
 
     @Test
@@ -212,13 +216,13 @@ public class JsToolExecutorTest {
     }
 
     @Test
-    void testEnvPlaceholderandMaskOnlyInLog() {
+    void testEnvPlaceholderandMaskOnlyInLog() throws ClassNotFoundException {
         String PROP_NAME = "TEST_SECRET";
         String PROP_VALUE = "super-secret-value-123456";
         System.setProperty(PROP_NAME, PROP_VALUE);
 
         try {
-            JsToolExecutor executor = new JsToolExecutor(5L);
+            JsToolExecutor executor = new JsToolExecutor(5L, null);
 
             String jsCode = """
                     return apiKey;
@@ -250,8 +254,8 @@ public class JsToolExecutorTest {
     }
 
     @Test
-    void nonEnvPattern_shouldBeUsedAsLiteralValue() {
-        JsToolExecutor executor = new JsToolExecutor(5L);
+    void nonEnvPattern_shouldBeUsedAsLiteralValue() throws ClassNotFoundException {
+        JsToolExecutor executor = new JsToolExecutor(5L, null);
 
         String literal = "${not_uppercase}";
         String jsCode = "return value;";

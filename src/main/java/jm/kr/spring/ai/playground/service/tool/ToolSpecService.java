@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions;
 import jm.kr.spring.ai.playground.service.mcp.McpServerInfoService;
 import jm.kr.spring.ai.playground.service.tool.JsToolExecutor.JsExecutionParams;
 import jm.kr.spring.ai.playground.service.tool.JsToolExecutor.JsExecutionResult;
@@ -65,13 +66,15 @@ public class ToolSpecService implements SmartLifecycle {
     private ToolMcpServerSetting toolMcpServerSetting;
 
     public ToolSpecService(ObjectProvider<McpSyncServer> syncServerProvider,
-            ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService) {
+            ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService,
+            SpringAiPlaygroundOptions playgroundOptions) throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
         this.mcpServerInfoService = mcpServerInfoService;
         this.toolMcpServerSetting = new ToolMcpServerSetting(true, Set.of());
         this.toolIdSpecs = new ConcurrentHashMap<>();
-        this.jsToolExecutor = new JsToolExecutor();
+        this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
+                playgroundOptions.toolStudio().jsSandbox());
     }
 
     public ToolSpec update(ToolSpec toolSpec) {

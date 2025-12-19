@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
-@ActiveProfiles({"openai", "ollama", "mcp"})
+@ActiveProfiles({"ollama"})
 class SpringAiPlaygroundIT {
 
     @Autowired
@@ -93,7 +93,8 @@ class SpringAiPlaygroundIT {
         targetPath.toFile().deleteOnExit();
         List<String> uploadedFileNames = List.of(filename);
         Map<String, List<Document>> uploadedDocumentItems =
-                this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames, this.vectorStoreDocumentService.getDefaultTokenTextSplitter());
+                this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames,
+                        this.vectorStoreDocumentService.getDefaultTokenTextSplitter());
         uploadedDocumentItems.entrySet().stream()
                 .map(entry -> this.vectorStoreDocumentService.putNewDocument(entry.getKey(), entry.getValue()))
                 .forEach(this.vectorStoreService::add);
@@ -110,7 +111,7 @@ class SpringAiPlaygroundIT {
         String prompt = "Hello World";
         String assistantText =
                 chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null, null,
-                        null).toStream().collect(Collectors.joining());
+                        null, null).toStream().collect(Collectors.joining());
 
         assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());
@@ -122,7 +123,7 @@ class SpringAiPlaygroundIT {
         Message messagesFirst = messages.getFirst();
         assertEquals(MessageType.USER, messagesFirst.getMessageType());
         ChatService.ChatMeta chatMeta = (ChatService.ChatMeta) messagesFirst.getMetadata().get(CHAT_META);
-        assertEquals("mistral", chatMeta.model());
+        assertEquals("qwen3", chatMeta.model());
         assertEquals(0, chatMeta.retrievedDocuments().size());
         Usage usage = chatMeta.usage();
         assertTrue(0 < usage.getCompletionTokens());
@@ -150,7 +151,7 @@ class SpringAiPlaygroundIT {
         Message messagesFirst = messages.getFirst();
         assertEquals(MessageType.USER, messagesFirst.getMessageType());
         ChatService.ChatMeta chatMeta = (ChatService.ChatMeta) messagesFirst.getMetadata().get(CHAT_META);
-        assertEquals("mistral", chatMeta.model());
+        assertEquals("qwen3", chatMeta.model());
         assertNull(chatMeta.retrievedDocuments());
         Usage usage = chatMeta.usage();
         assertTrue(0 < usage.getCompletionTokens());
@@ -183,7 +184,7 @@ class SpringAiPlaygroundIT {
         Message messagesFirst = messages.getFirst();
         assertEquals(MessageType.USER, messagesFirst.getMessageType());
         ChatService.ChatMeta chatMeta = (ChatService.ChatMeta) messagesFirst.getMetadata().get(CHAT_META);
-        assertEquals("mistral", chatMeta.model());
+        assertEquals("qwen3", chatMeta.model());
         assertNull(chatMeta.retrievedDocuments());
         Usage usage = chatMeta.usage();
         assertTrue(0 < usage.getCompletionTokens());

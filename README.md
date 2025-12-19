@@ -1,8 +1,32 @@
 # Spring AI Playground
 
-**Spring AI Playground** is a self-hosted web UI that simplifies AI experimentation and testing. It provides Java developers with an intuitive interface for working with **large language models (LLMs)**, **vector databases**, **prompt engineering**, and **Model Context Protocol (MCP)** integrations.
+**Spring AI Playground is a self-hosted web UI platform for building low-code tools and dynamically exposing them via built-in MCP server for AI agents.**
 
-Built on **Spring AI**, it supports leading model providers and includes comprehensive tools for testing **retrieval-augmented generation (RAG)** workflows and MCP integrations. The goal is to make AI more accessible to developers, helping them quickly prototype **Spring AI-based applications** with enhanced contextual awareness and external tool capabilities.
+Unlike most AI playgrounds that focus solely on prompt testing and chat visualization, it bridges the gap between **static AI conversations** and **real-world actions** by enabling you to create executable tools that AI agents can use.
+
+It brings together **Large Language Models (LLMs)**, **Retrieval-Augmented Generation (RAG)**, and **low-code tool development** in a single environment. Tools created in the **Tool Studio** are dynamically evaluated and loaded at runtime, then automatically registered and exposed as **Model Context Protocol (MCP) tools**. This makes them instantly available to MCP-compatible clients without restarting or redeploying.
+
+## Key Capabilities
+
+### Tool Studio & Built-in MCP Server
+Create AI tools using **JavaScript (ECMAScript 2023)** directly in the browser. Powered by **GraalVM Polyglot**, these tools run safely inside the JVM and are exposed immediately exposed via **built-in MCP Server**. Experience a 
+zero-deployment workflow: just write, test, and publish.
+
+### MCP Server & Tool Inspection
+Connect to external **MCP servers**, inspect available tools, and validate tool execution behavior. Test both your custom **Tool Studio tools** and third-party MCP services in a unified interface.
+
+### Vector Database & RAG Pipeline
+Upload documents, configure **chunking** and **embeddings**, and test retrieval pipelines. Evaluate prompt execution against selected RAG sources to validate **knowledge-grounded** responses.
+
+### Chat & Agentic Workflow Testing
+Interact with LLMs in a chat interface where models can reason, select tools, and execute actions. Combine **MCP tools** and **RAG-enhanced context** to validate end-to-end agent workflows.
+
+## Why Spring AI Playground?
+
+- **Dynamic MCP Hosting**: Build and expose tools in real-time with immediate MCP server exposure and no deployment overhead.
+- **Unified Testing Hub**: Validate prompts, RAG pipelines, and agentic workflows in a single, cohesive environment.
+- **Provider Agnostic**: Switch between Ollama, OpenAI, and other LLM providers (including OpenAI-compatible APIs) with ease.
+- **Built for Modern AI**: Designed specifically for the Spring AI ecosystem, MCP protocol, and agent-oriented architectures.
 
 ## Table of Contents
 - [Quick Start](#quick-start)

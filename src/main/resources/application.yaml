@@ -7,34 +7,67 @@ logging:
     org.springframework.ai.chat.client.advisor.*: DEBUG
     jm.kr.spring.ai.playground.service.*: DEBUG
     org.springframework.ai.mcp: DEBUG
-
 spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
   application:
     name: spring-ai-playground
+    default-tool-location: classpath:default-tool-specs.json
   profiles:
-    default: mcp, ollama
+    default: ollama
   ai:
+    model:
+      chat: ollama
+      embedding: ollama
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    playground:
+      tool-studio:
+        timeout-seconds: 30
+        js-sandbox:
+          allow-network-io: true
+          allow-file-io: false
+          allow-native-access: false
+          allow-create-thread: false
+          max-statements: 500000
+          allow-classes:
+            # Completely safe core packages — strongly recommended to allow entirely
+            - java.lang.*                  # String, StringBuilder, System.getProperty, etc. (basic utilities)
+            - java.math.*                  # BigDecimal, BigInteger, etc. (mathematical calculations)
+            - java.time.*                  # Instant, Duration, ZonedDateTime, etc. (date/time handling)
+            - java.util.*                  # List, Map, Set, UUID, Base64, Collections, etc. (collections and utilities)
+            - java.text.*                  # DateFormat, NumberFormat, etc. (formatting utilities)
+            - java.net.*                   # URL, HttpURLConnection, URI, URLEncoder, etc.
+            # I/O streams — used for handling network responses (safe because allowIO(false) blocks file access)
+            - java.io.*
+            # HttpClient
+            - java.net.http.HttpClient
+            - java.net.http.HttpRequest
+            - java.net.http.HttpResponse
+            - java.net.http.HttpHeaders
+            # HTML parsing library — currently used in examples
+            - org.jsoup.*
+
+      user-home:
+      chat:
+        system-prompt:
     mcp:
+      client:
+        type: SYNC
+        initialized: false
       server:
         name: spring-ai-playground-tool-mcp
         protocol: STREAMABLE
         type: SYNC
         request-timeout: 30
-    model:
-      chat: ollama
-      embedding: ollama
-    playground:
-      user-home:
-      chat:
-        system:
-          prompt:
-  servlet:
-    multipart:
-      max-file-size: 20MB
-      max-request-size: 20MB
 
 ---
 spring:
@@ -42,6 +75,8 @@ spring:
     activate:
       on-profile: ollama
   ai:
+    model:
+      chat: ollama
     ollama:
       init:
         pull-model-strategy: when_missing
@@ -66,6 +101,8 @@ spring:
     activate:
       on-profile: openai
   ai:
+    model:
+      chat: openai
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
@@ -74,24 +111,13 @@ spring:
     playground:
       chat:
         models:
-          - gpt-5-nano
-          - gpt-5-mini
-          - gpt-5-chat
-          - gpt-5
           - gpt-4.1-nano
           - gpt-4.1-mini
+          - gpt-4o-mini
+          - gpt-4o
           - gpt-4.1
-          - o3-mini
-          - o3
-          - o3-pro
-
----
-spring:
-  config:
-    activate:
-      on-profile: mcp
-  ai:
-    mcp:
-      client:
-        type: SYNC
-        initialized: false
+          - gpt-3.5-turbo
+          - gpt-3.5-turbo-16k
+          - gpt-4
+          - gpt-4-32k
+          - gpt-4-turbo

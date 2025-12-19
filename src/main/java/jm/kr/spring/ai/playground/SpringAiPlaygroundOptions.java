@@ -17,10 +17,20 @@ package jm.kr.spring.ai.playground;
 
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 import java.util.List;
+import java.util.Set;
 
 @ConfigurationProperties(prefix = "spring.ai.playground")
-public record SpringAiPlaygroundOptions(Chat chat) {
-    public record Chat(String systemPrompt, List<String> models, DefaultChatOptions chatOptions) {}
+public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio toolStudio, boolean persistence,
+                                        String userHome, @NestedConfigurationProperty Chat chat) {
+
+    public record ToolStudio(Long timeoutSeconds, @NestedConfigurationProperty JsSandbox jsSandbox) {}
+
+    public record JsSandbox(boolean allowNetworkIo, boolean allowFileIo, boolean allowNativeAccess,
+                            boolean allowCreateThread, Long maxStatements, Set<String> allowClasses) {}
+
+    public record Chat(String systemPrompt, List<String> models,
+                       @NestedConfigurationProperty DefaultChatOptions chatOptions) {}
 }

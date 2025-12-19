@@ -70,7 +70,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                 """);
     }
 
-    private final FlexLayout staticVaribaleContainer;
+    private final FlexLayout staticVariableContainer;
     private final List<StaticVariableForm> staticVariableForms;
     private final AceEditor ace;
     private final TextArea consoleTextArea;
@@ -99,42 +99,41 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         ace.setAutoComplete(true);
         ace.setLiveAutocompletion(true);
         ace.setUseWorker(true);
+        ace.setShowInvisibles(true);
+        ace.setTabSize(2);
+        ace.setWrap(true);
+        ace.setShowPrintMargin(false);
         ace.setPlaceholder("Type JavaScript code here…");
         String exampleJs = """
                 /**
                  * NOTE TO DEVELOPERS:
-                 * This code runs on JavaScript (ECMAScript 2023) inside the JVM.
+                 * This code runs on JavaScript (ECMAScript 2023) inside the JVM using GraalJS.
                  * It is NOT a browser or Node.js environment.
                  *
                  * Unavailable APIs:
                  * - Browser APIs: fetch, XMLHttpRequest, DOM (window/document), timers, etc.
-                 * - Node.js APIs: require(), module, process, built-in modules, etc.
+                 * - Node.js APIs: require(), modules, process, built-in modules, etc.
                  *
                  * Available features:
-                 * - Java interop via Java.type() (e.g., java.net.*, java.io.*, etc.)
-                 * - console.log (output captured by the host)
+                 * - Java interop via Java.type() is restricted to a safe allowlist (see application.yml)
+                 * - Common utilities and HTTP client classes are allowed (e.g. java.util.*, java.net.http.HttpClient, ...)
+                 * - Dangerous operations (file I/O, system commands, reflection, etc.) are completely blocked
+                 * - console.log output is captured and displayed in the Debug Console below
                  *
                  * Execution model:
-                 * - Your script is wrapped in an async function.
-                 * - You MUST return a value (this becomes the tool result).
-                 * - The script is stateless and runs fresh on every call.
+                 * - Your script is executed in a sandboxed environment with strict security restrictions
+                 * - The script runs fresh on every call (stateless)
+                 * - You MUST return a value — this becomes the tool result returned to the agent
                  */
                 
-                /* ===== Example: Hello World + JVM JS Engine Info — delete and replace ===== */
-                const ScriptEngineManager = Java.type('javax.script.ScriptEngineManager');
-                const manager = new ScriptEngineManager();
-                const engine =
-                  manager.getEngineByName('javascript') || manager.getEngineByName('js');
+                /* ===== Example: Hello World — delete and replace ===== */
+                const Instant = Java.type('java.time.Instant');
                 
                 return {
                   message: 'Hello World from Spring AI Playground 👋',
                   timestamp: new Date().toISOString(),
-                  jsEngine: {
-                    name: engine.getFactory().getEngineName(),
-                    version: engine.getFactory().getEngineVersion(),
-                    language: engine.getFactory().getLanguageName(),
-                    languageVersion: engine.getFactory().getLanguageVersion(),
-                  },
+                  epochMilli: Instant.now().toEpochMilli(),
+                  note: 'You can access allow Java classes, configured safely in application.yml!',
                 };
                 """;
         ace.setValue(exampleJs);
@@ -182,11 +181,11 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                 new HorizontalLayout(new H5("Static Variables"), staticHint);
         staticVarsHeader.setAlignItems(Alignment.BASELINE);
 
-        this.staticVaribaleContainer = new FlexLayout();
-        staticVaribaleContainer.setFlexDirection(FlexLayout.FlexDirection.COLUMN);
-        staticVaribaleContainer.setWidthFull();
+        this.staticVariableContainer = new FlexLayout();
+        staticVariableContainer.setFlexDirection(FlexLayout.FlexDirection.COLUMN);
+        staticVariableContainer.setWidthFull();
 
-        VerticalLayout staticVarsSection = new VerticalLayout(staticVarsHeader, staticVaribaleContainer);
+        VerticalLayout staticVarsSection = new VerticalLayout(staticVarsHeader, staticVariableContainer);
         staticVarsSection.setPadding(false);
         staticVarsSection.setSpacing(true);
         staticVarsSection.setWidthFull();
@@ -211,7 +210,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         StaticVariableForm staticVariableForm = new StaticVariableForm(index, this::removeStaticVariableForm,
                 () -> addStaticVariableForm(staticVariableForms.size() + 1));
         staticVariableForms.add(staticVariableForm);
-        staticVaribaleContainer.add(staticVariableForm);
+        staticVariableContainer.add(staticVariableForm);
         updateStaticVariableButtons();
         return staticVariableForm;
     }
@@ -221,7 +220,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             return;
         }
 
-        staticVaribaleContainer.remove(form);
+        staticVariableContainer.remove(form);
         staticVariableForms.remove(form);
 
         for (int i = 0; i < staticVariableForms.size(); i++) {
@@ -371,7 +370,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
 
     public void updateContents(List<Map.Entry<String, String>> staticVariables, String code) {
         this.staticVariableForms.clear();
-        this.staticVaribaleContainer.removeAll();
+        this.staticVariableContainer.removeAll();
         if (!staticVariables.isEmpty()) {
             for (int i = 0; i < staticVariables.size(); i++)
                 addStaticVariableForm(i).update(staticVariables.get(i));

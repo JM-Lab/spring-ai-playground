@@ -16,10 +16,14 @@
 package jm.kr.spring.ai.playground.service.tool;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jm.kr.spring.ai.playground.SpringAiPlaygroundOptions.JsSandbox;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -30,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +45,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@ConfigurationProperties(prefix = "tool-studio.sandbox")
 public class JsToolExecutor {
 
     public record JsExecutionResult(boolean isOk, Object result, String error, @JsonIgnore String debugInfo) {}
@@ -52,15 +58,30 @@ public class JsToolExecutor {
     private final long timeoutSeconds;
     private final ExecutorService executor;
 
-    public JsToolExecutor() {
-        this(30L);
-    }
-
-    public JsToolExecutor(Long timeoutSeconds) {
+    public JsToolExecutor(Long timeoutSeconds, JsSandbox jsSandbox) {
         this.contextBuilder = Context.newBuilder("js")
-                .allowAllAccess(true)
-                .option("js.ecmascript-version", "2023");
-        this.timeoutSeconds = timeoutSeconds;
+                .option("js.ecmascript-version", "2023")
+                .allowAllAccess(false);
+        if (Objects.nonNull(jsSandbox)) {
+            HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).build();
+            this.contextBuilder
+                    .allowHostClassLookup(className -> {
+                        return jsSandbox.allowClasses().stream().anyMatch(pattern -> {
+                            if (pattern.endsWith(".*")) {
+                                String prefix = pattern.substring(0, pattern.length() - 2);
+                                return className.startsWith(prefix + ".") || className.startsWith(prefix);
+                            }
+                            return className.equals(pattern);
+                        });
+                    })
+                    .allowHostAccess(hostAccess)
+                    .allowIO(jsSandbox.allowFileIo())
+                    .allowNativeAccess(jsSandbox.allowNativeAccess())
+                    .allowCreateThread(jsSandbox.allowCreateThread())
+                    .resourceLimits(
+                            ResourceLimits.newBuilder().statementLimit(jsSandbox.maxStatements(), null).build());
+        }
+        this.timeoutSeconds = Optional.ofNullable(timeoutSeconds).orElse(30L);
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
