@@ -22,12 +22,12 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.3</version>
+        <version>3.5.8</version>
         <relativePath/>
     </parent>
     <groupId>jm.kr</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.0-M1</version>
     <name>Spring AI Playground</name>
     <description>spring-ai-playground</description>
     <url>https://github.com/JM-Lab/spring-ai-playground</url>
@@ -53,8 +53,9 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>24.9.6</vaadin.version>
         <spring-ai.version>1.1.2</spring-ai.version>
+        <vaadin.version>24.9.7</vaadin.version>
+        <graalvm.version>25.0.1</graalvm.version>
     </properties>
     <repositories>
         <repository>
@@ -122,14 +123,14 @@
         <dependency>
             <groupId>org.graalvm.polyglot</groupId>
             <artifactId>js</artifactId>
-            <version>25.0.1</version>
+            <version>${graalvm.version}</version>
             <type>pom</type>
         </dependency>
 
         <dependency>
             <groupId>org.graalvm.js</groupId>
             <artifactId>js-scriptengine</artifactId>
-            <version>25.0.1</version>
+            <version>${graalvm.version}</version>
         </dependency>
 
         <dependency>

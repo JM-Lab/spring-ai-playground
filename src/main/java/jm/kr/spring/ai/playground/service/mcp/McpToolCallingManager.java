@@ -28,6 +28,7 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 @Component
@@ -48,18 +49,21 @@ public class McpToolCallingManager implements ToolCallingManager {
     @Override
     public ToolExecutionResult executeToolCalls(Prompt prompt, ChatResponse chatResponse) {
         ToolCallingChatOptions toolCallingChatOptions = (ToolCallingChatOptions) prompt.getOptions();
-        Consumer<Object> mcpProcessMessageConsumer =
-                (Consumer<Object>) toolCallingChatOptions.getToolContext().get(MCP_PROCESS_MESSAGE_CONSUMER);
+        Optional<Consumer<Object>> mcpProcessMessageConsumerAsOpt = Optional.ofNullable(
+                (Consumer<Object>) toolCallingChatOptions.getToolContext().get(MCP_PROCESS_MESSAGE_CONSUMER));
 
-        prompt.getInstructions().stream().filter(m -> m instanceof UserMessage).reduce((first, second) -> second)
-                .ifPresent(msg -> mcpProcessMessageConsumer.accept(formatUserMessageForMcp((UserMessage) msg)));
-
-        chatResponse.getResults().stream()
-                .flatMap(result -> result.getOutput().getToolCalls().stream())
-                .forEach(toolCall -> mcpProcessMessageConsumer.accept(formatToolCallForMcp(toolCall)));
-
+        if (mcpProcessMessageConsumerAsOpt.isPresent()) {
+            Consumer<Object> mcpProcessMessageConsumer = mcpProcessMessageConsumerAsOpt.get();
+            prompt.getInstructions().stream().filter(m -> m instanceof UserMessage).reduce((first, second) -> second)
+                    .ifPresent(
+                            msg -> mcpProcessMessageConsumer.accept(formatUserMessageForMcp((UserMessage) msg)));
+            chatResponse.getResults().stream()
+                    .flatMap(result -> result.getOutput().getToolCalls().stream())
+                    .forEach(toolCall -> mcpProcessMessageConsumer.accept(formatToolCallForMcp(toolCall)));
+        }
         ToolExecutionResult result = toolCallingManager.executeToolCalls(prompt, chatResponse);
-        mcpProcessMessageConsumer.accept(formatToolResultForMcp(result.conversationHistory().getLast()));
+        mcpProcessMessageConsumerAsOpt.ifPresent(
+                consumer -> consumer.accept(formatToolResultForMcp(result.conversationHistory().getLast())));
         return result;
     }
 

@@ -63,13 +63,11 @@ class ChatServiceTest {
         when(chatModel.stream(any(Prompt.class))).thenReturn(
                 Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage(prompt))))));
 
+        assertEquals(prompt, chatService.stream(chatHistory, "Test Chat", null, null, null, null, null).toStream()
+                .collect(Collectors.joining()));
         assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", null, null, null, null).toStream()
-                        .collect(Collectors.joining()));
-        assertEquals(prompt,
-                chatService.stream(chatHistory, "Test Chat", FILTER_EXPRESSION + " in ['a', 'b']", null, null, null)
-                        .toStream()
-                        .collect(Collectors.joining()));
+                chatService.stream(chatHistory, "Test Chat", FILTER_EXPRESSION + " in ['a', 'b']", null, null, null,
+                        null).toStream().collect(Collectors.joining()));
     }
 
     @Test
@@ -107,7 +105,7 @@ class ChatServiceTest {
     @Test
     void testGetModels() {
         assertEquals(
-                "[o1-mini, o1, gpt-4o, o1-preview, gpt-4o-mini, gpt-3.5-turbo, gpt-3.5-turbo-16k, gpt-4, gpt-4-32k, gpt-4-turbo]",
+                "[gpt-4.1-nano, gpt-4.1-mini, gpt-4o-mini, gpt-4o, gpt-4.1, gpt-3.5-turbo, gpt-3.5-turbo-16k, gpt-4, gpt-4-32k, gpt-4-turbo]",
                 chatService.getModels().toString());
     }
 
@@ -116,8 +114,8 @@ class ChatServiceTest {
         ChatModel chatModel = new MockLlmProviderChatModel();
         ChatClient chatClient = mock(ChatClient.class);
         SpringAiPlaygroundOptions playgroundOptions =
-                new SpringAiPlaygroundOptions(new SpringAiPlaygroundOptions.Chat("systemPrompt", List.of(
-                        "MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
+                new SpringAiPlaygroundOptions(null, true, "", new SpringAiPlaygroundOptions.Chat("systemPrompt",
+                        List.of("MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
         ChatMemory chatMemory = mock(ChatMemory.class);
         ChatService service = new ChatService(chatModel, chatClient, playgroundOptions, vectorStoreDocumentService,
                 null);

@@ -87,8 +87,9 @@ public class ChatService {
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
             Consumer<ChatHistory> completeChatHistoryConsumer, List<ToolCallback> toolCallbacks,
-            Consumer<Object> mcpToolProcessMessageConsumer) {
-        return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer).map(
+            Consumer<Object> mcpToolProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer) {
+        return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer,
+                thinkProcessMessageConsumer).map(
                         Generation::getOutput)
                 .map(assistantMessage -> Optional.ofNullable(assistantMessage.getText()).orElse(""))
                 .doFinally(signalType -> {
@@ -99,18 +100,30 @@ public class ChatService {
     }
 
     public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression,
-            List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer) {
+            List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
+            Consumer<Object> thinkProcessMessageConsumer) {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         return getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
                 mcpToolProcessMessageConsumer).stream().chatClientResponse().map(chatClientResponse -> {
-            Generation generation = chatClientResponse.chatResponse().getResult();
-            if (Objects.nonNull(generation.getOutput().getText()))
-                lastChatResponse.set(chatClientResponse);
-            return generation;
-        }).doFinally(signalType -> {
-            if (SignalType.ON_COMPLETE.equals(signalType))
-                applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
-        });
+                    if (Objects.nonNull(thinkProcessMessageConsumer)) {
+                        Generation generation = chatClientResponse.chatResponse().getResult();
+                        Optional.ofNullable(Optional.ofNullable(generation.getOutput().getMetadata().get("reasoningContent"))
+                                        .map(Object::toString).orElseGet(() -> generation.getMetadata().get("thinking")))
+                                .filter(Predicate.not(String::isEmpty)).ifPresent(thinkProcessMessageConsumer::accept);
+                    }
+                    return chatClientResponse;
+                }).filter(chatClientResponse -> {
+                    String text = chatClientResponse.chatResponse().getResult().getOutput().getText();
+                    if (Objects.nonNull(text) && !text.isEmpty()) {
+                        lastChatResponse.set(chatClientResponse);
+                        return true;
+                    }
+                    return false;
+                }).map(chatClientResponse -> chatClientResponse.chatResponse().getResult())
+                .doFinally(signalType -> {
+                    if (SignalType.ON_COMPLETE.equals(signalType))
+                        applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
+                });
     }
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
@@ -127,7 +140,8 @@ public class ChatService {
                     if (StringUtils.hasText(filterExpression))
                         advisor.param(RAG_FILTER_EXPRESSION, filterExpression);
                 });
-        if (toolCallbacks != null && !toolCallbacks.isEmpty())
+        if (Objects.nonNull(mcpToolProcessMessageConsumer) && Objects.nonNull(toolCallbacks) &&
+                !toolCallbacks.isEmpty())
             chatClientRequestSpec.toolCallbacks(toolCallbacks)
                     .toolContext(Map.of(MCP_PROCESS_MESSAGE_CONSUMER, mcpToolProcessMessageConsumer));
         return Optional.ofNullable(chatHistory.systemPrompt()).filter(Predicate.not(String::isBlank))

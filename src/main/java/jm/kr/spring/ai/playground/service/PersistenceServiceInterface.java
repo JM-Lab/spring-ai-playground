@@ -18,7 +18,6 @@ package jm.kr.spring.ai.playground.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -62,7 +61,7 @@ public interface PersistenceServiceInterface<T> {
         OBJECT_MAPPER.writeValue(file, saveObjectMap);
     }
 
-    private @NotNull String buildFileName(T saveObject) {
+    private String buildFileName(T saveObject) {
         return buildSaveFileName(saveObject) + ".json";
     }
 
