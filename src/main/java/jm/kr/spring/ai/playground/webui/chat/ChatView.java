@@ -57,8 +57,8 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @SpringComponent
 @UIScope
 @CssImport("./playground/chat-styles.css")
-@PageTitle("Chat | Spring AI Playground")
-@Route(value = "chat", layout = SpringAiPlaygroundAppLayout.class)
+@PageTitle("Agentic Chat | Spring AI Playground")
+@Route(value = "agentic-chat", layout = SpringAiPlaygroundAppLayout.class)
 public class ChatView extends Div {
 
     public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";

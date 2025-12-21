@@ -69,7 +69,7 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         createTab("Tool Studio", VaadinIcon.TOOLS, ToolStudioView.class);
         createTab("MCP Server", VaadinIcon.TOOLBOX, McpServerView.class);
         createTab("Vector Database", VaadinIcon.SEARCH_PLUS, VectorStoreView.class);
-        createTab("Chat", VaadinIcon.CHAT, ChatView.class);
+        createTab("Agentic Chat", VaadinIcon.CHAT, ChatView.class);
         this.tabs.setWidthFull();
         addToNavbar(tabs);
 
