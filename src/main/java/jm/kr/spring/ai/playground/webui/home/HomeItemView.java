@@ -29,7 +29,6 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static jm.kr.spring.ai.playground.webui.home.HomeItemView.ActionType.EXTERNAL_PAGE;
 import static jm.kr.spring.ai.playground.webui.home.HomeItemView.ActionType.EXTERNAL_URL;
 import static jm.kr.spring.ai.playground.webui.home.HomeItemView.ActionType.MARKDOWN;
 import static jm.kr.spring.ai.playground.webui.home.HomeItemView.ActionType.UI_COMPONENT;
@@ -60,7 +59,13 @@ public class HomeItemView extends VerticalLayout {
 
         List<HomeItem> homeItems = List.of(buildDefaultHomeItem(),
                 new HomeItem("Spring AI Playground Document", VaadinIcon.FILE_TEXT_O.create(),
-                        EXTERNAL_PAGE, "https://jm-lab.github.io/spring-ai-playground/"),
+                        MARKDOWN,
+                        "https://raw.githubusercontent.com/spring-ai-community/spring-ai-playground/HEAD/README.md"),
+                new HomeItem("Spring AI Community Incubating Project: Spring AI Playground", VaadinIcon.LINK.create(),
+                        EXTERNAL_URL,
+                        "https://springaicommunity.mintlify.app/projects/incubating/spring-ai-playground"),
+                new HomeItem("Spring AI Playground Repository", VaadinIcon.LINK.create(), EXTERNAL_URL,
+                        "https://github.com/spring-ai-community/spring-ai-playground"),
                 new HomeItem("Spring AI Document", VaadinIcon.LINK.create(), EXTERNAL_URL,
                         "https://docs.spring.io/spring-ai/reference/index.html"),
                 new HomeItem("Spring AI Project Repository", VaadinIcon.LINK.create(), EXTERNAL_URL,

@@ -220,7 +220,7 @@ public class HomeInfoView extends Div {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI("https://api.github.com/repos/JM-Lab/spring-ai-playground/commits?per_page=1"))
+                    .uri(new URI("https://api.github.com/repos/spring-ai-community/spring-ai-playground/commits?per_page=1"))
                     .header("Accept", "application/vnd.github.v3+json")
                     .build();
 
