@@ -1,3 +1,14 @@
+> [!NOTE]
+> **Official repository**
+>
+> The official Spring AI Playground repository has moved to:
+> https://github.com/spring-ai-community/spring-ai-playground
+>
+> This repository is kept for personal experiments / notes and may diverge from the official version.
+> For issues and pull requests, please use the official repository.
+
+---
+
 # Spring AI Playground
 
 **Spring AI Playground is a self-hosted web UI platform for building low-code tools and dynamically exposing them via built-in MCP server for AI agents.**
