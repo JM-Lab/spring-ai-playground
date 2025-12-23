@@ -17,6 +17,17 @@ Unlike most AI playgrounds that focus solely on prompt testing and chat visualiz
 
 It brings together **Large Language Models (LLMs)**, **Retrieval-Augmented Generation (RAG)**, and **low-code tool development** in a single environment. Tools created in the **Tool Studio** are dynamically evaluated and loaded at runtime, then automatically registered and exposed as **Model Context Protocol (MCP) tools**. This makes them instantly available to MCP-compatible clients without restarting or redeploying.
 
+<p align="center">
+  <b>Agentic Chat Demo</b><br/>
+  Tool-enabled agentic AI built with Spring AI and MCP
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/FlzV7TN67f0">
+    <img src="https://img.youtube.com/vi/FlzV7TN67f0/0.jpg" width="800"/>
+  </a>
+</p>
+
 ## Key Capabilities
 
 ### Tool Studio & Built-in MCP Server
