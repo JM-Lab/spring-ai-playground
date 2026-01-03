@@ -55,7 +55,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
-@PageTitle("Tool | Spring AI Playground")
+@PageTitle("Tool Studio")
 @Route(value = "tool-studio", layout = SpringAiPlaygroundAppLayout.class)
 public class ToolStudioView extends Div {
 

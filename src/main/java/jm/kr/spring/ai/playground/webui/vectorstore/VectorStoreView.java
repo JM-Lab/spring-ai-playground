@@ -67,7 +67,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 @SpringComponent
 @UIScope
 @CssImport("./playground/vectorstore-styles.css")
-@PageTitle("Vector Database | Spring AI Playground")
+@PageTitle("Vector Database")
 @Route(value = "vector-database", layout = SpringAiPlaygroundAppLayout.class)
 public class VectorStoreView extends Div {
 
