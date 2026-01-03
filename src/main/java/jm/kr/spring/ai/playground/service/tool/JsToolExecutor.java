@@ -21,6 +21,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -52,7 +53,9 @@ public class JsToolExecutor {
 
     public record JsExecutionParams(Map<String, Object> params, String code) {}
 
-    private static final Pattern ENV_VAR_PATTERN = Pattern.compile("^\\$\\{([A-Z_]+[A-Z0-9_]*)\\}$");
+    private static final Pattern ENV_VAR_PATTERN = Pattern.compile("^\\$\\{([A-Z_]+[A-Z0-9_]*)}$");
+    private static final Pattern BLACKLIST_PATTERN =
+            Pattern.compile("^(java\\.lang\\.(System|Runtime|ProcessBuilder|Process)|java\\.lang\\.invoke\\..*)$");
 
     private final Context.Builder contextBuilder;
     private final long timeoutSeconds;
@@ -64,8 +67,15 @@ public class JsToolExecutor {
                 .allowAllAccess(false);
         if (Objects.nonNull(jsSandbox)) {
             HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).build();
+            IOAccess ioConfig = IOAccess.newBuilder()
+                    .allowHostFileAccess(jsSandbox.allowFileIo())
+                    .allowHostSocketAccess(jsSandbox.allowNetworkIo())
+                    .build();
             this.contextBuilder
                     .allowHostClassLookup(className -> {
+                        if (BLACKLIST_PATTERN.matcher(className).matches()) {
+                            return false;
+                        }
                         return jsSandbox.allowClasses().stream().anyMatch(pattern -> {
                             if (pattern.endsWith(".*")) {
                                 String prefix = pattern.substring(0, pattern.length() - 2);
@@ -75,7 +85,7 @@ public class JsToolExecutor {
                         });
                     })
                     .allowHostAccess(hostAccess)
-                    .allowIO(jsSandbox.allowFileIo())
+                    .allowIO(ioConfig)
                     .allowNativeAccess(jsSandbox.allowNativeAccess())
                     .allowCreateThread(jsSandbox.allowCreateThread())
                     .resourceLimits(
@@ -161,20 +171,24 @@ public class JsToolExecutor {
     }
 
     private Object deepCopyPolyglot(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Map map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            map.forEach((k, v) -> copy.put(k.toString(), deepCopyPolyglot(v)));
-            return copy;
-        }
-        if (value instanceof Iterable<?> it) {
-            List<Object> copy = new ArrayList<>();
-            for (Object v : it) {
-                copy.add(deepCopyPolyglot(v));
+        switch (value) {
+            case null -> {
+                return null;
             }
-            return copy;
+            case Map map -> {
+                Map<String, Object> copy = new LinkedHashMap<>();
+                map.forEach((k, v) -> copy.put(k.toString(), deepCopyPolyglot(v)));
+                return copy;
+            }
+            case Iterable<?> it -> {
+                List<Object> copy = new ArrayList<>();
+                for (Object v : it) {
+                    copy.add(deepCopyPolyglot(v));
+                }
+                return copy;
+            }
+            default -> {
+            }
         }
         if (value.getClass().isArray()) {
             int len = Array.getLength(value);
@@ -203,6 +217,8 @@ public class JsToolExecutor {
     private void installConsoleLog(Value bindings, List<String> logList) {
         bindings.putMember("console", ProxyObject.fromMap(
                 Map.of("log", (ProxyExecutable) args -> {
+                    if (logList.size() > 1000)
+                        return null;
                     String msg = Arrays.stream(args).map(v -> v == null ? "null" : v.toString())
                             .reduce((a, b) -> a + " " + b).orElse("");
                     logList.add("[LOG] " + msg);
