@@ -4,7 +4,7 @@
 
 Unlike most AI playgrounds that focus solely on prompt testing and chat visualization, it bridges the gap between **static AI conversations** and **real-world actions** by enabling you to create executable tools that AI agents can use.
 
-It brings together **Large Language Models (LLMs)**, **Retrieval-Augmented Generation (RAG)**, and **low-code tool development** in a single environment. Tools created in the **Tool Studio** are dynamically evaluated and loaded at runtime, then automatically registered and exposed as **Model Context Protocol (MCP) tools**. This makes them instantly available to MCP-compatible clients without restarting or redeploying.
+It brings together **Large Language Models (LLMs)**, **Retrieval-Augmented Generation (RAG)**, and **low-code tool development** in a single environment. Tools created in the **Tool Studio** are dynamically evaluated and loaded at runtime, then automatically made available as **Model Context Protocol (MCP) tools**. This makes them instantly available to MCP-compatible clients without restarting or redeploying.
 
 <p align="center">
   <b>Agentic Chat Demo</b><br/>
@@ -38,6 +38,45 @@ Interact with LLMs in a chat interface where models can reason, select tools, an
 - **Provider Agnostic**: Switch between Ollama, OpenAI, and other LLM providers (including OpenAI-compatible APIs) with ease.
 - **Built for Modern AI**: Designed specifically for the Spring AI ecosystem, MCP protocol, and agent-oriented architectures.
 
+## Project Scope & Positioning
+
+Spring AI Playground is intentionally built as a **tool-first reference environment** for exploring, validating, and operationalizing Spring AI features in a reproducible way.
+> **Note:** This project is intentionally opinionated and scope-limited in its early stages.
+> It focuses on providing a stable, reproducible reference runtime for tool execution and MCP integration,
+> rather than evolving into a feature-complete agent platform at this time.
+
+**Current focus (what this project prioritizes):**
+- Providing a UI-driven reference runtime that demonstrates how Spring AI features compose in practice.
+- Testing and validating tool execution flows and RAG integration.
+- Promoting validated tools to **standalone, deployment-ready MCP servers**
+  that can be independently run and reused by multiple AI clients and agent runtimes.
+
+**Important note:** While this Playground is not a full-fledged agent orchestration product today, it is explicitly designed as the **foundation** for building interoperable tool-first agents in the future. Validated tools and MCP-hosted runtimes created here are intended to be reusable by different AI systems and agent frameworks.
+
+## Contributing & Scope
+
+**Please read before opening issues or submitting contributions.**
+
+### Current scope (what we accept):
+- ✅ Bug reports and reproducible issues
+- ✅ Documentation improvements and usage examples
+
+### Out of scope (for now):
+- ❌ Broad feature requests that expand the project's scope (we will not accept general feature requests at this stage)
+- ❌ Experimental model integrations not officially supported by Spring AI
+- ❌ High-level agent orchestration layers (Agent builders are a planned future layer built on top of validated tools)
+
+### Reporting issues
+
+Before opening an issue, please check:
+- Use the Bug Report template for reproducible failures.
+- For documentation fixes or improvements, please submit a documentation PR.
+- General feature requests are out of scope at this stage — please read the Project Scope above.
+
+We triage issues regularly; issues outside the scope may be closed with guidance on where to best contribute.
+
+If you believe you have a contribution that fits the current scope, submit a PR or a targeted issue. For larger proposals, please open a short design note PR under `docs/design/` so it can be reviewed as a draft.
+
 ## Table of Contents
 
 * [Overview](#spring-ai-playground)
@@ -47,40 +86,46 @@ Interact with LLMs in a chat interface where models can reason, select tools, an
     * [Vector Database & RAG Pipeline](#vector-database--rag-pipeline)
     * [Agentic Chat & Agent Workflow](#agentic-chat--agent-workflow)
 * [Why Spring AI Playground?](#why-spring-ai-playground)
+* [Project Scope & Positioning](#project-scope--positioning)
+* [Contributing & Scope](#contributing--scope)
+    * [Current scope (what we accept):](#current-scope-what-we-accept)
+    * [Out of scope (for now):](#out-of-scope-for-now)
+    * [Reporting issues](#reporting-issues)
 * [Quick Start](#quick-start)
     * [Prerequisites](#prerequisites)
-    * [Getting Started](#getting-started)
     * [Running the Application](#running-the-application)
-        * [Running with Docker (Recommended)](#running-with-docker-recommended)
-        * [Cleaning Up Docker](#cleaning-up-docker)
-        * [Running Locally (Optional)](#running-locally-optional)
+        * [Running with Docker (Recommended)](#1-running-with-docker-recommended)
+        * [Running Locally (From Source)](#2-running-locally-from-source)
     * [PWA Installation](#pwa-installation)
-* [Configuration](#auto-configuration)
+        * [Installing as PWA](#installing-as-pwa)
+* [Auto-configuration](#auto-configuration)
 * [AI Models](#ai-models)
-    * [Supported Model Providers](#support-for-major-ai-model-providers)
-    * [Configuring Ollama Models](#selecting-and-configuring-ollama-models)
-    * [Using OpenAI](#switching-to-openai)
-    * [OpenAI-Compatible Servers](#switching-to-openai-compatible-servers)
+    * [Support for Major AI Model Providers](#support-for-major-ai-model-providers)
+    * [Selecting and Configuring Ollama Models](#selecting-and-configuring-ollama-models)
+    * [Switching to OpenAI](#switching-to-openai)
+    * [Switching to OpenAI-Compatible Servers](#switching-to-openai-compatible-servers)
 * [Tool Studio](#tool-studio)
     * [Built-in MCP Server](#built-in-mcp-server)
-    * [Dynamic Tool Registration](#dynamic-tool-registration)
+    * [Dynamic Tool Exposure (Tool Studio ↔ MCP Server)](#dynamic-tool-exposure-tool-studio--mcp-server)
     * [JavaScript Runtime](#javascript-runtime)
+    * [Key Features](#key-features)
     * [Low-code Tool Development Workflow](#low-code-tool-development-workflow)
     * [Pre-built Example Tools](#pre-built-example-tools)
-    * [Using Tools in Agentic Chat](#using-tools-in-chat)
-    * [Connecting External MCP Clients](#connect-external-mcp-clients)
-* [MCP Playground](#mcp-server)
-    * [Key Features](#key-features)
+    * [Using Tools in Agentic Chat](#using-tools-in-agentic-chat)
+    * [Connect External MCP Clients](#connect-external-mcp-clients)
+* [MCP Server](#mcp-server)
+    * [Key Features](#key-features-1)
     * [Getting Started with MCP](#getting-started-with-mcp)
 * [Vector Database](#vector-database)
-    * [Supported Vector Databases](#support-for-major-vector-database-providers)
-    * [Vector Database Playground Features](#key-features-1)
+    * [Support for Major Vector Database Providers](#support-for-major-vector-database-providers)
+    * [Key Features](#key-features-2)
 * [Agentic Chat](#agentic-chat)
+    * [Key Features](#key-features-3)
     * [Two Integrated Paradigms](#two-integrated-paradigms)
-        * [RAG: Chain-based Workflow](#1-rag-knowledge-via-chain-workflow)
-        * [MCP: Agentic Reasoning](#2-mcp-actions-via-agentic-reasoning)
+        * [RAG: Knowledge via Chain Workflow](#1-rag-knowledge-via-chain-workflow)
+        * [MCP: Actions via Agentic Reasoning](#2-mcp-actions-via-agentic-reasoning)
     * [Workflow Integration](#workflow-integration)
-    * [Model Requirements for Agentic Reasoning](#️-requirements-for-agentic-reasoning-ollama)
+    * [Requirements for Agentic Reasoning (Ollama)](#requirements-for-agentic-reasoning-ollama)
     * [Agentic Chat Architecture Overview](#agentic-chat-architecture-overview)
 * [Upcoming Features](#upcoming-features)
     * [Advanced Agentic Tooling (Capability Factory)](#advanced-agentic-tooling-capability-factory)
@@ -88,35 +133,28 @@ Interact with LLMs in a chat interface where models can reason, select tools, an
   
 ## Quick Start
 ### Prerequisites
-- Java 21 or later installed (required for building the project).
-- Ollama running on your machine (refer to AI Models).
-- Docker installed and running on your machine. (only if you choose to run the application using Docker)
+To fully experience the "Local First" capabilities of Spring AI Playground, the following are required:
 
-### Getting Started
-First, clone the Spring AI Playground project from GitHub:
-```bash
-git clone https://github.com/spring-ai-community/spring-ai-playground.git
-cd spring-ai-playground
-```
+- **Ollama:**
+    - Download and install [Ollama](https://ollama.com/) on your machine.
+    - Run `ollama serve` or ensure the Ollama app is running.
+    - *This ensures fast, private, and GPU-accelerated local inference.*
+- **Docker:** [Docker](https://www.docker.com/) installed and running.
+- **(Optional) Java 21+ & Git:** Only required if you plan to build from source.
 
 ### Running the Application
-#### Running with Docker (Recommended)
-1. Build the Docker Image:
-   ```bash
-   ./mvnw spring-boot:build-image -Pproduction -DskipTests=true \
-   -Dspring-boot.build-image.imageName=jmlab/spring-ai-playground:latest
-   ```
-2. Run the Docker Container:
+
+#### 1. Running with Docker (Recommended)
+This is the standard way to run the application. It runs the Playground in a container while connecting to your high-performance local Ollama instance.
+
+1. **Run Container**:
    ```bash
    docker run -d -p 8282:8282 --name spring-ai-playground \
    -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
    -v spring-ai-playground:/home \
    --restart unless-stopped \
-   jmlab/spring-ai-playground:latest
+   ghcr.io/spring-ai-community/spring-ai-playground:latest
    ```
-3. Access the Application:
-   Open http://localhost:8282 in your browser.
-
 > ***Notes:***
 >- Data Persistence: Application data is stored in the spring-ai-playground Docker volume, ensuring data persists even if the container is removed.
 >- Ollama Connection: The environment variable SPRING_AI_OLLAMA_BASE_URL is set to http://host.docker.internal:11434. Adjust the URL if Ollama runs on a different host or port.
@@ -124,26 +162,26 @@ cd spring-ai-playground
 > - ***For Linux Users:*** The `host.docker.internal` DNS name may not be available on all Linux distributions. If you encounter connection issues, you may need to use `--network="host"` in your `docker run` command or replace `host.docker.internal` with your host machine's IP address on the Docker bridge network (e.g., `172.17.0.1`).
 
 > ⚠️ **MCP STDIO Transport Limitation**  
-> While Docker is recommended for most scenarios, it is not suitable for testing MCP STDIO transport. MCP STDIO transport requires direct process-to-process communication, which containerized environments cannot provide reliably.  
+> While Docker is recommended for most scenarios, it is not suitable for testing MCP STDIO transport. MCP STDIO transport requires direct process-to-process communication, which containerized environments cannot provide reliably.
 >
 > If you plan to test the MCP STDIO transport, please use the [Running Locally (Optional)](#running-locally-optional) instead.
 
-#### Cleaning Up Docker
-- To stop and remove the Docker container, image, and volume:
+#### 2. Running Locally (From Source)
+Use this method for development or if you need to use **MCP STDIO** transport features.
+
+1. **Clone the Repository**:
    ```bash
-   docker stop spring-ai-playground
-   docker rm spring-ai-playground
-   docker rmi jmlab/spring-ai-playground:latest
-   docker volume rm spring-ai-playground
+   git clone https://github.com/spring-ai-community/spring-ai-playground.git
+   cd spring-ai-playground
    ```
 
-#### Running Locally (Optional)
-1. **Build and Run the Application**:
+2. **Build and Run**:
    ```bash
    ./mvnw clean install -Pproduction -DskipTests=true
    ./mvnw spring-boot:run
    ```
-2. **Access the Application**:
+
+3. **Access the Application**:
    Open `http://localhost:8282` in your browser.
 
 ### PWA Installation
@@ -210,10 +248,9 @@ To switch to OpenAI, follow these steps:
       docker run -d -p 8282:8282 --name spring-ai-playground \
       -e SPRING_PROFILES_ACTIVE=openai \
       -e OPENAI_API_KEY=your-openai-api-key \
-      -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \  # Optional for hybrid use
       -v spring-ai-playground:/home \
       --restart unless-stopped \
-      jmlab/spring-ai-playground:latest
+      ghcr.io/spring-ai-community/spring-ai-playground:latest
         ``` 
     - For local run (using Maven, combine profile and API key):
       ```bash
@@ -343,13 +380,14 @@ Spring AI Playground runs a **built-in MCP server** automatically on startup.
 
 > Note: Since the Playground itself acts as an MCP host, external MCP-compatible clients can connect directly to this endpoint and consume your tools.
 
-### Dynamic Tool Registration
+### Dynamic Tool Exposure (Tool Studio ↔ MCP Server)
 
 Tool Studio is tightly integrated with the built-in MCP server.
 
-- When you create/update a tool in Tool Studio, it is automatically registered to the default MCP server `spring-ai-playground-tool-mcp`.
-- Registered tools are visible under the **MCP Server** menu, where you can validate schemas and execution using the Tool Inspector.
-- This creates a zero-deployment workflow: write → test → publish immediately.
+- When you create or update a tool in Tool Studio, it is **dynamically discovered and exposed**
+  by the default MCP server (`spring-ai-playground-tool-mcp`) at runtime.
+- Exposed tools appear under the **MCP Server** menu, where you can inspect schemas and validate execution behavior using the Tool Inspector.
+- This enables a **no-restart, no-redeploy workflow**: write → test → make available immediately.
 
 ### JavaScript Runtime
 
