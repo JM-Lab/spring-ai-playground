@@ -1,0 +1,37 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Important:** This issue tracker is intended for **reproducible bugs only**.
+        Issues without clear reproduction steps or environment details may be closed to keep the project focused and maintainable.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "I tried to use tool X, but it returned a 500 error..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / Environment
+      description: e.g. v1.0.0, Docker Desktop 4.25, macOS 14.2
+    validations:
+      required: true
