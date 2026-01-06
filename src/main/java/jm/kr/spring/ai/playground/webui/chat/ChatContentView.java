@@ -79,6 +79,13 @@ import static org.springframework.ai.chat.messages.MessageType.USER;
 public class ChatContentView extends VerticalLayout {
     private static final String LAST_SELECTED_RAG_DOC_INFO_IDS = "lastSelectedRagDocInfoIds";
     private static final String LAST_SELECTED_MCP_CONNECTION_INFOS = "lastSelectedMcpConnectionInfos";
+
+    private static final ScrollOptions DefaultScrollOptions = new ScrollOptions();
+    static {
+        DefaultScrollOptions.setBlock(ScrollOptions.Alignment.END);
+        DefaultScrollOptions.setInline(ScrollOptions.Alignment.NEAREST);
+    }
+
     private final VerticalLayout messageListLayout;
     private final Scroller messageScroller;
     private final TextArea userPromptTextArea;
@@ -227,7 +234,7 @@ public class ChatContentView extends VerticalLayout {
         messages.forEach(message -> chatContentManager.initMarkdownMessage(this.messageListLayout, message,
                 message.getMessageType()));
 
-        this.messageListLayout.getChildren().toList().getLast().scrollIntoView();
+        this.messageListLayout.getChildren().toList().getLast().scrollIntoView(DefaultScrollOptions);
         this.persistentUiDataStorage.loadData(LAST_SELECTED_RAG_DOC_INFO_IDS, new TypeReference<Set<String>>() {},
                 docInfoIds -> {
                     if (docInfoIds != null && !docInfoIds.isEmpty()) {
@@ -307,11 +314,6 @@ public class ChatContentView extends VerticalLayout {
         private static final String MCP_TOOL_PROCESS_MESSAGES = "mcpToolProcessMessages";
         private static final DateTimeFormatter DATE_TIME_FORMATTER =
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-        private static ScrollOptions DefaultScrollOptions = new ScrollOptions();
-        static {
-            DefaultScrollOptions.setBlock(ScrollOptions.Alignment.END);
-            DefaultScrollOptions.setInline(ScrollOptions.Alignment.NEAREST);
-        }
 
         private final CompletableFuture<ZoneId> zoneIdFuture;
         private final Supplier<List<Message>> messagesSupplier;
@@ -340,7 +342,7 @@ public class ChatContentView extends VerticalLayout {
             chatHistory.updateLastMessageTimestamp(startTimestamp);
             MarkdownMessage userMarkdownMessage = buildMarkdownMessage(userPrompt, USER, startTimestamp);
             this.messageListLayout.add(userMarkdownMessage);
-            userMarkdownMessage.scrollIntoView();
+            userMarkdownMessage.scrollIntoView(DefaultScrollOptions);
             this.botResponse = buildMarkdownMessage(null, MessageType.ASSISTANT, System.currentTimeMillis());
             this.botResponse.addClassName("blink");
             this.isFirstAssistantResponse = true;
@@ -353,7 +355,7 @@ public class ChatContentView extends VerticalLayout {
             if (Objects.isNull(this.mcpToolProcessMessagesBuilder))
                 this.mcpToolProcessMessagesBuilder = new StringBuilder();
             this.mcpToolProcessMessagesBuilder.append(markdownSnippet);
-            this.mcpToolProcessMessage.scrollIntoView();
+            this.mcpToolProcessMessage.scrollIntoView(DefaultScrollOptions);
         }
 
         private MarkdownMessage getMcpToolProcessMessage(VerticalLayout messageListLayout, long timestamp) {
@@ -375,7 +377,7 @@ public class ChatContentView extends VerticalLayout {
             if (Objects.isNull(this.thinkProcessMessageBuilder))
                 this.thinkProcessMessageBuilder = new StringBuilder();
             this.thinkProcessMessageBuilder.append(markdownSnippet);
-            this.botThinkResponse.scrollIntoView();
+            this.botThinkResponse.scrollIntoView(DefaultScrollOptions);
         }
 
         private MarkdownMessage getBotThinkResponse(VerticalLayout messageListLayout, long timestamp) {

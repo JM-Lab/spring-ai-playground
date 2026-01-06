@@ -103,11 +103,15 @@ spring:
   ai:
     model:
       chat: openai
+      embedding: openai
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
           model: gpt-4.1-nano
+      embedding:
+        options:
+          model: text-embedding-3-small
     playground:
       chat:
         models:

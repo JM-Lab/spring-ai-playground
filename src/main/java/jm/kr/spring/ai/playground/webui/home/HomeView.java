@@ -39,7 +39,7 @@ import java.util.Objects;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledButton;
 import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
-@PageTitle("Home | Spring AI Playground")
+@PageTitle("Home")
 @Route(value = "", layout = SpringAiPlaygroundAppLayout.class)
 public class HomeView extends Div {
 

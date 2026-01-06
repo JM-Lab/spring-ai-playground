@@ -47,7 +47,7 @@ import static jm.kr.spring.ai.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
-@PageTitle("MCP Server | Spring AI Playground")
+@PageTitle("MCP Server")
 @Route(value = "mcp-server", layout = SpringAiPlaygroundAppLayout.class)
 public class McpServerView extends Div {
 

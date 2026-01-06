@@ -101,10 +101,9 @@ public class ToolListView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     private void notifyToolSelection(ToolSpec oldToolSpec, ToolSpec newToolSpec) {
-        if (Objects.isNull(newToolSpec)) {
-            this.toolChangeSupport.firePropertyChange(TOOL_SELECT_EVENT, oldToolSpec, null);
-            this.persistentUiDataStorage.saveData(LAST_SELECTED_TOOL, null);
-        } else if (!newToolSpec.equals(oldToolSpec)) {
+        if (Objects.isNull(newToolSpec))
+            return;
+        if (!newToolSpec.equals(oldToolSpec)) {
             this.toolChangeSupport.firePropertyChange(TOOL_SELECT_EVENT, oldToolSpec, newToolSpec);
             this.persistentUiDataStorage.saveData(LAST_SELECTED_TOOL, newToolSpec);
         }

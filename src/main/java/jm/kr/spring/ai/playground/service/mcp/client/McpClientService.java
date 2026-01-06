@@ -19,8 +19,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
-import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
@@ -37,7 +35,6 @@ import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpClie
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -86,13 +83,9 @@ public class McpClientService {
                 .requestTimeout(mcpClientCommonProperties.getRequestTimeout());
         syncSpec = mcpSyncClientConfigurer.configure(namedClientMcpTransport.name(), syncSpec);
         McpSyncClient mcpSyncClient =
-                syncSpec.requestTimeout(getRequestTimeout(namedClientMcpTransport.transport())).build();
+                syncSpec.requestTimeout(this.mcpClientCommonProperties.getRequestTimeout()).build();
         mcpSyncClient.initialize();
         return new McpSyncClientOps(mcpSyncClient);
-    }
-
-    private Duration getRequestTimeout(McpClientTransport transport) {
-        return Duration.ofSeconds(transport instanceof StdioClientTransport ? 20 : 5);
     }
 
     private McpAsyncClientOps newAsync(NamedClientMcpTransport namedClientMcpTransport, Implementation implementation) {
@@ -102,7 +95,7 @@ public class McpClientService {
                 .clientInfo(implementation).requestTimeout(mcpClientCommonProperties.getRequestTimeout());
         asyncSpec = mcpAsyncClientConfigurer.configure(namedClientMcpTransport.name(), asyncSpec);
         McpAsyncClient mcpAsyncClient =
-                asyncSpec.requestTimeout(getRequestTimeout(namedClientMcpTransport.transport())).build();
+                asyncSpec.requestTimeout(this.mcpClientCommonProperties.getRequestTimeout()).build();
         mcpAsyncClient.initialize().block();
         return new McpAsyncClientOps(mcpAsyncClient);
     }

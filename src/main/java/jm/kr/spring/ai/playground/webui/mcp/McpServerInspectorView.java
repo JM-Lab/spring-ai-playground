@@ -139,7 +139,7 @@ public class McpServerInspectorView extends VerticalLayout {
             callToolButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             callToolButton.getElement().setProperty("title", "Call Tool");
             callToolButton.getStyle().set("padding", "0").set("margin", "0 auto");
-            callToolButton.addClickListener(__ -> handleCall(tool, fieldCache.get(tool)));
+            callToolButton.addClickListener(event -> handleCall(tool, fieldCache.get(tool)));
             return callToolButton;
         });
     }
@@ -171,6 +171,7 @@ public class McpServerInspectorView extends VerticalLayout {
     }
 
     private void handleCall(ToolInfo tool, Map<String, TextField> fields) {
+        this.historyArea.clear();
         Map<String, Object> args = new LinkedHashMap<>();
 
         for (var entry : fields.entrySet()) {

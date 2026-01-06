@@ -109,12 +109,12 @@ public class ChatService {
                         Generation generation = chatClientResponse.chatResponse().getResult();
                         Optional.ofNullable(Optional.ofNullable(generation.getOutput().getMetadata().get("reasoningContent"))
                                         .map(Object::toString).orElseGet(() -> generation.getMetadata().get("thinking")))
-                                .filter(Predicate.not(String::isEmpty)).ifPresent(thinkProcessMessageConsumer::accept);
+                                .filter(Predicate.not(String::isEmpty)).ifPresent(thinkProcessMessageConsumer);
                     }
                     return chatClientResponse;
                 }).filter(chatClientResponse -> {
                     String text = chatClientResponse.chatResponse().getResult().getOutput().getText();
-                    if (Objects.nonNull(text) && !text.isEmpty()) {
+                    if (Objects.nonNull(text)) {
                         lastChatResponse.set(chatClientResponse);
                         return true;
                     }

@@ -55,7 +55,7 @@
         <java.version>21</java.version>
         <spring-ai.version>1.1.2</spring-ai.version>
         <vaadin.version>24.9.7</vaadin.version>
-        <graalvm.version>25.0.1</graalvm.version>
+        <graalvm.version>24.2.2</graalvm.version>
     </properties>
     <repositories>
         <repository>

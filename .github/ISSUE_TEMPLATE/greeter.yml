@@ -1,0 +1,19 @@
+name: Greeter
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            👋 Welcome @${{ github.actor }}!
+            Thanks for your first contribution. The maintainers will review your PR soon.
+            Please review our [Project Scope & Contruibution policy](https://github.com/${{github.repository }}/blob/HEAD/README.md#contributing--scope) before proceeding.
