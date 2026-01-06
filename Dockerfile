@@ -4,10 +4,10 @@
 FROM ghcr.io/graalvm/jdk-community:21 AS builder
 WORKDIR /app
 
-RUN microdnf install -y nodejs npm findutils gzip tar
+RUN microdnf install -y nodejs npm findutils gzip tar maven
 COPY . .
-RUN chmod +x mvnw
-RUN ./mvnw clean package -Pproduction -DskipTests
+
+RUN mvn clean package -Pproduction -DskipTests
 
 # -------------------------------------------------------------------
 # 2. Layer Extraction Stage
