@@ -619,8 +619,7 @@ These features, combined with Spring AI's flexibility, provide a comprehensive p
 
 ### Two Integrated Paradigms
 
-This integration brings the power of [Spring AI Agentic Systems](https://docs.spring.
-io/spring-ai/reference/api/effective-agents.html) into a single, intuitive interface for rapid prototyping and optimization.
+This integration brings the power of [Building Effective Agents](https://docs.spring.io/spring-ai/reference/api/effective-agents.html) into a single, intuitive interface for rapid prototyping and optimization.
 Agentic Chat operates by combining two distinct patterns:
 
 #### 1. RAG: Knowledge via Chain Workflow
