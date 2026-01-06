@@ -28,17 +28,6 @@ It brings together **Large Language Models (LLMs)**, **Retrieval-Augmented Gener
   </a>
 </p>
 
-<p align="center">
-  <b>Agentic Chat Demo</b><br/>
-  Tool-enabled agentic AI built with Spring AI and MCP
-</p>
-
-<p align="center">
-  <a href="https://youtu.be/FlzV7TN67f0">
-    <img src="https://img.youtube.com/vi/FlzV7TN67f0/0.jpg" width="800"/>
-  </a>
-</p>
-
 ## Key Capabilities
 
 ### Tool Studio & Built-in MCP Server
