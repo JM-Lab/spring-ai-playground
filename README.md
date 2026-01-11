@@ -79,54 +79,66 @@ If you believe you have a contribution that fits the current scope, submit a PR 
 
 ## Table of Contents
 
-* [Overview](#spring-ai-playground)
-* [Key Capabilities](#key-capabilities)
-    * [Tool Studio & Built-in MCP Server](#tool-studio--built-in-mcp-server)
-    * [MCP Server & Tool Inspection](#mcp-server--tool-inspection)
-    * [Vector Database & RAG Pipeline](#vector-database--rag-pipeline)
-    * [Agentic Chat & Agent Workflow](#agentic-chat--agent-workflow)
-* [Why Spring AI Playground?](#why-spring-ai-playground)
-* [Project Scope & Positioning](#project-scope--positioning)
-* [Contributing & Scope](#contributing--scope)
-    * [Current scope (what we accept):](#current-scope-what-we-accept)
-    * [Out of scope (for now):](#out-of-scope-for-now)
-    * [Reporting issues](#reporting-issues)
+* [Spring AI Playground](#spring-ai-playground)
+    * [Key Capabilities](#key-capabilities)
+        * [Tool Studio & Built-in MCP Server](#tool-studio--built-in-mcp-server)
+        * [MCP Server & Tool Inspection](#mcp-server--tool-inspection)
+        * [Vector Database & RAG Pipeline](#vector-database--rag-pipeline)
+        * [Agentic Chat & Agent Workflow](#agentic-chat--agent-workflow)
+    * [Why Spring AI Playground?](#why-spring-ai-playground)
+    * [Project Scope & Positioning](#project-scope--positioning)
+    * [Contributing & Scope](#contributing--scope)
+        * [Current scope (what we accept):](#current-scope-what-we-accept)
+        * [Out of scope (for now):](#out-of-scope-for-now)
+        * [Reporting issues](#reporting-issues)
+
 * [Quick Start](#quick-start)
     * [Prerequisites](#prerequisites)
     * [Running the Application](#running-the-application)
-        * [Running with Docker (Recommended)](#1-running-with-docker-recommended)
-        * [Running Locally (From Source)](#2-running-locally-from-source)
+        * [1. Running with Docker (Recommended)](#1-running-with-docker-recommended)
+        * [2. Running Locally (From Source)](#2-running-locally-from-source)
     * [PWA Installation](#pwa-installation)
         * [Installing as PWA](#installing-as-pwa)
+
 * [Auto-configuration](#auto-configuration)
+
 * [AI Models](#ai-models)
     * [Support for Major AI Model Providers](#support-for-major-ai-model-providers)
     * [Selecting and Configuring Ollama Models](#selecting-and-configuring-ollama-models)
     * [Switching to OpenAI](#switching-to-openai)
     * [Switching to OpenAI-Compatible Servers](#switching-to-openai-compatible-servers)
+
 * [Tool Studio](#tool-studio)
     * [Built-in MCP Server](#built-in-mcp-server)
+        * [Security (Optional)](#security-optional)
+    * [Connect to the Built-in MCP Server](#connect-to-the-built-in-mcp-server)
+        * [Claude Code (CLI)](#claude-code-cli)
+        * [Cursor (IDE)](#cursor-ide)
+        * [Claude Desktop App](#claude-desktop-app)
     * [Dynamic Tool Exposure (Tool Studio ↔ MCP Server)](#dynamic-tool-exposure-tool-studio--mcp-server)
     * [JavaScript Runtime](#javascript-runtime)
     * [Key Features](#key-features)
     * [Low-code Tool Development Workflow](#low-code-tool-development-workflow)
     * [Pre-built Example Tools](#pre-built-example-tools)
     * [Using Tools in Agentic Chat](#using-tools-in-agentic-chat)
-    * [Connect External MCP Clients](#connect-external-mcp-clients)
+
 * [MCP Server](#mcp-server)
     * [Key Features](#key-features-1)
     * [Getting Started with MCP](#getting-started-with-mcp)
+
 * [Vector Database](#vector-database)
     * [Support for Major Vector Database Providers](#support-for-major-vector-database-providers)
     * [Key Features](#key-features-2)
+
 * [Agentic Chat](#agentic-chat)
     * [Key Features](#key-features-3)
     * [Two Integrated Paradigms](#two-integrated-paradigms)
-        * [RAG: Knowledge via Chain Workflow](#1-rag-knowledge-via-chain-workflow)
-        * [MCP: Actions via Agentic Reasoning](#2-mcp-actions-via-agentic-reasoning)
+        * [1. RAG: Knowledge via Chain Workflow](#1-rag-knowledge-via-chain-workflow)
+        * [2. MCP: Actions via Agentic Reasoning](#2-mcp-actions-via-agentic-reasoning)
     * [Workflow Integration](#workflow-integration)
-    * [Requirements for Agentic Reasoning (Ollama)](#requirements-for-agentic-reasoning-ollama)
+    * [⚠️ Requirements for Agentic Reasoning (Ollama)](#-requirements-for-agentic-reasoning-ollama)
     * [Agentic Chat Architecture Overview](#agentic-chat-architecture-overview)
+
 * [Upcoming Features](#upcoming-features)
     * [Advanced Agentic Tooling (Capability Factory)](#advanced-agentic-tooling-capability-factory)
     * [Infrastructure & Enterprise Features](#infrastructure--enterprise-features)
@@ -164,7 +176,9 @@ This is the standard way to run the application. It runs the Playground in a con
 > ⚠️ **MCP STDIO Transport Limitation**  
 > While Docker is recommended for most scenarios, it is not suitable for testing MCP STDIO transport. MCP STDIO transport requires direct process-to-process communication, which containerized environments cannot provide reliably.
 >
-> If you plan to test the MCP STDIO transport, please use the [Running Locally (Optional)](#running-locally-optional) instead.
+> If you plan to test the MCP STDIO transport, please use the [Running Locally (From Source)]
+> (#2-running-locally-from-source) 
+> instead.
 
 #### 2. Running Locally (From Source)
 Use this method for development or if you need to use **MCP STDIO** transport features.
@@ -375,10 +389,88 @@ Tools created in Tool Studio are dynamically evaluated at runtime and automatica
 Spring AI Playground runs a **built-in MCP server** automatically on startup.
 
 - **Endpoint**: `http://localhost:8282/mcp`
-- **Type**: Streamable MCP endpoint (HTTP)
+- **Type**: Streamable HTTP
 - **Default server**: `spring-ai-playground-tool-mcp`
 
 > Note: Since the Playground itself acts as an MCP host, external MCP-compatible clients can connect directly to this endpoint and consume your tools.
+
+#### Security (Optional)
+
+The built-in server leverages Spring AI's native MCP security infrastructure, which integrates directly with Spring Security.
+
+By default, authentication is disabled to simplify local development. To enable production-grade security (e.g., OAuth2 or API Key), you can apply Spring AI’s official security configurations without changing the core tool logic.
+
+See the Spring AI documentation for details:
+[Spring AI MCP Security Documentation](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-security.html)
+
+### Connect to the Built-in MCP Server
+
+Once the Playground application is running, the built-in MCP server is available at `http://localhost:8282/mcp`. You can connect various MCP-compatible clients to this endpoint for tool consumption.
+
+#### Claude Code (CLI)
+Claude Code supports Streamable HTTP transport in recent versions.
+
+Run the following command in your terminal to add the server:
+
+```bash
+claude mcp add spring-ai-playground http://localhost:8282/mcp
+```
+
+Once added, restart Claude Code if necessary. The tools from Tool Studio will be available for use.
+
+#### Cursor (IDE)
+Cursor supports connecting to MCP servers via Streamable HTTP/SSE.
+
+Follow these steps to connect:
+1. Open Cursor Settings (Ctrl + , or Cmd +).
+2. Navigate to **Features > MCP**.
+3. Click the **+ Add New MCP Server** button.
+4. Fill in the details:
+    - **Name**: Spring AI Playground
+    - **Type**: Streamable HTTP
+    - **URL**: `http://localhost:8282/mcp`
+5. Click **Add**.
+
+After connecting, the tools will appear in Cursor's Composer, Chat, or other AI features. If you encounter connection issues, ensure your Cursor version is up-to-date.
+
+#### Claude Desktop App
+
+**Prerequisites:** Native remote connections through the UI typically require a Pro, Max, Team, or Enterprise plan.
+
+**Method 1: Using Settings UI (Pro+ Plans Only)**
+
+1. Open Claude Desktop
+2. Navigate to **Settings → Connectors**
+3. Click **Add custom connector**
+4. Enter:
+    - **Name**: Spring AI Playground
+    - **URL**: `http://localhost:8282/mcp`
+5. Save and restart Claude Desktop
+
+**Method 2: Using Proxy for All Plans (Recommended for Free Users)**
+
+If you are on a Free plan or encounter connection issues with Method 1, use the `mcp-remote` proxy. This wraps the Streamable HTTP connection into a local process, ensuring compatibility across all plans.
+
+1. Open your Claude Desktop config file:
+    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+    - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+2. Add the following configuration:
+
+```json
+{
+  "mcpServers": {
+    "spring-ai-playground": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8282/mcp"]
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop
+
+After connecting, tools published from the Tool Studio will appear automatically as available MCP tools in Claude.
 
 ### Dynamic Tool Exposure (Tool Studio ↔ MCP Server)
 
@@ -535,14 +627,6 @@ Tool Studio tools can be used in **Agentic Chat** through MCP integration.
 - In the Chat menu, select the MCP server `spring-ai-playground-tool-mcp` (available by default).
 - With tool-capable models (e.g., Ollama models such as `qwen3`, `gpt-oss`, or other configured providers), the model 
   can call your tools during agentic workflows.
-
-### Connect External MCP Clients
-
-Because the built-in MCP server is enabled by default, you can integrate this Playground with external MCP-compatible AI apps/agents.
-
-- Configure the client to connect to:
-- `http://localhost:8282/mcp`
-- Your Tool Studio tools will appear as MCP tools immediately after publishing.
 
 ## MCP Server
 
