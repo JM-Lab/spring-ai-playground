@@ -104,6 +104,11 @@ spring:
     model:
       chat: openai
       embedding: openai
+    ollama:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
