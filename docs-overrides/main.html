@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
+  {% set page_description = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
+  {% set page_url = config.site_url ~ page.url if page and page.url else config.site_url %}
+  {% set social_image = config.site_url ~ "assets/images/icon.png" %}
+  <link rel="canonical" href="{{ page_url | e }}">
+  <meta property="og:site_name" content="{{ config.site_name | e }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ page_title | e }}">
+  <meta property="og:description" content="{{ page_description | e }}">
+  <meta property="og:url" content="{{ page_url | e }}">
+  <meta property="og:image" content="{{ social_image | e }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title | e }}">
+  <meta name="twitter:description" content="{{ page_description | e }}">
+  <meta name="twitter:image" content="{{ social_image | e }}">
+{% endblock %}
