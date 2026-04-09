@@ -1,5 +1,6 @@
 HELP.md
 .DS_Store
+.venv/
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -47,3 +48,4 @@ vite.generated.ts
 !/electron/package-lock.json
 /src/main/bundles/
 /log
+site/

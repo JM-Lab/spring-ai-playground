@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://spring-ai-community.github.io/spring-ai-playground/sitemap.xml

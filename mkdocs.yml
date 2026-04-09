@@ -1,0 +1,32 @@
+site_name: Spring AI Playground
+site_description: Cross-platform desktop app for building, testing, and exposing executable MCP tools with RAG and agentic chat workflows.
+site_url: https://spring-ai-community.github.io/spring-ai-playground/
+repo_url: https://github.com/spring-ai-community/spring-ai-playground
+theme:
+  name: material
+  custom_dir: docs-overrides
+  logo: assets/images/icon.png
+  favicon: assets/images/icon.png
+  features:
+    - navigation.tabs
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - "Getting Started": getting-started.md
+  - "Features": features.md
+  - "Tutorials": tutorials.md
+
+docs_dir: docs
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+markdown_extensions:
+  - meta
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
