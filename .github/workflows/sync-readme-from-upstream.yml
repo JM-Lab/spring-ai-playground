@@ -1,0 +1,75 @@
+name: Sync README from upstream main
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 06:17 UTC (15:17 KST)
+    - cron: '17 6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-readme-from-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout default branch (carries workflow + overlay files)
+        uses: actions/checkout@v4
+        with:
+          ref: docs/official-repo-banner
+          fetch-depth: 0
+
+      - name: Stash personal overlay files
+        run: |
+          mkdir -p /tmp/overlay
+          cp -R .github/personal-overlay /tmp/overlay/
+          cp .github/workflows/sync-readme-from-upstream.yml /tmp/overlay/
+
+      - name: Add upstream and fetch latest main
+        run: |
+          git remote add upstream https://github.com/spring-ai-community/spring-ai-playground.git
+          git fetch upstream main
+
+      - name: Reset working tree to upstream/main
+        run: git reset --hard upstream/main
+
+      - name: Restore overlay files into the upstream tree
+        run: |
+          mkdir -p .github/personal-overlay .github/workflows
+          cp -R /tmp/overlay/personal-overlay/. .github/personal-overlay/
+          cp /tmp/overlay/sync-readme-from-upstream.yml .github/workflows/
+
+      - name: Prepend banner to README
+        run: |
+          cat .github/personal-overlay/banner.md README.md > /tmp/README.new
+          mv /tmp/README.new README.md
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Stage all changes and check if remote tree differs
+        id: check
+        run: |
+          git add -A
+          NEW_TREE=$(git write-tree)
+          OLD_TREE=$(git rev-parse origin/docs/official-repo-banner^{tree})
+          echo "new_tree=$NEW_TREE"
+          echo "old_tree=$OLD_TREE"
+          if [ "$NEW_TREE" = "$OLD_TREE" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Tree identical to remote — nothing to push."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and force-push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git commit -s -m "chore: sync README from upstream main + apply personal overlay"
+          git push --force-with-lease origin HEAD:docs/official-repo-banner
