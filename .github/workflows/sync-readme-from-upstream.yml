@@ -23,25 +23,24 @@ jobs:
           ref: docs/official-repo-banner
           fetch-depth: 0
 
-      - name: Stash personal overlay files
-        run: |
-          mkdir -p /tmp/overlay
-          cp -R .github/personal-overlay /tmp/overlay/
-          cp .github/workflows/sync-readme-from-upstream.yml /tmp/overlay/
-
-      - name: Add upstream and fetch latest main
+      - name: Add upstream remote and fetch latest main
         run: |
           git remote add upstream https://github.com/spring-ai-community/spring-ai-playground.git
           git fetch upstream main
 
-      - name: Reset working tree to upstream/main
-        run: git reset --hard upstream/main
-
-      - name: Restore overlay files into the upstream tree
+      - name: Bring upstream/main file contents into working tree
         run: |
-          mkdir -p .github/personal-overlay .github/workflows
-          cp -R /tmp/overlay/personal-overlay/. .github/personal-overlay/
-          cp /tmp/overlay/sync-readme-from-upstream.yml .github/workflows/
+          # Copies upstream/main's tracked files into the working tree.
+          # Files that exist only in HEAD (not in upstream/main) are left in place.
+          git checkout upstream/main -- .
+
+      - name: Freeze .github/workflows and .github/personal-overlay at HEAD
+        run: |
+          # GITHUB_TOKEN cannot create or update workflow files, so we never
+          # sync .github/workflows from upstream — keep HEAD's versions.
+          # Same treatment for the personal-overlay dir to keep the banner stable.
+          rm -rf .github/workflows .github/personal-overlay
+          git checkout HEAD -- .github/workflows .github/personal-overlay
 
       - name: Prepend banner to README
         run: |
@@ -53,23 +52,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Stage all changes and check if remote tree differs
-        id: check
+      - name: Commit and push (skip if no changes)
         run: |
           git add -A
-          NEW_TREE=$(git write-tree)
-          OLD_TREE=$(git rev-parse origin/docs/official-repo-banner^{tree})
-          echo "new_tree=$NEW_TREE"
-          echo "old_tree=$OLD_TREE"
-          if [ "$NEW_TREE" = "$OLD_TREE" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Tree identical to remote — nothing to push."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+          if git diff --cached --quiet; then
+            echo "No changes — skipping commit."
+            exit 0
           fi
-
-      - name: Commit and force-push
-        if: steps.check.outputs.changed == 'true'
-        run: |
           git commit -s -m "chore: sync README from upstream main + apply personal overlay"
-          git push --force-with-lease origin HEAD:docs/official-repo-banner
+          git push origin HEAD:docs/official-repo-banner
