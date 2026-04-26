@@ -2,7 +2,10 @@ vaadin:
   pushmode: automatic
 server:
   port: ${SERVER_PORT:8282}
+  shutdown: graceful
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   threads:
     virtual:
       enabled: true
@@ -51,7 +54,7 @@ spring:
             # HTML parsing library — currently used in examples
             - org.jsoup.*
 
-      user-home:
+      user-home: ${user.home}
       chat:
         system-prompt:
     mcp:
@@ -77,16 +80,18 @@ spring:
         pull-model-strategy: when_missing
       chat:
         options:
-          model: qwen3.5
+          model: qwen3.5:2b
       embedding:
         options:
           model: qwen3-embedding:0.6b
     playground:
       chat:
         models:
-          - gpt-oss
-          - qwen3.5
-          - qwen3
+          - qwen3.5:2b
+          - qwen3.5:9b
+          - gemma4:e4b
+          - gpt-oss:20b
+          - deepseek-r1:8b
 ---
 spring:
   config:
@@ -100,7 +105,7 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
-          model: gpt-5-nano
+          model: gpt-5.4-mini
           stream-options:
             include-usage: false
       embedding:
@@ -109,8 +114,7 @@ spring:
     playground:
       chat:
         models:
+          - gpt-5.4
+          - gpt-5.4-mini
+          - gpt-5.4-nano
           - gpt-5.2
-          - gpt-5-mini
-          - gpt-5-nano
-          - gpt-4.1
-          - gpt-4o

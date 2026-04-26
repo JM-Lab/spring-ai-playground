@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="telemetry.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download and Manage Ollama Models</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f7f4ee;
+            --panel: rgba(255, 255, 255, 0.97);
+            --panel-2: #fff8ee;
+            --border: rgba(95, 106, 100, 0.16);
+            --text: hsl(214, 35%, 15%);
+            --muted: hsl(214, 20%, 47%);
+            --accent: #1f7a5a;
+            --accent-2: #d2a147;
+            --danger: #c0392b;
+            --warning: #9d6a00;
+            --success: #217a42;
+            --radius: 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        html {
+            overflow-y: auto;
+            scrollbar-gutter: stable;
+        }
+        body {
+            margin: 0;
+            background:
+                radial-gradient(circle at top left, rgba(31, 122, 90, 0.14), transparent 26%),
+                radial-gradient(circle at top right, rgba(210, 161, 71, 0.16), transparent 22%),
+                linear-gradient(180deg, #fbf6ee 0%, #efe4d4 100%);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        .shell {
+            display: grid;
+            grid-template-rows: auto auto auto auto;
+            gap: 16px;
+            padding: 20px;
+            min-width: 0;
+            overflow-x: clip;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 14px 30px rgba(33, 43, 54, 0.08);
+        }
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: end;
+            padding: 18px 20px;
+        }
+        .hero-copy {
+            min-width: 0;
+            flex: 1;
+        }
+        .hero h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            letter-spacing: -0.02em;
+        }
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.5;
+            max-width: 780px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            padding: 16px 18px;
+        }
+        .mini {
+            background: rgba(255,255,255,0.72);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .mini-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .mini-value {
+            font-size: 13px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .toolbar {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+        }
+        .composer {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+            background: #fffdfa;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .composer-row {
+            display: grid;
+            grid-template-columns: minmax(320px, 560px) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .toolbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: flex-start;
+            white-space: nowrap;
+        }
+        .search-row {
+            display: block;
+            padding-top: 4px;
+        }
+        .search-cta {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+            width: 100%;
+        }
+        .search-note {
+            color: hsl(214, 26%, 38%);
+            font-size: 14px;
+            line-height: 1.5;
+            font-weight: 500;
+            max-width: none;
+        }
+        .browser-section {
+            display: grid;
+            gap: 10px;
+            padding: 10px 0 0;
+            border-top: 1px solid rgba(95, 106, 100, 0.14);
+            background: linear-gradient(180deg, rgba(255,248,238,0.45) 0%, rgba(255,255,255,0) 100%);
+            min-width: 0;
+        }
+        .downloads-panel {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+        }
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+        .field.grow {
+            min-width: 220px;
+        }
+        .field label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .field input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #fffdfa;
+            color: var(--text);
+            padding: 12px 14px;
+            font: inherit;
+        }
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0;
+        }
+        .tab {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 999px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 140ms ease;
+        }
+        .tab.active {
+            background: #203740;
+            color: #fff;
+            border-color: #203740;
+            box-shadow: 0 8px 20px rgba(32, 55, 64, 0.18);
+        }
+        .content {
+            display: block;
+            padding: 0;
+            min-height: 0;
+            min-width: 0;
+        }
+        .panel {
+            display: grid;
+            gap: 12px;
+            align-content: start;
+            min-height: 0;
+            min-width: 0;
+            overflow: visible;
+            padding: 12px;
+            background: var(--panel-2);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+        }
+        .section-title h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .section-title p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .stack { display: grid; gap: 10px; min-width: 0; }
+        .download-stack { display: grid; gap: 10px; }
+        .downloads-panel,
+        .download-stack,
+        .queue-card,
+        .queue-head,
+        .model-actions,
+        .model-actions * {
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
+        }
+        .model-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            padding: 14px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .model-main {
+            display: grid;
+            gap: 10px;
+            min-width: 0;
+        }
+        .model-side {
+            display: grid;
+            align-content: center;
+            justify-items: end;
+            gap: 10px;
+            min-width: 0;
+        }
+        .model-head {
+            display: flex;
+            justify-content: flex-start;
+            gap: 12px;
+            align-items: start;
+            flex-wrap: wrap;
+        }
+        .model-title {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .model-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .model-desc {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .badges, .model-actions, .detail-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .detail-grid {
+            gap: 10px 14px;
+        }
+        .detail-item {
+            min-width: 140px;
+        }
+        .detail-label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+        .detail-value {
+            font-size: 13px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .badge {
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            background: #f2f4f6;
+            border: 1px solid var(--border);
+        }
+        .badge.success { color: var(--success); border-color: rgba(33,122,66,0.22); background: #eff8f2; }
+        .badge.warn { color: var(--warning); border-color: rgba(157,106,0,0.22); background: #fff8ea; }
+        .badge.danger { color: var(--danger); border-color: rgba(192,57,43,0.22); background: #fff1ef; }
+        .queue-card {
+            display: grid;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #fffdfa;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .queue-head {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .queue-title {
+            font-weight: 700;
+        }
+        .queue-subtitle {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(31, 122, 90, 0.12);
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            transition: width 180ms ease;
+        }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .icon-button {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            position: relative;
+            z-index: 2;
+        }
+        .icon-button svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-button.primary svg {
+            stroke: currentColor;
+        }
+        .toolbar-icon-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .tooltip-button {
+            position: relative;
+        }
+        .tooltip-button[data-tooltip]:hover::after,
+        .tooltip-button[data-tooltip]:focus-visible::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 8px);
+            background: rgba(32, 55, 64, 0.96);
+            color: #fff;
+            padding: 7px 9px;
+            border-radius: 10px;
+            font-size: 12px;
+            white-space: nowrap;
+            box-shadow: 0 8px 22px rgba(33, 43, 54, 0.22);
+            z-index: 40;
+            pointer-events: none;
+        }
+        .button-text {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .button-text svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .size-pill {
+            color: var(--muted);
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #fffdfa;
+        }
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 11px 16px;
+            font: inherit;
+            cursor: pointer;
+        }
+        button.primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            color: #fff;
+            font-weight: 700;
+        }
+        button.secondary {
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        button.danger {
+            background: #fff2f0;
+            color: var(--danger);
+            border: 1px solid rgba(192,57,43,0.22);
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .empty {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+            padding: 12px 2px;
+        }
+        .status-good { color: var(--success); }
+        .status-warn { color: var(--warning); }
+        .status-bad { color: var(--danger); }
+        .footer {
+            padding: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .footer-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 6px 0;
+        }
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 360px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(32, 55, 64, 0.96);
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(33, 43, 54, 0.24);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 160ms ease, transform 160ms ease;
+            z-index: 30;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.error {
+            background: rgba(192, 57, 43, 0.96);
+        }
+        @media (max-width: 980px) {
+            .status-bar { grid-template-columns: 1fr; }
+            .composer-row { grid-template-columns: 1fr; }
+            .toolbar-actions {
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+            .search-row {
+                display: block;
+            }
+            .search-cta {
+                grid-template-columns: 1fr;
+                align-items: start;
+            }
+            .search-note {
+                max-width: none;
+            }
+            .model-card { grid-template-columns: 1fr; }
+            .model-side {
+                min-width: 0;
+                justify-items: start;
+            }
+            .footer-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .footer-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="card hero">
+        <div class="hero-copy">
+            <h1>Download and Manage Ollama Models</h1>
+            <p>Review the models recommended by this profile, check what is already downloaded, and pull additional Ollama models by exact name or tag.</p>
+        </div>
+        <div class="hero-actions toolbar-icon-actions">
+            <button class="secondary" id="open-install-page" type="button" title="Open the Ollama download page in your browser" aria-label="Open the Ollama download page in your browser">
+                <span class="button-text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M10 14 20 4"></path><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"></path></svg><span>Open Ollama Download Page</span></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card status-bar" id="status-bar"></div>
+
+    <div class="card">
+        <div class="toolbar">
+            <div class="composer">
+                <div class="composer-row">
+                    <div class="field grow">
+                        <label for="model-input">Download by model name</label>
+                        <input id="model-input" type="text" placeholder="Examples: qwen3.5, qwen3:4b, nomic-embed-text:latest">
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="primary icon-button tooltip-button" id="download-button" type="button" title="Queue download" data-tooltip="Queue download" aria-label="Queue download">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="search-row">
+                    <div class="search-cta">
+                        <button class="secondary tooltip-button" id="open-search" type="button" title="Find exact model name on Ollama" data-tooltip="Find exact model name on Ollama" aria-label="Find exact model name on Ollama">
+                            <span class="button-text"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span>Find on Ollama</span></span>
+                        </button>
+                        <div class="search-note">Use this to find the exact Ollama model name and tag, then paste it above as <code>model[:tag]</code>.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="browser-section">
+                <div class="tabs">
+                    <button class="tab active" id="discover-tab" type="button">Recommended</button>
+                    <button class="tab" id="installed-tab" type="button">Downloaded</button>
+                </div>
+                <div class="content">
+                    <div class="panel" id="discover-panel"></div>
+                    <div class="panel" id="installed-panel" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card downloads-panel" id="downloads-section" style="display:none;">
+        <div class="section-title">
+            <div>
+                <h2>Download Tasks</h2>
+                <p>Downloads run one by one. You can cancel the current task or remove queued items.</p>
+            </div>
+        </div>
+        <div class="download-stack" id="downloads-panel"></div>
+    </div>
+
+    <div class="footer-bar">
+        <div class="footer" id="footer-status">Preparing Ollama model manager...</div>
+        <div class="footer-actions">
+            <button class="secondary" id="close-window" type="button" title="Close this window" aria-label="Close this window">
+                <span class="button-text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg><span>Close</span></span>
+            </button>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  const state = {
+    context: null,
+    environment: null,
+    installed: null,
+    activeTab: 'discover',
+    downloads: [],
+    downloadCompletionNotified: new Set(),
+    downloadCancellationNotified: new Set(),
+    downloadFailureNotified: new Set(),
+  };
+
+  const statusBar = document.getElementById('status-bar');
+  const modelInput = document.getElementById('model-input');
+  const discoverPanel = document.getElementById('discover-panel');
+  const installedPanel = document.getElementById('installed-panel');
+  const discoverTab = document.getElementById('discover-tab');
+  const installedTab = document.getElementById('installed-tab');
+  const footerStatus = document.getElementById('footer-status');
+  const downloadButton = document.getElementById('download-button');
+  const openSearchButton = document.getElementById('open-search');
+  const openInstallPageButton = document.getElementById('open-install-page');
+  const closeWindowButton = document.getElementById('close-window');
+  const downloadsSection = document.getElementById('downloads-section');
+  const downloadsPanel = document.getElementById('downloads-panel');
+  const toast = document.getElementById('toast');
+  let toastTimer = null;
+  let fitWindowTimers = [];
+  let closeWindowInProgress = false;
+
+  function iconSvg(name) {
+    const icons = {
+      download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>',
+      copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><rect x="4" y="4" width="11" height="11" rx="2"></rect></svg>',
+      trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>',
+      close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>',
+      search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>',
+    };
+    return icons[name] || '';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = String(text || '');
+    return div.innerHTML;
+  }
+
+  function setFooter(text, isError = false) {
+    footerStatus.textContent = text;
+    footerStatus.className = isError ? 'footer status-bad' : 'footer';
+  }
+
+  function showToast(text, isError = false) {
+    if (!toast) return;
+    toast.textContent = text;
+    toast.className = isError ? 'toast show error' : 'toast show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.className = isError ? 'toast error' : 'toast';
+    }, 2600);
+  }
+
+  function scheduleWindowFit() {
+    for (const timer of fitWindowTimers) clearTimeout(timer);
+    fitWindowTimers = [0, 80, 220].map((delay) => setTimeout(() => {
+      window.ollamaManagerAPI.invoke('ollama-manager:fit-window').catch(() => {
+        // Keep UI responsive even if the host window can't be resized right now.
+      });
+    }, delay));
+  }
+
+  function initWindowFitObservers() {
+    window.addEventListener('load', () => scheduleWindowFit());
+  }
+
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    discoverTab.classList.toggle('active', tab === 'discover');
+    installedTab.classList.toggle('active', tab === 'installed');
+    discoverPanel.style.display = tab === 'discover' ? 'grid' : 'none';
+    installedPanel.style.display = tab === 'installed' ? 'grid' : 'none';
+    scheduleWindowFit();
+  }
+
+  function normalizeOllamaModelName(modelName) {
+    if (typeof modelName !== 'string') return null;
+    const trimmed = modelName.trim();
+    if (!trimmed) return null;
+    return trimmed.replace(/:latest$/i, '');
+  }
+
+  function getOllamaModelBaseName(modelName) {
+    const normalized = normalizeOllamaModelName(modelName);
+    if (!normalized) return null;
+    const slashIndex = normalized.indexOf('/');
+    const tagIndex = normalized.lastIndexOf(':');
+    if (tagIndex <= 0 || (slashIndex >= 0 && tagIndex < slashIndex)) return normalized;
+    return normalized.slice(0, tagIndex);
+  }
+
+  function getInstalledMatches(modelName) {
+    const collections = getInstalledCollections();
+    const installed = [...new Set([
+      ...(collections.installedModels || []),
+      ...(collections.installedChatModels || []),
+      ...(collections.installedEmbeddingModels || []),
+    ])];
+    const requestedBase = getOllamaModelBaseName(modelName);
+    const requestedNormalized = normalizeOllamaModelName(modelName);
+    return installed.filter((item) => {
+      const itemNormalized = normalizeOllamaModelName(item);
+      const itemBase = getOllamaModelBaseName(item);
+      return itemNormalized === requestedNormalized
+        || itemNormalized === requestedBase
+        || itemBase === requestedNormalized
+        || (requestedBase && itemBase === requestedBase);
+    });
+  }
+
+  function getDisplayInstalledVariantNames(modelName) {
+    const matches = getInstalledMatches(modelName);
+    const seen = new Set();
+    return matches.filter((item) => {
+      const normalized = normalizeOllamaModelName(item);
+      if (!normalized || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }
+
+  function isInstalled(modelName) {
+    return getInstalledMatches(modelName).length > 0;
+  }
+
+  function formatBytes(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    const decimals = size >= 100 || unitIndex === 0 ? 0 : size >= 10 ? 1 : 2;
+    return `${size.toFixed(decimals)} ${units[unitIndex]}`;
+  }
+
+  function getRecommendedModels() {
+    const models = [];
+    const embeddingModel = state.environment?.embeddingModel;
+    if (embeddingModel?.provider === 'ollama' && embeddingModel?.model) {
+      models.push(embeddingModel.model);
+    }
+    const recommendedModels = Array.isArray(state.environment?.recommendedModels) ? state.environment.recommendedModels : [];
+    models.push(...recommendedModels);
+    return [...new Set(models)];
+  }
+
+  function getInstalledCollections() {
+    const installed = state.installed || state.environment || {};
+    const installedModels = Array.isArray(installed.installedModels) ? installed.installedModels : [];
+    const installedChatModels = Array.isArray(installed.installedChatModels) ? installed.installedChatModels : [];
+    const installedEmbeddingModels = Array.isArray(installed.installedEmbeddingModels) ? installed.installedEmbeddingModels : [];
+    const grouped = new Set([
+      ...installedChatModels.map(normalizeOllamaModelName),
+      ...installedEmbeddingModels.map(normalizeOllamaModelName),
+    ].filter(Boolean));
+    const uncategorizedModels = installedModels.filter((model) => {
+      const normalized = normalizeOllamaModelName(model);
+      return normalized && !grouped.has(normalized);
+    });
+    return { installedModels, installedChatModels, installedEmbeddingModels, uncategorizedModels };
+  }
+
+  function getActiveDownloadTask(modelName) {
+    const normalized = normalizeOllamaModelName(modelName);
+    return state.downloads.find((task) =>
+      ['queued', 'running'].includes(task.status)
+      && normalizeOllamaModelName(task.model) === normalized);
+  }
+
+  function formatFailureReason(task) {
+    const reason = String(task?.error || task?.progressText || task?.status || 'Unknown error').trim();
+    if (!reason) return 'Unknown error';
+    const lowered = reason.toLowerCase();
+    if (lowered.includes('not found') || lowered.includes('model') && lowered.includes('not exist')) {
+      return `Model not found in Ollama registry: ${reason}`;
+    }
+    if (lowered.includes('name is required')) {
+      return 'Enter a model name before starting the download.';
+    }
+    if (lowered.includes('install ollama first')) {
+      return 'Install and start Ollama before downloading models.';
+    }
+    return reason;
+  }
+
+  function renderStatusBar() {
+    const env = state.environment;
+    const context = state.context || {};
+    statusBar.innerHTML = `
+      <div class="mini">
+        <div class="mini-label">Config</div>
+        <div class="mini-value">${escapeHtml(context.configName || 'Current setting')}</div>
+      </div>
+      <div class="mini">
+        <div class="mini-label">Ollama</div>
+        <div class="mini-value">${env?.ollamaInstalled ? '<span class="status-good">Installed</span>' : '<span class="status-bad">Not installed</span>'}${env?.version ? `<br><span>v${escapeHtml(env.version)}</span>` : ''}</div>
+      </div>
+      <div class="mini">
+        <div class="mini-label">Endpoint</div>
+        <div class="mini-value">${escapeHtml(env?.baseUrl || '-')}</div>
+      </div>
+      <div class="mini">
+        <div class="mini-label">Connection</div>
+        <div class="mini-value">${env?.running ? '<span class="status-good">Responding</span>' : '<span class="status-warn">Not reachable</span>'}</div>
+      </div>
+    `;
+  }
+
+  function renderRecommendedPanel() {
+    const env = state.environment;
+    const installationKnown = Boolean(env?.running);
+    const recommendedModels = getRecommendedModels();
+    const cards = recommendedModels.map((model) => {
+      const installedMatches = getDisplayInstalledVariantNames(model);
+      const installed = installedMatches.length > 0;
+      const downloadTask = getActiveDownloadTask(model);
+      const statusBadge = installed
+        ? '<span class="badge success">Downloaded</span>'
+        : installationKnown
+          ? '<span class="badge warn">Available to download</span>'
+          : '<span class="badge">Installation status unavailable</span>';
+      const isDefaultChat = normalizeOllamaModelName(env?.chatModel?.model) === normalizeOllamaModelName(model);
+      const isDefaultEmbedding = normalizeOllamaModelName(env?.embeddingModel?.model) === normalizeOllamaModelName(model);
+      const typeBadge = isDefaultEmbedding ? 'Embedding' : 'Chat';
+      return `
+        <div class="model-card">
+          <div class="model-main">
+            <div class="model-head">
+              <div>
+                <div class="model-title">
+                  <div class="model-name">${escapeHtml(model)}</div>
+                  ${statusBadge}
+                  <span class="badge">${escapeHtml(typeBadge)}</span>
+                  ${isDefaultEmbedding ? '<span class="badge success">Default embedding</span>' : ''}
+                  ${isDefaultChat ? '<span class="badge success">Current chat model</span>' : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="model-side">
+            <div class="model-actions">
+              <button class="primary icon-button tooltip-button" data-action="download" data-model="${escapeHtml(model)}" title="${escapeHtml(installed ? 'Already downloaded' : downloadTask?.status === 'queued' ? 'Queued for download' : downloadTask?.status === 'running' ? 'Downloading now' : 'Download this model')}" data-tooltip="${escapeHtml(installed ? 'Already downloaded' : downloadTask?.status === 'queued' ? 'Queued for download' : downloadTask?.status === 'running' ? 'Downloading now' : 'Download this model')}" aria-label="${escapeHtml(installed ? 'Already downloaded' : 'Download this model')}" ${!env?.ollamaInstalled || !env?.running || installed || Boolean(downloadTask) ? 'disabled' : ''}>${iconSvg('download')}</button>
+            </div>
+            ${downloadTask ? `<span class="status-warn">${escapeHtml(downloadTask.progressText || downloadTask.status)}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    discoverPanel.innerHTML = `
+      <div class="section-title">
+        <div>
+          <h2>Recommended Models</h2>
+          <p>The default Ollama embedding model is shown first, followed by model names from <code>spring.ai.playground.chat.models</code> in the active YAML profile.</p>
+          ${!env?.running ? '<p>Ollama is not responding right now, so download status and local metadata may be unavailable.</p>' : ''}
+        </div>
+      </div>
+      <div class="stack">
+        ${cards || '<div class="empty">No recommended Ollama models are configured for this profile yet.</div>'}
+      </div>
+    `;
+    scheduleWindowFit();
+  }
+
+  function renderInstalledGroup(title, models, kind) {
+    if (!models || !models.length) {
+      return `<div class="model-card"><div class="model-name">${escapeHtml(title)}</div><div class="empty">No ${escapeHtml(kind)} models are downloaded.</div></div>`;
+    }
+    return models.map((model) => {
+      const normalized = normalizeOllamaModelName(model);
+      const isDefaultChat = normalized && normalizeOllamaModelName(state.environment?.chatModel?.model) === normalized;
+      const isDefaultEmbedding = normalized && normalizeOllamaModelName(state.environment?.embeddingModel?.model) === normalized;
+      const typeBadge = kind === 'embedding' ? 'Embedding' : kind === 'chat' ? 'Chat' : 'Model';
+      return `
+        <div class="model-card">
+          <div class="model-main">
+            <div class="model-head">
+              <div>
+                <div class="model-title">
+                  <div class="model-name">${escapeHtml(model)}</div>
+                  <span class="badge">${escapeHtml(typeBadge)}</span>
+                </div>
+              </div>
+              <div class="badges">
+                ${isDefaultChat ? '<span class="badge success">Default chat</span>' : ''}
+                ${isDefaultEmbedding ? '<span class="badge success">Default embedding</span>' : ''}
+              </div>
+            </div>
+          </div>
+          <div class="model-side">
+            <div class="model-actions">
+              <button class="secondary icon-button tooltip-button" data-action="copy" data-model="${escapeHtml(model)}" type="button" title="Copy model as..." data-tooltip="Copy model as..." aria-label="Copy model as">${iconSvg('copy')}</button>
+              <button class="danger icon-button tooltip-button" data-action="delete" data-model="${escapeHtml(model)}" type="button" title="Delete model" data-tooltip="Delete model" aria-label="Delete model">${iconSvg('trash')}</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderInstalledPanel() {
+    const installed = getInstalledCollections();
+    installedPanel.innerHTML = `
+      <div class="section-title">
+        <div>
+          <h2>Downloaded Models</h2>
+          <p>Review what is already available locally, then copy or delete models as needed.</p>
+        </div>
+      </div>
+      <div class="stack">
+        ${renderInstalledGroup('Downloaded chat models', installed.installedChatModels, 'chat')}
+        ${renderInstalledGroup('Downloaded embedding models', installed.installedEmbeddingModels, 'embedding')}
+      </div>
+    `;
+    scheduleWindowFit();
+  }
+
+  function renderDownloadsPanel() {
+    const downloads = Array.isArray(state.downloads) ? state.downloads : [];
+    downloadsSection.style.display = downloads.length ? 'grid' : 'none';
+    if (!downloads.length) {
+      downloadsPanel.innerHTML = '';
+      scheduleWindowFit();
+      return;
+    }
+    downloadsPanel.innerHTML = downloads.map((task) => {
+      const percent = typeof task.percent === 'number' ? task.percent : (task.status === 'completed' ? 100 : 8);
+      const badgeClass = task.status === 'failed' ? 'danger' : task.status === 'completed' ? 'success' : 'warn';
+      const badgeLabel = task.status === 'running'
+        ? 'Downloading'
+        : task.status === 'starting'
+          ? 'Preparing'
+        : task.status === 'canceling'
+          ? 'Canceling'
+        : task.status === 'queued'
+          ? 'Queued'
+          : task.status === 'completed'
+            ? 'Completed'
+            : task.status === 'canceled'
+              ? 'Canceled'
+              : 'Failed';
+      return `
+        <div class="queue-card">
+          <div class="queue-head">
+            <div>
+              <div class="queue-title">${escapeHtml(task.model)}</div>
+              <div class="queue-subtitle">${escapeHtml(task.status === 'failed' ? formatFailureReason(task) : (task.progressText || task.status))}</div>
+            </div>
+            <div class="model-actions">
+              <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+              ${task.total ? `<span class="size-pill">${escapeHtml(formatBytes(task.total))}</span>` : ''}
+              ${task.status === 'failed' ? `<button class="secondary icon-button tooltip-button" data-action="retry-download" data-model="${escapeHtml(task.model)}" type="button" title="Retry download" data-tooltip="Retry download" aria-label="Retry download">${iconSvg('download')}</button>` : ''}
+            </div>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar" style="width:${percent}%;"></div>
+          </div>
+          <div class="progress-meta">
+            <span>${typeof task.percent === 'number' ? `${task.percent}%` : 'Preparing progress...'}</span>
+            <span>${task.completed != null && task.total != null ? `${formatBytes(task.completed)} / ${formatBytes(task.total)}` : ''}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    scheduleWindowFit();
+  }
+
+  async function refreshEnvironment() {
+    state.context = await window.ollamaManagerAPI.invoke('ollama-manager:get-context');
+    state.environment = state.context.environment;
+    state.installed = {
+      installedModels: Array.isArray(state.environment?.installedModels) ? [...new Set(state.environment.installedModels.filter(Boolean))] : [],
+      installedChatModels: Array.isArray(state.environment?.installedChatModels) ? [...new Set(state.environment.installedChatModels.filter(Boolean))] : [],
+      installedEmbeddingModels: Array.isArray(state.environment?.installedEmbeddingModels) ? [...new Set(state.environment.installedEmbeddingModels.filter(Boolean))] : [],
+    };
+    renderStatusBar();
+  }
+
+  async function refreshInstalled() {
+    const listed = await window.ollamaManagerAPI.invoke('ollama-manager:list-installed');
+    const mergedInstalledModels = [
+      ...(Array.isArray(state.environment?.installedModels) ? state.environment.installedModels : []),
+      ...(Array.isArray(listed?.installedModels) ? listed.installedModels : []),
+      ...(Array.isArray(state.environment?.installedChatModels) ? state.environment.installedChatModels : []),
+      ...(Array.isArray(listed?.installedChatModels) ? listed.installedChatModels : []),
+      ...(Array.isArray(state.environment?.installedEmbeddingModels) ? state.environment.installedEmbeddingModels : []),
+      ...(Array.isArray(listed?.installedEmbeddingModels) ? listed.installedEmbeddingModels : []),
+    ];
+    state.installed = {
+      installedModels: [...new Set(mergedInstalledModels.filter(Boolean))],
+      installedChatModels: [...new Set([
+        ...(Array.isArray(state.environment?.installedChatModels) ? state.environment.installedChatModels : []),
+        ...(Array.isArray(listed?.installedChatModels) ? listed.installedChatModels : []),
+      ].filter(Boolean))],
+      installedEmbeddingModels: [...new Set([
+        ...(Array.isArray(state.environment?.installedEmbeddingModels) ? state.environment.installedEmbeddingModels : []),
+        ...(Array.isArray(listed?.installedEmbeddingModels) ? listed.installedEmbeddingModels : []),
+      ].filter(Boolean))],
+    };
+    renderInstalledPanel();
+    renderRecommendedPanel();
+  }
+
+  async function refreshAll() {
+    await refreshEnvironment();
+    try {
+      await refreshInstalled();
+    } catch (error) {
+      state.installed = {
+        installedModels: Array.isArray(state.environment?.installedModels) ? [...new Set(state.environment.installedModels.filter(Boolean))] : [],
+        installedChatModels: Array.isArray(state.environment?.installedChatModels) ? [...new Set(state.environment.installedChatModels.filter(Boolean))] : [],
+        installedEmbeddingModels: Array.isArray(state.environment?.installedEmbeddingModels) ? [...new Set(state.environment.installedEmbeddingModels.filter(Boolean))] : [],
+      };
+      renderInstalledPanel();
+      renderRecommendedPanel();
+      setFooter(error.message || String(error), true);
+    }
+  }
+
+  async function refreshDownloadQueue() {
+    const payload = await window.ollamaManagerAPI.invoke('ollama-manager:get-download-queue');
+    state.downloads = Array.isArray(payload?.downloads) ? payload.downloads : [];
+    renderDownloadsPanel();
+    renderRecommendedPanel();
+  }
+
+  async function downloadModel(model) {
+    if (!model || !String(model).trim()) {
+      setFooter('Enter a model name like qwen3.5 or qwen3:4b before downloading.', true);
+      showToast('Enter a model name before downloading.', true);
+      return;
+    }
+    const targetModel = String(model).trim();
+    try {
+      setFooter(`Starting download for ${targetModel}...`);
+      showToast(`Starting download for ${targetModel}.`);
+      await window.ollamaManagerAPI.invoke('ollama-manager:enqueue-pull', { model: targetModel });
+      modelInput.value = targetModel;
+      await refreshDownloadQueue();
+      downloadsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setFooter(`Queued ${targetModel} for download.`);
+      showToast(`${targetModel} was added to the download queue.`);
+    } catch (error) {
+      setFooter(error.message || String(error), true);
+      showToast(error.message || String(error), true);
+    }
+  }
+
+  async function openSearch(query = '') {
+    const trimmed = String(query || modelInput.value || '').trim();
+    const params = trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
+    await window.ollamaManagerAPI.invoke('ollama-manager:open-external', `https://ollama.com/search${params}`);
+  }
+
+  async function requestCloseWindow() {
+    if (closeWindowInProgress) return;
+    closeWindowInProgress = true;
+    closeWindowButton.disabled = true;
+    try {
+      const hasPendingDownloads = Array.isArray(state.downloads)
+        && state.downloads.some((task) => ['queued', 'starting', 'running', 'canceling'].includes(task.status));
+      if (hasPendingDownloads) {
+        setFooter('Stopping downloads, clearing the queue, and removing partial files...');
+      }
+      const result = await window.ollamaManagerAPI.invoke('ollama-manager:request-close');
+      if (!result?.closed) {
+        closeWindowInProgress = false;
+        closeWindowButton.disabled = false;
+        if (result?.busy) {
+          setFooter('Close is already in progress. Please wait...');
+          return;
+        }
+        if (hasPendingDownloads) {
+          setFooter('Continuing current downloads.');
+        }
+      }
+    } catch (error) {
+      closeWindowInProgress = false;
+      closeWindowButton.disabled = false;
+      setFooter(error.message || String(error), true);
+      showToast(error.message || String(error), true);
+    }
+  }
+
+  async function handleAction(action, model) {
+    if (action === 'download') {
+      await downloadModel(model);
+      return;
+    }
+    if (action === 'retry-download') {
+      await downloadModel(model);
+      return;
+    }
+    if (action === 'delete') {
+      if (!confirm(`Delete ${model} from Ollama?`)) return;
+      try {
+        await window.ollamaManagerAPI.invoke('ollama-manager:delete', { model });
+        await refreshAll();
+        setFooter(`Deleted ${model}.`);
+        showToast(`${model} was deleted.`);
+      } catch (error) {
+        setFooter(`Failed to delete ${model}: ${error.message || String(error)}`, true);
+        showToast(`Failed to delete ${model}.`, true);
+      }
+      return;
+    }
+    if (action === 'copy') {
+      const destination = prompt('Copy model as...', `${model}-copy`);
+      if (!destination) return;
+      try {
+        await window.ollamaManagerAPI.invoke('ollama-manager:copy', { source: model, destination });
+        await refreshAll();
+        setFooter(`Copied ${model} to ${destination}.`);
+        showToast(`Copied ${model} to ${destination}.`);
+      } catch (error) {
+        setFooter(`Failed to copy ${model}: ${error.message || String(error)}`, true);
+        showToast(`Failed to copy ${model}.`, true);
+      }
+    }
+  }
+
+  discoverPanel.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    event.preventDefault();
+    await handleAction(button.dataset.action, button.dataset.model);
+  });
+
+  installedPanel.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    event.preventDefault();
+    await handleAction(button.dataset.action, button.dataset.model);
+  });
+
+  downloadsPanel.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (button.disabled) return;
+    await handleAction(button.dataset.action, button.dataset.model);
+  });
+
+  discoverTab.addEventListener('click', () => setActiveTab('discover'));
+  installedTab.addEventListener('click', () => setActiveTab('installed'));
+  downloadButton.addEventListener('click', async () => {
+    await downloadModel(modelInput.value);
+  });
+  openSearchButton.addEventListener('click', async () => {
+    await openSearch();
+  });
+  modelInput.addEventListener('keydown', async (event) => {
+    if (event.key === 'Enter') await downloadModel(modelInput.value);
+  });
+  openInstallPageButton.addEventListener('click', async () => {
+    await window.ollamaManagerAPI.invoke('config:open-ollama-download');
+  });
+  closeWindowButton.addEventListener('click', async () => {
+    await requestCloseWindow();
+  });
+
+  window.ollamaManagerAPI.on('ollama-manager:pull-progress', ({ model, status }) => {
+    if (!model || !status) return;
+    setFooter(`${model}: ${status}`);
+  });
+
+  window.ollamaManagerAPI.on('ollama-manager:download-updated', async ({ downloads }) => {
+    state.downloads = Array.isArray(downloads) ? downloads : [];
+    renderDownloadsPanel();
+    renderRecommendedPanel();
+    const canceledTasks = state.downloads.filter((task) => task.status === 'canceled');
+    for (const task of canceledTasks) {
+      if (state.downloadCancellationNotified.has(task.id)) continue;
+      state.downloadCancellationNotified.add(task.id);
+      setFooter(`Canceled ${task.model}.`);
+      showToast(`Canceled ${task.model}.`);
+    }
+    const completedTasks = state.downloads.filter((task) => task.status === 'completed');
+    for (const task of completedTasks) {
+      if (state.downloadCompletionNotified.has(task.id)) continue;
+      state.downloadCompletionNotified.add(task.id);
+      await refreshAll();
+      setFooter(`Downloaded ${task.model}.`);
+      showToast(`Downloaded ${task.model}.`);
+    }
+    const failedTasks = state.downloads.filter((task) => task.status === 'failed');
+    for (const task of failedTasks) {
+      if (state.downloadFailureNotified.has(task.id)) continue;
+      state.downloadFailureNotified.add(task.id);
+      const reason = formatFailureReason(task);
+      setFooter(`Failed to download ${task.model}: ${reason}`, true);
+      showToast(`Failed to download ${task.model}: ${reason}`, true);
+    }
+  });
+
+  async function boot() {
+    try {
+      initWindowFitObservers();
+      setActiveTab('discover');
+      await refreshAll();
+      await refreshDownloadQueue();
+      const installedCount = getInstalledCollections().installedModels.length;
+      setFooter(installedCount
+        ? `Ready to manage Ollama models. ${installedCount} installed model${installedCount === 1 ? '' : 's'} found.`
+        : 'Ready to manage Ollama models. No installed models were returned by Ollama.');
+    } catch (error) {
+      setFooter(error.message || String(error), true);
+    }
+  }
+
+  boot();
+</script>
+</body>
+</html>

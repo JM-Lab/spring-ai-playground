@@ -35,6 +35,7 @@ import java.util.function.Consumer;
 public class McpToolCallingManager implements ToolCallingManager {
 
     public static final String MCP_PROCESS_MESSAGE_CONSUMER = "mcpProcessMessageConsumer";
+    public static final String MCP_TOOL_EXECUTION_COMPLETED_MESSAGE = "MCP tool execution completed.";
     private final ToolCallingManager toolCallingManager;
 
     public McpToolCallingManager() {
@@ -62,8 +63,10 @@ public class McpToolCallingManager implements ToolCallingManager {
                     .forEach(toolCall -> mcpProcessMessageConsumer.accept(formatToolCallForMcp(toolCall)));
         }
         ToolExecutionResult result = toolCallingManager.executeToolCalls(prompt, chatResponse);
-        mcpProcessMessageConsumerAsOpt.ifPresent(
-                consumer -> consumer.accept(formatToolResultForMcp(result.conversationHistory().getLast())));
+        mcpProcessMessageConsumerAsOpt.ifPresent(consumer -> {
+            consumer.accept(formatToolResultForMcp(result.conversationHistory().getLast()));
+            consumer.accept(MCP_TOOL_EXECUTION_COMPLETED_MESSAGE);
+        });
         return result;
     }
 

@@ -19,23 +19,17 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
-import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBarVariant;
-import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.WorkspaceSidebar;
 
 import java.beans.PropertyChangeSupport;
 import java.util.List;
@@ -45,7 +39,7 @@ import java.util.Optional;
 import static org.springaicommunity.playground.webui.tool.ToolStudioView.TOOL_EMPTY_EVENT;
 import static org.springaicommunity.playground.webui.tool.ToolStudioView.TOOL_SELECT_EVENT;
 
-public class ToolListView extends VerticalLayout implements BeforeEnterObserver {
+public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserver {
 
     private static final String LAST_SELECTED_TOOL = "lastSelectedTool";
 
@@ -70,22 +64,19 @@ public class ToolListView extends VerticalLayout implements BeforeEnterObserver 
 
     public ToolListView(PersistentUiDataStorage persistentUiDataStorage, ToolSpecService toolSpecService,
             PropertyChangeSupport toolChangeSupport) {
+        super("Tool List");
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.toolSpecService = toolSpecService;
         this.toolChangeSupport = toolChangeSupport;
 
-        setSpacing(false);
-        setMargin(false);
-        getStyle().set("overflow", "hidden");
+        addHeaderIcon(VaadinIcon.CLOSE, "Delete Selected Tool", e -> deleteTool());
 
         this.toolListBox = new ListBox<>();
         this.toolListBox.addClassName("custom-list-box");
         this.toolListBox.setItems(List.of());
 
         this.toolListBox.setRenderer(new ComponentRenderer<>(tool -> {
-            Span title = new Span(tool.name());
-            title.getStyle().set("white-space", "nowrap").set("overflow", "hidden").set("text-overflow", "ellipsis")
-                    .set("flex-grow", "1");
+            Span title = listItemText(tool.name());
             title.getElement().setAttribute("title", tool.description());
             return title;
         }));
@@ -93,11 +84,7 @@ public class ToolListView extends VerticalLayout implements BeforeEnterObserver 
         this.toolListBox.addValueChangeListener(
                 event -> notifyToolSelection(event.getOldValue(), event.getValue()));
 
-        Scroller scroller = new Scroller(this.toolListBox);
-        scroller.setSizeFull();
-        scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-
-        add(initToolListHeader(), scroller);
+        setSidebarContent(verticalScroller(this.toolListBox));
     }
 
     private void notifyToolSelection(ToolSpec oldToolSpec, ToolSpec newToolSpec) {
@@ -107,25 +94,6 @@ public class ToolListView extends VerticalLayout implements BeforeEnterObserver 
             this.toolChangeSupport.firePropertyChange(TOOL_SELECT_EVENT, oldToolSpec, newToolSpec);
             this.persistentUiDataStorage.saveData(LAST_SELECTED_TOOL, newToolSpec);
         }
-    }
-
-    private Header initToolListHeader() {
-        Span appName = new Span("Tool List");
-        appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
-
-        MenuBar menuBar = new MenuBar();
-        menuBar.setWidthFull();
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-
-        Icon closeIcon = VaadinUtils.styledIcon(VaadinIcon.CLOSE.create());
-        closeIcon.setTooltipText("Delete Selected Tool");
-        menuBar.addItem(closeIcon, menuItemClickEvent -> deleteTool());
-
-        Header header = new Header(appName, menuBar);
-        header.getStyle().set("white-space", "nowrap").set("height", "auto").set("width", "100%").set("display", "flex")
-                .set("box-sizing", "border-box").set("align-items", "center");
-        return header;
     }
 
     private void deleteTool() {

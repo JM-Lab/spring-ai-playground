@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, clipboard, screen, shell, safeStora
 require
 ('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const http = require('http');
 const treeKill = require('tree-kill');
 const fs = require('fs');
@@ -13,36 +13,53 @@ const {
   SERVER_READY_TIMEOUT_MS,
   UI_READY_GRACE_TIMEOUT_MS,
   PRELOAD_PATH,
+  OLLAMA_MANAGER_PRELOAD_PATH,
   SPLASH_PATH,
   CONFIG_EDITOR_PATH,
+  OLLAMA_MANAGER_PATH,
   SERVER_SPLASH_PATH,
   CONFIG_TEMPLATES,
   DEFAULT_STARTER_TEMPLATE_IDS,
   startTempServer,
 } = require('./launcher-config');
+const ollamaManager = require('./ollama-manager');
 
 let tempServer = null;
-let mainWindow, splashWindow, serverSplashWindow, configWindow, serverProcess;
+let mainWindow, splashWindow, serverSplashWindow, configWindow, serverProcess, ollamaManagerWindow;
 let dynamicServerPort = null;
 let dynamicServerUrl = null;
+
+const TELEMETRY_DISABLED = process.env.SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED === 'false';
+const TELEMETRY_QUERY_STRING = TELEMETRY_DISABLED ? '?telemetry=0' : '';
 const isDev = !app.isPackaged;
 let isQuitting = false;
+let allowAppExit = false;
+let shutdownPromise = null;
 let fullLogBuffer = "";
 let activeConfigPath = null;
 let currentConfigId = null;
 let restartToConfigAfterStop = false;
 let currentLaunchToken = 0;
 let lastLaunchCommand = '';
+let autoCopyLaunchLogsPending = false;
 let secretsStoreCache = null;
 let secretsEncryptionAvailable = null;
 
 let serverReadyStartTime = 0;
+let launchReadinessState = {
+  phase: 'idle',
+  timedOut: false,
+  timeoutMs: null,
+  message: 'Preparing the launch environment.',
+};
 
 const providerTypeCache = new Map();
-
-function canHandleMediaPermission(permission) {
-  return permission === 'media' || permission === 'audioCapture';
-}
+let ollamaManagerContext = { yamlText: '', configId: null, configName: '', environmentInfo: null };
+let ollamaDownloadQueue = [];
+let activeOllamaDownload = null;
+let nextOllamaDownloadId = 1;
+let allowOllamaManagerWindowClose = false;
+let ollamaManagerCloseInProgress = false;
 
 function openMicrophonePrivacySettings() {
   if (process.platform === 'darwin') {
@@ -68,10 +85,6 @@ async function ensureMacMicrophoneAccess() {
   const granted = await systemPreferences.askForMediaAccess('microphone');
   const nextStatus = systemPreferences.getMediaAccessStatus('microphone');
   return { status: nextStatus, granted };
-}
-
-function getTemplateById(templateId) {
-  return Object.values(CONFIG_TEMPLATES).find(item => item.id === templateId) || null;
 }
 
 function getTemplateByName(name) {
@@ -232,6 +245,22 @@ function getDefaultToolSpecsPath() {
 
 function getUserConfigPath() {
   return path.join(app.getPath('userData'), 'application.yaml');
+}
+
+function getEffectiveYamlText(overrideYamlText = '') {
+  const defaultYamlText = fs.existsSync(getDefaultConfigPath())
+    ? fs.readFileSync(getDefaultConfigPath(), 'utf8')
+    : '';
+  const overrideText = String(overrideYamlText || '').trim();
+  if (!overrideText) return defaultYamlText;
+  if (!defaultYamlText.trim()) return overrideText;
+  return `${defaultYamlText}\n---\n${overrideText}\n`;
+}
+
+function getDefaultYamlText() {
+  return fs.existsSync(getDefaultConfigPath())
+    ? fs.readFileSync(getDefaultConfigPath(), 'utf8')
+    : '';
 }
 
 function getConfigDirectory() {
@@ -418,8 +447,151 @@ function getTemplateList() {
 }
 
 
+function isPlainObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function deepMerge(target, source) {
+  if (!isPlainObject(source)) return target;
+  for (const [key, value] of Object.entries(source)) {
+    if (Array.isArray(value)) {
+      target[key] = [...value];
+    } else if (isPlainObject(value)) {
+      target[key] = deepMerge(isPlainObject(target[key]) ? { ...target[key] } : {}, value);
+    } else {
+      target[key] = value;
+    }
+  }
+  return target;
+}
+
 function getYamlObj(yamlText) {
-  try { return yaml.load(yamlText) || {}; } catch (e) { return {}; }
+  try {
+    const docs = [];
+    yaml.loadAll(yamlText, (doc) => {
+      if (isPlainObject(doc)) docs.push(doc);
+    });
+    if (!docs.length) return {};
+    return docs.reduce((merged, doc) => deepMerge(merged, doc), {});
+  } catch (e) {
+    return {};
+  }
+}
+
+function normalizeSpringAiYamlText(yamlText = '') {
+  const source = String(yamlText ?? '');
+  if (!source.trim()) return source;
+
+  const docs = [];
+  let hadYamlError = false;
+  try {
+    yaml.loadAll(source, (doc) => {
+      docs.push(doc);
+    });
+  } catch (error) {
+    hadYamlError = true;
+  }
+  if (hadYamlError || !docs.length) return source;
+
+  let changed = false;
+  const normalizedDocs = docs.map((doc) => {
+    if (!isPlainObject(doc) || !isPlainObject(doc.spring)) return doc;
+    const spring = { ...doc.spring };
+    const ai = isPlainObject(spring.ai) ? { ...spring.ai } : {};
+    let docChanged = false;
+
+    for (const key of ['model', 'ollama', 'openai-sdk', 'playground']) {
+      if (!isPlainObject(spring[key])) continue;
+      ai[key] = deepMerge(isPlainObject(ai[key]) ? { ...ai[key] } : {}, spring[key]);
+      delete spring[key];
+      docChanged = true;
+    }
+
+    if (!docChanged) return doc;
+    changed = true;
+    spring.ai = ai;
+    return { ...doc, spring };
+  });
+
+  if (!changed) return source;
+  return normalizedDocs
+    .map((doc) => yaml.dump(doc, { lineWidth: -1, noRefs: true }).trimEnd())
+    .join('\n---\n');
+}
+
+function getSpringAiDoc(doc = {}) {
+  return doc?.spring?.ai || {};
+}
+
+function getLegacySpringDoc(doc = {}) {
+  return doc?.spring || {};
+}
+
+function getModelSection(doc = {}) {
+  return deepMerge(
+    isPlainObject(getLegacySpringDoc(doc)?.model) ? { ...getLegacySpringDoc(doc).model } : {},
+    isPlainObject(getSpringAiDoc(doc)?.model) ? getSpringAiDoc(doc).model : {},
+  );
+}
+
+function getOllamaSection(doc = {}) {
+  return deepMerge(
+    isPlainObject(getLegacySpringDoc(doc)?.ollama) ? { ...getLegacySpringDoc(doc).ollama } : {},
+    isPlainObject(getSpringAiDoc(doc)?.ollama) ? getSpringAiDoc(doc).ollama : {},
+  );
+}
+
+function getOpenAiSdkSection(doc = {}) {
+  return deepMerge(
+    isPlainObject(getLegacySpringDoc(doc)?.['openai-sdk']) ? { ...getLegacySpringDoc(doc)['openai-sdk'] } : {},
+    isPlainObject(getSpringAiDoc(doc)?.['openai-sdk']) ? getSpringAiDoc(doc)['openai-sdk'] : {},
+  );
+}
+
+function parseDurationToMs(value) {
+  if (value == null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  const text = String(value).trim();
+  if (!text) return null;
+  if (/^\d+$/.test(text)) return Number(text);
+
+  const simpleMatch = text.match(/^(\d+(?:\.\d+)?)(ms|s|m|h)$/i);
+  if (simpleMatch) {
+    const amount = Number(simpleMatch[1]);
+    const unit = simpleMatch[2].toLowerCase();
+    if (unit === 'ms') return Math.round(amount);
+    if (unit === 's') return Math.round(amount * 1000);
+    if (unit === 'm') return Math.round(amount * 60_000);
+    if (unit === 'h') return Math.round(amount * 3_600_000);
+  }
+
+  const isoMatch = text.match(/^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$/i);
+  if (isoMatch) {
+    const hours = Number(isoMatch[1] || 0);
+    const minutes = Number(isoMatch[2] || 0);
+    const seconds = Number(isoMatch[3] || 0);
+    return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000);
+  }
+
+  return null;
+}
+
+function extractShutdownTimeoutMs(yamlText = '') {
+  const match = String(yamlText).match(/^\s*timeout-per-shutdown-phase\s*:\s*([^\s#]+)\s*$/m);
+  return match ? parseDurationToMs(match[1]) : null;
+}
+
+function getShutdownWaitMs(configPath = null) {
+  const defaultTimeoutMs = fs.existsSync(getDefaultConfigPath())
+    ? extractShutdownTimeoutMs(fs.readFileSync(getDefaultConfigPath(), 'utf8'))
+    : null;
+  const overrideTimeoutMs = configPath && fs.existsSync(configPath)
+    ? extractShutdownTimeoutMs(fs.readFileSync(configPath, 'utf8'))
+    : null;
+  const springTimeoutMs = overrideTimeoutMs ?? defaultTimeoutMs ?? 90_000;
+  const electronBufferMs = 10_000;
+  return springTimeoutMs + electronBufferMs;
 }
 
 function isOfficialOpenAiBaseUrl(baseUrl) {
@@ -433,40 +605,104 @@ function isOfficialOpenAiBaseUrl(baseUrl) {
 
 function detectProviderType(yamlText = '') {
   const doc = getYamlObj(yamlText);
-  const chatModel = doc?.spring?.ai?.model?.chat;
-  const openaiBaseUrl = doc?.spring?.ai?.['openai-sdk']?.['base-url'];
-  const embeddingModel = doc?.spring?.ai?.model?.embedding;
-  const hasOllamaEmbedding = embeddingModel === 'ollama' || !!doc?.spring?.ai?.ollama?.embedding;
+  const modelSection = getModelSection(doc);
+  const ollamaSection = getOllamaSection(doc);
+  const openAiSdkSection = getOpenAiSdkSection(doc);
+  const chatModel = modelSection?.chat;
+  const openaiBaseUrl = openAiSdkSection?.['base-url'];
+  const embeddingModel = modelSection?.embedding;
+  const hasOllamaEmbedding = embeddingModel === 'ollama' || !!ollamaSection?.embedding;
   const usesCompatibleBaseUrl = Boolean(openaiBaseUrl) && !isOfficialOpenAiBaseUrl(openaiBaseUrl);
   if (chatModel === 'openai-sdk' && (usesCompatibleBaseUrl || hasOllamaEmbedding)) return 'openai-compatible';
-  if (chatModel === 'openai-sdk' || doc?.spring?.ai?.['openai-sdk']) return 'openai';
-  if (chatModel === 'ollama' || doc?.spring?.ai?.ollama) return 'ollama';
+  if (chatModel === 'openai-sdk' || Object.keys(openAiSdkSection).length) return 'openai';
+  if (chatModel === 'ollama' || Object.keys(ollamaSection).length) return 'ollama';
   return 'custom';
 }
 function hasEmbeddingModelConfig(yamlText = '') {
   const doc = getYamlObj(yamlText);
-  return !!doc?.spring?.ai?.model?.embedding || !!doc?.spring?.ai?.ollama?.embedding?.options?.model || !!doc?.spring?.ai?.['openai-sdk']?.embedding?.options?.model;
+  const modelSection = getModelSection(doc);
+  const ollamaSection = getOllamaSection(doc);
+  const openAiSdkSection = getOpenAiSdkSection(doc);
+  return !!modelSection?.embedding || !!ollamaSection?.embedding?.options?.model || !!openAiSdkSection?.embedding?.options?.model;
 }
 function isOllamaRequired(yamlText = '') {
   const providerType = detectProviderType(yamlText);
   if (providerType === 'ollama') return true;
   const doc = getYamlObj(yamlText);
-  return doc?.spring?.ai?.model?.embedding === 'ollama';
+  return getModelSection(doc)?.embedding === 'ollama';
 }
 function parseOllamaBaseUrl(yamlText = '') {
   const doc = getYamlObj(yamlText);
-  const explicitOllamaBaseUrl = doc?.spring?.ai?.ollama?.['base-url'];
+  const explicitOllamaBaseUrl = getOllamaSection(doc)?.['base-url'];
   if (explicitOllamaBaseUrl) return String(explicitOllamaBaseUrl);
-  const compatibleUrl = doc?.spring?.ai?.['openai-sdk']?.['base-url'];
+  const compatibleUrl = getOpenAiSdkSection(doc)?.['base-url'];
   if (compatibleUrl && String(compatibleUrl).includes('11434')) return String(compatibleUrl).replace(/\/v1\/?$/i, '');
   return 'http://127.0.0.1:11434';
 }
 function extractPrimaryModelName(yamlText = '') {
   const doc = getYamlObj(yamlText);
-  const chatModel = doc?.spring?.ai?.model?.chat;
-  if (chatModel === 'ollama') return doc?.spring?.ai?.ollama?.chat?.options?.model || null;
-  if (chatModel === 'openai-sdk') return doc?.spring?.ai?.['openai-sdk']?.chat?.options?.model || null;
+  const chatModel = getModelSection(doc)?.chat;
+  if (chatModel === 'ollama') return getOllamaSection(doc)?.chat?.options?.model || null;
+  if (chatModel === 'openai-sdk') return getOpenAiSdkSection(doc)?.chat?.options?.model || null;
   return null;
+}
+
+function getConfiguredChatModelInfo(yamlText = '') {
+  const doc = getYamlObj(yamlText);
+  const provider = getModelSection(doc)?.chat || null;
+  let model = null;
+  if (provider === 'ollama') model = getOllamaSection(doc)?.chat?.options?.model || null;
+  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.chat?.options?.model || null;
+  return { provider, model };
+}
+
+function getConfiguredEmbeddingModelInfo(yamlText = '') {
+  const doc = getYamlObj(yamlText);
+  const provider = getModelSection(doc)?.embedding || null;
+  let model = null;
+  if (provider === 'ollama') model = getOllamaSection(doc)?.embedding?.options?.model || null;
+  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.embedding?.options?.model || null;
+  return { provider, model };
+}
+
+function getInstalledModelName(modelEntry) {
+  if (!modelEntry || typeof modelEntry !== 'object') return null;
+  const candidate = modelEntry.name || modelEntry.model || null;
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null;
+}
+
+function normalizeOllamaModelName(name) {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/:latest$/i, '');
+}
+
+function classifyInstalledModel(modelEntry) {
+  const details = modelEntry?.details || {};
+  const signals = [
+    modelEntry?.name,
+    modelEntry?.model,
+    details?.family,
+    ...(Array.isArray(details?.families) ? details.families : []),
+  ]
+    .filter(value => typeof value === 'string' && value.trim())
+    .join(' ')
+    .toLowerCase();
+
+  const embeddingHints = [
+    'embedding',
+    'embed',
+    'nomic-embed',
+    'mxbai',
+    'bge',
+    'snowflake-arctic-embed',
+    'all-minilm',
+    'granite-embedding',
+  ];
+
+  if (embeddingHints.some(hint => signals.includes(hint))) return 'embedding';
+  return 'chat';
 }
 
 function getCachedProviderType(configId) {
@@ -629,27 +865,137 @@ function httpGetText(targetUrl) {
 
 async function getOllamaEnvironmentInfo(yamlText = '') {
   const ollamaTarget = await findOllamaLaunchTarget();
-  const ollamaInstalled = Boolean(ollamaTarget);
-  const baseUrl = parseOllamaBaseUrl(yamlText);
-  const providerType = detectProviderType(yamlText);
-  const embeddingConfigured = hasEmbeddingModelConfig(yamlText);
-  const ollamaRequired = isOllamaRequired(yamlText);
-  let running = false, version = null, error = null;
-  try {
-    const tagsResponse = await httpGetJson(new URL('/api/tags', baseUrl));
-    running = true;
-    try { version = JSON.parse(tagsResponse.body || '{}')?.version || null; } catch { version = null; }
-  } catch (requestError) {
-    error = requestError.message || String(requestError);
-  }
+  const baseEnvironment = await ollamaManager.getOllamaEnvironmentInfo({
+    yamlText,
+    defaultYamlText: getDefaultYamlText(),
+    ollamaInstalled: Boolean(ollamaTarget),
+  });
+  const fallback = await getCliInstalledModelFallback(baseEnvironment);
+  const environment = {
+    ...baseEnvironment,
+    ...fallback,
+  };
+  const installedSet = new Set((environment.installedModels || []).flatMap((name) => {
+    const text = String(name || '').trim();
+    if (!text) return [];
+    const normalized = text.replace(/:latest$/i, '');
+    return normalized && normalized !== text ? [text, normalized] : [text];
+  }));
   return {
-    ollamaInstalled, ollamaRequired, providerType, embeddingConfigured,
-    baseUrl, running, version, error,
+    ...environment,
+    chatModel: environment.chatModel ? {
+      ...environment.chatModel,
+      installationKnown: environment.running,
+      installed: environment.chatModel.provider === 'ollama' && !!environment.chatModel.model && installedSet.has(environment.chatModel.model),
+    } : environment.chatModel,
+    embeddingModel: environment.embeddingModel ? {
+      ...environment.embeddingModel,
+      installationKnown: environment.running,
+      installed: environment.embeddingModel.provider === 'ollama' && !!environment.embeddingModel.model && installedSet.has(environment.embeddingModel.model),
+    } : environment.embeddingModel,
     installTarget: ollamaTarget?.kind || null,
     platform: process.platform,
     canAutoInstall: process.platform === 'darwin' || process.platform === 'linux',
     canAutoStart: Boolean(ollamaTarget),
   };
+}
+
+function classifyInstalledModelName(name = '') {
+  const signals = String(name || '').toLowerCase();
+  const embeddingHints = ['embedding', 'embed', 'nomic-embed', 'mxbai', 'bge', 'snowflake-arctic-embed', 'all-minilm', 'granite-embedding'];
+  return embeddingHints.some((hint) => signals.includes(hint)) ? 'embedding' : 'chat';
+}
+
+function parseOllamaListCliOutput(output = '') {
+  const lines = String(output || '').split(/\r?\n/).map((line) => line.trimEnd()).filter(Boolean);
+  if (lines.length <= 1) return { installedModels: [], installedChatModels: [], installedEmbeddingModels: [] };
+  const models = lines.slice(1)
+    .map((line) => line.split(/\s{2,}/)[0]?.trim())
+    .filter(Boolean);
+  const installedChatModels = models.filter((name) => classifyInstalledModelName(name) === 'chat').sort((a, b) => a.localeCompare(b));
+  const installedEmbeddingModels = models.filter((name) => classifyInstalledModelName(name) === 'embedding').sort((a, b) => a.localeCompare(b));
+  return {
+    installedModels: [...models].sort((a, b) => a.localeCompare(b)),
+    installedChatModels,
+    installedEmbeddingModels,
+  };
+}
+
+async function getCliInstalledModelFallback(environment = {}) {
+  if (!environment?.running || (environment?.installedModels?.length ?? 0) > 0 || !(await commandExists('ollama'))) {
+    return {};
+  }
+  try {
+    const output = await new Promise((resolve, reject) => {
+      execFile('ollama', ['list'], { timeout: 4000 }, (error, stdout) => {
+        if (error) return reject(error);
+        resolve(stdout || '');
+      });
+    });
+    const fallback = parseOllamaListCliOutput(output);
+    return fallback.installedModels.length ? fallback : {};
+  } catch {
+    return {};
+  }
+}
+
+function getLaunchChatModelList(installedChatModels = [], configuredChatModel = null) {
+  const uniqueModels = [...new Set(
+    (Array.isArray(installedChatModels) ? installedChatModels : [])
+      .map((model) => typeof model === 'string' ? model.trim() : '')
+      .filter(Boolean)
+  )];
+  if (!uniqueModels.length) return [];
+
+  const normalizedConfigured = normalizeOllamaModelName(configuredChatModel);
+  const prioritizedModel = normalizedConfigured
+    ? uniqueModels.find((model) => normalizeOllamaModelName(model) === normalizedConfigured) || null
+    : null;
+  const remainingModels = uniqueModels
+    .filter((model) => model !== prioritizedModel)
+    .sort((left, right) => left.localeCompare(right));
+
+  return prioritizedModel ? [prioritizedModel, ...remainingModels] : [...remainingModels];
+}
+
+function buildLaunchOverrideYaml(chatModels = []) {
+  return yaml.dump({
+    spring: {
+      ai: {
+        playground: {
+          chat: {
+            models: chatModels,
+          },
+        },
+      },
+    },
+  }, { lineWidth: -1, noRefs: true }).trimEnd();
+}
+
+async function resolveLaunchConfigPath(configPath) {
+  const yamlText = fs.readFileSync(configPath, 'utf8');
+  if (detectProviderType(yamlText) !== 'ollama') return configPath;
+
+  const ollamaInfo = await getOllamaEnvironmentInfo(yamlText);
+  if (!ollamaInfo.running) {
+    appendLog('Ollama runtime model sync skipped because Ollama is not responding. Using the saved launcher YAML as-is.', true);
+    return configPath;
+  }
+
+  const runtimeChatModels = getLaunchChatModelList(
+    ollamaInfo.installedChatModels,
+    ollamaInfo.chatModel?.provider === 'ollama' ? ollamaInfo.chatModel.model : null
+  );
+  const runtimeYamlText = normalizeSpringAiYamlText(yamlText).trimEnd();
+  const overrideYamlText = buildLaunchOverrideYaml(runtimeChatModels);
+  const launchConfigPath = getUserConfigPath();
+  const nextYamlText = runtimeYamlText
+    ? `${runtimeYamlText}\n---\n${overrideYamlText}\n`
+    : `${overrideYamlText}\n`;
+
+  fs.writeFileSync(launchConfigPath, nextYamlText, 'utf8');
+  appendLog(`Resolved ${runtimeChatModels.length} downloaded Ollama chat model(s) for launch.`);
+  return launchConfigPath;
 }
 
 function runDetachedCommand(command, args = []) {
@@ -664,35 +1010,6 @@ function commandExists(command) {
     child.on('error', () => resolve(false));
     child.on('close', code => resolve(code === 0));
   });
-}
-
-async function installOllama() {
-  if (process.platform === 'darwin') {
-    if (await commandExists('brew')) {
-      await new Promise((resolve, reject) => {
-        const child = spawn('brew', ['install', '--cask', 'ollama'], { stdio: 'inherit' });
-        child.on('error', reject);
-        child.on('close', code => code === 0 ? resolve() : reject(new Error(`brew exited with code ${code}`)));
-      });
-      return { mode: 'installed' };
-    }
-    await shell.openExternal('https://ollama.com/download/mac');
-    return { mode: 'external' };
-  }
-  if (process.platform === 'linux') {
-    if (await commandExists('curl')) {
-      await new Promise((resolve, reject) => {
-        const child = spawn('/bin/sh', ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'], { stdio: 'inherit' });
-        child.on('error', reject);
-        child.on('close', code => code === 0 ? resolve() : reject(new Error(`install script exited with code ${code}`)));
-      });
-      return { mode: 'installed' };
-    }
-    await shell.openExternal('https://ollama.com/download/linux');
-    return { mode: 'external' };
-  }
-  await shell.openExternal('https://ollama.com/download');
-  return { mode: 'external' };
 }
 
 async function startOllamaService() {
@@ -807,7 +1124,7 @@ function createDefaultConfigRecord(existingIds = new Set()) {
   const defaultYaml = CONFIG_TEMPLATES.ollama.yaml;
   const configId = createUniqueConfigId('Default', existingIds);
   const config = { id: configId, name: 'Ollama' };
-  fs.writeFileSync(getConfigFilePath(configId), defaultYaml, 'utf8');
+  fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(defaultYaml), 'utf8');
   return config;
 }
 
@@ -819,18 +1136,31 @@ function ensureStarterConfigs(index) {
     if (existingNames.has(template.name.toLowerCase())) continue;
     const configId = createUniqueConfigId(template.name, existingIds);
     existingIds.add(configId);
-    fs.writeFileSync(getConfigFilePath(configId), template.yaml, 'utf8');
+    fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(template.yaml), 'utf8');
     index.configs.push({ id: configId, name: template.name });
   }
 }
 
 function normalizeConfigYamlToTemplateIfNeeded(config) {
-  const template = getTemplateByName(config.name);
-  if (!template) return;
   const configPath = getConfigFilePath(config.id);
-  if (!fs.existsSync(configPath)) { fs.writeFileSync(configPath, template.yaml, 'utf8'); return; }
+  const template = getTemplateByName(config.name);
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(
+      configPath,
+      normalizeSpringAiYamlText(template?.yaml ?? CONFIG_TEMPLATES.ollama.yaml),
+      'utf8'
+    );
+    return;
+  }
   const existingYaml = fs.readFileSync(configPath, 'utf8');
-  if (shouldCompactToTemplateYaml(existingYaml)) fs.writeFileSync(configPath, template.yaml, 'utf8');
+  const normalizedYaml = normalizeSpringAiYamlText(existingYaml);
+  if (normalizedYaml !== existingYaml) {
+    fs.writeFileSync(configPath, normalizedYaml, 'utf8');
+    return;
+  }
+  if (template && shouldCompactToTemplateYaml(existingYaml)) {
+    fs.writeFileSync(configPath, normalizeSpringAiYamlText(template.yaml), 'utf8');
+  }
 }
 
 function ensureConfigStore() {
@@ -844,7 +1174,11 @@ function ensureConfigStore() {
     let initialYaml = null;
     if (fs.existsSync(legacyConfigPath)) initialYaml = fs.readFileSync(legacyConfigPath, 'utf8');
     const config = { id: 'default', name: 'Ollama' };
-    fs.writeFileSync(getConfigFilePath(config.id), initialYaml ?? CONFIG_TEMPLATES.ollama.yaml, 'utf8');
+    fs.writeFileSync(
+      getConfigFilePath(config.id),
+      normalizeSpringAiYamlText(initialYaml ?? CONFIG_TEMPLATES.ollama.yaml),
+      'utf8'
+    );
     index = { activeConfigId: config.id, configs: [config], meta: { hasCompletedInitialSetup: false } };
     writeJsonFile(indexPath, index);
   }
@@ -888,7 +1222,11 @@ function ensureConfigStore() {
     const configPath = getConfigFilePath(config.id);
     if (!fs.existsSync(configPath)) {
       const template = getTemplateByName(config.name);
-      fs.writeFileSync(configPath, template?.yaml ?? CONFIG_TEMPLATES.ollama.yaml, 'utf8');
+      fs.writeFileSync(
+        configPath,
+        normalizeSpringAiYamlText(template?.yaml ?? CONFIG_TEMPLATES.ollama.yaml),
+        'utf8'
+      );
     }
   }
   if (!index.configs.some(config => config.id === index.activeConfigId)) {
@@ -917,7 +1255,7 @@ function readConfigYaml(configId) {
 }
 
 function saveYamlToConfig(configId, yamlText) {
-  fs.writeFileSync(getConfigFilePath(configId), yamlText, 'utf8');
+  fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(yamlText), 'utf8');
   providerTypeCache.delete(configId);
 }
 
@@ -974,9 +1312,12 @@ function getJarPath() {
 }
 
 function createConfigWindow() {
+  const { workAreaSize } = screen.getPrimaryDisplay();
   configWindow = new BrowserWindow({
     width: 1080,
-    height: 760,
+    height: workAreaSize.height,
+    minWidth: 980,
+    minHeight: 860,
     show: false,
     autoHideMenuBar: true,
     icon: getWindowIconPath(),
@@ -988,23 +1329,387 @@ function createConfigWindow() {
   });
   configWindow.on('closed', () => {
     configWindow = null;
-    if (!mainWindow && !serverSplashWindow && !isQuitting) app.quit();
+    if (!mainWindow && !serverSplashWindow && !ollamaManagerWindow && !isQuitting) app.quit();
   });
   configWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     appendLog(`Config window failed to load (${errorCode}): ${errorDescription} - ${validatedURL || CONFIG_EDITOR_PATH}`, true);
   });
+  configWindow.webContents.on('did-finish-load', () => {
+    fitConfigWindowToContent();
+  });
 
-  configWindow.loadURL(tempServer.getUrl(CONFIG_EDITOR_PATH));
+  configWindow.loadURL(tempServer.getUrl(CONFIG_EDITOR_PATH) + TELEMETRY_QUERY_STRING);
   configWindow.once('ready-to-show', () => configWindow.show());
 }
 
+async function fitConfigWindowToContent() {
+  if (!configWindow || configWindow.isDestroyed()) return;
+  const { workAreaSize } = screen.getPrimaryDisplay();
+  try {
+    const contentHeight = await configWindow.webContents.executeJavaScript(
+      `(() => {
+        const root = document.querySelector('.shell');
+        const body = document.body;
+        const measure = (element) => {
+          if (!element) return 0;
+          const styles = window.getComputedStyle(element);
+          const marginTop = parseFloat(styles.marginTop || '0');
+          const marginBottom = parseFloat(styles.marginBottom || '0');
+          return Math.ceil(Math.max(
+            element.scrollHeight || 0,
+            element.offsetHeight || 0,
+            element.getBoundingClientRect().height || 0
+          ) + marginTop + marginBottom);
+        };
+        const rootHeight = measure(root);
+        if (rootHeight > 0) return rootHeight;
+        return measure(body);
+      })()`,
+      true
+    );
+    if (!Number.isFinite(contentHeight)) return;
+    const bounds = configWindow.getContentBounds();
+    const targetHeight = Math.max(760, Math.min(workAreaSize.height, contentHeight + 24));
+    if (Math.abs(bounds.height - targetHeight) < 8) return;
+    configWindow.setContentSize(bounds.width, targetHeight);
+  } catch {
+    // Ignore sizing failures and keep the default window size.
+  }
+}
+
+async function fitOllamaManagerWindowToContent() {
+  if (!ollamaManagerWindow || ollamaManagerWindow.isDestroyed()) return;
+  const { workAreaSize } = screen.getPrimaryDisplay();
+  try {
+    const contentHeight = await ollamaManagerWindow.webContents.executeJavaScript(
+      `(() => {
+        const root = document.querySelector('.shell');
+        const body = document.body;
+        const measure = (element) => {
+          if (!element) return 0;
+          const styles = window.getComputedStyle(element);
+          const marginTop = parseFloat(styles.marginTop || '0');
+          const marginBottom = parseFloat(styles.marginBottom || '0');
+          return Math.ceil(Math.max(
+            element.scrollHeight || 0,
+            element.offsetHeight || 0,
+            element.getBoundingClientRect().height || 0
+          ) + marginTop + marginBottom);
+        };
+        const rootHeight = measure(root);
+        if (rootHeight > 0) return rootHeight;
+        return measure(body);
+      })()`,
+      true
+    );
+    if (!Number.isFinite(contentHeight)) return;
+    const bounds = ollamaManagerWindow.getContentBounds();
+    const targetHeight = Math.max(460, Math.min(workAreaSize.height - 120, contentHeight + 8));
+    if (Math.abs(bounds.height - targetHeight) < 8) return;
+    ollamaManagerWindow.setContentSize(bounds.width, targetHeight);
+  } catch {
+    // Ignore sizing failures and keep the default window size.
+  }
+}
+
+function createOllamaManagerWindow() {
+  if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
+    ollamaManagerWindow.focus();
+    return ollamaManagerWindow;
+  }
+
+  allowOllamaManagerWindowClose = false;
+  const { workAreaSize } = screen.getPrimaryDisplay();
+
+  ollamaManagerWindow = new BrowserWindow({
+    width: 1160,
+    height: Math.max(520, workAreaSize.height - 220),
+    minWidth: 960,
+    minHeight: 460,
+    show: false,
+    autoHideMenuBar: true,
+    parent: configWindow || undefined,
+    modal: false,
+    icon: getWindowIconPath(),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: OLLAMA_MANAGER_PRELOAD_PATH,
+    },
+  });
+  const requestOllamaManagerClose = async (source = 'window') => {
+    if (!ollamaManagerWindow || ollamaManagerWindow.isDestroyed()) return { closed: true };
+    if (ollamaManagerCloseInProgress) return { closed: false, busy: true };
+    if (allowOllamaManagerWindowClose || !hasPendingOllamaDownloads()) {
+      allowOllamaManagerWindowClose = true;
+      ollamaManagerWindow.close();
+      return { closed: true };
+    }
+    const choice = dialog.showMessageBoxSync(ollamaManagerWindow, {
+      type: 'warning',
+      title: source === 'button' ? 'Leave model manager?' : 'Cancel downloads and close?',
+      buttons: ['Keep downloading', source === 'button' ? 'Leave and remove downloads' : 'Cancel and close'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      message: hasPendingOllamaDownloads()
+        ? 'There are downloads in progress or queued.'
+        : 'Close the Ollama model manager?',
+      detail: 'If you continue, the current download will stop, any queued downloads will be removed, and partially downloaded files for the active model will be cleared.',
+    });
+    if (choice !== 1) {
+      ollamaManagerWindow.focus();
+      return { closed: false, canceled: true };
+    }
+    ollamaManagerCloseInProgress = true;
+    try {
+      await cancelAllOllamaDownloads();
+      allowOllamaManagerWindowClose = true;
+      if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
+        ollamaManagerWindow.close();
+      }
+      return { closed: true };
+    } finally {
+      ollamaManagerCloseInProgress = false;
+    }
+  };
+  ollamaManagerWindow.on('close', (event) => {
+    if (allowOllamaManagerWindowClose || !hasPendingOllamaDownloads()) return;
+    if (ollamaManagerCloseInProgress) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    requestOllamaManagerClose('native-close').catch((error) => {
+      appendLog(`Failed to close Ollama manager cleanly: ${error.message || String(error)}`, true);
+    });
+  });
+  ollamaManagerWindow.on('blur', () => {
+    if (!configWindow || configWindow.isDestroyed()) return;
+    setTimeout(() => {
+      if (!ollamaManagerWindow || ollamaManagerWindow.isDestroyed()) return;
+      if (ollamaManagerCloseInProgress) return;
+      if (ollamaManagerWindow.isFocused()) return;
+      if (!configWindow.isFocused()) return;
+      requestOllamaManagerClose('blur-close').catch((error) => {
+        appendLog(`Failed to close Ollama manager after blur: ${error.message || String(error)}`, true);
+      });
+    }, 0);
+  });
+  ollamaManagerWindow.on('closed', () => {
+    allowOllamaManagerWindowClose = false;
+    ollamaManagerCloseInProgress = false;
+    ollamaManagerWindow = null;
+  });
+  ollamaManagerWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    appendLog(`Ollama manager failed to load (${errorCode}): ${errorDescription} - ${validatedURL || OLLAMA_MANAGER_PATH}`, true);
+  });
+  ollamaManagerWindow.webContents.on('did-finish-load', () => {
+    fitOllamaManagerWindowToContent();
+  });
+  ollamaManagerWindow.loadURL(tempServer.getUrl(OLLAMA_MANAGER_PATH) + TELEMETRY_QUERY_STRING);
+  ollamaManagerWindow.once('ready-to-show', async () => {
+    await fitOllamaManagerWindowToContent();
+    ollamaManagerWindow.show();
+  });
+  return ollamaManagerWindow;
+}
+
+function getSerializableDownloadQueue() {
+  const current = activeOllamaDownload ? [activeOllamaDownload] : [];
+  return [...current, ...ollamaDownloadQueue].map((task) => ({
+    id: task.id,
+    model: task.model,
+    status: task.status,
+    progressText: task.progressText,
+    completed: task.completed ?? null,
+    total: task.total ?? null,
+    percent: task.percent ?? null,
+    error: task.error ?? null,
+  }));
+}
+
+function createOllamaDownloadTask(model) {
+  const task = {
+    id: nextOllamaDownloadId++,
+    model,
+    status: 'queued',
+    progressText: 'Queued',
+    completed: null,
+    total: null,
+    percent: null,
+    error: null,
+    client: null,
+    stream: null,
+    cleanupRequested: false,
+    completionPromise: Promise.resolve(),
+    resolveCompletion: null,
+  };
+  task.completionPromise = new Promise((resolve) => {
+    task.resolveCompletion = resolve;
+  });
+  return task;
+}
+
+function sendOllamaDownloadQueueUpdate(target = null) {
+  const payload = { downloads: getSerializableDownloadQueue() };
+  if (target?.isDestroyed?.() === false) {
+    target.send('ollama-manager:download-updated', payload);
+    return;
+  }
+  if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
+    ollamaManagerWindow.webContents.send('ollama-manager:download-updated', payload);
+  }
+}
+
+function updateDownloadTaskProgress(task, progress = {}) {
+  task.progressText = progress?.status || progress?.error || progress?.digest || task.progressText || 'Downloading...';
+  task.completed = typeof progress?.completed === 'number' ? progress.completed : task.completed ?? null;
+  task.total = typeof progress?.total === 'number' ? progress.total : task.total ?? null;
+  task.percent = task.total > 0 && typeof task.completed === 'number'
+    ? Math.max(0, Math.min(100, Math.round((task.completed / task.total) * 100)))
+    : task.percent ?? null;
+}
+
+function hasPendingOllamaDownloads() {
+  return Boolean(activeOllamaDownload) || ollamaDownloadQueue.length > 0;
+}
+
+function cancelQueuedOllamaDownloads() {
+  for (const task of ollamaDownloadQueue) {
+    task.status = 'canceled';
+    task.progressText = 'Canceled';
+    task.resolveCompletion?.();
+    task.resolveCompletion = null;
+  }
+  ollamaDownloadQueue = [];
+}
+
+function abortOllamaDownloadTask(task) {
+  if (!task) return;
+  task.client?.abort?.();
+  task.stream?.abort?.();
+}
+
+async function cleanupCanceledOllamaDownload(task) {
+  if (!task?.cleanupRequested) return;
+  try {
+    const environment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+    await ollamaManager.deleteModel(environment.baseUrl, task.model);
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    if (message.toLowerCase().includes('not found')) return;
+    appendLog(`Ignored cleanup failure for canceled Ollama download "${task?.model}": ${message}`);
+  }
+}
+
+function finalizeOllamaDownloadTask(task) {
+  task?.resolveCompletion?.();
+  if (task) task.resolveCompletion = null;
+}
+
+async function cancelAllOllamaDownloads() {
+  const activeTask = activeOllamaDownload;
+  cancelQueuedOllamaDownloads();
+  if (activeTask) {
+    activeTask.cleanupRequested = true;
+    activeTask.status = 'canceling';
+    activeTask.progressText = 'Canceling download and removing partial files...';
+    abortOllamaDownloadTask(activeTask);
+  }
+  sendOllamaDownloadQueueUpdate();
+  await activeTask?.completionPromise;
+}
+
+async function processNextOllamaDownload() {
+  if (activeOllamaDownload || !ollamaDownloadQueue.length) return;
+  activeOllamaDownload = ollamaDownloadQueue.shift();
+  const task = activeOllamaDownload;
+  task.status = 'starting';
+  task.progressText = 'Preparing download...';
+  sendOllamaDownloadQueueUpdate();
+
+  try {
+    const environment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+    if (!environment.ollamaInstalled) {
+      throw new Error('Install Ollama first before downloading models.');
+    }
+    const { client, stream } = await ollamaManager.createPullStream(environment.baseUrl, task.model);
+    task.client = client;
+    task.stream = stream;
+    if (['canceled', 'canceling'].includes(task.status)) {
+      abortOllamaDownloadTask(task);
+      throw new Error('Download canceled.');
+    }
+    for await (const progress of stream) {
+      if (['canceled', 'canceling'].includes(task.status)) break;
+      if (task.status === 'starting') {
+        task.status = 'running';
+      }
+      updateDownloadTaskProgress(task, progress);
+      sendOllamaDownloadQueueUpdate();
+      if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
+        ollamaManagerWindow.webContents.send('ollama-manager:pull-progress', {
+          model: task.model,
+          status: task.progressText,
+        });
+      }
+    }
+    if (!['canceled', 'canceling'].includes(task.status)) {
+      task.status = 'completed';
+      task.progressText = 'Download complete';
+      task.percent = 100;
+    } else {
+      task.progressText = task.cleanupRequested
+        ? 'Removing partial files...'
+        : 'Canceled';
+    }
+    sendOllamaDownloadQueueUpdate();
+  } catch (error) {
+    task.status = ['canceled', 'canceling'].includes(task.status) ? 'canceled' : 'failed';
+    task.error = error.message || String(error);
+    task.progressText = task.status === 'canceled'
+      ? (task.cleanupRequested ? 'Removing partial files...' : 'Canceled')
+      : task.error;
+    sendOllamaDownloadQueueUpdate();
+  } finally {
+    if (task.status === 'canceled') {
+      await cleanupCanceledOllamaDownload(task);
+    }
+    task.progressText = task.status === 'canceled'
+      ? 'Canceled and cleared'
+      : task.progressText;
+    activeOllamaDownload = null;
+    sendOllamaDownloadQueueUpdate();
+    finalizeOllamaDownloadTask(task);
+    setTimeout(() => {
+      const activeTaskId = activeOllamaDownload?.id ?? null;
+      ollamaDownloadQueue = ollamaDownloadQueue.filter((item) =>
+        item.id === activeTaskId || !['completed', 'canceled'].includes(item.status)
+      );
+      sendOllamaDownloadQueueUpdate();
+    }, task.status === 'canceled' ? 0 : 1500);
+    processNextOllamaDownload();
+  }
+}
+
 function createServerSplashWindow() {
+  const { workAreaSize } = screen.getPrimaryDisplay();
+  const width = Math.min(1040, Math.max(760, workAreaSize.width - 48), workAreaSize.width);
+  const height = Math.min(820, Math.max(620, workAreaSize.height - 48), workAreaSize.height);
+
   serverSplashWindow = new BrowserWindow({
-    width: 1040,
-    height: 820,
+    width,
+    height,
     frame: false,
     alwaysOnTop: true,
     transparent: false,
+    resizable: true,
+    minimizable: true,
+    closable: true,
+    movable: true,
+    minWidth: 760,
+    minHeight: 620,
     icon: getWindowIconPath(),
     webPreferences: {
       nodeIntegration: false,
@@ -1016,7 +1721,7 @@ function createServerSplashWindow() {
     appendLog(`Splash window failed to load (${errorCode}): ${errorDescription} - ${validatedURL || SERVER_SPLASH_PATH}`, true);
   });
 
-  serverSplashWindow.loadURL(tempServer.getUrl(SERVER_SPLASH_PATH));
+  serverSplashWindow.loadURL(tempServer.getUrl(SERVER_SPLASH_PATH) + TELEMETRY_QUERY_STRING);
 }
 
 function createMainWindow() {
@@ -1078,6 +1783,7 @@ function createMainWindow() {
       return;
     }
     if (serverSplashWindow && !serverSplashWindow.isDestroyed()) serverSplashWindow.close();
+    copyLaunchLogsToClipboardIfEnabled();
     if (!mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
   });
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
@@ -1109,16 +1815,21 @@ function createNamedConfig(name, yamlText) {
 
 function appendLog(message, isError = false) {
   fullLogBuffer += message + '\n';
-  try {
-    const index = readConfigIndex();
-    if (index.preferences?.autoCopyLogs) clipboard.writeText(fullLogBuffer);
-  } catch {
-  }
   if (serverSplashWindow && !serverSplashWindow.isDestroyed()) {
     serverSplashWindow.webContents.send(isError ? 'server-error' : 'server-log', message);
   }
   if (isError) console.error(message);
   else console.log(message);
+}
+
+function copyLaunchLogsToClipboardIfEnabled() {
+  if (!autoCopyLaunchLogsPending) return;
+  autoCopyLaunchLogsPending = false;
+  try {
+    const index = readConfigIndex();
+    if (index.preferences?.autoCopyLogs) clipboard.writeText(fullLogBuffer);
+  } catch {
+  }
 }
 
 function detectDynamicServerUrl(output) {
@@ -1148,72 +1859,184 @@ function sendServerSplashState() {
       skipOllamaCheck: index.preferences?.skipOllamaCheck ?? false,
     },
     launchCommand: lastLaunchCommand,
+    readiness: launchReadinessState,
   });
+}
+
+function killProcess(pid, signal = 'SIGTERM') {
+  return new Promise((resolve) => {
+    const normalizedPid = parseInt(pid, 10);
+    if (Number.isNaN(normalizedPid)) {
+      resolve();
+      return;
+    }
+
+    if (process.platform === 'win32') {
+      const args = ['/pid', String(normalizedPid), '/T'];
+      if (signal === 'SIGKILL') args.push('/F');
+      execFile('taskkill', args, (error) => {
+        if (error && error.code !== 128 && !/not found|no running instance/i.test(error.message || '')) {
+          appendLog(`Kill error (${signal}): ${error.message}`, true);
+        }
+        resolve();
+      });
+      return;
+    }
+
+    treeKill(normalizedPid, signal, (error) => {
+      if (error && error.code !== 'ESRCH') {
+        appendLog(`Kill error (${signal}): ${error.message}`, true);
+      }
+      resolve();
+    });
+  });
+}
+
+async function tryActuatorShutdown() {
+  if (!dynamicServerUrl) return false;
+
+  try {
+    appendLog('Trying actuator shutdown...');
+    await new Promise((resolve, reject) => {
+      const req = http.request(`${dynamicServerUrl}/actuator/shutdown`, { method: 'POST' }, (res) => {
+        res.resume();
+        resolve();
+      });
+      req.on('error', reject);
+      req.setTimeout(4000, () => reject(new Error('Actuator timeout')));
+      req.end();
+    });
+    appendLog('Actuator shutdown request sent.');
+    return true;
+  } catch (error) {
+    appendLog(`Actuator failed: ${error.message}`, true);
+    return false;
+  }
 }
 
 async function stopSpringServer() {
   if (!serverProcess) return;
-
-  appendLog('Stopping Spring server gracefully... (waiting up to 90 seconds)');
-
-  if (dynamicServerUrl) {
-    try {
-      appendLog('Sending shutdown request to /actuator/shutdown...');
-      await new Promise((resolve, reject) => {
-        const req = http.request(`${dynamicServerUrl}/actuator/shutdown`, { method: 'POST' }, (res) => {
-          res.on('data', () => {});
-          resolve();
-        });
-        req.on('error', reject);
-        req.setTimeout(4000, () => reject(new Error('Actuator timeout')));
-        req.end();
-      });
-      await new Promise(r => setTimeout(r, 1200));
-    } catch (err) {
-      appendLog(`Actuator shutdown failed: ${err.message}. Proceeding with SIGTERM.`, true);
-    }
-  }
-
-  try {
-    treeKill(serverProcess.pid, 'SIGTERM');
-    appendLog('SIGTERM sent to Spring process.');
-  } catch (e) {}
-
-  const MAX_WAIT_MS = 90000;
+  const targetProcess = serverProcess;
+  const pid = targetProcess.pid;
   const start = Date.now();
+  const MAX_WAIT_MS = getShutdownWaitMs(activeConfigPath || getConfigFilePath(currentConfigId || readConfigIndex().activeConfigId));
+  const ACTUATOR_WAIT_MS = 5000;
+  const maxWaitSeconds = Math.round(MAX_WAIT_MS / 1000);
 
-  return new Promise((resolve) => {
-    const checkClosed = () => {
-      if (!serverProcess) {
-        appendLog('Spring server stopped completely (graceful).');
-        resolve();
-        return;
-      }
+  appendLog(`Stopping Spring server gracefully... (waiting up to ${maxWaitSeconds} seconds)`);
 
-      const elapsed = Date.now() - start;
-      if (elapsed > MAX_WAIT_MS) {
-        appendLog(`Graceful shutdown timeout after ${Math.round(elapsed/1000)}s → forcing SIGKILL`, true);
-        treeKill(serverProcess.pid, 'SIGKILL');
-        serverProcess = null;
-        dynamicServerPort = null;
-        dynamicServerUrl = null;
-        resolve();
-        return;
-      }
+  let resolved = false;
+  let closeListener = null;
 
-      setTimeout(checkClosed, 300);
+  const cleanup = () => {
+    if (serverProcess === targetProcess) {
+      serverProcess = null;
+    }
+    dynamicServerPort = null;
+    dynamicServerUrl = null;
+  };
+
+  const finish = (resolve) => {
+    if (resolved) return;
+    resolved = true;
+    if (closeListener) targetProcess.off('close', closeListener);
+    cleanup();
+    resolve();
+  };
+
+  return new Promise(async (resolve) => {
+    closeListener = () => {
+      appendLog(`Spring server closed cleanly after ${Math.round((Date.now() - start) / 1000)}s.`);
+      finish(resolve);
+    };
+    targetProcess.once('close', closeListener);
+
+    const actuatorOk = await tryActuatorShutdown();
+    const actuatorDeadline = Date.now() + ACTUATOR_WAIT_MS;
+
+    const waitForClose = (deadline, callback) => {
+      const checkClosed = () => {
+        if (resolved) {
+          return;
+        }
+        if (!serverProcess) {
+          appendLog('Spring server stopped completely.');
+          finish(resolve);
+          return;
+        }
+        if (Date.now() >= deadline) {
+          callback();
+          return;
+        }
+        setTimeout(checkClosed, 300);
+      };
+      checkClosed();
     };
 
-    serverProcess.once('close', () => {
-      serverProcess = null;
-      dynamicServerPort = null;
-      dynamicServerUrl = null;
-      appendLog(`Spring server closed cleanly after ${Math.round((Date.now() - start)/1000)}s.`);
-      resolve();
-    });
+    if (actuatorOk) {
+      appendLog('Waiting for graceful shutdown via actuator...');
+      waitForClose(actuatorDeadline, async () => {
+        if (resolved) return;
+        appendLog('Actuator shutdown is taking longer than expected. Sending SIGTERM...');
+        await killProcess(pid, 'SIGTERM');
+      });
+    } else {
+      appendLog('Sending SIGTERM...');
+      await killProcess(pid, 'SIGTERM');
+    }
 
-    checkClosed();
+    const forceDeadline = start + MAX_WAIT_MS;
+    const waitForForcedKill = () => {
+      if (resolved) {
+        return;
+      }
+      if (!serverProcess) {
+        appendLog('Spring server stopped completely.');
+        finish(resolve);
+        return;
+      }
+      if (Date.now() >= forceDeadline) {
+        appendLog(`Graceful shutdown timeout after ${Math.round((Date.now() - start) / 1000)}s -> forcing SIGKILL`, true);
+        killProcess(pid, 'SIGKILL').finally(() => {
+          setTimeout(() => {
+            if (!resolved) {
+              appendLog('Force cleanup fallback', true);
+              finish(resolve);
+            }
+          }, 2000);
+        });
+        return;
+      }
+      setTimeout(waitForForcedKill, 300);
+    };
+
+    setTimeout(waitForForcedKill, actuatorOk ? ACTUATOR_WAIT_MS : 0);
   });
+}
+
+async function shutdownApplication({ exitCode = 0, logMessage = null } = {}) {
+  if (shutdownPromise) return shutdownPromise;
+  shutdownPromise = (async () => {
+    isQuitting = true;
+    const shutdownWaitMs = getShutdownWaitMs(activeConfigPath || getConfigFilePath(currentConfigId || readConfigIndex().activeConfigId));
+    const shutdownWaitSeconds = Math.round(shutdownWaitMs / 1000);
+
+    if (tempServer) {
+      tempServer.stop();
+      tempServer = null;
+    }
+
+    if (serverProcess) {
+      appendLog(logMessage || `App is quitting. Waiting up to ${shutdownWaitSeconds} seconds for Spring server to shut down...`);
+      await stopSpringServer();
+    }
+
+    appendLog('All processes stopped. Exiting app now.');
+    allowAppExit = true;
+    if (exitCode === 0) app.quit();
+    else app.exit(exitCode);
+  })();
+  return shutdownPromise;
 }
 
 function handleFatalError(errorMessage) {
@@ -1251,6 +2074,13 @@ function handleFatalError(errorMessage) {
 function startSpringServer() {
   serverReadyStartTime = Date.now();
   const launchToken = ++currentLaunchToken;
+  autoCopyLaunchLogsPending = true;
+  launchReadinessState = {
+    phase: 'starting',
+    timedOut: false,
+    timeoutMs: null,
+    message: 'Preparing the launch environment.',
+  };
 
   const jarPath = getJarPath();
   if (!jarPath) {
@@ -1292,7 +2122,15 @@ function startSpringServer() {
 
   serverProcess.on('error', (error) => {
     serverProcess = null;
+    autoCopyLaunchLogsPending = false;
     if (isQuitting || restartToConfigAfterStop) return;
+    launchReadinessState = {
+      phase: 'failed',
+      timedOut: false,
+      timeoutMs: null,
+      message: 'Server process failed to start.',
+    };
+    sendServerSplashState();
     handleFatalError(`Failed to start server process:\n${error.message || String(error)}`);
   });
 
@@ -1311,8 +2149,15 @@ function startSpringServer() {
   serverProcess.on('close', (code) => {
     const shouldReturnToConfig = restartToConfigAfterStop;
     serverProcess = null;
+    autoCopyLaunchLogsPending = false;
     dynamicServerPort = null;
     dynamicServerUrl = null;
+    launchReadinessState = {
+      phase: code === 0 || code === null ? 'stopped' : 'failed',
+      timedOut: false,
+      timeoutMs: null,
+      message: code === 0 || code === null ? 'Server stopped.' : 'Server exited unexpectedly.',
+    };
     sendServerSplashState();
 
     if (code !== 0 && code !== null && !isQuitting && !shouldReturnToConfig) {
@@ -1336,12 +2181,29 @@ function checkServerReady(launchToken) {
   const elapsed = Date.now() - serverReadyStartTime;
   const timeoutMs = dynamicServerUrl ? UI_READY_GRACE_TIMEOUT_MS : SERVER_READY_TIMEOUT_MS;
   if (elapsed > timeoutMs) {
-    appendLog(`Server startup timed out after ${timeoutMs / 1000}s.`, true);
-    handleFatalError(`Server did not become ready within ${timeoutMs / 1000} seconds. Check logs for details.`);
+    if (!launchReadinessState.timedOut) {
+      launchReadinessState = {
+        phase: dynamicServerUrl ? 'waiting-for-ui' : 'waiting-for-server',
+        timedOut: true,
+        timeoutMs,
+        message: 'Startup is taking longer than expected. The app may still be downloading models or warming up.',
+      };
+      appendLog(`Server startup timed out after ${timeoutMs / 1000}s, but the launcher will stay open and keep streaming logs.`, true);
+      appendLog('You can keep waiting, retry the readiness check, switch config, or quit from the launcher.');
+      sendServerSplashState();
+    }
+    setTimeout(() => checkServerReady(launchToken), 2000);
     return;
   }
 
   if (!dynamicServerUrl) {
+    launchReadinessState = {
+      phase: 'waiting-for-server',
+      timedOut: false,
+      timeoutMs: null,
+      message: 'Waiting for the local app URL...',
+    };
+    sendServerSplashState();
     setTimeout(() => checkServerReady(launchToken), 500);
     return;
   }
@@ -1357,6 +2219,13 @@ function checkServerReady(launchToken) {
       }
 
       if (statusCode === 200 && healthStatus === 'UP') {
+        launchReadinessState = {
+          phase: 'ready',
+          timedOut: false,
+          timeoutMs: null,
+          message: 'Actuator reports the server is ready. Opening the UI...',
+        };
+        sendServerSplashState();
         appendLog('Actuator reports server is UP. Launching UI...');
         setTimeout(() => {
           if (launchToken !== currentLaunchToken || restartToConfigAfterStop) return;
@@ -1366,6 +2235,13 @@ function checkServerReady(launchToken) {
         return;
       }
 
+      launchReadinessState = {
+        phase: 'waiting-for-health',
+        timedOut: false,
+        timeoutMs: null,
+        message: 'Server is running. Waiting for health checks to turn green...',
+      };
+      sendServerSplashState();
       appendLog(`Waiting for actuator health... status=${statusCode}, health=${healthStatus || 'unknown'}`);
       setTimeout(() => checkServerReady(launchToken), 1000);
     })
@@ -1380,6 +2256,13 @@ function checkServerReady(launchToken) {
           const hasUsefulBody = Boolean((body || '').trim());
           const canOpenUi = (statusCode >= 200 && statusCode < 400) && (isHtmlResponse || looksLikeApp || hasUsefulBody);
           if (canOpenUi) {
+            launchReadinessState = {
+              phase: 'ready',
+              timedOut: false,
+              timeoutMs: null,
+              message: 'App UI responded. Opening the window...',
+            };
+            sendServerSplashState();
             appendLog(`Server responded with status=${statusCode}. Launching UI...`);
             setTimeout(() => {
               if (launchToken !== currentLaunchToken || restartToConfigAfterStop) return;
@@ -1388,11 +2271,25 @@ function checkServerReady(launchToken) {
             }, 500);
             return;
           }
+          launchReadinessState = {
+            phase: 'waiting-for-ui',
+            timedOut: false,
+            timeoutMs: null,
+            message: 'Server is reachable. Waiting for the UI to finish rendering...',
+          };
+          sendServerSplashState();
           appendLog(`Waiting for app UI... status=${statusCode}, html=${isHtmlResponse}, app=${looksLikeApp}`);
           setTimeout(() => checkServerReady(launchToken), 1000);
         })
         .catch((rootError) => {
           if (launchToken !== currentLaunchToken || restartToConfigAfterStop) return;
+          launchReadinessState = {
+            phase: 'waiting-for-ui',
+            timedOut: false,
+            timeoutMs: null,
+            message: 'Server port is open. Waiting for the app UI...',
+          };
+          sendServerSplashState();
           appendLog(`Root URL not reachable yet: ${rootError.message || rootError}`);
           setTimeout(() => checkServerReady(launchToken), 1000);
         });
@@ -1405,12 +2302,13 @@ function launchApplicationWithConfig(configPath) {
   createServerSplashWindow();
   sendServerSplashState();
   if (configWindow && !configWindow.isDestroyed()) configWindow.close();
-  prepareOllamaForLaunch(configPath).then((shouldProceed) => {
+  prepareOllamaForLaunch(configPath).then(async (shouldProceed) => {
     if (shouldProceed === false) {
       if (serverSplashWindow && !serverSplashWindow.isDestroyed()) serverSplashWindow.close();
       createConfigWindow();
       return;
     }
+    activeConfigPath = await resolveLaunchConfigPath(configPath);
     startSpringServer();
   }).catch(error => {
     handleFatalError(error.message || String(error));
@@ -1487,10 +2385,7 @@ ipcMain.handle('config:reset', async () => {
   const configDir = getConfigDirectory();
 
   if (serverProcess) {
-    try {
-      treeKill(serverProcess.pid, 'SIGKILL');
-      serverProcess = null;
-    } catch (e) {}
+    await stopSpringServer();
   }
 
   try {
@@ -1525,17 +2420,6 @@ ipcMain.handle('config:delete', async () => {
   return buildConfigLoadPayload(index.activeConfigId);
 });
 
-ipcMain.handle('config:apply-template', async (event, templateId) => {
-  const template = getTemplateById(templateId);
-  if (!template) throw new Error('Unknown starter template.');
-  const index = readConfigIndex();
-  const selectedConfigId = currentConfigId || index.activeConfigId;
-  saveYamlToConfig(selectedConfigId, template.yaml);
-  const config = getConfigRecord(selectedConfigId, index);
-  if (config) { config.name = template.name; saveConfigIndex(index); }
-  return buildConfigLoadPayload(selectedConfigId);
-});
-
 ipcMain.handle('config:launch', async (event, payload) => {
   const index = readConfigIndex();
   const selectedConfigId = currentConfigId || index.activeConfigId;
@@ -1556,12 +2440,146 @@ ipcMain.handle('config:launch', async (event, payload) => {
 
 ipcMain.handle('config:environment-info', async (event, yamlText) => getOllamaEnvironmentInfo(yamlText));
 
+ipcMain.handle('ollama-manager:open', async (event, payload) => {
+  ollamaManagerContext = {
+    yamlText: payload?.yamlText ?? '',
+    configId: payload?.configId ?? null,
+    configName: payload?.configName ?? 'Current setting',
+    environmentInfo: payload?.environmentInfo ?? null,
+  };
+  createOllamaManagerWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('ollama-manager:get-context', async () => {
+  const liveEnvironment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+  const seeded = ollamaManagerContext.environmentInfo || {};
+  const useLiveInstalledState = Boolean(liveEnvironment.running);
+  const installedModels = useLiveInstalledState
+    ? (Array.isArray(liveEnvironment.installedModels) ? liveEnvironment.installedModels : [])
+    : (Array.isArray(seeded.installedModels) ? seeded.installedModels : []);
+  const installedChatModels = useLiveInstalledState
+    ? (Array.isArray(liveEnvironment.installedChatModels) ? liveEnvironment.installedChatModels : [])
+    : (Array.isArray(seeded.installedChatModels) ? seeded.installedChatModels : []);
+  const installedEmbeddingModels = useLiveInstalledState
+    ? (Array.isArray(liveEnvironment.installedEmbeddingModels) ? liveEnvironment.installedEmbeddingModels : [])
+    : (Array.isArray(seeded.installedEmbeddingModels) ? seeded.installedEmbeddingModels : []);
+  return {
+    ...ollamaManagerContext,
+    environment: {
+      ...seeded,
+      ...liveEnvironment,
+      installedModels: [...new Set(installedModels.filter(Boolean))],
+      installedChatModels: [...new Set(installedChatModels.filter(Boolean))],
+      installedEmbeddingModels: [...new Set(installedEmbeddingModels.filter(Boolean))],
+    },
+  };
+});
+
+ipcMain.handle('ollama-manager:get-download-queue', async () => ({
+  downloads: getSerializableDownloadQueue(),
+}));
+
+ipcMain.handle('config:fit-window', async () => {
+  await fitConfigWindowToContent();
+  return { ok: true };
+});
+
+ipcMain.handle('ollama-manager:fit-window', async () => {
+  await fitOllamaManagerWindowToContent();
+  return { ok: true };
+});
+
+ipcMain.handle('ollama-manager:request-close', async () => {
+  if (!ollamaManagerWindow || ollamaManagerWindow.isDestroyed()) return { closed: true };
+  if (!hasPendingOllamaDownloads()) {
+    allowOllamaManagerWindowClose = true;
+    ollamaManagerWindow.close();
+    return { closed: true };
+  }
+  const choice = dialog.showMessageBoxSync(ollamaManagerWindow, {
+    type: 'warning',
+    title: 'Leave model manager?',
+    buttons: ['Stay here', 'Leave and remove downloads'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    message: 'There are downloads in progress or queued.',
+    detail: 'If you leave now, the active download will stop, queued downloads will be removed, and partially downloaded files for the active model will be cleared.',
+  });
+  if (choice !== 1) return { closed: false, canceled: true };
+  if (ollamaManagerCloseInProgress) return { closed: false, busy: true };
+  ollamaManagerCloseInProgress = true;
+  try {
+    await cancelAllOllamaDownloads();
+    allowOllamaManagerWindowClose = true;
+    if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
+      ollamaManagerWindow.close();
+    }
+    return { closed: true };
+  } finally {
+    ollamaManagerCloseInProgress = false;
+  }
+});
+
+ipcMain.handle('ollama-manager:enqueue-pull', async (event, payload) => {
+  const model = String(payload?.model || '').trim();
+  if (!model) throw new Error('Model name is required.');
+  const existingTask = [activeOllamaDownload, ...ollamaDownloadQueue]
+    .filter(Boolean)
+    .find((task) => task.model === model && ['queued', 'starting', 'running'].includes(task.status));
+  if (existingTask) {
+    sendOllamaDownloadQueueUpdate(event.sender);
+    return { ok: true, taskId: existingTask.id };
+  }
+  const task = createOllamaDownloadTask(model);
+  ollamaDownloadQueue.push(task);
+  sendOllamaDownloadQueueUpdate(event.sender);
+  processNextOllamaDownload();
+  return { ok: true, taskId: task.id };
+});
+
+ipcMain.handle('ollama-manager:list-installed', async () => {
+  const environment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+  const seeded = ollamaManagerContext.environmentInfo || {};
+  const useLiveInstalledState = Boolean(environment.running);
+  const installedModels = useLiveInstalledState
+    ? (Array.isArray(environment.installedModels) ? environment.installedModels : [])
+    : (Array.isArray(seeded.installedModels) ? seeded.installedModels : []);
+  const installedChatModels = useLiveInstalledState
+    ? (Array.isArray(environment.installedChatModels) ? environment.installedChatModels : [])
+    : (Array.isArray(seeded.installedChatModels) ? seeded.installedChatModels : []);
+  const installedEmbeddingModels = useLiveInstalledState
+    ? (Array.isArray(environment.installedEmbeddingModels) ? environment.installedEmbeddingModels : [])
+    : (Array.isArray(seeded.installedEmbeddingModels) ? seeded.installedEmbeddingModels : []);
+  return {
+    installedModels: [...new Set(installedModels.filter(Boolean))],
+    installedChatModels: [...new Set(installedChatModels.filter(Boolean))],
+    installedEmbeddingModels: [...new Set(installedEmbeddingModels.filter(Boolean))],
+  };
+});
+
+ipcMain.handle('ollama-manager:delete', async (event, payload) => {
+  const environment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+  await ollamaManager.deleteModel(environment.baseUrl, payload?.model);
+  return { ok: true };
+});
+
+ipcMain.handle('ollama-manager:copy', async (event, payload) => {
+  const environment = await getOllamaEnvironmentInfo(ollamaManagerContext.yamlText);
+  await ollamaManager.copyModel(environment.baseUrl, payload?.source, payload?.destination);
+  return { ok: true };
+});
+
+ipcMain.handle('ollama-manager:open-external', async (event, url) => {
+  await shell.openExternal(String(url || 'https://ollama.com/search'));
+  return { ok: true };
+});
+
 ipcMain.handle('config:open-ollama-download', async () => {
   await shell.openExternal('https://ollama.com/download');
   return { ok: true };
 });
-
-ipcMain.handle('config:install-ollama', async () => installOllama());
 
 ipcMain.handle('app:launch-state', async () => {
   const index = readConfigIndex();
@@ -1573,6 +2591,7 @@ ipcMain.handle('app:launch-state', async () => {
     serverUrl: dynamicServerUrl,
     preferences: { autoCopyLogs: index.preferences?.autoCopyLogs ?? true, skipOllamaCheck: index.preferences?.skipOllamaCheck ?? false },
     launchCommand: lastLaunchCommand,
+    readiness: launchReadinessState,
   };
 });
 
@@ -1584,44 +2603,26 @@ ipcMain.handle('app:set-auto-copy-logs', async (event, enabled) => {
   return { autoCopyLogs: index.preferences.autoCopyLogs };
 });
 
-ipcMain.handle('app:mic-permission-status', async () => {
-  if (process.platform === 'darwin') {
-    return {
-      platform: process.platform,
-      status: systemPreferences.getMediaAccessStatus('microphone'),
-    };
+ipcMain.handle('app:retry-launch-readiness', async () => {
+  if (!serverProcess) {
+    throw new Error('There is no running launch to retry.');
   }
 
-  return {
-    platform: process.platform,
-    status: 'unknown',
+  serverReadyStartTime = Date.now();
+  launchReadinessState = {
+    phase: dynamicServerUrl ? 'waiting-for-ui' : 'waiting-for-server',
+    timedOut: false,
+    timeoutMs: null,
+    message: 'Retrying readiness checks while keeping the current launch running...',
   };
-});
-
-ipcMain.handle('app:request-mic-permission', async () => {
-  if (process.platform === 'darwin') {
-    return ensureMacMicrophoneAccess();
-  }
-
-  if (process.platform === 'win32') {
-    openMicrophonePrivacySettings();
-    return { status: 'open-settings', granted: false };
-  }
-
-  return { status: 'unsupported', granted: false };
-});
-
-ipcMain.handle('app:open-mic-settings', async () => {
-  openMicrophonePrivacySettings();
+  appendLog('Retrying readiness checks from the launcher.');
+  sendServerSplashState();
+  checkServerReady(currentLaunchToken);
   return { ok: true };
 });
 
 ipcMain.handle('app:quit-launcher', async () => {
-  isQuitting = true;
-  if (serverProcess) {
-    await stopSpringServer();
-  }
-  app.quit();
+  await shutdownApplication({ exitCode: 0 });
   return { ok: true };
 });
 
@@ -1630,7 +2631,12 @@ ipcMain.handle('app:restart-to-config', async () => {
   if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.close(); mainWindow = null; }
   if (serverProcess) {
     appendLog('Stopping current server to return to config selection...');
-    treeKill(serverProcess.pid, 'SIGTERM');
+    await stopSpringServer();
+    if (restartToConfigAfterStop) {
+      restartToConfigAfterStop = false;
+      if (serverSplashWindow && !serverSplashWindow.isDestroyed()) serverSplashWindow.close();
+      createConfigWindow();
+    }
   } else {
     restartToConfigAfterStop = false;
     if (serverSplashWindow && !serverSplashWindow.isDestroyed()) serverSplashWindow.close();
@@ -1655,7 +2661,7 @@ app.whenReady().then(async () => {
       contextIsolation: true,
     },
   });
-  splashWindow.loadFile(SPLASH_PATH);
+  splashWindow.loadFile(SPLASH_PATH, TELEMETRY_DISABLED ? { query: { telemetry: '0' } } : undefined);
   splashWindow.show();
 
   tempServer = await startTempServer();
@@ -1693,22 +2699,9 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', async (event) => {
-  if (tempServer) {
-    tempServer.stop();
-    tempServer = null;
-  }
-
-  if (isQuitting) return;
+  if (allowAppExit) return;
   event.preventDefault();
-  isQuitting = true;
-
-  if (serverProcess) {
-    appendLog('App is quitting. Waiting up to 90 seconds for Spring server to shut down...');
-    await stopSpringServer();
-  }
-
-  appendLog('All processes stopped. Exiting app now.');
-  app.exit(0);
+  await shutdownApplication();
 });
 
 app.on('window-all-closed', () => app.quit());

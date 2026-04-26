@@ -31,7 +31,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.McpToolUtils;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.SmartLifecycle;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -49,7 +50,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-public class ToolSpecService implements SmartLifecycle {
+public class ToolSpecService {
 
     public record ToolMcpServerSetting(boolean autoAdd, Set<String> exposedToolIds) {}
 
@@ -60,21 +61,44 @@ public class ToolSpecService implements SmartLifecycle {
     private final McpSyncServer mcpSyncServer;
     private final McpAsyncServer mcpAsyncServer;
     private final McpServerInfoService mcpServerInfoService;
+    private final ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider;
     private final Map<String, ToolSpec> toolIdSpecs;
     private final JsToolExecutor jsToolExecutor;
+    private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private ToolMcpServerSetting toolMcpServerSetting;
 
     public ToolSpecService(ObjectProvider<McpSyncServer> syncServerProvider,
             ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService,
+            ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider,
             SpringAiPlaygroundOptions playgroundOptions) throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
         this.mcpServerInfoService = mcpServerInfoService;
+        this.toolSpecPersistenceServiceProvider = toolSpecPersistenceServiceProvider;
         this.toolMcpServerSetting = new ToolMcpServerSetting(true, Set.of());
         this.toolIdSpecs = new ConcurrentHashMap<>();
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
                 playgroundOptions.toolStudio().jsSandbox());
+    }
+
+    public void loadAll(Runnable loadAction) {
+        this.skipPersist.set(Boolean.TRUE);
+        try {
+            loadAction.run();
+        } finally {
+            this.skipPersist.remove();
+        }
+    }
+
+    private void persistAsync() {
+        if (Boolean.TRUE.equals(this.skipPersist.get()))
+            return;
+        ToolSpecPersistenceService persistenceService =
+                this.toolSpecPersistenceServiceProvider.getIfAvailable();
+        if (persistenceService != null) {
+            persistenceService.saveAsync();
+        }
     }
 
     public ToolSpec update(ToolSpec toolSpec) {
@@ -121,6 +145,7 @@ public class ToolSpecService implements SmartLifecycle {
             exposedToolIds.add(newToolSpec.toolId());
             this.toolMcpServerSetting = new ToolMcpServerSetting(true, exposedToolIds);
         }
+        persistAsync();
         return newToolSpec;
     }
 
@@ -191,6 +216,7 @@ public class ToolSpecService implements SmartLifecycle {
     public void deleteToolSpec(String toolId) {
         logger.info("Deleting tool spec: toolId={}", toolId);
         Optional.ofNullable(toolIdSpecs.remove(toolId)).map(ToolSpec::name).ifPresent(this::removeMcpTool);
+        persistAsync();
     }
 
     public ToolMcpServerSetting getToolMcpServerSetting() {
@@ -215,15 +241,11 @@ public class ToolSpecService implements SmartLifecycle {
                 .map(name -> toolIdSpecs.values().stream().filter(spec -> name.equals(spec.name())).findFirst())
                 .flatMap(Optional::stream).forEach(this::addMcpTool);
         logger.info("Tool MCP server setting updated: exposedToolNames={}", toExposeToolNames);
+        persistAsync();
     }
 
-    @Override
-    public void start() {
-
-    }
-
-    @Override
-    public void stop() {
+    @EventListener(ContextClosedEvent.class)
+    public void shutdownMcpServers() {
         logger.info("Shutting down MCP servers...");
         if (Objects.nonNull(this.mcpSyncServer)) {
             logger.info("Closing McpSyncServer");
@@ -233,21 +255,6 @@ public class ToolSpecService implements SmartLifecycle {
             logger.info("Closing McpAsyncServer");
             this.mcpAsyncServer.close();
         }
-    }
-
-    @Override
-    public boolean isRunning() {
-        return true;
-    }
-
-    @Override
-    public int getPhase() {
-        return Integer.MIN_VALUE;
-    }
-
-    @Override
-    public boolean isAutoStartup() {
-        return true;
     }
 
 }

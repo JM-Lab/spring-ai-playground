@@ -15,103 +15,99 @@
  */
 package org.springaicommunity.playground.webui.home;
 
-import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.html.Header;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.listbox.ListBox;
-import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.data.renderer.ComponentRenderer;
-import com.vaadin.flow.theme.lumo.LumoUtility;
+import org.springaicommunity.playground.webui.common.WorkspaceSidebar;
 
-import java.util.List;
-import java.util.function.Consumer;
+public class HomeItemView extends WorkspaceSidebar {
 
-import static org.springaicommunity.playground.webui.home.HomeItemView.ActionType.EXTERNAL_URL;
-import static org.springaicommunity.playground.webui.home.HomeItemView.ActionType.MARKDOWN;
-import static org.springaicommunity.playground.webui.home.HomeItemView.ActionType.UI_COMPONENT;
+    public HomeItemView() {
+        super("Links");
 
-public class HomeItemView extends VerticalLayout {
+        VerticalLayout container = new VerticalLayout();
+        container.setSpacing(false);
+        container.setPadding(false);
+        container.getStyle().set("padding", "0.5rem 0");
 
-    public record HomeItem(String displayName, Icon icon, ActionType actionType, Object actionData) {
-        public Component createComponent() {
-            icon.getStyle().set("width", "var(--lumo-icon-size-s)").set("height", "var(--lumo-icon-size-s)")
-                    .set("padding", "0").set("margin", "0").set("box-sizing", "content-box").set("flex-shrink", "0");
-            Span text = new Span(displayName);
-            text.getStyle().set("line-height", "1.4").set("margin", "0").set("white-space", "normal")
-                    .set("word-break", "break-word");
-            Span container = new Span(icon, text);
-            container.getStyle().set("display", "flex").set("align-items", "center").set("gap", "0.5rem");
-            return container;
-        }
-    }
-
-    public enum ActionType {
-        UI_COMPONENT, MARKDOWN, EXTERNAL_URL, EXTERNAL_PAGE
-    }
-
-    public HomeItemView(Consumer<HomeItem> selectedHomeItemConsumer) {
-        setSpacing(false);
-        setMargin(false);
-        getStyle().set("overflow", "hidden");
-
-        List<HomeItem> homeItems = List.of(buildDefaultHomeItem(),
-                new HomeItem("Spring AI Playground Document", VaadinIcon.FILE_TEXT_O.create(),
-                        MARKDOWN,
-                        "https://raw.githubusercontent.com/spring-ai-community/spring-ai-playground/HEAD/README.md"),
-                new HomeItem("Spring AI Community Incubating Project: Spring AI Playground", VaadinIcon.LINK.create(),
-                        EXTERNAL_URL,
-                        "https://springaicommunity.mintlify.app/projects/incubating/spring-ai-playground"),
-                new HomeItem("Spring AI Playground Repository", VaadinIcon.LINK.create(), EXTERNAL_URL,
+        container.add(sectionHeader("Project"));
+        container.add(
+                link(VaadinIcon.FILE_TEXT_O, "Documentation",
+                        "https://spring-ai-community.github.io/spring-ai-playground/"),
+                link(VaadinIcon.CODE, "Repository",
                         "https://github.com/spring-ai-community/spring-ai-playground"),
-                new HomeItem("Spring AI Document", VaadinIcon.LINK.create(), EXTERNAL_URL,
-                        "https://docs.spring.io/spring-ai/reference/index.html"),
-                new HomeItem("Spring AI Project Repository", VaadinIcon.LINK.create(), EXTERNAL_URL,
-                        "https://github.com/spring-projects/spring-ai"),
-                new HomeItem("Awesome Spring AI", VaadinIcon.FILE_TEXT_O.create(), MARKDOWN,
-                        "https://github.com/spring-ai-community/awesome-spring-ai/raw/refs/heads/main/README.md"),
-                new HomeItem("Awesome MCP Servers", VaadinIcon.FILE_TEXT_O.create(), MARKDOWN,
-                        "https://github.com/punkpeye/awesome-mcp-servers/raw/refs/heads/main/README.md")
+                link(VaadinIcon.USERS, "Community",
+                        "https://springaicommunity.mintlify.app/projects/incubating/spring-ai-playground")
         );
 
-        ListBox<HomeItem> homeItemListBox = new ListBox<>();
-        homeItemListBox.setItems(homeItems);
+        container.add(sectionHeader("Related"));
+        container.add(
+                link(VaadinIcon.BOOK, "Spring AI Docs",
+                        "https://docs.spring.io/spring-ai/reference/index.html"),
+                link(VaadinIcon.CODE, "Spring AI Repository",
+                        "https://github.com/spring-projects/spring-ai"),
+                link(VaadinIcon.STAR_O, "Awesome Spring AI",
+                        "https://github.com/spring-ai-community/awesome-spring-ai"),
+                link(VaadinIcon.STAR_O, "Awesome MCP Servers",
+                        "https://github.com/punkpeye/awesome-mcp-servers")
+        );
 
-
-        homeItemListBox.setRenderer(new ComponentRenderer<>(HomeItem::createComponent));
-
-        homeItemListBox.addValueChangeListener(event -> {
-            selectedHomeItemConsumer.accept(event.getValue());
-            homeItemListBox.clear();
-        });
-
-        VerticalLayout contentLayout = new VerticalLayout();
-        contentLayout.setPadding(false);
-        contentLayout.setSpacing(false);
-        contentLayout.setWidthFull();
-        contentLayout.add(homeItemListBox);
-
-        Scroller scroller = new Scroller(contentLayout);
-        scroller.setSizeFull();
-        scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-
-        removeAll();
-        add(initHomeItemHeader(), scroller);
+        setSidebarContent(verticalScroller(container));
     }
 
-    public HomeItem buildDefaultHomeItem() {
-        return new HomeItem("Welcome", VaadinIcon.HOME.create(), UI_COMPONENT, new HomeInfoView());
+    private static Span sectionHeader(String text) {
+        Span span = new Span(text);
+        span.getStyle()
+                .set("display", "block")
+                .set("padding", "0.75rem 1rem 0.25rem")
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-weight", "600")
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.05em")
+                .set("color", "var(--lumo-secondary-text-color)");
+        return span;
     }
 
-    private Header initHomeItemHeader() {
-        Span appName = new Span("Home Contents");
-        appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
+    private static Anchor link(VaadinIcon icon, String label, String url) {
+        Icon iconInstance = icon.create();
+        iconInstance.getStyle()
+                .set("width", "var(--lumo-icon-size-s)")
+                .set("height", "var(--lumo-icon-size-s)")
+                .set("flex-shrink", "0")
+                .set("color", "var(--lumo-secondary-text-color)");
 
-        Header header = new Header(appName);
-        header.getStyle().set("white-space", "nowrap").set("height", "auto").set("width", "100%").set("display", "flex")
-                .set("box-sizing", "border-box").set("align-items", "center");
-        return header;
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle()
+                .set("line-height", "1.4")
+                .set("white-space", "normal")
+                .set("word-break", "break-word");
+
+        Div content = new Div(iconInstance, labelSpan);
+        content.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "0.6rem");
+
+        Anchor anchor = new Anchor(url, "");
+        anchor.removeAll();
+        anchor.add(content);
+        anchor.setTarget("_blank");
+        anchor.getElement().setAttribute("rel", "noopener noreferrer");
+        anchor.getStyle()
+                .set("display", "block")
+                .set("padding", "0.4rem 1rem")
+                .set("color", "var(--lumo-body-text-color)")
+                .set("text-decoration", "none")
+                .set("transition", "background-color 0.1s");
+
+        anchor.getElement().addEventListener("mouseenter",
+                e -> anchor.getStyle().set("background-color", "var(--lumo-contrast-5pct)"));
+        anchor.getElement().addEventListener("mouseleave",
+                e -> anchor.getStyle().set("background-color", "transparent"));
+
+        return anchor;
     }
 }

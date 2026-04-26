@@ -15,6 +15,8 @@
  */
 package org.springaicommunity.playground.service.chat;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ChatHistoryPersistenceService implements PersistenceServiceInterface<ChatHistory> {
@@ -40,16 +43,35 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
     private static final Logger logger = LoggerFactory.getLogger(ChatHistoryPersistenceService.class);
     public static final String CONVERSATION_ID = "conversationId";
     private static final String MESSAGE_LIST = "messageList";
+    private static final TypeReference<List<AssistantMessage.ToolCall>> TOOL_CALL_LIST_TYPE = new TypeReference<>() {};
+    private static final TypeReference<List<ToolResponseMessage.ToolResponse>> TOOL_RESPONSE_LIST_TYPE =
+            new TypeReference<>() {};
 
     private final Path saveDir;
     private final ObjectProvider<ChatHistoryService> chatHistoryServiceProvider;
+    private final PersistenceExecutor persistenceExecutor;
 
     public ChatHistoryPersistenceService(Path springAiPlaygroundHomeDir,
-            ObjectProvider<ChatHistoryService> chatHistoryServiceProvider) throws
-            IOException {
+            ObjectProvider<ChatHistoryService> chatHistoryServiceProvider,
+            PersistenceExecutor persistenceExecutor) throws IOException {
         this.chatHistoryServiceProvider = chatHistoryServiceProvider;
+        this.persistenceExecutor = persistenceExecutor;
         this.saveDir = springAiPlaygroundHomeDir.resolve("chat").resolve("save");
         Files.createDirectories(this.saveDir);
+    }
+
+    public void saveAsync(ChatHistory chatHistory) {
+        this.persistenceExecutor.submit(() -> {
+            try {
+                save(chatHistory);
+            } catch (IOException e) {
+                logger.error("Async save failed for chat history {}", chatHistory.conversationId(), e);
+            }
+        });
+    }
+
+    public void deleteAsync(ChatHistory chatHistory) {
+        this.persistenceExecutor.submit(() -> delete(chatHistory));
     }
 
     @Override
@@ -88,27 +110,30 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
 
     private Message convertToMessage(Map<String, Object> saveObjectMap) {
         MessageType messageType = MessageType.valueOf(saveObjectMap.get("messageType").toString().toUpperCase());
-        String content = saveObjectMap.get("text").toString();
+        String content = Objects.toString(saveObjectMap.get("text"), "");
         Map<String, Object> metadata =
                 (Map<String, Object>) saveObjectMap.computeIfAbsent("metadata", key -> Map.of());
         return switch (messageType) {
             case USER -> UserMessage.builder().text(content).metadata(metadata).build();
-            case ASSISTANT -> AssistantMessage.builder().content(content).properties(metadata).build();
+            case ASSISTANT -> AssistantMessage.builder().content(content).properties(metadata)
+                    .toolCalls(restoreToolCalls(saveObjectMap)).build();
             case SYSTEM -> SystemMessage.builder().text(content).metadata(metadata).build();
-            case TOOL -> ToolResponseMessage.builder().build(); // todo check TOOL response
+            case TOOL -> ToolResponseMessage.builder().responses(restoreToolResponses(saveObjectMap))
+                    .metadata(metadata).build();
         };
+    }
+
+    private List<AssistantMessage.ToolCall> restoreToolCalls(Map<String, Object> saveObjectMap) {
+        return OBJECT_MAPPER.convertValue(saveObjectMap.getOrDefault("toolCalls", List.of()), TOOL_CALL_LIST_TYPE);
+    }
+
+    private List<ToolResponseMessage.ToolResponse> restoreToolResponses(Map<String, Object> saveObjectMap) {
+        return OBJECT_MAPPER.convertValue(saveObjectMap.getOrDefault("responses", List.of()), TOOL_RESPONSE_LIST_TYPE);
     }
 
     @Override
     public void onStart() throws IOException {
         ChatHistoryService chatHistoryService = this.chatHistoryServiceProvider.getObject();
         this.loads().forEach(chatHistoryService::putIfAbsentChatHistory);
-    }
-
-    @Override
-    public void onShutdown() throws IOException {
-        ChatHistoryService chatHistoryService = this.chatHistoryServiceProvider.getObject();
-        for (ChatHistory chatHistory : chatHistoryService.getChatHistoryList())
-            save(chatHistory);
     }
 }

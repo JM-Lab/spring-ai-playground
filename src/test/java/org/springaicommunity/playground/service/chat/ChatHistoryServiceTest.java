@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.service.chat;
 
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.webui.chat.ChatView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,13 +27,18 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptionsBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static java.lang.Thread.sleep;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -43,10 +49,17 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
+@TestPropertySource(properties = {"spring.ai.playground.user-home=${java.io.tmpdir}"})
 public class ChatHistoryServiceTest {
 
     @Autowired
     private ChatHistoryService chatHistoryService;
+
+    @Autowired
+    private ChatHistoryPersistenceService chatHistoryPersistenceService;
+
+    @Autowired
+    private PersistenceExecutor persistenceExecutor;
 
     @Autowired
     private SpringAiPlaygroundOptions playgroundOptions;
@@ -59,6 +72,7 @@ public class ChatHistoryServiceTest {
     @BeforeEach
     public void setUp() {
         this.chatOptions = new DefaultChatOptionsBuilder().build();
+        this.chatHistoryPersistenceService.clear();
     }
 
     @Test
@@ -163,5 +177,22 @@ public class ChatHistoryServiceTest {
                 e -> e.getPropertyName().equals(ChatView.CHAT_HISTORY_EMPTY_EVENT) && e.getOldValue() == null &&
                         e.getNewValue().equals(conversationId)));
 
+    }
+
+    @Test
+    void testUpdateChatHistory_persistsAsync() throws InterruptedException, TimeoutException {
+        ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
+        chatMemory.add(chatHistory.conversationId(), new UserMessage("hi"));
+
+        chatHistoryService.updateChatHistory(chatHistory);
+        persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
+
+        Path expected = chatHistoryPersistenceService.getSaveDir().resolve(chatHistory.conversationId() + ".json");
+        assertThat(expected).exists();
+
+        chatHistoryService.deleteChatHistory(chatHistory);
+        persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
+
+        assertThat(expected).doesNotExist();
     }
 }

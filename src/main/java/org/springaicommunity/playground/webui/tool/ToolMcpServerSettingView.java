@@ -30,7 +30,7 @@ public class ToolMcpServerSettingView extends VerticalLayout {
     private final MultiSelectComboBox<ToolSpec> toolSelector;
 
     public ToolMcpServerSettingView(List<ToolSpec> toolSpecs, ToolMcpServerSetting toolMcpServerSetting) {
-        setSizeFull();
+        setWidthFull();
         setPadding(false);
         setSpacing(true);
 

@@ -17,6 +17,7 @@ package org.springaicommunity.playground;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,12 @@ public class SpringAiPlaygroundPersistenceManager {
     private static final Logger logger = LoggerFactory.getLogger(SpringAiPlaygroundPersistenceManager.class);
 
     private final PersistenceServiceInterface[] persistenceServices;
+    private final PersistenceExecutor persistenceExecutor;
 
-    public SpringAiPlaygroundPersistenceManager(PersistenceServiceInterface[] persistenceServices) {
+    public SpringAiPlaygroundPersistenceManager(PersistenceServiceInterface[] persistenceServices,
+            PersistenceExecutor persistenceExecutor) {
         this.persistenceServices = persistenceServices;
+        this.persistenceExecutor = persistenceExecutor;
     }
 
     @PostConstruct
@@ -52,6 +56,7 @@ public class SpringAiPlaygroundPersistenceManager {
     @PreDestroy
     public void onShutdown() {
         logger.info("SpringAiPlaygroundPersistenceManager shutting down");
+        this.persistenceExecutor.flushAndShutdown();
         for (PersistenceServiceInterface persistenceService : persistenceServices) {
             try {
                 persistenceService.onShutdown();

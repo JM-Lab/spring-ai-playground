@@ -15,15 +15,19 @@
  */
 package org.springaicommunity.playground.service.mcp;
 
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,6 +36,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class McpServerInfoPersistenceServiceTest {
     @Autowired
     private McpServerInfoPersistenceService persistenceService;
+
+    @Autowired
+    private McpServerInfoService mcpServerInfoService;
+
+    @Autowired
+    private PersistenceExecutor persistenceExecutor;
+
+    @BeforeEach
+    void setUp() {
+        this.persistenceService.clear();
+    }
 
     @AfterEach
     void cleanUp() {
@@ -57,5 +72,36 @@ class McpServerInfoPersistenceServiceTest {
         assertThat(loadedInfo.createTimestamp()).isEqualTo(currentTimeMillis);
         assertThat(loadedInfo.updateTimestamp()).isEqualTo(currentTimeMillis);
         assertThat(loadedInfo.connectionAsJson()).isEqualTo("{\"url\":\"http://localhost:8080\"}");
+    }
+
+    @Test
+    void testLoadAll_doesNotPersistMutations() throws InterruptedException, TimeoutException {
+        long now = System.currentTimeMillis();
+        McpServerInfo skipInfo = new McpServerInfo(McpTransportType.SSE, "loadAll-skip", "desc", now, now, "{}");
+        McpServerInfo persistInfo =
+                new McpServerInfo(McpTransportType.SSE, "regular-persist", "desc", now, now, "{}");
+
+        try {
+            mcpServerInfoService.loadAll(() ->
+                    mcpServerInfoService.updateMcpServerInfo(skipInfo.mcpTransportType(), skipInfo.serverName(),
+                            skipInfo));
+            persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
+            assertThat(persistenceService.getSaveDir().toFile().listFiles()).isEmpty();
+
+            mcpServerInfoService.updateMcpServerInfo(persistInfo.mcpTransportType(), persistInfo.serverName(),
+                    persistInfo);
+            persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
+            assertThat(persistenceService.getSaveDir().toFile().listFiles()).hasSize(1);
+        } finally {
+            try {
+                mcpServerInfoService.deleteMcpServerInfo(skipInfo.mcpTransportType(), skipInfo.serverName());
+            } catch (Exception ignored) {
+            }
+            try {
+                mcpServerInfoService.deleteMcpServerInfo(persistInfo.mcpTransportType(), persistInfo.serverName());
+            } catch (Exception ignored) {
+            }
+            persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
+        }
     }
 }

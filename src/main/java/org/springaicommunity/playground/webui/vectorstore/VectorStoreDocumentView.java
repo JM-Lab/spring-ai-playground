@@ -19,13 +19,9 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.dialog.DialogVariant;
-import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.MultiSelectListBox;
-import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -33,10 +29,10 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.WorkspaceSidebar;
 import org.springframework.ai.document.Document;
 
 import java.beans.PropertyChangeSupport;
@@ -56,7 +52,7 @@ import static org.springaicommunity.playground.webui.vectorstore.VectorStoreView
 import static org.springaicommunity.playground.webui.vectorstore.VectorStoreView.DOCUMENT_ADDING_EVENT;
 import static org.springaicommunity.playground.webui.vectorstore.VectorStoreView.DOCUMENT_SELECTING_EVENT;
 
-public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnterObserver {
+public class VectorStoreDocumentView extends WorkspaceSidebar implements BeforeEnterObserver {
 
     private final VectorStoreDocumentService vectorStoreDocumentService;
     private final MultiSelectListBox<VectorStoreDocumentInfo> documentListBox;
@@ -64,55 +60,32 @@ public class VectorStoreDocumentView extends VerticalLayout implements BeforeEnt
 
     public VectorStoreDocumentView(VectorStoreDocumentService vectorStoreDocumentService,
             PropertyChangeSupport documentInfoChangeSupport) {
+        super("Document");
         this.documentInfoChangeSupport = documentInfoChangeSupport;
-
-        setHeightFull();
-        setSpacing(false);
-        setMargin(false);
-
         this.vectorStoreDocumentService = vectorStoreDocumentService;
+
+        addHeaderIcon(VaadinIcon.CLOSE, "Delete", e -> deleteDocument());
+        addHeaderIcon(VaadinIcon.PENCIL, "Rename", e -> renameDocument());
+
         this.documentListBox = new MultiSelectListBox<>();
         this.documentListBox.setSizeFull();
         this.documentListBox.getStyle().set("overflow-x", "hidden").set("white-space", "nowrap");
-        this.documentListBox.setRenderer(new ComponentRenderer<>(chatHistory -> {
+        this.documentListBox.setRenderer(new ComponentRenderer<>(documentInfo -> {
             HorizontalLayout row = new HorizontalLayout();
             row.setAlignItems(Alignment.CENTER);
 
-            Span title = new Span(chatHistory.title());
-            title.getElement()
-                    .setAttribute("title", LocalDateTime.ofInstant(Instant.ofEpochMilli(chatHistory.createTimestamp()),
+            Span title = listItemText(documentInfo.title());
+            title.getElement().setAttribute("title",
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(documentInfo.createTimestamp()),
                             ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             row.add(title);
-            title.getStyle().set("white-space", "nowrap");
             return title;
         }));
         this.documentListBox.addValueChangeListener(event -> Optional.ofNullable(event.getValue())
                 .ifPresent(documentInfos -> this.documentInfoChangeSupport.firePropertyChange(DOCUMENT_SELECTING_EVENT,
                         event.getOldValue(), documentInfos)));
-        add(initDocumentViewHeader(), this.documentListBox);
-    }
 
-    private Header initDocumentViewHeader() {
-        Span appName = new Span("Document");
-        appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
-
-        MenuBar menuBar = new MenuBar();
-        menuBar.setWidthFull();
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-
-        Icon closeIcon = VaadinUtils.styledIcon(VaadinIcon.CLOSE.create());
-        closeIcon.setTooltipText("Delete");
-        menuBar.addItem(closeIcon, menuItemClickEvent -> deleteDocument());
-
-        Icon editIcon = VaadinUtils.styledIcon(VaadinIcon.PENCIL.create());
-        editIcon.setTooltipText("Rename");
-        menuBar.addItem(editIcon, menuItemClickEvent -> renameDocument());
-
-        Header header = new Header(appName, menuBar);
-        header.getStyle().set("white-space", "nowrap").set("height", "auto").set("width", "100%").set("display", "flex")
-                .set("box-sizing", "border-box").set("align-items", "center");
-        return header;
+        setSidebarContent(this.documentListBox);
     }
 
     private void renameDocument() {

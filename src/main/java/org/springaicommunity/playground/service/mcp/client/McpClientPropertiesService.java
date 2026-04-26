@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
@@ -59,8 +60,9 @@ public interface McpClientPropertiesService<P> {
                     yield new StdioClientTransport(parameters.toServerParameters(), new JacksonMcpJsonMapper(objectMapper));
                 }
             };
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(
+                    "Failed to parse MCP client connection parameters for transport " + getTransportType(), e);
         }
     }
 }

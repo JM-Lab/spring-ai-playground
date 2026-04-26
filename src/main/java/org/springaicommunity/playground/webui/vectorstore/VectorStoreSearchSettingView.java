@@ -32,6 +32,8 @@ public class VectorStoreSearchSettingView extends VerticalLayout {
         SearchRequestOption vectorStoreOption = this.vectorStoreService.getSearchRequestOption();
 
         setSpacing(false);
+        setPadding(false);
+        setWidthFull();
         setAlignItems(Alignment.START);
 
         NumberField similarityThresholdInput = new NumberField("Similarity Threshold (0 = All)");

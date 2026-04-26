@@ -83,11 +83,16 @@ public class VectorStoreDocumentUpload extends VerticalLayout {
                 this.vectorStoreDocumentService.addUploadedDocumentFile(fileName, tempFile);
                 this.uploadedFileNames.add(fileName);
                 tempFile.delete();
+            } catch (IOException e) {
+                this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
+                clearFileList();
+                VaadinUtils.showErrorNotification("Upload failed: " + fileName + " - " + e.getMessage());
+                throw new java.io.UncheckedIOException("Upload failed for " + fileName, e);
             } catch (Exception e) {
                 this.vectorStoreDocumentService.removeUploadedDocumentFile(fileName);
                 clearFileList();
                 VaadinUtils.showErrorNotification("Upload failed: " + fileName + " - " + e.getMessage());
-                throw new RuntimeException(e);
+                throw new IllegalStateException("Upload failed for " + fileName, e);
             }
         }, progressListener);
 

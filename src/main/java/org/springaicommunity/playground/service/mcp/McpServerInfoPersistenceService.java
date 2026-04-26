@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp;
 
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
@@ -30,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 @Service
 public class McpServerInfoPersistenceService implements PersistenceServiceInterface<McpServerInfo>,
@@ -42,15 +42,31 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
     private final ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider;
     private final McpClientService mcpClientService;
     private final List<McpServerInfo> mcpServerInfos;
+    private final PersistenceExecutor persistenceExecutor;
 
     public McpServerInfoPersistenceService(Path springAiPlaygroundHomeDir,
             ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider,
-            McpClientService mcpClientService) throws IOException {
+            McpClientService mcpClientService, PersistenceExecutor persistenceExecutor) throws IOException {
         this.saveDir = springAiPlaygroundHomeDir.resolve("mcp").resolve("save");
         Files.createDirectories(this.saveDir);
         this.mcpServerInfoServiceProvider = mcpServerInfoServiceProvider;
         this.mcpClientService = mcpClientService;
         this.mcpServerInfos = this.loads();
+        this.persistenceExecutor = persistenceExecutor;
+    }
+
+    public void saveAsync(McpServerInfo mcpServerInfo) {
+        this.persistenceExecutor.submit(() -> {
+            try {
+                save(mcpServerInfo);
+            } catch (IOException e) {
+                logger.error("Async save failed for MCP server info {}", mcpServerInfo.serverName(), e);
+            }
+        });
+    }
+
+    public void deleteAsync(McpServerInfo mcpServerInfo) {
+        this.persistenceExecutor.submit(() -> delete(mcpServerInfo));
     }
 
     @Override
@@ -61,11 +77,6 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
     @Override
     public Logger getLogger() {
         return logger;
-    }
-
-    @Override
-    public void buildSaveData(McpServerInfo mcpServerInfo, Map<String, Object> saveObjectMap) {
-
     }
 
     @Override
@@ -86,25 +97,23 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
     }
 
     @Override
-    public void onStart() throws IOException {
+    public void onStart() {
         McpServerInfoService mcpServerInfoService = this.mcpServerInfoServiceProvider.getObject();
-        this.mcpServerInfos.forEach(
+        mcpServerInfoService.loadAll(() -> this.mcpServerInfos.forEach(
                 mcpServerInfo -> mcpServerInfoService.updateMcpServerInfo(mcpServerInfo.mcpTransportType(),
-                        mcpServerInfo.serverName(), mcpServerInfo));
+                        mcpServerInfo.serverName(), mcpServerInfo)));
     }
 
     @Override
     public void onApplicationEvent(WebServerInitializedEvent event) {
-        this.mcpServerInfos.parallelStream().forEach(mcpClientService::startMcpClient);
-    }
-
-    @Override
-    public void onShutdown() throws IOException {
-        McpServerInfoService mcpServerInfoService = this.mcpServerInfoServiceProvider.getObject();
-        for (McpServerInfo mcpServerInfo : mcpServerInfoService.getMcpServerInfos().values().stream()
-                .flatMap(List::stream)
-                .filter(Predicate.not(mcpServerInfoService.getDefaultMcpServerInfo()::equals)).toList())
-            save(mcpServerInfo);
+        this.mcpServerInfos.forEach(mcpServerInfo -> {
+            try {
+                mcpClientService.startMcpClient(mcpServerInfo);
+            } catch (RuntimeException e) {
+                logger.error("Failed to start MCP client: serverName={}, transportType={}",
+                        mcpServerInfo.serverName(), mcpServerInfo.mcpTransportType(), e);
+            }
+        });
     }
 
 }

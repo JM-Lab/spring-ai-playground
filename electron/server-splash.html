@@ -1,19 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-52TGT1G9B3"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('set', 'user_properties', {
-            app_surface: 'desktop-launcher'
-        });
-        gtag('config', 'G-52TGT1G9B3', {
-            app_name: 'spring-ai-playground-desktop-launcher',
-            app_surface: 'desktop-launcher'
-        });
-    </script>
+    <script src="telemetry.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spring AI Playground Startup</title>
@@ -50,6 +38,7 @@
             flex-direction: column;
             gap: 12px;
             height: 100%;
+            min-height: 0;
         }
         .loader {
             display: inline-block;
@@ -69,12 +58,49 @@
             border-radius: 18px;
             box-shadow: 0 18px 48px rgba(93, 78, 51, 0.12);
         }
+        .window-chrome {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 10px 0;
+            -webkit-app-region: drag;
+            user-select: none;
+        }
+        .window-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            padding: 0 8px;
+        }
+        .window-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+        .window-control {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1;
+        }
         .log-card {
             display: flex;
             flex-direction: column;
-            flex: 1;
+            flex: 1.15;
             min-height: 0;
             overflow: hidden;
+        }
+        .content-card {
+            display: flex;
+            flex-direction: column;
         }
         .log-header {
             padding: 12px 18px;
@@ -83,6 +109,11 @@
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--muted);
+        }
+        .log-subtitle {
+            padding: 0 18px 10px;
+            color: var(--muted);
+            line-height: 1.5;
         }
         .hero {
             padding: 18px 22px 14px;
@@ -173,6 +204,12 @@
             gap: 14px;
             flex-wrap: wrap;
         }
+        .controls-primary {
+            justify-content: flex-start;
+        }
+        .controls-secondary {
+            justify-content: flex-end;
+        }
         .checkbox-row {
             display: inline-flex;
             align-items: center;
@@ -197,6 +234,13 @@
         button:hover {
             transform: translateY(-1px);
         }
+        button,
+        input,
+        label,
+        #log-container,
+        .meta-value.command {
+            -webkit-app-region: no-drag;
+        }
         .primary {
             background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
             color: #fff;
@@ -206,9 +250,10 @@
             line-height: 1.5;
         }
         #log-container {
+            display: flex;
+            flex-direction: column-reverse;
             flex: 1;
             min-height: 0;
-            height: 100%;
             padding: 18px 20px;
             overflow-y: auto;
             white-space: pre-wrap;
@@ -216,12 +261,41 @@
             font-family: 'SF Mono', 'Monaco', monospace;
             background: rgba(255, 253, 249, 0.86);
             border-radius: 0 0 18px 18px;
-            min-height: 460px;
+            min-height: 220px;
         }
         .log-line { margin: 2px 0; }
         .error { color: var(--danger); }
+        .warning {
+            color: #9b6b19;
+        }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-thumb { background: #cdbca4; border-radius: 4px; }
+        @media (max-height: 860px) {
+            body {
+                padding: 14px;
+            }
+            .hero {
+                padding: 16px 18px 12px;
+            }
+            .meta {
+                gap: 10px;
+                padding: 0 18px 12px;
+            }
+            .meta-item,
+            .command-panel {
+                padding: 12px 14px;
+            }
+            .command-panel {
+                margin: 0 18px 12px;
+            }
+            .actions {
+                padding: 0 18px 14px;
+            }
+            #log-container {
+                padding: 14px 16px;
+                min-height: 180px;
+            }
+        }
         @media (max-width: 720px) {
             .meta {
                 grid-template-columns: 1fr;
@@ -230,12 +304,21 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+            .controls-secondary {
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
 <body>
 <div class="shell">
-    <div class="card">
+    <div class="window-chrome">
+        <div class="window-title">Spring AI Playground Launcher</div>
+        <div class="window-controls">
+            <button id="close-window" class="window-control" type="button" aria-label="Close launcher">&times;</button>
+        </div>
+    </div>
+    <div class="card content-card">
         <div class="hero">
             <div class="brand-row">
                 <div class="brand-mark">
@@ -266,30 +349,37 @@
         </div>
         <div class="actions">
             <div class="hint" id="launch-hint">Spring Boot is starting with the selected YAML.</div>
-            <div class="controls">
+            <div class="controls controls-primary">
+                <button id="switch-config" type="button">Back to Settings</button>
+            </div>
+            <div class="controls controls-secondary">
                 <label class="checkbox-row" for="auto-copy-logs">
                     <input id="auto-copy-logs" type="checkbox" checked>
                     <span>Auto-copy launch logs to clipboard</span>
                 </label>
-                <button id="switch-config" type="button">Use Different Config</button>
+                <button id="retry-launch" type="button">Retry Check</button>
                 <button id="quit-launcher" type="button">Quit</button>
             </div>
         </div>
     </div>
     <div class="card log-card">
         <div class="log-header">Launch Log</div>
+        <div class="log-subtitle" id="log-subtitle">Newest entries stay near the bottom so you can follow long downloads more naturally.</div>
         <div id="log-container"></div>
     </div>
 </div>
 
 <script>
     const logContainer = document.getElementById('log-container');
+    const logSubtitle = document.getElementById('log-subtitle');
     const configName = document.getElementById('config-name');
     const configPath = document.getElementById('config-path');
     const launchCommand = document.getElementById('launch-command');
     const launchHint = document.getElementById('launch-hint');
+    const retryLaunchButton = document.getElementById('retry-launch');
     const switchConfigButton = document.getElementById('switch-config');
     const quitLauncherButton = document.getElementById('quit-launcher');
+    const closeWindowButton = document.getElementById('close-window');
     const statusText = document.getElementById('status-text');
     const autoCopyLogsCheckbox = document.getElementById('auto-copy-logs');
 
@@ -299,11 +389,11 @@
       const line = document.createElement('div');
       line.className = isError ? 'log-line error' : 'log-line';
       line.textContent = message;
-      logContainer.appendChild(line);
+      logContainer.prepend(line);
       while (logContainer.childElementCount > MAX_LOG_LINES) {
-        logContainer.removeChild(logContainer.firstChild);
+        logContainer.removeChild(logContainer.lastChild);
       }
-      logContainer.scrollTop = logContainer.scrollHeight;
+      logContainer.scrollTop = 0;
     }
 
     function renderLaunchState(payload) {
@@ -315,12 +405,30 @@
       if (payload?.preferences) {
         autoCopyLogsCheckbox.checked = Boolean(payload.preferences.autoCopyLogs);
       }
-      if (payload?.serverRunning && payload?.serverUrl) {
+      const readiness = payload?.readiness || {};
+      retryLaunchButton.disabled = !payload?.serverRunning;
+
+      if (readiness?.message) {
+        launchHint.textContent = readiness.message;
+      } else if (payload?.serverRunning && payload?.serverUrl) {
         launchHint.textContent = `Launching from ${payload.serverUrl} — the local app URL.`;
       } else if (payload?.serverRunning) {
         launchHint.textContent = 'Server process started. Waiting for the local app URL...';
       } else {
         launchHint.textContent = 'Preparing the launch environment.';
+      }
+
+      if (readiness?.timedOut) {
+        statusText.textContent = 'Startup delayed';
+        logSubtitle.textContent = `Startup passed the ${Math.round((readiness.timeoutMs || 0) / 1000)}s readiness timeout, but logs will keep streaming here.`;
+      } else if (readiness?.phase === 'ready') {
+        statusText.textContent = 'Opening Spring AI Playground';
+        logSubtitle.textContent = 'Server is ready. Final launch logs remain visible here until the main UI opens.';
+      } else if (payload?.serverRunning) {
+        statusText.textContent = 'Starting Spring AI Playground';
+        logSubtitle.textContent = 'Newest entries stay near the bottom so you can follow long downloads more naturally.';
+      } else {
+        logSubtitle.textContent = 'Newest entries stay near the bottom so you can follow long downloads more naturally.';
       }
     }
 
@@ -331,11 +439,25 @@
     switchConfigButton.addEventListener('click', async () => {
       statusText.textContent = 'Stopping current launch and returning to config setup';
       switchConfigButton.disabled = true;
+      retryLaunchButton.disabled = true;
       try {
         await window.electronAPI.invoke('app:restart-to-config');
       } catch (error) {
         appendLine(error.message || String(error), true);
         switchConfigButton.disabled = false;
+        retryLaunchButton.disabled = false;
+      }
+    });
+
+    retryLaunchButton.addEventListener('click', async () => {
+      statusText.textContent = 'Retrying readiness checks';
+      retryLaunchButton.disabled = true;
+      try {
+        await window.electronAPI.invoke('app:retry-launch-readiness');
+      } catch (error) {
+        appendLine(error.message || String(error), true);
+      } finally {
+        retryLaunchButton.disabled = false;
       }
     });
 
@@ -349,6 +471,21 @@
         appendLine(error.message || String(error), true);
         switchConfigButton.disabled = false;
         quitLauncherButton.disabled = false;
+      }
+    });
+
+    closeWindowButton.addEventListener('click', async () => {
+      statusText.textContent = 'Stopping launch and quitting Spring AI Playground';
+      switchConfigButton.disabled = true;
+      quitLauncherButton.disabled = true;
+      closeWindowButton.disabled = true;
+      try {
+        await window.electronAPI.invoke('app:quit-launcher');
+      } catch (error) {
+        appendLine(error.message || String(error), true);
+        switchConfigButton.disabled = false;
+        quitLauncherButton.disabled = false;
+        closeWindowButton.disabled = false;
       }
     });
 

@@ -1,19 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-52TGT1G9B3"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('set', 'user_properties', {
-            app_surface: 'desktop-launcher'
-        });
-        gtag('config', 'G-52TGT1G9B3', {
-            app_name: 'spring-ai-playground-desktop-launcher',
-            app_surface: 'desktop-launcher'
-        });
-    </script>
+    <script src="telemetry.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spring AI Playground Config</title>
@@ -181,6 +169,17 @@
             gap: 6px;
         }
 
+        .section-header.collapsible-header {
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 10px 14px;
+        }
+
+        .collapsible-copy {
+            display: grid;
+            gap: 6px;
+        }
+
         .section-header h2 {
             margin: 0;
             font-size: 20px;
@@ -191,6 +190,23 @@
             margin: 0;
             color: var(--muted);
             line-height: 1.55;
+        }
+
+        .section-toggle {
+            min-width: 110px;
+            justify-self: end;
+        }
+
+        .section-toggle .button-content svg {
+            transition: transform 150ms ease;
+        }
+
+        .wizard-section.collapsed .section-toggle .button-content svg {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content[hidden] {
+            display: none !important;
         }
 
         .notice {
@@ -252,8 +268,9 @@
 
         #yaml-editor {
             width: 100%;
-            min-height: 520px;
-            flex: 1;
+            min-height: calc(20 * 1.45em + 28px);
+            max-height: calc(25 * 1.45em + 28px);
+            flex: 0 0 auto;
             border: 1px solid var(--border);
             border-radius: var(--lumo-border-radius-m);
             overflow: hidden;
@@ -278,6 +295,9 @@
             border: 1px solid var(--border);
             border-radius: var(--lumo-border-radius-m);
             background: #fffdf8;
+            max-height: 30rem;
+            overflow-y: auto;
+            align-content: start;
         }
 
         .secret-section {
@@ -309,6 +329,10 @@
             border-radius: var(--lumo-border-radius-m);
             background: #fff;
             padding: 14px;
+        }
+
+        .ollama-card.wide {
+            grid-column: 1 / -1;
         }
 
         .ollama-title {
@@ -351,6 +375,40 @@
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
+        }
+        .ollama-actions-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .ollama-actions-row .download-manage-button {
+            margin-left: auto;
+        }
+
+        .ollama-callout {
+            display: block;
+        }
+
+        .ollama-callout-copy {
+            display: grid;
+            gap: 6px;
+        }
+
+        .ollama-callout-copy strong {
+            font-size: 18px;
+            letter-spacing: -0.01em;
+        }
+
+        .ollama-callout-copy span {
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .download-manage-button {
+            min-width: 280px;
+            min-height: 50px;
+            box-shadow: 0 10px 22px rgba(31, 122, 90, 0.18);
         }
 
         .section-copy {
@@ -485,10 +543,12 @@
         }
 
         .footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas:
+                "status actions";
+            gap: 14px 16px;
+            align-items: start;
             padding: 18px;
         }
 
@@ -506,9 +566,17 @@
         }
 
         .status {
+            grid-area: status;
             color: var(--muted);
             font-size: 13px;
+            line-height: 1.45;
             min-height: 20px;
+            max-height: calc(1.45em * 2);
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
         }
 
         .status.error {
@@ -516,9 +584,12 @@
         }
 
         .actions {
+            grid-area: actions;
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
         }
 
         .checkbox-row {
@@ -564,12 +635,35 @@
             color: #fff;
             font-weight: 700;
         }
+        .button-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .button-content svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
 
         @media (max-width: 860px) {
-            .hero,
-            .footer {
+            .hero {
                 flex-direction: column;
                 align-items: stretch;
+            }
+
+            .footer {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "actions"
+                    "status";
             }
 
             .meta {
@@ -597,8 +691,13 @@
                 grid-template-columns: 1fr;
             }
 
+            .ollama-callout {
+                grid-template-columns: 1fr;
+            }
+
             #yaml-editor {
-                min-height: 420px;
+                min-height: calc(20 * 1.45em + 28px);
+                max-height: calc(25 * 1.45em + 28px);
             }
 
             .editor-help {
@@ -647,10 +746,16 @@
     </div>
 
     <div class="card wizard-section" id="ollama-card">
-        <div class="section-header">
-            <h2>Ollama Startup</h2>
-            <p>Check whether this setting needs Ollama before launch. If Ollama is required, install it and make sure it is already running before you start Spring AI Playground.</p>
+        <div class="section-header collapsible-header">
+            <div class="collapsible-copy">
+                <h2>Ollama Startup</h2>
+                <p>Check whether this setting needs Ollama before launch. If Ollama is required, install it and make sure it is already running before you start Spring AI Playground.</p>
+            </div>
+            <button class="secondary section-toggle" id="ollama-toggle-button" type="button" aria-expanded="false" title="Show or hide the Ollama startup section">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span id="ollama-toggle-label">Show</span></span>
+            </button>
         </div>
+        <div class="collapsible-content" id="ollama-content" hidden>
         <div class="ollama-section" id="ollama-section">
             <div class="ollama-grid">
                 <div class="ollama-card">
@@ -658,20 +763,37 @@
                     <div class="ollama-status" id="ollama-status">Checking Ollama...</div>
                 </div>
                 <div class="ollama-card">
+                    <div class="ollama-title">Configured models</div>
+                    <div class="ollama-status" id="ollama-model-status">Checking configured models...</div>
+                </div>
+                <div class="ollama-card wide">
                     <div class="ollama-title">What you need to do</div>
-                    <div class="ollama-copy" id="ollama-copy">If this setting uses Ollama, install it first and start Ollama yourself before launching Spring AI Playground.</div>
-                    <div class="ollama-actions">
-                        <label class="checkbox-row" for="skip-ollama-check">
-                            <input id="skip-ollama-check" type="checkbox">
-                            <span>Do not check Ollama at startup</span>
-                        </label>
+                    <div class="ollama-callout">
+                        <div class="ollama-callout-copy">
+                            <strong>Download first, then manage what stays installed.</strong>
+                            <span class="ollama-copy" id="ollama-copy">If this setting uses Ollama, install it first and start Ollama yourself before launching Spring AI Playground.</span>
+                            <div class="ollama-actions">
+                                <label class="checkbox-row" for="skip-ollama-check">
+                                    <input id="skip-ollama-check" type="checkbox">
+                                    <span>Do not check Ollama at startup</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ollama-actions" id="ollama-actions-row">
-                        <button class="secondary" id="check-ollama-button" type="button">Check Connection</button>
-                        <button class="secondary" id="open-ollama-site-button" type="button">Open Install Page</button>
+                    <div class="ollama-actions-row" id="ollama-actions-row">
+                        <button class="secondary" id="check-ollama-button" type="button" title="Check Ollama connection">
+                            <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20 4v6h-6"></path></svg><span>Check Connection</span></span>
+                        </button>
+                        <button class="secondary" id="open-ollama-site-button" type="button" title="Open the Ollama download page in your browser">
+                            <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M10 14 20 4"></path><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"></path></svg><span>Open Ollama Download Page</span></span>
+                        </button>
+                        <button class="primary download-manage-button" id="open-ollama-manager-button" type="button" title="Open Ollama download and management window">
+                            <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span>Download and Manage Ollama Models</span></span>
+                        </button>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -697,8 +819,12 @@
                 <label for="save-as-name">Save As</label>
                 <input id="save-as-name" type="text" placeholder="Example: OpenAI Demo">
             </div>
-            <button class="secondary" id="save-as-button" type="button">Save As</button>
-            <button class="secondary" id="delete-button" type="button">Delete</button>
+            <button class="secondary" id="save-as-button" type="button" title="Save current YAML as a new setting">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg><span>Save As</span></span>
+            </button>
+            <button class="secondary" id="delete-button" type="button" title="Delete this saved setting">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg><span>Delete</span></span>
+            </button>
         </div>
         <div id="yaml-editor" aria-label="application yaml editor"></div>
         <div class="editor-help">
@@ -729,16 +855,24 @@
                     <strong>Add Environment Variable</strong>
                     <div>Add your own key/value entry when a backend or tool needs a variable that is not listed above.</div>
                 </div>
-                <button class="secondary" id="add-custom-secret-button" type="button">Add Environment Variable</button>
+                <button class="secondary" id="add-custom-secret-button" type="button" title="Add a custom environment variable">
+                    <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg><span>Add Environment Variable</span></span>
+                </button>
             </div>
         </div>
     </div>
 
     <div class="card wizard-section" id="jvm-card">
-        <div class="section-header">
-            <h2>JVM Settings</h2>
-            <p>Only JVM options and application arguments belong here. They are passed when Spring AI Playground starts.</p>
+        <div class="section-header collapsible-header">
+            <div class="collapsible-copy">
+                <h2>JVM Settings</h2>
+                <p>Only JVM options and application arguments belong here. They are passed when Spring AI Playground starts.</p>
+            </div>
+            <button class="secondary section-toggle" id="jvm-toggle-button" type="button" aria-expanded="false" title="Show or hide JVM settings">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span id="jvm-toggle-label">Show</span></span>
+            </button>
         </div>
+        <div class="collapsible-content" id="jvm-content" hidden>
         <div class="launcher-panel" id="launcher-panel">
             <div class="field">
                 <label for="jvm-options">JVM Options</label>
@@ -749,16 +883,27 @@
                 <textarea id="app-args" placeholder="--logging.level.root=INFO"></textarea>
             </div>
         </div>
+        </div>
     </div>
 
         <div class="card footer">
         <div class="status" id="status">Loading configuration...</div>
         <div class="actions">
-            <button class="secondary" id="export-button" type="button">Export</button>
-            <button class="secondary" id="import-button" type="button">Import</button>
-            <button class="secondary" id="reset-button" type="button">Factory Reset</button>
-            <button class="secondary" id="save-button" type="button">Save</button>
-            <button class="primary" id="launch-button" type="button">Save and Launch</button>
+            <button class="secondary" id="export-button" type="button" title="Export this setting to a file">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9"></path><path d="m17 14-5-5-5 5"></path><path d="M5 3h14"></path></svg><span>Export</span></span>
+            </button>
+            <button class="secondary" id="import-button" type="button" title="Import a saved setting file">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m17 10-5 5-5-5"></path><path d="M5 21h14"></path></svg><span>Import</span></span>
+            </button>
+            <button class="secondary" id="reset-button" type="button" title="Reset launcher settings to factory defaults">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.71"></path><path d="M3 3v6h6"></path></svg><span>Factory Reset</span></span>
+            </button>
+            <button class="secondary" id="save-button" type="button" title="Save this setting">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg><span>Save</span></span>
+            </button>
+            <button class="primary" id="launch-button" type="button" title="Save and launch Spring AI Playground">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 9-14 9V3Z"></path></svg><span>Save and Launch</span></span>
+            </button>
         </div>
     </div>
 </div>
@@ -778,7 +923,14 @@
     const importButton = document.getElementById('import-button');
     const deleteButton = document.getElementById('delete-button');
     const ollamaCard = document.getElementById('ollama-card');
+    const ollamaContent = document.getElementById('ollama-content');
+    const ollamaToggleButton = document.getElementById('ollama-toggle-button');
+    const ollamaToggleLabel = document.getElementById('ollama-toggle-label');
     const launcherPanel = document.getElementById('launcher-panel');
+    const jvmCard = document.getElementById('jvm-card');
+    const jvmContent = document.getElementById('jvm-content');
+    const jvmToggleButton = document.getElementById('jvm-toggle-button');
+    const jvmToggleLabel = document.getElementById('jvm-toggle-label');
     const ollamaSection = document.getElementById('ollama-section');
     const jvmOptions = document.getElementById('jvm-options');
     const appArgs = document.getElementById('app-args');
@@ -786,8 +938,10 @@
     const secretsStorageStatus = document.getElementById('secrets-storage-status');
     const skipOllamaCheckCheckbox = document.getElementById('skip-ollama-check');
     const ollamaStatus = document.getElementById('ollama-status');
+    const ollamaModelStatus = document.getElementById('ollama-model-status');
     const ollamaCopy = document.getElementById('ollama-copy');
     const ollamaActionsRow = document.getElementById('ollama-actions-row');
+    const openOllamaManagerButton = document.getElementById('open-ollama-manager-button');
     const checkOllamaButton = document.getElementById('check-ollama-button');
     const openOllamaSiteButton = document.getElementById('open-ollama-site-button');
     const secretSection = document.getElementById('secret-section');
@@ -801,6 +955,8 @@
     let customSecretKeys = [];
     let currentConfigs = [];
     let editor = null;
+    let latestOllamaInfo = null;
+    let fitWindowTimer = null;
 
     function getProviderLabel(providerType = 'ollama') {
       if (providerType === 'openai') return 'OpenAI';
@@ -859,6 +1015,8 @@
         tabSize: 2,
         useSoftTabs: true,
         wrap: true,
+        minLines: 20,
+        maxLines: 25,
       });
       editor.session.on('changeAnnotation', refreshValidation);
       editor.session.on('change', refreshValidation);
@@ -873,6 +1031,31 @@
       validationStatus.textContent = message;
       validationStatus.classList.remove('error', 'ok');
       if (tone === 'error' || tone === 'ok') validationStatus.classList.add(tone);
+    }
+
+    function scheduleWindowFit() {
+      clearTimeout(fitWindowTimer);
+      fitWindowTimer = setTimeout(() => {
+        window.electronAPI.invoke('config:fit-window').catch(() => {});
+      }, 40);
+    }
+
+    function initWindowFitObservers() {
+      window.addEventListener('load', () => scheduleWindowFit());
+    }
+
+    function setSectionExpanded(card, content, toggleButton, toggleLabel, isExpanded) {
+      card.classList.toggle('collapsed', !isExpanded);
+      content.hidden = !isExpanded;
+      toggleButton.setAttribute('aria-expanded', String(isExpanded));
+      toggleLabel.textContent = isExpanded ? 'Hide' : 'Show';
+      scheduleWindowFit();
+    }
+
+    function syncSectionDefaults(selectedProvider) {
+      const shouldOpenOllama = selectedProvider === 'ollama';
+      setSectionExpanded(ollamaCard, ollamaContent, ollamaToggleButton, ollamaToggleLabel, shouldOpenOllama);
+      setSectionExpanded(jvmCard, jvmContent, jvmToggleButton, jvmToggleLabel, false);
     }
 
     function setBusy(isBusy) {
@@ -934,8 +1117,10 @@
     async function refreshOllamaStatus() {
       if (ollamaCard.style.display === 'none') return;
       ollamaStatus.innerHTML = 'Checking Ollama...';
+      ollamaModelStatus.innerHTML = 'Checking configured models...';
       try {
         const info = await window.electronAPI.invoke('config:environment-info', getYamlValue());
+        latestOllamaInfo = info;
         const requiredText = info.ollamaRequired
           ? 'This setting uses Ollama directly or for embeddings.'
           : 'This setting does not require Ollama at startup.';
@@ -955,14 +1140,69 @@
           ${versionText}
           ${errorText}
         `;
+        ollamaModelStatus.innerHTML = `
+          ${formatDefaultModelStatus('Default chat model', info.chatModel)}
+          ${formatInstalledModelList('Installed chat models', info.installedChatModels, info.chatModel)}
+          ${formatDefaultModelStatus('Default embedding model', info.embeddingModel)}
+          ${formatInstalledModelList('Installed embedding models', info.installedEmbeddingModels, info.embeddingModel)}
+        `;
         const compact = info.running && !info.ollamaRequired;
         ollamaCopy.style.display = compact ? 'none' : 'block';
         ollamaActionsRow.style.display = compact ? 'none' : 'flex';
+        openOllamaManagerButton.disabled = false;
       } catch (error) {
+        latestOllamaInfo = null;
         ollamaStatus.innerHTML = `<span class="status-bad">${escapeHtml(error.message || String(error))}</span>`;
+        ollamaModelStatus.innerHTML = `<span class="status-bad">${escapeHtml(error.message || String(error))}</span>`;
         ollamaCopy.style.display = 'block';
         ollamaActionsRow.style.display = 'flex';
+        openOllamaManagerButton.disabled = false;
       }
+    }
+
+    function formatDefaultModelStatus(label, modelInfo) {
+      if (!modelInfo || (!modelInfo.provider && !modelInfo.model)) {
+        return `<div><strong>${escapeHtml(label)}</strong> -</div>`;
+      }
+      if (!modelInfo.model) {
+        return `<div><strong>${escapeHtml(label)}</strong> <span class="status-warn">not configured</span></div>`;
+      }
+      const model = escapeHtml(modelInfo.model);
+      if (modelInfo.provider === 'ollama') {
+        const badge = modelInfo.installationKnown
+          ? modelInfo.installed
+            ? '<span class="status-good">(installed)</span>'
+            : '<span class="status-bad">(not installed)</span>'
+          : '<span class="status-warn">(unknown: Ollama not reachable)</span>';
+        return `<div><strong>${escapeHtml(label)}</strong> ${model} ${badge}</div>`;
+      }
+      return `<div><strong>${escapeHtml(label)}</strong> ${model}</div>`;
+    }
+
+    function formatInstalledModelList(label, models, defaultModelInfo) {
+      if (defaultModelInfo?.provider === 'ollama' && !defaultModelInfo?.installationKnown) {
+        return `<div><strong>${escapeHtml(label)}</strong> <span class="status-warn">unknown: Ollama not reachable</span></div>`;
+      }
+      if (!Array.isArray(models) || !models.length) {
+        return `<div><strong>${escapeHtml(label)}</strong> none</div>`;
+      }
+      const defaultModel = defaultModelInfo?.model || null;
+      const normalizedDefaultModel = normalizeOllamaModelName(defaultModel);
+      const rendered = models.map((model) => {
+        const safeModel = escapeHtml(model);
+        if (defaultModel && normalizeOllamaModelName(model) === normalizedDefaultModel) {
+          return `<span class="status-good">${safeModel}</span>`;
+        }
+        return safeModel;
+      }).join(', ');
+      return `<div><strong>${escapeHtml(label)}</strong> ${rendered}</div>`;
+    }
+
+    function normalizeOllamaModelName(modelName) {
+      if (typeof modelName !== 'string') return null;
+      const trimmed = modelName.trim();
+      if (!trimmed) return null;
+      return trimmed.replace(/:latest$/i, '');
     }
 
     function attachMaskedBehavior(input, revealButton) {
@@ -1183,9 +1423,16 @@
       refreshValidation();
 
       embeddingWarning.style.display = selectedConfig.embeddingConfigured ? 'block' : 'none';
-      const needsOllama = selectedProvider === 'ollama' || selectedProvider === 'openai-compatible';
-      ollamaCard.style.display = needsOllama ? 'grid' : 'none';
-      if (needsOllama) await refreshOllamaStatus();
+      const needsOllama = selectedProvider === 'ollama';
+      syncSectionDefaults(selectedProvider);
+      if (needsOllama) {
+        await refreshOllamaStatus();
+      } else {
+        ollamaStatus.innerHTML = '';
+        ollamaModelStatus.innerHTML = '';
+      }
+
+      scheduleWindowFit();
 
       setStatus(payload.isFirstLaunch
         ? 'Initial setup loaded. Edit only the profile-specific overrides, then launch.'
@@ -1227,6 +1474,31 @@
 
     openOllamaSiteButton.addEventListener('click', async () => {
       await window.electronAPI.invoke('config:open-ollama-download');
+    });
+
+    ollamaToggleButton.addEventListener('click', () => {
+      const isExpanded = ollamaToggleButton.getAttribute('aria-expanded') === 'true';
+      setSectionExpanded(ollamaCard, ollamaContent, ollamaToggleButton, ollamaToggleLabel, !isExpanded);
+    });
+
+    jvmToggleButton.addEventListener('click', () => {
+      const isExpanded = jvmToggleButton.getAttribute('aria-expanded') === 'true';
+      setSectionExpanded(jvmCard, jvmContent, jvmToggleButton, jvmToggleLabel, !isExpanded);
+    });
+
+    openOllamaManagerButton.addEventListener('click', async () => {
+      try {
+        setStatus('Opening Ollama model manager...');
+        await window.electronAPI.invoke('ollama-manager:open', {
+          configId: configSelect.value,
+          configName: configPath.textContent,
+          yamlText: getYamlValue(),
+          environmentInfo: latestOllamaInfo,
+        });
+        setStatus('Ollama model manager opened.');
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      }
     });
 
     addCustomSecretButton.addEventListener('click', () => {
@@ -1352,11 +1624,11 @@
 
     async function boot() {
       try {
+        initWindowFitObservers();
         setStatus('Preparing configuration editor...');
         setValidationStatus('Loading editor assets...');
         await initializeEditor();
         setValidationStatus('Editor ready. Loading configuration...');
-        await refreshOllamaStatus();
         await loadConfig();
       } catch (error) {
         const message = error.message || String(error);

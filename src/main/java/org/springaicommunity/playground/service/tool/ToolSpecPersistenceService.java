@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.service.tool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.springaicommunity.playground.service.tool.ToolSpecService.ToolMcpServerSetting;
 import org.slf4j.Logger;
@@ -49,19 +50,40 @@ public class ToolSpecPersistenceService implements
     private final ToolSpecService toolSpecService;
     private final List<ToolSpec> defaultToolSpecs;
     private final List<ToolSpecsMcpServerSetting> toolSpecsMcpServerSettings;
+    private final PersistenceExecutor persistenceExecutor;
 
     public ToolSpecPersistenceService(Path springAiPlaygroundHomeDir, ToolSpecService toolSpecService,
             @Value("${spring.application.default-tool-location:}")
-            String defaultToolSpecsLocation, ObjectMapper objectMapper, ResourceLoader resourceLoader) throws
-            IOException {
+            String defaultToolSpecsLocation, ObjectMapper objectMapper, ResourceLoader resourceLoader,
+            PersistenceExecutor persistenceExecutor) throws IOException {
         this.saveDir = springAiPlaygroundHomeDir.resolve("tool").resolve("save");
         Files.createDirectories(this.saveDir);
         this.toolSpecService = toolSpecService;
         this.toolSpecsMcpServerSettings = this.loads();
+        this.persistenceExecutor = persistenceExecutor;
         Resource resource = resourceLoader.getResource(defaultToolSpecsLocation);
         this.defaultToolSpecs = !defaultToolSpecsLocation.isBlank() && resource.exists() ?
                 objectMapper.readValue(resource.getInputStream(),
                         objectMapper.getTypeFactory().constructCollectionType(List.class, ToolSpec.class)) : List.of();
+    }
+
+    public void saveAsync() {
+        this.persistenceExecutor.submit(() -> {
+            Set<String> toolIdSet = this.defaultToolSpecs.stream().map(ToolSpec::toolId).collect(Collectors.toSet());
+            ToolSpecsMcpServerSetting snapshot = new ToolSpecsMcpServerSetting(
+                    this.toolSpecService.getToolSpecList().stream()
+                            .filter(toolSpec -> !toolIdSet.contains(toolSpec.toolId())).toList(),
+                    this.toolSpecService.getToolMcpServerSetting());
+            try {
+                save(snapshot);
+            } catch (IOException e) {
+                logger.error("Async save failed for tool specs", e);
+            }
+        });
+    }
+
+    public Set<String> getDefaultToolIds() {
+        return this.defaultToolSpecs.stream().map(ToolSpec::toolId).collect(Collectors.toSet());
     }
 
     @Override
@@ -72,11 +94,6 @@ public class ToolSpecPersistenceService implements
     @Override
     public Logger getLogger() {
         return logger;
-    }
-
-    @Override
-    public void buildSaveData(ToolSpecsMcpServerSetting toolSpec, Map<String, Object> saveObjectMap) {
-
     }
 
     @Override
@@ -97,16 +114,8 @@ public class ToolSpecPersistenceService implements
 
     @Override
     public void onApplicationEvent(WebServerInitializedEvent event) {
-        Stream.concat(defaultToolSpecs.stream(),
+        this.toolSpecService.loadAll(() -> Stream.concat(defaultToolSpecs.stream(),
                         toolSpecsMcpServerSettings.stream().map(ToolSpecsMcpServerSetting::toolSpecs).flatMap(List::stream))
-                .forEach(toolSpecService::update);
-    }
-
-    @Override
-    public void onShutdown() throws IOException {
-        Set<String> toolIdSet = this.defaultToolSpecs.stream().map(ToolSpec::toolId).collect(Collectors.toSet());
-        save(new ToolSpecsMcpServerSetting(this.toolSpecService.getToolSpecList().stream()
-                .filter(toolSpec -> !toolIdSet.contains(toolSpec.toolId())).toList(),
-                this.toolSpecService.getToolMcpServerSetting()));
+                .forEach(toolSpecService::update));
     }
 }

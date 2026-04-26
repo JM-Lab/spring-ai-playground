@@ -37,8 +37,9 @@ public class ChatModelSettingView extends VerticalLayout {
 
     public ChatModelSettingView(List<String> models, String systemPrompt, ChatOptions chatOption) {
         setSpacing(false);
+        setPadding(false);
+        setWidthFull();
         setAlignItems(FlexComponent.Alignment.START);
-        getStyle().set("padding", "var(--lumo-space-m) var(--lumo-space-m) var(--lumo-space-xs)");
 
         String model = chatOption.getModel();
         modelComboBox = new ComboBox<>("Model");

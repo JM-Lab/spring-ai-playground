@@ -20,26 +20,21 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
-import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBarVariant;
-import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.shared.Tooltip;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.WorkspaceSidebar;
 
 import java.beans.PropertyChangeSupport;
 import java.util.EnumMap;
@@ -51,7 +46,7 @@ import java.util.Optional;
 import static org.springaicommunity.playground.webui.mcp.McpServerView.MCP_CONNECTION_DELETE_EVENT;
 import static org.springaicommunity.playground.webui.mcp.McpServerView.MCP_CONNECTION_SELECT_EVENT;
 
-public class McpServerConnectionView extends VerticalLayout implements BeforeEnterObserver {
+public class McpServerConnectionView extends WorkspaceSidebar implements BeforeEnterObserver {
 
     private final PersistentUiDataStorage persistentUiDataStorage;
     private final PropertyChangeSupport mcpServerInfoChangeSupport;
@@ -63,28 +58,32 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
         this.persistentUiDataStorage.loadData(McpContentView.LAST_SELECTED_MCP_CONNECTION,
                 new TypeReference<McpServerInfo>() {},
-                mcpServerInfo -> {
-                    if (Objects.nonNull(mcpServerInfo))
-                        this.mcpServerInfoService.getMcpServerInfos().get(mcpServerInfo.mcpTransportType()).stream()
-                                .filter(info -> info.serverName().equals(mcpServerInfo.serverName())).findFirst()
-                                .ifPresentOrElse(this::selectMcpConnectionContent,
-                                        () -> this.mcpServerInfoService.getMcpServerInfos().values().stream()
-                                                .flatMap(List::stream).findFirst()
-                                                .ifPresent(this::selectMcpConnectionContent));
-                });
+                savedInfo -> resolveInitialSelection(savedInfo).ifPresent(this::selectMcpConnectionContent));
+    }
+
+    private Optional<McpServerInfo> resolveInitialSelection(McpServerInfo savedInfo) {
+        Optional<McpServerInfo> fromSaved = Optional.ofNullable(savedInfo)
+                .map(info -> this.mcpServerInfoService.getMcpServerInfos().get(info.mcpTransportType()))
+                .flatMap(list -> list.stream()
+                        .filter(info -> info.serverName().equals(savedInfo.serverName()))
+                        .findFirst());
+        return fromSaved
+                .or(() -> Optional.ofNullable(this.mcpServerInfoService.getDefaultMcpServerInfo()))
+                .or(() -> this.mcpServerInfoService.getMcpServerInfos().values().stream()
+                        .flatMap(List::stream).findFirst());
     }
 
     public McpServerConnectionView(PersistentUiDataStorage persistentUiDataStorage,
             McpServerInfoService mcpServerInfoService, McpClientService mcpClientService,
             PropertyChangeSupport mcpServerInfoChangeSupport) {
+        super("MCP Server Connections");
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
         this.mcpServerInfoChangeSupport = mcpServerInfoChangeSupport;
 
-        setSpacing(false);
-        setMargin(false);
-        getStyle().set("overflow", "hidden");
+        addHeaderIcon(VaadinIcon.CLOSE, "Delete", e -> deleteMcpConnection());
+
         updateMcpConnections();
     }
 
@@ -107,23 +106,14 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
                 (transportType, mcpServerInfos) -> this.mcpServerInfoListBoxMap.get(transportType)
                         .setItems(mcpServerInfos));
 
-        Scroller scroller = new Scroller(detailsLayout);
-        scroller.setSizeFull();
-        scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-
-        removeAll();
-        add(initMcpServerInfoHeader(), scroller);
+        setSidebarContent(verticalScroller(detailsLayout));
     }
 
     private ListBox<McpServerInfo> buildMcpServerInfoListBox() {
         ListBox<McpServerInfo> mcpServerInfoListBox = new ListBox<>();
         mcpServerInfoListBox.addClassName("custom-list-box");
         mcpServerInfoListBox.setRenderer(new ComponentRenderer<>(mcpServerInfo -> {
-            Span title = new Span(mcpServerInfo.serverName());
-            title.getStyle().set("white-space", "nowrap")
-                    .set("overflow", "hidden")
-                    .set("text-overflow", "ellipsis")
-                    .set("flex-grow", "1");
+            Span title = listItemText(mcpServerInfo.serverName());
             Tooltip.forComponent(title).withText(mcpServerInfo.description()).withHoverDelay(1);
             return title;
         }));
@@ -134,7 +124,7 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
     }
 
     private void notifyMcpServerInfoSelection(McpServerInfo oldMcpServerInfo, McpServerInfo newMcpServerInfo) {
-        if(Objects.isNull(newMcpServerInfo))
+        if (Objects.isNull(newMcpServerInfo))
             return;
         this.mcpServerInfoListBoxMap.values().stream()
                 .filter(mcpServerInfoListBox -> !newMcpServerInfo.equals(mcpServerInfoListBox.getValue()))
@@ -142,25 +132,6 @@ public class McpServerConnectionView extends VerticalLayout implements BeforeEnt
         this.mcpServerInfoChangeSupport.firePropertyChange(MCP_CONNECTION_SELECT_EVENT, oldMcpServerInfo,
                 newMcpServerInfo);
         this.persistentUiDataStorage.saveData(McpContentView.LAST_SELECTED_MCP_CONNECTION, newMcpServerInfo);
-    }
-
-    private Header initMcpServerInfoHeader() {
-        Span appName = new Span("MCP Server Connections");
-        appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
-
-        MenuBar menuBar = new MenuBar();
-        menuBar.setWidthFull();
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-
-        Icon closeIcon = VaadinUtils.styledIcon(VaadinIcon.CLOSE.create());
-        closeIcon.setTooltipText("Delete");
-        menuBar.addItem(closeIcon, menuItemClickEvent -> deleteMcpConnection());
-
-        Header header = new Header(appName, menuBar);
-        header.getStyle().set("white-space", "nowrap").set("height", "auto").set("width", "100%").set("display", "flex")
-                .set("box-sizing", "border-box").set("align-items", "center");
-        return header;
     }
 
     private void deleteMcpConnection() {

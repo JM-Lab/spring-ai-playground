@@ -2,64 +2,9 @@ Description: Explore Spring AI Playground features: Tool Studio, MCP Server, Vec
 
 # Features
 
-This page explains the main product areas in the same order the application is designed to be understood: Architecture, Tool Studio, MCP Server, Vector Database, and Agentic Chat.
+This page explains the main product areas in the order they are designed to be understood: Tool Studio, MCP Server, Vector Database, and Agentic Chat.
 
-## Architecture
-
-Spring AI Playground is a tool-first Spring Boot application with multiple UI surfaces layered on top of a shared set of runtime services.
-
-The primary packaged experience is the cross-platform desktop app, while Docker and local source execution remain available as alternative runtimes for server-style deployment or development workflows.
-
-At a high level, the product is organized around a few major surfaces that work together instead of behaving like isolated demos.
-
-### Architectural Shape
-
-The application is easiest to think about as five layers:
-
-1. navigation and UI surfaces
-2. workflow-specific UI components
-3. service-layer orchestration for chat, tools, MCP, and vector search
-4. Spring AI integrations for models, embeddings, vector stores, and MCP
-5. external runtimes such as model providers, vector databases, and MCP servers
-
-### Main UI Surfaces
-
-The main product areas are:
-
-- Home
-- Tool Studio
-- MCP Server
-- Vector Database
-- Agentic Chat
-
-Those screens are not isolated demos. They are connected parts of one workflow-oriented runtime:
-
-- Tool Studio creates and publishes tools
-- MCP Server inspects and executes tools from built-in and external MCP connections
-- Vector Database prepares indexed knowledge for RAG
-- Agentic Chat composes documents and tools into one conversational runtime
-
-### Service Layer
-
-Behind those screens, the runtime follows the same separation of concerns:
-
-- Tool Studio handles tool definitions, persistence, and JavaScript execution
-- MCP Server handles connection management, transport handling, inspection, and tool invocation
-- Vector Database handles document ingestion, chunking, embedding, persistence, and search
-- Agentic Chat handles chat execution, history, shared context, and workflow composition
-
-This is one of the reasons the app works well as a validation environment. Each major capability has a dedicated runtime area, but the user-facing flows compose those capabilities rather than hiding them behind a single opaque screen.
-
-### Why the Architecture Matters
-
-Many playground-style apps stop at prompt entry and output display. Spring AI Playground deliberately goes further:
-
-- tool definitions are executable, not just descriptive
-- MCP is treated as a first-class runtime boundary
-- RAG can be inspected before it is trusted
-- chat is where capabilities are composed, not where they are invented
-
-That makes the project a practical reference environment for Spring AI rather than only a prompt playground.
+For a system-level view — runtime layers, data flows, and extension points behind these surfaces — see [Architecture](architecture.md).
 
 ## Tool Studio
 
@@ -78,6 +23,17 @@ Tool Studio lets you:
 - define static variables
 - test tool execution immediately
 - publish tools to the built-in MCP server without restart or redeploy
+
+### Local Pass: Test Before Publish
+
+Spring AI Playground treats the local test-run as a gate, not a polish step. This is the rule surfaced on the Home screen as **No pass, no run.**
+
+- every tool has at least one sample input (the static variables you define) used for its test-run
+- the tool must **pass its test locally** before Tool Studio publishes it
+- when the test passes, the tool earns a **Local Pass** and is **added live to the built-in MCP server** the same moment — no restart, no redeploy
+- a tool that has not passed is **not added to the built-in MCP server** and is **not callable from Agentic Chat**
+
+In practice this means the act of publishing is the act of testing. You never produce a tool whose first execution happens in front of an agent.
 
 ### Built-in MCP Server
 
@@ -243,7 +199,7 @@ That combination is one of the strongest product-specific ideas in the Playgroun
 
 ### Pre-built Example Tools
 
-Tool Studio includes pre-built tools you can use as references and templates:
+The app ships with **seven built-in tools** pre-loaded into Tool Studio. They are ready to call from chat the moment a model provider is connected — you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own.
 
 - `googlePseSearch`: search the web using Google Programmable Search Engine
 - `extractPageContent`: fetch and clean the main text from a web page
@@ -462,4 +418,5 @@ By leveraging these elements, Agentic Chat goes beyond basic Q&A and becomes a p
 
 - [Overview](index.md): return to the main product overview and documentation map
 - [Getting Started](getting-started.md): install the app, configure providers, and choose a runtime
+- [Architecture](architecture.md): runtime layers, data flows, and extension points
 - [Tutorials](tutorials.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat

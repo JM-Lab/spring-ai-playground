@@ -23,7 +23,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
 import jakarta.annotation.Nullable;
-import jakarta.annotation.PreDestroy;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +32,8 @@ import org.springframework.ai.mcp.client.common.autoconfigure.configurer.McpSync
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpClientCommonProperties;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpClientCommonProperties.ClientType;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -57,7 +58,12 @@ public class McpClientService {
 
     private final Map<McpTransportType, McpClientPropertiesService<?>> typeMcpClientPropertiesServiceMap;
     private final BiFunction<NamedClientMcpTransport, Implementation, McpClientOps> mcpClientOpsBiFunction;
-    private final Map<McpServerInfo, McpClientOps> connectingMcpClientOpsMap;
+    /**
+     * Keyed by transportType + ":" + serverName so updates that only change description / connection
+     * payload still resolve to the same live client. Using the full {@link McpServerInfo} record as
+     * the key would treat updated entries as different servers and leak the previous client.
+     */
+    private final Map<String, McpClientOps> connectingMcpClientOpsMap;
 
     public McpClientService(@Nullable McpSyncClientConfigurer mcpSyncClientConfigurer,
             @Nullable McpAsyncClientConfigurer mcpAsyncClientConfigurer,
@@ -107,49 +113,64 @@ public class McpClientService {
                 new Implementation(mcpClientCommonProperties.getName() + " - " + mcpServerInfo.serverName(),
                         mcpClientCommonProperties.getVersion());
         McpClientOps mcpClientOps = mcpClientOpsBiFunction.apply(buildMcpClientTransport(mcpServerInfo), info);
-        connectingMcpClientOpsMap.put(mcpServerInfo, mcpClientOps);
+        McpClientOps previous = connectingMcpClientOpsMap.put(clientKey(mcpServerInfo), mcpClientOps);
+        if (previous != null) {
+            logger.info("Replacing existing MCP client; closing previous: serverName={}", mcpServerInfo.serverName());
+            try {
+                previous.close();
+            } catch (RuntimeException e) {
+                logger.error("Failed to close previous MCP client: serverName={}", mcpServerInfo.serverName(), e);
+            }
+        }
     }
 
     public Object pingMcpClient(McpServerInfo mcpServerInfo) {
         logger.info("Pinging MCP client: serverName={}", mcpServerInfo.serverName());
-        return Optional.ofNullable(connectingMcpClientOpsMap.get(mcpServerInfo)).map(McpClientOps::ping).orElseThrow();
+        return Optional.ofNullable(connectingMcpClientOpsMap.get(clientKey(mcpServerInfo))).map(McpClientOps::ping)
+                .orElseThrow();
     }
 
     public void stopMcpClient(McpServerInfo mcpServerInfo) {
-        McpClientOps mcpClientOps = connectingMcpClientOpsMap.get(mcpServerInfo);
+        McpClientOps mcpClientOps = connectingMcpClientOpsMap.get(clientKey(mcpServerInfo));
         logger.info("Stopping MCP client: serverName={}, mcpClientOps={}", mcpServerInfo.serverName(), mcpClientOps);
         if (Objects.nonNull(mcpClientOps))
             mcpClientOps.close();
     }
 
     public Optional<ServerCapabilities> getServerCapabilitiesAsOpt(McpServerInfo mcpServerInfo) {
-        return Optional.ofNullable(connectingMcpClientOpsMap.get(mcpServerInfo)).map(McpClientOps::capabilities);
+        return Optional.ofNullable(connectingMcpClientOpsMap.get(clientKey(mcpServerInfo)))
+                .map(McpClientOps::capabilities);
     }
 
     public Optional<List<McpSchema.Tool>> getToolListAsOpt(McpServerInfo mcpServerInfo) {
-        return Optional.ofNullable(connectingMcpClientOpsMap.get(mcpServerInfo)).map(McpClientOps::listTools);
+        return Optional.ofNullable(connectingMcpClientOpsMap.get(clientKey(mcpServerInfo)))
+                .map(McpClientOps::listTools);
     }
 
     public Optional<McpSchema.CallToolResult> callTool(McpServerInfo mcpServerInfo, String toolName,
             Map<String, Object> args, Map<String, Object> meta) {
         logger.info("Calling MCP tool: serverName={}, toolName={}", mcpServerInfo.serverName(), toolName);
-        return Optional.ofNullable(connectingMcpClientOpsMap.get(mcpServerInfo))
+        return Optional.ofNullable(connectingMcpClientOpsMap.get(clientKey(mcpServerInfo)))
                 .map(mcpClientOps -> mcpClientOps.callTool(toolName, args, meta));
     }
 
     public List<ToolCallbackProvider> buildToolCallbackProviders(McpServerInfo... mcpServerInfos) {
-        return Arrays.stream(mcpServerInfos).map(connectingMcpClientOpsMap::get).filter(Objects::nonNull)
-                .map(McpClientOps::toolCallbackProvider).toList();
+        return Arrays.stream(mcpServerInfos).map(this::clientKey).map(connectingMcpClientOpsMap::get)
+                .filter(Objects::nonNull).map(McpClientOps::toolCallbackProvider).toList();
     }
 
     public void deleteConnectingMcpServer(McpServerInfo mcpServerInfo) {
         logger.info("Deleting MCP client connection: serverName={}", mcpServerInfo.serverName());
         stopMcpClient(mcpServerInfo);
-        this.connectingMcpClientOpsMap.remove(mcpServerInfo);
+        this.connectingMcpClientOpsMap.remove(clientKey(mcpServerInfo));
     }
 
     public boolean isConnecting(McpServerInfo mcpServerInfo) {
-        return this.connectingMcpClientOpsMap.containsKey(mcpServerInfo);
+        return this.connectingMcpClientOpsMap.containsKey(clientKey(mcpServerInfo));
+    }
+
+    private String clientKey(McpServerInfo mcpServerInfo) {
+        return mcpServerInfo.mcpTransportType() + ":" + mcpServerInfo.serverName();
     }
 
     private NamedClientMcpTransport buildMcpClientTransport(McpServerInfo mcpServerInfo) {
@@ -158,10 +179,16 @@ public class McpClientService {
                         .buildClientTransport(this.objectMapper, mcpServerInfo.connectionAsJson()));
     }
 
-    @PreDestroy
-    private void shutdownAllMcpClients() {
+    @EventListener(ContextClosedEvent.class)
+    public void shutdownAllMcpClients() {
         logger.info("Shutting down all MCP clients. currentActiveClientCount={}", connectingMcpClientOpsMap.size());
-        this.connectingMcpClientOpsMap.values().parallelStream().forEach(McpClientOps::close);
+        this.connectingMcpClientOpsMap.forEach((key, mcpClientOps) -> {
+            try {
+                mcpClientOps.close();
+            } catch (RuntimeException e) {
+                logger.error("Error closing MCP client: key={}", key, e);
+            }
+        });
     }
 
 }

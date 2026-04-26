@@ -7,3 +7,340 @@
     margin-left: 0;
   }
 }
+
+/* Mermaid: allow labels to wrap and prevent tight clipping */
+.mermaid .nodeLabel,
+.mermaid .edgeLabel,
+.mermaid .actor text,
+.mermaid .messageText {
+  white-space: normal !important;
+  word-wrap: break-word;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Pan/zoom control icons */
+#svg-pan-zoom-controls {
+  transform: translate(10px, 10px);
+}
+
+/* Platform download badges on getting-started.md */
+.download-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.download-badge {
+  display: inline-flex;
+  text-decoration: none;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.download-badge:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+}
+
+.download-badge img {
+  display: block;
+  height: 28px;
+}
+
+.download-badge--unresolved {
+  opacity: 0.6;
+  filter: grayscale(0.4);
+  cursor: default;
+}
+
+/* Confirm-card action buttons (Download / Cancel) */
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color) !important;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.download-button:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+}
+
+.download-button--ghost {
+  background: transparent;
+  color: var(--md-primary-fg-color) !important;
+  border-color: var(--md-primary-fg-color);
+}
+
+.dl-resolved-version {
+  font-size: 0.85em;
+  opacity: 0.7;
+  margin-top: -0.5rem;
+}
+
+/* Confirm-download modal (custom overlay + modal box) */
+.dl-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(13, 17, 28, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: dl-fade-in 180ms ease-out;
+}
+
+.dl-confirm-overlay[hidden] {
+  display: none;
+}
+
+body.dl-confirm-open {
+  overflow: hidden;
+}
+
+.dl-confirm-modal {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.65rem 1.75rem 1.4rem;
+  background: var(--md-default-bg-color);
+  color: inherit;
+  border-radius: 1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  box-shadow:
+    0 30px 80px -20px rgba(15, 23, 42, 0.45),
+    0 8px 24px -8px rgba(15, 23, 42, 0.25);
+  animation: dl-pop-in 240ms cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+
+/* Accent stripe across the top of the modal */
+.dl-confirm-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--md-primary-fg-color),
+    var(--md-accent-fg-color, var(--md-primary-fg-color))
+  );
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  opacity: 0.95;
+}
+
+@keyframes dl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dl-pop-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dl-confirm__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--md-default-fg-color);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+
+.dl-confirm__close:hover {
+  opacity: 1;
+  background: var(--md-default-fg-color--lightest);
+}
+
+.dl-confirm__header {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  margin: 0.1rem 0 1rem;
+  padding-right: 1.75rem;
+}
+
+.dl-confirm__icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  box-shadow: 0 6px 18px -6px var(--md-primary-fg-color);
+}
+
+.dl-confirm__icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.dl-confirm__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dl-confirm__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.dl-confirm__platform {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.dl-confirm__body {
+  margin: 0;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dl-confirm__body dt,
+.dl-confirm__body dd {
+  margin: 0;
+  padding: 0;
+}
+
+.dl-confirm__row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 0;
+}
+
+.dl-confirm__row-label {
+  white-space: nowrap;
+}
+
+.dl-confirm__row[hidden] {
+  display: none;
+}
+
+.dl-confirm__row-label {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.dl-confirm__row-value {
+  margin: 0;
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+.dl-confirm__row-value code {
+  display: inline-block;
+  padding: 0.18rem 0.45rem;
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 0.35rem;
+  font-size: 0.88em;
+  word-break: break-all;
+}
+
+/* Hide the filename code chip when the unresolved message takes its place */
+#dl-confirm-filename[hidden] {
+  display: none;
+}
+
+/* Unresolved-case explanatory message (replaces the filename) */
+.dl-confirm__message {
+  display: inline-block;
+  font-size: 0.92rem;
+  opacity: 0.85;
+}
+
+/* Save-to row */
+.dl-confirm__saveto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.dl-confirm__saveto-path {
+  font-family: var(--md-code-font-family, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.88em;
+  padding: 0.18rem 0.45rem;
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 0.35rem;
+  word-break: break-all;
+}
+
+.dl-confirm__saveto-hint {
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+.dl-confirm__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.dl-confirm__actions .download-button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.download-button--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.download-button--primary svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}

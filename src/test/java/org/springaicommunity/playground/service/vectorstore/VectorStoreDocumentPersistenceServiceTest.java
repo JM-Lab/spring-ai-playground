@@ -40,6 +40,7 @@ class VectorStoreDocumentPersistenceServiceTest {
 
     @BeforeEach
     void setUp() {
+        vectorStoreDocumentPersistenceService.clear();
         sampleData = List.of(
                 new VectorStoreDocumentInfo("doc1", "First Document", System.currentTimeMillis(),
                         System.currentTimeMillis(), "doc1.txt", "/path/to/doc1.txt",

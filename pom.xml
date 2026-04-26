@@ -25,9 +25,9 @@
         <version>3.5.8</version>
         <relativePath/>
     </parent>
-    <groupId>jm.kr</groupId>
+    <groupId>io.github.springaicommunity</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.2.0-M2</version>
+    <version>0.2.0-M4</version>
     <name>Spring AI Playground</name>
     <description>Incubating project from the Spring AI Community</description>
     <url>https://github.com/spring-ai-community/spring-ai-playground</url>
@@ -77,17 +77,6 @@
             <releases>
                 <enabled>false</enabled>
             </releases>
-        </repository>
-        <repository>
-            <name>Central Portal Snapshots</name>
-            <id>central-portal-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
         </repository>
     </repositories>
     <dependencies>
@@ -224,6 +213,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>com.mycila</groupId>

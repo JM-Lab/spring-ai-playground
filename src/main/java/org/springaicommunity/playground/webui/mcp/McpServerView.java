@@ -15,19 +15,8 @@
  */
 package org.springaicommunity.playground.webui.mcp;
 
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H4;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBarVariant;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.splitlayout.SplitLayout;
-import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.annotation.SpringComponent;
@@ -38,18 +27,18 @@ import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
 
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
 
 import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
-import static org.springaicommunity.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
 @PageTitle("MCP Server")
 @Route(value = "mcp-server", layout = SpringAiPlaygroundAppLayout.class)
-public class McpServerView extends Div {
+public class McpServerView extends ContentWorkspaceView {
 
     public static final String MCP_CONNECTION_SELECT_EVENT = "MCP_CONNECTION_SELECT_EVENT";
     public static final String MCP_CONNECTION_CHANGE_EVENT = "MCP_CONNECTION_CHANGE_EVENT";
@@ -57,12 +46,8 @@ public class McpServerView extends Div {
 
     private final McpServerInfoService mcpServerInfoService;
     private final McpClientService mcpClientService;
-    private final SplitLayout splitLayout;
-    private final VerticalLayout mcpContentLayout;
     private final McpServerConnectionView mcpServerConnectionView;
     private final PropertyChangeSupport mcpServerInfoChangeSupport;
-    private double splitterPosition;
-    private boolean sidebarCollapsed;
     private McpContentView mcpContentView;
 
     public McpServerView(PersistentUiDataStorage persistentUiDataStorage, McpServerInfoService mcpServerInfoService,
@@ -97,85 +82,25 @@ public class McpServerView extends Div {
             }
         });
 
-        setHeightFull();
-        setSizeFull();
-
-        this.splitLayout = new SplitLayout();
-        this.splitLayout.setSizeFull();
-        this.splitLayout.setSplitterPosition(this.splitterPosition = 15);
-        this.splitLayout.addThemeVariants(SplitLayoutVariant.LUMO_SMALL);
-        add(this.splitLayout);
-
-        this.splitLayout.addToPrimary(this.mcpServerConnectionView);
-        this.mcpContentLayout = new VerticalLayout();
-        this.mcpContentLayout.setSpacing(false);
-        this.mcpContentLayout.setMargin(false);
-        this.mcpContentLayout.setPadding(false);
-        this.mcpContentLayout.setHeightFull();
-        this.mcpContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
-                .set("flex-direction", "column").set("align-items", "stretch");
-        this.splitLayout.addToSecondary(this.mcpContentLayout);
-        this.sidebarCollapsed = false;
-        addNewMcpServerDetails();
-    }
-
-    private HorizontalLayout createChatContentHeader() {
-        HorizontalLayout horizontalLayout = new HorizontalLayout();
-        horizontalLayout.setSpacing(false);
-        horizontalLayout.setMargin(false);
-        horizontalLayout.getStyle().setPadding("var(--lumo-space-m) 0 0 0");
-        horizontalLayout.setWidthFull();
-        horizontalLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
-        Button toggleButton = styledButton("Hide MCP Connections", VaadinIcon.CHEVRON_LEFT.create(), null);
-        Component leftArrowIcon = toggleButton.getIcon();
-        Icon rightArrowIcon = styledIcon(VaadinIcon.CHEVRON_RIGHT.create());
-        rightArrowIcon.setTooltipText("Show MCP Connections");
-        toggleButton.addClickListener(event -> {
-            sidebarCollapsed = !sidebarCollapsed;
-            toggleButton.setIcon(sidebarCollapsed ? rightArrowIcon : leftArrowIcon);
-            if (sidebarCollapsed)
-                this.mcpServerConnectionView.removeFromParent();
-            else
-                this.splitLayout.addToPrimary(this.mcpServerConnectionView);
-            if (this.splitLayout.getSplitterPosition() > 0)
-                this.splitterPosition = this.splitLayout.getSplitterPosition();
-            this.splitLayout.setSplitterPosition(sidebarCollapsed ? 0 : splitterPosition);
-        });
-        horizontalLayout.add(toggleButton);
+        configureSidebar(this.mcpServerConnectionView, "MCP Connections");
 
         Button newMcpConnectionButton = styledButton("New Mcp Connection", VaadinIcon.CONNECT.create(),
                 event -> addNewMcpServerDetails());
-        horizontalLayout.add(newMcpConnectionButton);
+        addHeaderAction(newMcpConnectionButton);
 
-        H4 mcpServerInfoText = new H4("MCP Server Info");
-        mcpServerInfoText.getStyle().set("white-space", "nowrap");
-        Div mcpServerInfoTextDiv = new Div(mcpServerInfoText);
-        mcpServerInfoTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
-                .set("align-items", "center").set("height", "100%");
+        setHeaderLabel("MCP Server Info");
 
-        HorizontalLayout modelLabelLayout = new HorizontalLayout(mcpServerInfoTextDiv);
-        modelLabelLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        modelLabelLayout.setWidthFull();
-        horizontalLayout.add(modelLabelLayout);
-
-        Icon mcpServerConnectionIcon = styledIcon(VaadinIcon.COG_O.create());
-        mcpServerConnectionIcon.getStyle().set("marginRight", "var(--lumo-space-l)");
-        mcpServerConnectionIcon.setTooltipText("MCP Server Connection Config");
-
-        MenuBar mcpServerConnectionMenuBar = new MenuBar();
-        mcpServerConnectionMenuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        mcpServerConnectionMenuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-        mcpServerConnectionMenuBar.addItem(mcpServerConnectionIcon);
-        mcpServerConnectionMenuBar.getStyle().set("visibility", "hidden");
-
-        horizontalLayout.add(mcpServerConnectionMenuBar);
-        return horizontalLayout;
+        McpServerInfo initial = mcpServerInfoService.getDefaultMcpServerInfo();
+        if (Objects.nonNull(initial)) {
+            selectMcpServerInfo(initial);
+        } else {
+            addNewMcpServerDetails();
+        }
     }
 
     private void addNewMcpServerDetails() {
         this.mcpServerConnectionView.clearSelectConnection();
-        selectMcpServerInfo(this.mcpServerInfoService.createDefaultMcpServerInfo());
+        selectMcpServerInfo(this.mcpServerInfoService.createBlankMcpServerInfo());
     }
 
     private void selectMcpServerInfo(McpServerInfo mcpServerInfo) {
@@ -185,10 +110,6 @@ public class McpServerView extends Div {
                 new McpContentView(mcpServerInfo, this.mcpServerInfoService, this.mcpClientService,
                         this.mcpServerInfoChangeSupport);
 
-        VaadinUtils.getUi(this).access(() -> {
-            this.mcpContentLayout.removeAll();
-            this.mcpContentLayout.add(createChatContentHeader(), this.mcpContentView);
-        });
+        VaadinUtils.getUi(this).access(() -> setContent(this.mcpContentView));
     }
-
 }

@@ -1,6 +1,6 @@
 {
-  "name": "spring-ai-playground-desktop",
-  "version": "1.0.0",
+  "name": "spring-ai-playground",
+  "version": "0.2.0-M4",
   "description": "Desktop launcher for the Spring AI Community incubating project Spring AI Playground",
   "homepage": "https://github.com/spring-ai-community/spring-ai-playground",
   "author": {
@@ -28,10 +28,14 @@
     "files": [
       "config-editor.html",
       "main.js",
+      "ollama-manager.html",
+      "ollama-manager.js",
+      "ollama-manager-preload.js",
       "preload.js",
       "launcher-config.js",
       "splash.html",
       "server-splash.html",
+      "telemetry.js",
       "static/**/*",
       "resources/**/*",
       "!resources/app.jar",
@@ -59,7 +63,7 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "Spring AI Playground.${ext}",
+      "artifactName": "spring-ai-playground-${version}-win-${arch}.${ext}",
       "icon": "static/icons/icon.ico"
     },
     "nsis": {
@@ -75,7 +79,7 @@
     },
     "mac": {
       "target": "dmg",
-      "artifactName": "Spring AI Playground-${arch}.${ext}",
+      "artifactName": "spring-ai-playground-${version}-mac-${arch}.${ext}",
       "category": "public.app-category.developer-tools",
       "icon": "static/icons/icon.icns",
       "hardenedRuntime": false,
@@ -110,7 +114,8 @@
       ]
     },
     "linux": {
-      "artifactName": "Spring AI Playground.${ext}",
+      "artifactName": "spring-ai-playground-${version}-linux-${arch}.${ext}",
+      "executableName": "spring-ai-playground",
       "target": [
         "deb",
         "rpm"
@@ -129,7 +134,7 @@
   "dependencies": {
     "ace-builds": "^1.43.2",
     "js-yaml": "^4.1.1",
-    "tree-kill": "^1.2.2",
-    "sirv": "^3.0.0"
+    "ollama": "^0.6.3",
+    "tree-kill": "^1.2.2"
   }
 }

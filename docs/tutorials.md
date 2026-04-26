@@ -381,8 +381,54 @@ Spring AI Playground is designed around composition:
 
 This final tutorial is where that architecture becomes visible to the user. It shows the intended balance of the product: deterministic knowledge grounding through RAG, dynamic action through MCP tools, and a shared chat runtime where both can be validated together.
 
+## Tutorial 7: Weather to Slack — Your First Agentic Workflow
+
+### Goal
+
+Trigger a chain of two built-in tools in a single chat turn. This is the fastest way to see the agentic loop end to end without writing any code, and it is the canonical "Try an agentic workflow" task the Home screen checklist points at.
+
+### Why Start Here
+
+- Uses only pre-loaded built-in tools: `getWeather` and `sendSlackMessage`. No Tool Studio authoring required.
+- Exercises the full agent path: plan → call tool A → read result → call tool B with that result → summarize.
+- Works the moment the model provider is connected. Every tool has already earned its Local Pass and is live on the built-in MCP server.
+
+### Prerequisites
+
+- Provider pill on Home shows a green dot and "Ready" (Ollama reachable or OpenAI key set)
+- `SLACK_WEBHOOK_URL` is set in the environment the app runs in, so `sendSlackMessage` can actually post. On the desktop launcher, add it under **Environment Variables**; when running from source or Docker, export it before launching.
+- A tool-capable model (see Tutorial 4 for the recommended Ollama models)
+
+### Steps
+
+1. Open **Agentic Chat**.
+2. Make sure the built-in MCP connection is enabled. The tools you need — `getWeather`, `sendSlackMessage` — will appear in the tool inventory.
+3. Send this prompt, verbatim:
+
+        Get today's weather for Seoul and send a short summary to Slack.
+
+4. Watch the chat stream:
+    - the assistant calls `getWeather` with your location
+    - the tool returns a compact weather payload
+    - the assistant reasons over the result and calls `sendSlackMessage` with a short natural-language summary
+    - the final assistant turn confirms the Slack message was posted
+
+5. Open Slack and verify the message actually landed in the target channel.
+
+### What to Validate
+
+- The assistant makes **two distinct tool calls in order**, not a single one.
+- The Slack message content is derived from the weather tool's output — the agent is chaining, not guessing.
+- If either tool fails, the failure shows up in the chat stream with the tool name and the error. That same failure would also have blocked the tool from earning its Local Pass — every tool you see here already passed its local test.
+
+### Where to Go Next
+
+- Swap `sendSlackMessage` for one of your own tools authored in Tool Studio. The moment it passes its test, it goes live on the built-in MCP server and becomes available to the assistant in the same way.
+- Combine this flow with a RAG document (Tutorial 5) — ask the assistant to summarize a policy document and post the summary to Slack. That is the full Tool + RAG composition from Tutorial 6, phrased as a concrete task.
+
 ## Further Reading
 
 - [Overview](index.md): return to the main product overview and documentation map
 - [Getting Started](getting-started.md): review installation, runtime options, and provider configuration
-- [Features](features.md): understand the architecture and the main product areas in more detail
+- [Architecture](architecture.md): runtime layers, data flows, and extension points
+- [Features](features.md): the main product areas in more detail

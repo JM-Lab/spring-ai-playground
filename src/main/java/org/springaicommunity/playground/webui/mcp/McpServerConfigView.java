@@ -41,12 +41,16 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import static org.springaicommunity.playground.webui.mcp.McpServerView.MCP_CONNECTION_CHANGE_EVENT;
 
 @NpmPackage(value = "jsoneditor", version = "10.2.0")
 @NpmPackage(value = "ace-builds", version = "1.43.2")
 public class McpServerConfigView extends VerticalLayout {
+
+    /** Restricts server names to safe characters so they cannot escape the persistence directory. */
+    private static final Pattern SAFE_SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]+");
 
     private final TextField serverNameField = new TextField("Server name");
     private final TextField descField = new TextField("Description");
@@ -186,6 +190,11 @@ public class McpServerConfigView extends VerticalLayout {
             serverNameField.setErrorMessage("Server name cannot contain spaces");
             return false;
         }
+        if (!SAFE_SERVER_NAME.matcher(name).matches()) {
+            serverNameField.setInvalid(true);
+            serverNameField.setErrorMessage("Server name may only contain letters, digits, '.', '_', '-'");
+            return false;
+        }
         serverNameField.setInvalid(false);
         serverNameField.setErrorMessage(null);
         return true;
@@ -246,8 +255,12 @@ public class McpServerConfigView extends VerticalLayout {
 
         buildMcpServerInfoFromForm(
                 uiMcpServerInfo -> {
-                    if (this.mcpServerInfoService.getMcpServerInfos().get(uiMcpServerInfo.mcpTransportType()).stream()
-                            .map(McpServerInfo::serverName).anyMatch(uiMcpServerInfo.serverName()::equals)) {
+                    boolean sameKey = mcpServerInfo != null
+                            && mcpServerInfo.mcpTransportType() == uiMcpServerInfo.mcpTransportType()
+                            && Objects.equals(mcpServerInfo.serverName(), uiMcpServerInfo.serverName());
+                    if (!sameKey && this.mcpServerInfoService.getMcpServerInfos()
+                            .get(uiMcpServerInfo.mcpTransportType()).stream().map(McpServerInfo::serverName)
+                            .anyMatch(uiMcpServerInfo.serverName()::equals)) {
                         VaadinUtils.showErrorNotification("Failed to save : MCP connection already exists with name " +
                                 uiMcpServerInfo.serverName());
                         return;

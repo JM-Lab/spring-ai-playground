@@ -111,7 +111,7 @@ class SpringAiPlaygroundIT {
         String prompt = "Hello World";
         String assistantText =
                 chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null, null,
-                        null, null).collectList().block().stream().collect(Collectors.joining());
+                        null, null, null).collectList().block().stream().collect(Collectors.joining());
 
         assertTrue(chatHistory.conversationId().startsWith("Chat-"));
         assertNull(chatHistory.title());

@@ -16,17 +16,21 @@
 package org.springaicommunity.playground.webui.mcp;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
-import org.springaicommunity.playground.webui.VaadinUtils;
 
 import java.beans.PropertyChangeSupport;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class McpContentView extends VerticalLayout {
@@ -48,39 +52,58 @@ public class McpContentView extends VerticalLayout {
         mcpServerConfigView.setWidthFull();
         add(mcpServerConfigView);
 
-        if (mcpClientService.isConnecting(this.mcpServerInfo))
+        Component inspectorPlaceholder = createDisconnectedInspectorView();
+        add(inspectorPlaceholder);
+
+        if (mcpClientService.isConnecting(this.mcpServerInfo)) {
+            UI ui = UI.getCurrent();
             CompletableFuture.supplyAsync(() -> mcpClientService.getToolListAsOpt(this.mcpServerInfo))
-                    .thenAccept(toolListAsOpt -> VaadinUtils.getUi(this).access(() ->
-                            toolListAsOpt.ifPresent(toolList ->
-                                    add(new McpServerInspectorView(this.mcpServerInfo, mcpClientService, toolList)))));
-        else
-            add(createErrorMcpServerInspectorView());
+                    .thenAccept(toolListAsOpt -> {
+                        if (Objects.isNull(ui))
+                            return;
+                        ui.access(() -> toolListAsOpt.ifPresent(toolList -> replace(inspectorPlaceholder,
+                                new McpServerInspectorView(this.mcpServerInfo, mcpClientService, toolList))));
+                    });
+        }
     }
 
-    private Component createErrorMcpServerInspectorView() {
+    private Component createDisconnectedInspectorView() {
         H4 logo = new H4("MCP Inspector");
         logo.getStyle().set("font-size", "var(--lumo-font-size-l)").set("margin", "0");
-        HorizontalLayout inspectorHeaderLayout = new HorizontalLayout(logo);
-        inspectorHeaderLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-        inspectorHeaderLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
+        HorizontalLayout headerLayout = new HorizontalLayout(logo);
+        headerLayout.setWidthFull();
+        headerLayout.setPadding(true);
+        headerLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+        headerLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
 
-        Span message = new Span("Not connected to MCP Server");
-        message.getStyle()
-                .set("color", "var(--lumo-error-text-color)")
-                .set("font-size", "var(--lumo-font-size-m)")
-                .set("font-weight", "600");
+        Icon infoIcon = VaadinIcon.INFO_CIRCLE_O.create();
+        infoIcon.getStyle().set("color", "var(--lumo-primary-color)")
+                .set("margin-right", "var(--lumo-space-s)");
 
-        HorizontalLayout notConnectedLayout = new HorizontalLayout(message);
-        notConnectedLayout.setWidthFull();
-        notConnectedLayout.setJustifyContentMode(JustifyContentMode.CENTER);
-        notConnectedLayout.setAlignItems(Alignment.BASELINE);
+        Span prefix = new Span("Click ");
+        Span highlight = new Span("\"Save & Connect\"");
+        highlight.getStyle().set("font-weight", "600").set("color", "var(--lumo-primary-text-color)");
+        Span suffix = new Span(" above to enable the Tool Inspector.");
 
-        VerticalLayout errorMcpServerInspectorViewLayout =
-                new VerticalLayout(inspectorHeaderLayout, notConnectedLayout);
-        errorMcpServerInspectorViewLayout.setSizeFull();
-        errorMcpServerInspectorViewLayout.setPadding(false);
-        errorMcpServerInspectorViewLayout.setSpacing(false);
-        return errorMcpServerInspectorViewLayout;
+        HorizontalLayout hintContent = new HorizontalLayout(infoIcon, prefix, highlight, suffix);
+        hintContent.setSpacing(false);
+        hintContent.setAlignItems(FlexComponent.Alignment.CENTER);
+
+        Div hintBox = new Div(hintContent);
+        hintBox.getStyle()
+                .set("padding", "var(--lumo-space-l)")
+                .set("border", "1px dashed var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin", "0 var(--lumo-space-m) var(--lumo-space-m)")
+                .set("background-color", "var(--lumo-contrast-5pct)")
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "center");
+
+        VerticalLayout layout = new VerticalLayout(headerLayout, hintBox);
+        layout.setWidthFull();
+        layout.setPadding(false);
+        layout.setSpacing(false);
+        return layout;
     }
-
 }

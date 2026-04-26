@@ -18,7 +18,9 @@
 -->
 <configuration>
 
-    <springProperty scope="context" name="APP_HOME" source="spring.ai.playground.user-home" defaultValue="."/>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="spring-ai-playground"/>
+    <springProperty scope="context" name="APP_BASE_DIR" source="spring.ai.playground.user-home" defaultValue="${user.home}"/>
+    <property name="APP_HOME" value="${APP_BASE_DIR:-${user.home}}/${APP_NAME}"/>
     <property name="LOG_DIR" value="${APP_HOME}/logs"/>
     <property name="LOG_FILE" value="${LOG_DIR}/spring-ai-playground.log"/>
 

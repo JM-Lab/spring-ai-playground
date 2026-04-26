@@ -58,7 +58,7 @@ spring:
             # HTML parsing library — currently used in examples
             - org.jsoup.*
       persistence: false
-      user-home:
+      user-home: ${java.io.tmpdir}
       chat:
         system-prompt:
     mcp:

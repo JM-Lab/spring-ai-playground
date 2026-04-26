@@ -69,7 +69,7 @@ class ChatServiceWithCompatibleOpenAiIT {
         StringBuilder answerBuf = new StringBuilder();
 
         List<Generation> generations = chatService
-                .streamWithRaw(chatHistory, userPrompt, null, toolCallbacks, null, thinkingChunk -> {
+                .streamWithRaw(chatHistory, userPrompt, null, toolCallbacks, null, null, thinkingChunk -> {
                     System.out.println(thinkingChunk);
                     if (thinkingChunk != null && !thinkingChunk.toString().isBlank()) {
                         thinkingBuf.append(thinkingChunk);

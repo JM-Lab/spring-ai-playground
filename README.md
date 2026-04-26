@@ -17,6 +17,8 @@ Spring AI Playground is a cross-platform desktop app for building, testing, vali
 
 > **No pass, no run.**
 
+Every tool you build earns a **Local Pass** — a local test-run with your sample arguments. Only passing tools are added live to the built-in MCP server and become callable from Agentic Chat. A tool that has not passed is never exposed to an agent.
+
 In Tool Studio, new or updated built-in tools are test-run before they are published to the built-in MCP server. You do not need to know Java, Spring, or JVM internals to use it. If you can install a desktop app and write a small JavaScript function, you can build tools here and connect them to hosts and clients such as Claude Desktop, Claude Code, Cursor, IDEs, and other MCP-compatible environments.
 
 ## The Problem
@@ -47,13 +49,13 @@ Spring AI Playground is a standalone desktop app, so you can install it and star
 
 Choose the installer for your platform from the latest release:
 
-[![Windows](https://img.shields.io/badge/Windows-NSIS%20Installer-0078D6?logo=windows&logoColor=white)](https://github.com/spring-ai-community/spring-ai-playground/releases/latest/download/Spring.AI.Playground.exe)
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon%20arm64-000000?logo=apple&logoColor=white)](https://github.com/spring-ai-community/spring-ai-playground/releases/latest/download/Spring.AI.Playground-arm64.dmg)
-[![macOS Intel](https://img.shields.io/badge/macOS-Intel%20x64-555555?logo=apple&logoColor=white)](https://github.com/spring-ai-community/spring-ai-playground/releases/latest/download/Spring.AI.Playground-x64.dmg)
-[![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://github.com/spring-ai-community/spring-ai-playground/releases/latest/download/Spring.AI.Playground.deb)
-[![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://github.com/spring-ai-community/spring-ai-playground/releases/latest/download/Spring.AI.Playground.rpm)
+[![Windows](https://img.shields.io/badge/Windows-NSIS%20Installer-0078D6?logo=windows&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#win-x64)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon%20arm64-000000?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#mac-arm64)
+[![macOS Intel](https://img.shields.io/badge/macOS-Intel%20x64-555555?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#mac-x64)
+[![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#linux-deb)
+[![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#linux-rpm)
 
-Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
+The Getting Started page resolves to the latest published release automatically. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M4-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
 
 ### 2. Install and Launch
 
@@ -91,6 +93,30 @@ If you install the app, you can run Spring AI Playground immediately without set
 >
 > For more detailed platform guidance, see the [Getting Started guide](https://spring-ai-community.github.io/spring-ai-playground/getting-started/).
 
+### Verify Your Download
+
+Each release ships with two integrity guarantees. You do not have to verify, but it is recommended for production use.
+
+**1. SHA-256 checksum** — every installer has a matching `.sha256` file in the release assets.
+
+```bash
+# macOS / Linux
+shasum -a 256 -c spring-ai-playground-0.2.0-M4-mac-arm64.dmg.sha256
+
+# Windows (PowerShell)
+Get-FileHash spring-ai-playground-0.2.0-M4-win-x64.exe -Algorithm SHA256
+# compare the value with the one inside the .sha256 file
+```
+
+**2. Sigstore build provenance (SLSA)** — every installer is signed by the official GitHub Actions release workflow using a short-lived Sigstore key, and the attestation is recorded in the public transparency log.
+
+```bash
+gh attestation verify spring-ai-playground-0.2.0-M4-mac-arm64.dmg \
+  --owner spring-ai-community
+```
+
+A successful verification proves the file came from this repo's release workflow and was not tampered with after build.
+
 <p align="center">
   <b>First-Launch Configuration Screen</b><br/>
   Desktop launcher overview with the built-in config editor
@@ -108,8 +134,8 @@ If you install the app, you can run Spring AI Playground immediately without set
 </p>
 
 <p align="center">
-  <a href="docs/assets/images/lancher-ollama-config.png">
-    <img src="docs/assets/images/lancher-ollama-config.png" width="760" alt="Spring AI Playground Ollama model manager"/>
+  <a href="docs/assets/images/launcher-ollama-config.png">
+    <img src="docs/assets/images/launcher-ollama-config.png" width="760" alt="Spring AI Playground Ollama model manager"/>
   </a>
 </p>
 
@@ -215,6 +241,23 @@ Before opening an issue:
 We triage issues regularly, and issues outside the current scope may be closed with guidance.
 
 If you believe you have a contribution that fits the current scope, submit a PR or a targeted issue.
+
+## Anonymous Usage Telemetry
+
+The official build sends anonymous usage data (page views, app surface, device/browser
+info) to the maintainer's Google Tag Manager / Google Analytics account so the most-used
+features can be prioritized. IPs are anonymized by Google. The same opt-out switch applies
+to both the web app and every desktop launcher window (splash, server-splash, config
+editor, Ollama manager):
+
+- **Server / Docker / `mvn`**: `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false`
+- **Desktop launcher**: set `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` before launching
+  the app (the launcher forwards this env var to every window and to the bundled Spring
+  process)
+- **From source / IDE**: pass `-Dspring.ai.playground.telemetry.enabled=false` as a JVM arg
+
+If you self-host this project for EU users, adding cookie consent on top is the
+operator's responsibility under GDPR.
 
 ## Upcoming Improvements
 

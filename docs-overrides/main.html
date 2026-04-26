@@ -2,11 +2,25 @@
 
 {% block extrahead %}
   {{ super() }}
+  <script>
+    // Material renders mermaid diagrams inside closed shadow DOM, which blocks
+    // our pan/zoom hook and any label-wrapping CSS. Force open mode only for
+    // .mermaid hosts so we can reach into the shadow root from our own JS/CSS.
+    (function () {
+      var orig = Element.prototype.attachShadow;
+      Element.prototype.attachShadow = function (init) {
+        if (this.classList && this.classList.contains('mermaid')) {
+          return orig.call(this, Object.assign({}, init || {}, { mode: 'open' }));
+        }
+        return orig.call(this, init);
+      };
+    })();
+  </script>
   {% set ga_measurement_id = "G-52TGT1G9B3" %}
   {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
+  {% set ga_page_title = "Doc - " ~ page.title if page and page.title else "Doc - " ~ config.site_name %}
   {% set page_description = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = config.site_url ~ page.url if page and page.url else config.site_url %}
-  {% set social_image = config.site_url ~ "assets/images/icon.png" %}
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -17,18 +31,37 @@
     });
     gtag('config', '{{ ga_measurement_id }}', {
       app_name: 'spring-ai-playground-docs',
-      app_surface: 'docs'
+      app_surface: 'docs',
+      page_title: '{{ ga_page_title | e }}'
     });
   </script>
-  <link rel="canonical" href="{{ page_url | e }}">
+  {# Open Graph and Twitter Card meta — kept here as a fallback when the
+     mkdocs-material `social` plugin is not active (e.g. local dev without
+     the imaging extras). When the plugin runs, it injects its own og:image
+     and twitter:image with a generated 1200x630 card; browsers honor the
+     first occurrence, so we keep these tags AFTER plugin injection points.
+     The canonical link is already produced by mkdocs-material's base
+     template from `site_url`, so we do not duplicate it here. #}
   <meta property="og:site_name" content="{{ config.site_name | e }}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{ page_title | e }}">
   <meta property="og:description" content="{{ page_description | e }}">
   <meta property="og:url" content="{{ page_url | e }}">
-  <meta property="og:image" content="{{ social_image | e }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ page_title | e }}">
   <meta name="twitter:description" content="{{ page_description | e }}">
-  <meta name="twitter:image" content="{{ social_image | e }}">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "{{ config.site_name | e }}",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS, Windows, Linux",
+    "url": "{{ config.site_url | e }}",
+    "downloadUrl": "https://github.com/spring-ai-community/spring-ai-playground/releases/latest",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "description": "{{ config.site_description | e }}",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+  }
+  </script>
 {% endblock %}

@@ -45,7 +45,7 @@ class McpServerInfoServiceTest {
         assertEquals(0, serverInfos.get(McpTransportType.STREAMABLE_HTTP).size());
 
         String newServer = "New MCP Server";
-        McpServerInfo mcpServerInfo = mcpServerInfoService.createDefaultMcpServerInfo();
+        McpServerInfo mcpServerInfo = mcpServerInfoService.createBlankMcpServerInfo();
         assertNotNull(mcpServerInfo);
         assertEquals(McpTransportType.STDIO, mcpServerInfo.mcpTransportType());
         assertEquals(newServer, mcpServerInfo.serverName());

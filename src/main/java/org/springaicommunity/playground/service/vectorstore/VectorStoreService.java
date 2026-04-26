@@ -106,10 +106,12 @@ public class VectorStoreService {
         this.vectorStore.add(vectorStoreDocumentInfo.documentListSupplier().get());
         vectorStoreDocumentInfo.changeDocumentListSupplier(() -> this.vectorStore.similaritySearch(
                 SEARCH_ALL_REQUEST_WITH_DOC_INFO_IDS_FUNCTION.apply(List.of(vectorStoreDocumentInfo.docInfoId()))));
+        persistenceService().scheduleSimpleVectorStoreDump();
     }
 
     public List<Document> add(List<Document> documents) {
         this.vectorStore.add(documents);
+        persistenceService().scheduleSimpleVectorStoreDump();
         return documents;
     }
 
@@ -121,7 +123,12 @@ public class VectorStoreService {
 
     public void delete(List<String> documentIds) {
         this.vectorStore.delete(documentIds);
-        this.vectorStoreDocumentPersistenceServiceProvider.getObject().delete(documentIds);
+        persistenceService().delete(documentIds);
+        persistenceService().scheduleSimpleVectorStoreDump();
+    }
+
+    private VectorStoreDocumentPersistenceService persistenceService() {
+        return this.vectorStoreDocumentPersistenceServiceProvider.getObject();
     }
 
     public String getEmbeddingModelServiceName() {

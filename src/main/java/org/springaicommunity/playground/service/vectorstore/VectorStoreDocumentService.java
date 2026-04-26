@@ -74,6 +74,7 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
     private final TokenTextSplitter defaultTokenTextSplitter;
     private final ObjectProvider<VectorStoreDocumentPersistenceService> vectorStoreDocumentPersistenceServiceProvider;
     private final Map<String, VectorStoreDocumentInfo> documentInfos;
+    private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     public VectorStoreDocumentService(Path springAiPlaygroundHomeDir,
             @Value("${spring.servlet.multipart.max-file-size}") DataSize maxUploadSize, ResourceLoader resourceLoader,
@@ -93,6 +94,15 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
         return this.defaultTokenTextSplitter;
     }
 
+    public void loadAll(Runnable loadAction) {
+        this.skipPersist.set(Boolean.TRUE);
+        try {
+            loadAction.run();
+        } finally {
+            this.skipPersist.remove();
+        }
+    }
+
     public VectorStoreDocumentInfo putNewDocument(String documentFileName, List<Document> uploadedDocumentItems) {
         long createTimestamp = System.currentTimeMillis();
         File uploadedDocumentFile = buildUploadFilePath(documentFileName).toFile();
@@ -103,6 +113,8 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
                 new VectorStoreDocumentInfo(docInfoId, documentFileName, createTimestamp, createTimestamp,
                         documentFileName, uploadedDocumentFile.getPath(), () -> documentList);
         this.documentInfos.put(docInfoId, vectorStoreDocumentInfo);
+        if (!Boolean.TRUE.equals(this.skipPersist.get()))
+            this.vectorStoreDocumentPersistenceServiceProvider.getObject().saveAsync(vectorStoreDocumentInfo);
         return vectorStoreDocumentInfo;
     }
 
@@ -190,12 +202,14 @@ public class VectorStoreDocumentService implements SharedDataReader<List<VectorS
         logger.info("Updating document info: {}", title);
         VectorStoreDocumentInfo updateVectorStoreDocumentInfo = vectorStoreDocumentInfo.newTitle(title);
         this.documentInfos.put(vectorStoreDocumentInfo.docInfoId(), updateVectorStoreDocumentInfo);
+        if (!Boolean.TRUE.equals(this.skipPersist.get()))
+            this.vectorStoreDocumentPersistenceServiceProvider.getObject().saveAsync(updateVectorStoreDocumentInfo);
         return updateVectorStoreDocumentInfo;
     }
 
     public void deleteDocumentInfo(VectorStoreDocumentInfo vectorStoreDocumentInfo) {
         this.documentInfos.remove(vectorStoreDocumentInfo.docInfoId());
-        this.vectorStoreDocumentPersistenceServiceProvider.getObject().delete(vectorStoreDocumentInfo);
+        this.vectorStoreDocumentPersistenceServiceProvider.getObject().deleteAsync(vectorStoreDocumentInfo);
     }
 
     public List<VectorStoreDocumentInfo> getDocumentList() {

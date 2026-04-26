@@ -50,6 +50,7 @@ public class ChatHistoryService {
         String conversationId = chatHistory.conversationId();
         ChatHistory updatedChatHistory = changeChatHistory(chatHistory);
         this.conversationIdHistoryMap.put(conversationId, updatedChatHistory);
+        this.chatHistoryPersistenceService.saveAsync(updatedChatHistory);
         return updatedChatHistory;
     }
 
@@ -82,7 +83,7 @@ public class ChatHistoryService {
     public void deleteChatHistory(ChatHistory chatHistory) {
         this.chatMemory.clear(chatHistory.conversationId());
         this.conversationIdHistoryMap.remove(chatHistory.conversationId());
-        this.chatHistoryPersistenceService.delete(chatHistory);
+        this.chatHistoryPersistenceService.deleteAsync(chatHistory);
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {

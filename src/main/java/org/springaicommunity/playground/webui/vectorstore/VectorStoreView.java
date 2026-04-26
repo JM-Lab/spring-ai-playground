@@ -23,19 +23,14 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.MultiSelectListBox;
-import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.popover.PopoverVariant;
-import com.vaadin.flow.component.splitlayout.SplitLayout;
-import com.vaadin.flow.component.splitlayout.SplitLayoutVariant;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -47,6 +42,8 @@ import org.springaicommunity.playground.service.vectorstore.VectorStoreService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
+import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingOptions;
 
@@ -62,121 +59,54 @@ import java.util.stream.Collectors;
 
 import static org.springaicommunity.playground.webui.VaadinUtils.headerPopover;
 import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
-import static org.springaicommunity.playground.webui.VaadinUtils.styledIcon;
 
 @SpringComponent
 @UIScope
 @CssImport("./playground/vectorstore-styles.css")
 @PageTitle("Vector Database")
 @Route(value = "vector-database", layout = SpringAiPlaygroundAppLayout.class)
-public class VectorStoreView extends Div {
+public class VectorStoreView extends ContentWorkspaceView {
 
     public static final String DOCUMENT_SELECTING_EVENT = "DOCUMENT_SELECTING_EVENT";
     public static final String DOCUMENT_ADDING_EVENT = "DOCUMENT_ADDING_EVENT";
     public static final String DOCUMENTS_DELETE_EVENT = "DOCUMENTS_DELETE_EVENT";
+
     private final VectorStoreService vectorStoreService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
     private final VectorStoreDocumentView vectorStoreDocumentView;
     private final VectorStoreContentView vectorStoreContentView;
-    private final SplitLayout splitLayout;
-    private double splitterPosition;
-    private boolean sidebarCollapsed;
+    private final WorkspaceSettingsDrawer searchSettingsDrawer;
 
     public VectorStoreView(PersistentUiDataStorage persistentUiDataStorage, VectorStoreService vectorStoreService,
             VectorStoreDocumentService vectorStoreDocumentService) {
-
-        setSizeFull();
-
-        this.splitLayout = new SplitLayout();
-        this.splitLayout.setSizeFull();
-        this.splitLayout.setSplitterPosition(this.splitterPosition = 15);
-        this.splitLayout.addThemeVariants(SplitLayoutVariant.LUMO_SMALL);
-        add(this.splitLayout);
-
         this.vectorStoreService = vectorStoreService;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
 
         this.vectorStoreDocumentView =
                 new VectorStoreDocumentView(vectorStoreDocumentService, buildPropertyChangeSupport());
-        this.splitLayout.addToPrimary(this.vectorStoreDocumentView);
+        configureSidebar(this.vectorStoreDocumentView, "Documents");
+
+        installNewDocumentPopover();
+
+        setHeaderCenter(buildEmbeddingModelServiceTextDiv());
+
+        VectorStoreSearchSettingView vectorStoreSearchSettingView =
+                new VectorStoreSearchSettingView(this.vectorStoreService);
+        this.searchSettingsDrawer = installSettingsDrawer(VaadinIcon.COG_O, "Search Settings",
+                "Search Settings");
+        this.searchSettingsDrawer.setBody(vectorStoreSearchSettingView);
+
         this.vectorStoreContentView = new VectorStoreContentView(persistentUiDataStorage, vectorStoreService);
         this.vectorStoreContentView.setSpacing(false);
         this.vectorStoreContentView.setMargin(false);
         this.vectorStoreContentView.setPadding(false);
-
-        VerticalLayout vectorStoreContentLayout = new VerticalLayout();
-        vectorStoreContentLayout.setSpacing(false);
-        vectorStoreContentLayout.setMargin(false);
-        vectorStoreContentLayout.setPadding(false);
-        vectorStoreContentLayout.setHeightFull();
-        vectorStoreContentLayout.getStyle().set("overflow", "hidden").set("display", "flex")
-                .set("flex-direction", "column").set("align-items", "stretch");
-        vectorStoreContentLayout.add(createDocumentContentHeader(), vectorStoreContentView);
-
-        this.splitLayout.addToSecondary(vectorStoreContentLayout);
-        this.sidebarCollapsed = false;
+        setContent(this.vectorStoreContentView);
     }
 
-    private PropertyChangeSupport buildPropertyChangeSupport() {
-        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
-        documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
-            if (Objects.isNull(changeEvent.getNewValue()))
-                return;
-            Collection<VectorStoreDocumentInfo> newDocumentInfos =
-                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
-            switch (changeEvent.getPropertyName()) {
-                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
-                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
-                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
-            }
-        });
-        return documentInfoChangeSupport;
-    }
-
-    private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
-        newEventDocumentInfos.forEach(this.vectorStoreService::add);
-        handleDocumentSelecting(newEventDocumentInfos);
-    }
-
-    private void handleDocumentSelecting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
-        this.vectorStoreContentView.showDocuments(
-                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::docInfoId).toList());
-    }
-
-    private void handleDocumentDeleting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
-        this.vectorStoreService.delete(
-                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
-                        .flatMap(List::stream).map(Document::getId).toList());
-        vectorStoreContentView.showAllDocuments();
-    }
-
-    private HorizontalLayout createDocumentContentHeader() {
-        HorizontalLayout horizontalLayout = new HorizontalLayout();
-        horizontalLayout.setSpacing(false);
-        horizontalLayout.setMargin(false);
-        horizontalLayout.getStyle().setPadding("var(--lumo-space-m) 0 0 0");
-        horizontalLayout.setWidthFull();
-        horizontalLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
-        Button toggleButton = styledButton("Hide Documents", VaadinIcon.CHEVRON_LEFT.create(), null);
-        Component leftArrowIcon = toggleButton.getIcon();
-        Icon rightArrowIcon = styledIcon(VaadinIcon.CHEVRON_RIGHT.create());
-        rightArrowIcon.setTooltipText("Show Documents");
-        toggleButton.addClickListener(event -> {
-            sidebarCollapsed = !sidebarCollapsed;
-            toggleButton.setIcon(sidebarCollapsed ? rightArrowIcon : leftArrowIcon);
-            if (sidebarCollapsed)
-                vectorStoreDocumentView.removeFromParent();
-            else
-                this.splitLayout.addToPrimary(vectorStoreDocumentView);
-            if (this.splitLayout.getSplitterPosition() > 0)
-                this.splitterPosition = this.splitLayout.getSplitterPosition();
-            this.splitLayout.setSplitterPosition(sidebarCollapsed ? 0 : splitterPosition);
-        });
-        horizontalLayout.add(toggleButton);
-
-        Button newDocumentButton = styledButton("New Document & ETL Pipeline", VaadinIcon.FILE_ADD.create(), null);
-        horizontalLayout.add(newDocumentButton);
+    private void installNewDocumentPopover() {
+        Button newDocumentButton =
+                styledButton("New Document & ETL Pipeline", VaadinIcon.FILE_ADD.create(), null);
+        addHeaderAction(newDocumentButton);
 
         Popover newDocumentPopover = headerPopover(newDocumentButton, "New Document & ETL Pipeline");
         newDocumentPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
@@ -217,8 +147,7 @@ public class VectorStoreView extends Div {
                     this.vectorStoreDocumentService.extractDocumentItems(uploadedFileNames,
                             vectorStoreDocumentService.newTokenTextSplitter(
                                     vectorStoreDocumentTokenChunkInfo.collectInput()));
-            List<Document> chunks =
-                    uploadedDocumentItems.values().stream().flatMap(List::stream).toList();
+            List<Document> chunks = uploadedDocumentItems.values().stream().flatMap(List::stream).toList();
             if (chunks.isEmpty()) {
                 VaadinUtils.showInfoNotification("No chunks found");
                 return;
@@ -247,39 +176,44 @@ public class VectorStoreView extends Div {
                 this.vectorStoreDocumentView.addDocumentContent(uploadedFileNames, filenameDocuments);
             });
         });
+    }
 
-        HorizontalLayout vectorStoreLabelLayout = new HorizontalLayout(buildEmbeddingModelServiceTextDiv());
-        vectorStoreLabelLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        vectorStoreLabelLayout.setWidthFull();
-        horizontalLayout.add(vectorStoreLabelLayout);
+    private PropertyChangeSupport buildPropertyChangeSupport() {
+        PropertyChangeSupport documentInfoChangeSupport = new PropertyChangeSupport(this);
+        documentInfoChangeSupport.addPropertyChangeListener(changeEvent -> {
+            if (Objects.isNull(changeEvent.getNewValue()))
+                return;
+            Collection<VectorStoreDocumentInfo> newDocumentInfos =
+                    (Collection<VectorStoreDocumentInfo>) changeEvent.getNewValue();
+            switch (changeEvent.getPropertyName()) {
+                case DOCUMENT_ADDING_EVENT -> handleDocumentAdding(newDocumentInfos);
+                case DOCUMENT_SELECTING_EVENT -> handleDocumentSelecting(newDocumentInfos);
+                case DOCUMENTS_DELETE_EVENT -> handleDocumentDeleting(newDocumentInfos);
+            }
+        });
+        return documentInfoChangeSupport;
+    }
 
-        Icon searchSettingIcon = styledIcon(VaadinIcon.COG_O.create());
-        searchSettingIcon.getStyle().set("marginRight", "var(--lumo-space-l)");
-        Popover searchSettingPopover = headerPopover(searchSettingIcon, "Search Settings");
-        searchSettingPopover.setWidth("250px");
-        searchSettingPopover.setHoverDelay(0);
-        searchSettingPopover.addThemeVariants(PopoverVariant.ARROW, PopoverVariant.LUMO_NO_PADDING);
-        searchSettingPopover.setPosition(PopoverPosition.BOTTOM);
-        searchSettingPopover.setModal(true);
+    private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        newEventDocumentInfos.forEach(this.vectorStoreService::add);
+        handleDocumentSelecting(newEventDocumentInfos);
+    }
 
-        VectorStoreSearchSettingView vectorStoreSearchSettingView =
-                new VectorStoreSearchSettingView(this.vectorStoreService);
-        vectorStoreSearchSettingView.getStyle()
-                .set("padding", "0 var(--lumo-space-m) var(--lumo-space-m) var(--lumo-space-m)");
-        searchSettingPopover.add(vectorStoreSearchSettingView);
+    private void handleDocumentSelecting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        this.vectorStoreContentView.showDocuments(
+                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::docInfoId).toList());
+    }
 
-        MenuBar searchSettingMenuBar = new MenuBar();
-        searchSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED);
-        searchSettingMenuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
-        searchSettingMenuBar.addItem(searchSettingIcon);
-
-        horizontalLayout.add(searchSettingMenuBar);
-        return horizontalLayout;
+    private void handleDocumentDeleting(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
+        this.vectorStoreService.delete(
+                newEventDocumentInfos.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
+                        .flatMap(List::stream).map(Document::getId).toList());
+        vectorStoreContentView.showAllDocuments();
     }
 
     private Div buildEmbeddingModelServiceTextDiv() {
         H4 embeddingModelServiceText = buildEmbeddingModelServiceText();
-        embeddingModelServiceText.getStyle().set("white-space", "nowrap");
+        embeddingModelServiceText.getStyle().set("white-space", "nowrap").set("margin", "0");
         Div embeddingModelServiceTextDiv = new Div(embeddingModelServiceText);
         embeddingModelServiceTextDiv.getStyle().set("display", "flex").set("justify-content", "center")
                 .set("align-items", "center").set("height", "100%");
@@ -295,5 +229,4 @@ public class VectorStoreView extends Div {
                 String.format("%s - %s: %s", this.vectorStoreService.getVectorStoreName(),
                         this.vectorStoreService.getEmbeddingModelServiceName(), embeddingOptions.getModel()));
     }
-
 }
