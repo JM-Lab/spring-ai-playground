@@ -49,13 +49,13 @@ Spring AI Playground is a standalone desktop app, so you can install it and star
 
 Choose the installer for your platform from the latest release:
 
-[![Windows](https://img.shields.io/badge/Windows-NSIS%20Installer-0078D6?logo=windows&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#win-x64)
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon%20arm64-000000?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#mac-arm64)
-[![macOS Intel](https://img.shields.io/badge/macOS-Intel%20x64-555555?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#mac-x64)
-[![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#linux-deb)
-[![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#linux-rpm)
+[![Windows](https://img.shields.io/badge/Windows-NSIS%20Installer-0078D6?logo=windows&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#win-x64)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon%20arm64-000000?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#mac-arm64)
+[![macOS Intel](https://img.shields.io/badge/macOS-Intel%20x64-555555?logo=apple&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#mac-x64)
+[![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-deb)
+[![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-rpm)
 
-The Getting Started page resolves to the latest published release automatically. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M4-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
+Each badge resolves to the latest published release automatically and opens a confirm dialog with the filename, size, and OS-specific default save path. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M4-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
 
 ### 2. Install and Launch
 
