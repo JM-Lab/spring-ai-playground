@@ -308,6 +308,30 @@ In that tab, the UI groups downloaded models by type and lets you manage them di
 
 This makes the model manager useful both for first-time setup and for cleaning up or cloning downloaded models later.
 
+## Your First Five Tasks
+
+Once the app is running, the **Home** screen shows a live checklist that mirrors the path below. Each item self-checks based on workspace state, so you can walk through them at your own pace.
+
+![Getting started checklist on the Home screen](assets/images/home-getting-started.png)
+
+1. **Configure a model provider** — Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider — recheck the launcher config or env vars.
+2. **Start a chat** — Agentic Chat is ready the moment a provider is connected. The app ships with seven built-in tools (`getWeather`, `sendSlackMessage`, `googlePseSearch`, `buildGoogleCalendarCreateLink`, `extractPageContent`, `getCurrentTime`, `openaiResponseGenerator`), so you can test end-to-end without writing any code.
+3. **Upload a document for RAG** — Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
+4. **Create your first tool** — Open Tool Studio, write a small JavaScript function, and define its sample arguments. Run it locally: if it passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
+5. **Try an agentic workflow** — Ask the assistant: *"Get today's weather and send it to Slack."* This exercises two built-in tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
+
+> Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking…" or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
+
+## Built-in MCP Endpoint
+
+No matter whether you run the app through the desktop launcher, Docker, or direct source execution, the built-in MCP endpoint is exposed at:
+
+```text
+http://localhost:8282/mcp
+```
+
+That endpoint is central to Tool Studio, MCP Inspector, and Agentic Chat with tools.
+
 ## Verify Your Download
 
 Each release ships with two integrity guarantees. Verifying is optional, but recommended for production use.
@@ -358,8 +382,11 @@ Recommended models to pre-pull:
 
 ```bash
 ollama pull qwen3.5
+ollama pull gemma4
 ollama pull qwen3-embedding:0.6b
 ```
+
+`qwen3.5` is the recommended chat model for tool-calling and the [Tutorials](tutorials.md). Pull `gemma4` as well if you want a stronger natural-language alternative for longer tool chains.
 
 ### If You Use OpenAI Instead of Ollama
 
@@ -377,18 +404,11 @@ For `OpenAI-Compatible` settings, whether Ollama is still required depends on th
 
 - Install Java 21+ and Git.
 
-## Running the Application
+### Alternative Runtimes
 
-### Desktop App
+The desktop app is the default runtime — covered earlier in [Desktop App First](#desktop-app-first). The runtimes below are alternatives for non-desktop environments (server-style deployment, source-level development, browser-only use).
 
-This is the recommended default runtime for most users.
-
-1. Download the installer from GitHub Releases.
-2. Install it like a normal desktop application.
-3. Choose a launcher setting.
-4. Save and launch.
-
-### Docker
+#### Docker
 
 Docker is a strong option when you want a server-style deployment instead of the desktop launcher.
 
@@ -409,7 +429,7 @@ Notes:
 
 Docker is not suitable for MCP STDIO transport testing because STDIO-based MCP depends on direct process-to-process communication.
 
-### Local Source Run
+#### Local Source Run
 
 Use a local source run when you need development workflows or MCP STDIO transport features.
 
@@ -422,7 +442,7 @@ cd spring-ai-playground
 
 Then open `http://localhost:8282`.
 
-## PWA Installation
+### PWA Installation
 
 If you are running the browser-based version instead of the desktop installer, Spring AI Playground can also be installed as a Progressive Web App.
 
@@ -432,15 +452,15 @@ Complete either the Docker or local source setup first so the app is already ava
 2. Install it using the browser install prompt or the install option shown on the home page.
 3. Complete the installation flow to add it as an app-like experience.
 
-## Auto-configuration
+### Auto-configuration
 
 Spring AI Playground uses Ollama by default for local chat and embedding models. No API key is required for that default setup, which makes the initial local-first experience straightforward.
 
-## Model Configuration
+### Model Configuration
 
 Spring AI Playground is provider-agnostic, but the runtime defaults are intentionally optimized for a local-first Ollama experience.
 
-### Support for Major AI Model Providers
+#### Support for Major AI Model Providers
 
 Spring AI as a framework supports many providers, including Ollama, OpenAI, Anthropic, Microsoft, Amazon, Google, and other integrations.
 
@@ -456,7 +476,7 @@ In the desktop app, OpenAI-compatible support is mainly provided through starter
 
 If you want to use other Spring AI provider integrations, that is not part of the default desktop app flow. In practice, you would need to modify the source dependencies and configuration, then build and run your own customized version.
 
-### Selecting and Configuring Ollama Models
+#### Selecting and Configuring Ollama Models
 
 The default profile is `ollama`, and the default setup uses Ollama for both chat and embeddings.
 
@@ -464,7 +484,7 @@ The current default model choices are:
 
 - chat model: `qwen3.5`
 - embedding model: `qwen3-embedding:0.6b`
-- selectable chat models: `gpt-oss`, `qwen3.5`, `qwen3`
+- selectable chat models: `qwen3.5`, `qwen3.5:2b`, `gemma4`, `gpt-oss`, `deepseek-r1`
 
 Important notes:
 
@@ -472,7 +492,7 @@ Important notes:
 - the selectable chat model list controls what appears in the Playground model selector
 - changing the chat or embedding model changes the runtime defaults used by the application
 
-### Switching to OpenAI
+#### Switching to OpenAI
 
 To switch to OpenAI:
 
@@ -512,7 +532,7 @@ set OPENAI_API_KEY=your-openai-api-key
 ./mvnw spring-boot:run --spring.profiles.active=openai
 ```
 
-### Switching to OpenAI-Compatible Servers
+#### Switching to OpenAI-Compatible Servers
 
 You can also connect to OpenAI-compatible servers such as `llama.cpp`, `TabbyAPI`, `LM Studio`, `vLLM`, `Ollama`, or others that expose OpenAI-compatible endpoints.
 
@@ -623,19 +643,9 @@ In practice, it is worth testing the target with a `/v1/models` request first so
 
 For the complete Spring AI OpenAI chat configuration model, see the [Spring AI OpenAI Chat Documentation](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html).
 
-### Important RAG Note
+#### Important RAG Note
 
 If you change the embedding model after documents have already been indexed, existing vector data can become inconsistent. Re-import or rebuild the vector database before trusting retrieval results again.
-
-## Built-in MCP Endpoint
-
-No matter whether you run the app through the desktop launcher, Docker, or direct source execution, the built-in MCP endpoint is exposed at:
-
-```text
-http://localhost:8282/mcp
-```
-
-That endpoint is central to Tool Studio, MCP Inspector, and Agentic Chat with tools.
 
 ## Next Step
 
@@ -659,20 +669,6 @@ To opt out, set `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` before launching:
 - **From source / IDE**: pass `-Dspring.ai.playground.telemetry.enabled=false` as a JVM arg
 
 For more details, see the [README](https://github.com/spring-ai-community/spring-ai-playground#anonymous-usage-telemetry).
-
-## Your First Five Tasks
-
-Once the app is running, the **Home** screen shows a live checklist that mirrors the path below. Each item self-checks based on workspace state, so you can walk through them at your own pace.
-
-![Getting started checklist on the Home screen](assets/images/home-getting-started.png)
-
-1. **Configure a model provider** — Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider — recheck the launcher config or env vars.
-2. **Start a chat** — Agentic Chat is ready the moment a provider is connected. The app ships with seven built-in tools (`getWeather`, `sendSlackMessage`, `googlePseSearch`, `buildGoogleCalendarCreateLink`, `extractPageContent`, `getCurrentTime`, `openaiResponseGenerator`), so you can test end-to-end without writing any code.
-3. **Upload a document for RAG** — Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
-4. **Create your first tool** — Open Tool Studio, write a small JavaScript function, and define its sample arguments. Run it locally: if it passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
-5. **Try an agentic workflow** — Ask the assistant: *"Get today's weather and send it to Slack."* This exercises two built-in tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
-
-> Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking…" or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
 
 ## Further Reading
 

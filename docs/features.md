@@ -391,7 +391,7 @@ For Ollama-based flows:
 - use reasoning-capable models from [Ollama's Thinking Category](https://ollama.com/search?c=thinking)
 - validate tools in MCP Inspector before relying on them in Agentic Chat
 
-The README specifically recommends models such as Qwen 3 and GPT-OSS for stronger tool-oriented reasoning.
+The default `playground.chat.models` list features `qwen3.5` and `gemma4` for stronger tool-oriented reasoning, with `gpt-oss` and `deepseek-r1` as alternatives. See [Picking a Model](tutorials.md#picking-a-model) in the Tutorials for the tradeoffs.
 
 ### Agentic Chat Architecture Overview
 

@@ -1,434 +1,354 @@
-Description: Follow Spring AI Playground tutorials for Tool Studio, MCP servers, RAG, and Agentic Chat workflows using validated tools and grounded context.
+Description: End-to-end Spring AI Playground tutorials covering Tool Studio, MCP servers, vector RAG, and Agentic Chat — from a first locally-validated tool to a full RAG-plus-tools chat workflow with gemma4 and qwen3.5.
 
 # Tutorials
 
-These tutorials follow the practical workflow of the product rather than treating each screen as isolated demos. The goal is to guide you from creating capabilities to using them in Agentic Chat.
+These seven tutorials walk you from creating a single tool to running a chat that combines tool execution with grounded knowledge. They follow the natural product workflow: build → validate → ground → compose.
 
-## Before You Start
+The shipped chat default is **`qwen3.5:2b`** — fast, fine for the early tutorials. Switch to **`qwen3.5:latest`** or **`gemma4:latest`** when you reach tutorials 4–7, where tool-calling reliability matters. Embeddings use **`qwen3-embedding:0.6b`** throughout. See [Picking a model](#picking-a-model) for the tradeoffs.
 
-Complete the setup in [Getting Started](getting-started.md) first.
+## How these tutorials connect
 
-For the most reliable experience:
-
-- launch the desktop app with a working provider setting
-- make sure Ollama is running if your setting depends on it
-- confirm plain chat works before testing tools or RAG
-
-## Tutorial 1: Create and Publish a Tool in Tool Studio
-
-This tutorial introduces the main low-code tool-authoring workflow.
-
-### Goal
-
-Understand the built-in example tools, create or adapt a tool, test it, publish it through the built-in MCP server, and validate it through MCP Inspector.
-
-### What Tool Studio Is Best At
-
-Tool Studio is especially useful for wrapping existing REST APIs into simple MCP-callable tools.
-
-That is one of the most practical uses of the product:
-
-- define a small set of structured parameters
-- call an external HTTP API from JavaScript
-- return a compact JSON result
-- expose that result immediately through MCP
-
-This makes it easy to turn an existing HTTP integration into an AI-usable tool without building a separate application layer first.
-
-### Built-in Example Tools
-
-Tool Studio already includes several example tools that show the main patterns:
-
-- `googlePseSearch`: search the web using Google Programmable Search Engine
-- `extractPageContent`: fetch and clean the main text from a web page
-- `buildGoogleCalendarCreateLink`: generate a Google Calendar event creation URL
-- `sendSlackMessage`: send a message through a Slack webhook
-- `openaiResponseGenerator`: call OpenAI and return a generated response
-- `getWeather`: fetch a compact weather summary
-- `getCurrentTime`: return the current time in ISO format
-
-These examples are useful because they demonstrate:
-
-- clear tool naming
-- structured parameter design
-- static variables for configuration
-- compact JavaScript actions
-- JSON-friendly outputs for downstream agent use
-
-### JavaScript Runtime
-
-Tool actions are implemented in **JavaScript (ECMAScript 2023)** executed inside the JVM through the GraalVM Polyglot runtime.
-
-- **Runtime**: JavaScript (ECMAScript 2023) inside the JVM
-- **Java interop**: controlled through configuration and whitelist-based access
-- **Sandboxing**: unsafe operations such as file I/O and native access are restricted by design, so tool code should stay small and deterministic
-
-Security-related characteristics of the default setup include:
-
-- network I/O allowed for HTTP-based tool integrations
-- file I/O blocked
-- native access blocked
-- thread creation blocked
-- explicit allowed-class configuration
-
-Typical allowed-class examples include:
-
-- `java.lang.*`
-- `java.math.*`
-- `java.time.*`
-- `java.util.*`
-- `java.text.*`
-- `java.net.*`
-- `java.io.*`
-- `java.net.http.HttpClient`
-- `java.net.http.HttpRequest`
-- `java.net.http.HttpResponse`
-- `java.net.http.HttpHeaders`
-- `org.jsoup.*`
-
-This balance is what makes Tool Studio practical for low-code API wrappers while still keeping the runtime constrained.
-
-If you want the full runtime background, including MCP security and GraalVM sandbox references, the detailed explanation lives on the [Features](features.md#javascript-runtime) page.
-
-### Recommended Starting Point
-
-Use one of these built-in examples as your base:
-
-- `getCurrentTime`
-- `getWeather`
-- `extractPageContent`
-
-Then either test it as-is to understand the flow or copy it and adapt it to your own use case.
-
-### Steps
-
-1. Open **Tool Studio**.
-2. Select a built-in tool from the tool list.
-3. Review the tool name, tool description, parameters, static variables, and JavaScript action.
-4. Modify the tool or duplicate it with the copy workflow.
-5. If you are creating a new tool, define a stable tool name and a clear description for model selection.
-6. Add structured parameters instead of relying on one large free-form input whenever possible.
-7. Add static variables for secrets or base URLs when needed.
-8. Write a JavaScript action that returns a compact structured result.
-9. Run **Test Run**.
-10. Inspect the debug console, execution status, elapsed time, and result.
-11. Click **Test & Update Tool**.
-
-### What to Validate
-
-- the JavaScript action runs successfully
-- the returned JSON shape is usable
-- the published tool appears on the built-in MCP server
-
-### Writing Your Own Tool
-
-When creating a tool directly, a strong pattern is:
-
-1. define the request inputs as explicit parameters
-2. keep secrets and configuration in static variables or environment variables
-3. call the target HTTP API
-4. normalize the response into a compact JSON object
-5. test it before publishing
-
-Good tools are usually:
-
-- small
-- deterministic
-- explicit about inputs
-- explicit about outputs
-- easy for a model to select correctly
-
-### Practical REST API Wrapper Pattern
-
-If your goal is to wrap an existing REST API, a useful shape is:
-
-1. use parameters for the request inputs the model should control
-2. keep credentials and fixed endpoints in static variables
-3. make the HTTP request from the JavaScript action
-4. normalize the upstream response into a compact result object
-5. return only the fields the model actually needs
-
-### Secret-Backed Variables
-
-If your tool requires external credentials, prefer environment-backed values instead of hardcoding them into the tool definition.
-
-Typical built-in mappings are:
-
-- `openaiResponseGenerator` uses `${OPENAI_API_KEY}`
-- `googlePseSearch` uses `${GOOGLE_API_KEY}` and `${PSE_ID}`
-- `sendSlackMessage` uses `${SLACK_WEBHOOK_URL}`
-
-When using the desktop launcher, put those values in the Environment Variables section of the selected desktop setting.
-
-### Validate the Tool Through the Built-in MCP Server
-
-This validation is part of the same authoring flow.
-
-1. Open **MCP Server**.
-2. Select the built-in MCP connection if it is already listed, or connect to:
-
-```text
-http://localhost:8282/mcp
+```mermaid
+flowchart LR
+  T1["1. Author a Tool<br/>Tool Studio"]
+  T2["2. Connect MCP<br/>MCP Server"]
+  T3["3. Index a Doc<br/>Vector Database"]
+  T4["4. Chat + Tools<br/>Agentic Chat"]
+  T5["5. Chat + RAG<br/>Agentic Chat"]
+  T6["6. Tools + RAG<br/>Agentic Chat"]
+  T7["7. Tool Chain<br/>Weather → Slack"]
+  T1 --> T2
+  T2 --> T4
+  T3 --> T5
+  T4 --> T6
+  T5 --> T6
+  T6 --> T7
+  classDef build fill:#eef2ff,stroke:#3F51B5,color:#1e1b4b
+  classDef validate fill:#ecfdf5,stroke:#10b981,color:#064e3b
+  classDef ground fill:#fff7ed,stroke:#f59e0b,color:#7c2d12
+  classDef compose fill:#fdf2f8,stroke:#e11d48,color:#831843
+  class T1 build
+  class T2 validate
+  class T3 ground
+  class T4,T5,T6,T7 compose
 ```
 
-3. Open **MCP Inspector**.
-4. Browse the available tools.
-5. Select the tool you published from Tool Studio.
-6. Review the schema and required arguments.
-7. Execute the tool directly from the inspector.
+Tutorials 1–3 produce reusable assets (a tool, an MCP connection, an indexed document). Tutorials 4–7 compose those assets in chat. Each tutorial is independently runnable in 3–8 minutes; the full sequence takes about 30 minutes.
 
-Validate that:
+!!! abstract "What you'll need"
+    - Spring AI Playground running on `http://localhost:8282`. Follow [Getting Started](getting-started.md) first if you haven't.
+    - Ollama running, with `qwen3.5:latest` and `qwen3-embedding:0.6b` pulled.
+        ```bash
+        ollama pull qwen3.5
+        ollama pull gemma4
+        ollama pull qwen3-embedding:0.6b
+        ```
+    - For Tutorial 7 only: `SLACK_WEBHOOK_URL` set in the launcher's Environment Variables.
 
-- the tool is visible through MCP
-- the schema matches your expectations
-- the output is correct when invoked through the MCP layer, not just from Tool Studio
+## Picking a model
 
-## Tutorial 2: Connect an External MCP Server
+Tool calling and tool chaining quality depend heavily on the model. The selectable list in **Agentic Chat → Settings → Model** is driven by `application.yaml`'s `playground.chat.models`. The shipped default is the small one — start there, and only upgrade if a tool turn comes back empty.
 
-The Playground can also act as an MCP client for remote tools.
+=== "qwen3.5:2b (default)"
+    The shipped default. **2.7 GB**. Fast on Apple Silicon. Use this for the chat sanity check **before** wiring up tools or RAG. Tool calling is best-effort — if a tool turn comes back empty, that is the signal to upgrade, not to rewrite the prompt.
 
-### Goal
+=== "qwen3.5:latest"
+    **6.6 GB**. Stronger tool calling and multi-turn reasoning. The first upgrade target when `qwen3.5:2b` skips a tool call.
 
-Add an external MCP connection and verify that its tools can be inspected and executed.
+=== "gemma4:latest"
+    **9.6 GB**. Strongest natural-language quality. Pick this for tutorial 7 (multi-step tool chains) where the model has to *reason about* a tool result rather than just call it.
 
-### Steps
+=== "gpt-oss:latest"
+    **13 GB**. OpenAI's open-weights reasoning model. A good cross-check when you suspect a result depends heavily on which model family you picked.
 
-1. Open **MCP Server**.
-2. Add a new server connection.
-3. Choose the correct transport type: `Streamable HTTP`, `STDIO`, or legacy HTTP plus SSE when needed.
-4. Fill in the server details.
-5. Save the connection.
-6. Open **MCP Inspector** and inspect the available tools.
-7. Run one tool directly from the inspector.
+!!! tip "Where the model selector lives"
+    Open Agentic Chat, click the **gear** icon at the top right, change `Model`, then click **Apply & New Chat**. The chat header reflects the change.
 
-### Client Examples
+---
 
-Common connection patterns include:
+## Tutorial 1 — Author and Validate a Tool
 
-- Claude Code with Streamable HTTP
-- Cursor with a Streamable HTTP MCP server entry
-- Claude Desktop using `mcp-remote` when a proxy-style local process is more practical
+**Time** 8 min · **Difficulty** ★☆☆ · **Surfaces** Tool Studio, MCP Server
 
-If you plan to use those tools in Agentic Chat later, validate them here first rather than debugging them for the first time inside a live conversation.
+!!! abstract "Goal"
+    Take a built-in example tool (`getWeather`), run its local test, and verify it shows up on the built-in MCP server. This is the canonical *no-pass-no-run* flow: every tool earns its **Local Pass** before going live.
 
-### What to Validate
+### What Tool Studio is for
 
-- the transport configuration is correct
-- the connection initializes successfully
-- argument schemas are understandable
-- direct execution works before you rely on the tool in Agentic Chat
+Tool Studio wraps an HTTP API — or any small piece of JavaScript — into an MCP-callable tool. The runtime is GraalVM Polyglot JavaScript inside the JVM with a tight sandbox: network I/O is allowed; file I/O, native access, and thread creation are blocked. That's enough for REST API wrappers and small computations, which is most of what a model needs.
 
-### Why This Step Matters
+The seven examples shipped with the app cover the common shapes:
 
-Agentic Chat is much easier to debug when tools have already been validated in MCP Inspector.
-
-## Tutorial 3: Register Knowledge in Vector Database
-
-This tutorial prepares the knowledge side of the product.
-
-### Goal
-
-Upload content, create embeddings, store vector data, and confirm retrieval quality.
+| Tool | Pattern |
+|---|---|
+| `getCurrentTime` | Pure computation with an optional parameter |
+| `getWeather` | External REST call, normalized JSON output |
+| `googlePseSearch` | REST call with secrets in static variables |
+| `extractPageContent` | HTTP fetch + HTML parse via `org.jsoup` |
+| `sendSlackMessage` | Webhook POST with environment-backed config |
+| `openaiResponseGenerator` | Calls another model from a tool |
+| `buildGoogleCalendarCreateLink` | Pure URL builder, no network |
 
 ### Steps
 
-1. Open **Vector Database**.
-2. Choose one input type: PDF, Word document, PowerPoint file, or custom text input.
-3. Upload or paste the content.
-4. Let the app complete text extraction, chunking, embedding, and vector storage.
-5. Run a similarity search.
-6. Inspect returned chunks, metadata, and similarity scores.
+1. Open **Tool Studio** and click `getWeather` in the left rail. It's a small REST-API wrapper — exactly the shape Tool Studio is built for.
+2. Review the schema, parameters, and the JavaScript action. Notice the description tells the model *when* to use it — that's what the LLM uses for tool selection. The `location` parameter is **Required** (the checkbox is on), so its name and Test Value both show a `•` to mark them mandatory.
+3. **Fill in the `Test Value` for every required parameter.** This is not just a form field — the Test Value is the **sample input** the local sandbox actually executes the tool with. The output of that run is what earns (or fails) the **Local Pass**, which is what gates publishing the tool to MCP. Garbage values here mean a garbage Local Pass.
+4. Click **Test & Update Tool**. The local test runs the action with your Test Values. If it passes, the tool earns its Local Pass and is published to the built-in MCP server in the same step — no restart, no redeploy.
 
-### What to Review Carefully
+![Tool Studio with `getWeather` selected, showing required Test Value](assets/images/tutorials/tutorial-1-tool-selected.png)
+*① the seven built-in tools, ② tool name and description (shown to the model for selection), ③ structured parameters with the **Required** checkbox on, ④ **Test Value — required** (note the `•`), the sample input the sandbox runs with to earn the Local Pass, ⑤ **Test & Update Tool** runs the test then publishes if it passes.*
 
-When validating the indexed result, pay attention to:
+!!! warning "No Test Value, no Local Pass, no MCP"
+    A tool with empty Test Values for required parameters cannot run locally — and a tool that cannot run locally never reaches the MCP server. Pick a representative sample (e.g. `seoul` for `getWeather`) that exercises the same code path the model will hit in production.
 
-- whether chunk boundaries make sense
-- whether similarity scores are good enough for your use case
-- whether metadata is useful for later filtering
-- whether filter expressions can narrow the search effectively
+After the test passes, you'll see a confirmation banner. Tool name and description match the entry in MCP from this point on.
 
-### What to Validate
+![Test passed and the tool is registered](assets/images/tutorials/tutorial-1-test-run-success.png)
+*The Local Pass is what gates publication. Tools that haven't earned it never reach an MCP client.*
 
-- ingestion succeeds end to end
-- the chunks are sensible for your content
-- the selected embedding model produces usable retrieval results
-- the search results are good enough to be trusted in chat
+5. Switch to **MCP Server**. The built-in connection `spring-ai-playground-tool-mcp` is selected by default. Scroll down to the **MCP Inspector** section to see the tools as any MCP client would.
 
-### Important Note
+![MCP Inspector listing the built-in tools, with the play button on each row to call through MCP](assets/images/tutorials/tutorial-1-mcp-inspector-tool.png)
+*① the **Call Tool** play icon (here on the `getCurrentTime` row, the same tool Tutorial 4 will call from chat) runs the tool through the full MCP transport — not just the local sandbox. Your `getWeather` from step 4 lives in the same list; scroll the inspector to find it.*
 
-If you later change the embedding model, rebuild or re-import your indexed data before relying on the old vector contents.
+!!! tip "Why this matters"
+    Validating a tool *through MCP* (not just via Tool Studio's local test) catches schema mismatches and serialization issues that would otherwise only show up the first time a model invokes the tool in chat.
 
-## Tutorial 4: Agentic Chat With Tools
+!!! warning "Common pitfalls"
+    - Spaces in tool names break MCP. Use `camelCase` or `snake_case`.
+    - Don't hardcode secrets. Use environment-backed `static variables` (`${OPENAI_API_KEY}`, `${SLACK_WEBHOOK_URL}`, …) so they're injected at launch time only.
+    - Keep results compact JSON. Long free-text outputs balloon the chat token count and crowd the context window.
 
-This is the first end-to-end tool-enabled workflow.
+→ Next: [Tutorial 2 — Connect an External MCP Server](#tutorial-2-connect-an-external-mcp-server)
 
-### Goal
+---
 
-Use MCP-connected tools from a reasoning-capable model during a chat conversation.
+## Tutorial 2 — Connect an External MCP Server
 
-### Steps
+**Time** 5 min · **Difficulty** ★☆☆ · **Surfaces** MCP Server
 
-1. Open **Agentic Chat**.
-2. Enable the MCP connection you want to use.
-3. Select a model that supports tool use and reasoning.
-4. Send a prompt that should require a tool call.
-
-Example:
-
-```text
-What time is it right now in ISO format?
-```
-
-If you published `getCurrentTime`, the built-in MCP connection is a good first validation path. External MCP connections work too when you have explicitly added and trusted them.
-
-### What to Observe
-
-- whether the model decides to use a tool
-- whether the tool is actually executed
-- whether the final answer reflects the tool output
-
-### Ollama Guidance
-
-For Ollama, tool-enabled agentic use works best with models that support both reasoning and function calling. Models such as Qwen 3 and GPT-OSS are strong candidates for this kind of workflow.
-
-Helpful discovery links:
-
-- [Ollama Tool Category](https://ollama.com/search?c=tools)
-- [Ollama Thinking Category](https://ollama.com/search?c=thinking)
-
-Before using a tool in Agentic Chat, validate that tool in MCP Inspector first.
-
-## Tutorial 5: Agentic Chat With RAG
-
-Now validate the knowledge-grounding workflow without introducing tools.
-
-### Goal
-
-Use indexed documents as grounded context in chat.
+!!! abstract "Goal"
+    Add an external MCP server connection (Streamable HTTP, STDIO, or SSE), validate the schema in the inspector, and run a tool through it directly — *before* relying on it from chat.
 
 ### Steps
 
-1. Make sure your document is already indexed in **Vector Database**.
-2. Open **Agentic Chat**.
-3. Select one or more indexed documents as knowledge sources.
-4. Ask a question that should be answerable from the indexed content.
+1. Open **MCP Server** and click the `+` icon next to **MCP Server Connections** to start a new connection.
+2. Pick the transport type. **Streamable HTTP** is the modern default; STDIO is for proxy-style local processes (Claude Desktop's `mcp-remote`); SSE is the legacy HTTP+SSE shape.
+3. Fill in the connection name and the JSON config for your transport.
 
-Example:
+![New MCP connection form with transport, name, and config](assets/images/tutorials/tutorial-2-connection-form.png)
+*① pick a transport (Streamable HTTP is the default; STDIO and SSE are also supported), ② name + description, ③ **Save & Connect** validates and registers the connection.*
 
-```text
-What are the three most important points in this document?
-```
+4. Once connected, scroll to **MCP Inspector** to browse tools and run them directly.
 
-### What to Observe
+![Inspector listing tools for the connected server](assets/images/tutorials/tutorial-2-inspector-tools.png)
+*① the **MCP Inspector** is the same panel for built-in and external connections — schemas, descriptions, and a `Call Tool` action per row.*
 
-- relevant chunks are retrieved from the vector store
-- those chunks are added as prompt context
-- the answer reflects the indexed knowledge rather than only the base model’s generic memory
+!!! tip "Validate here, not in chat"
+    Tools that fail in MCP Inspector will fail in Agentic Chat too — but the chat error message is wrapped in the agent's reasoning trace and harder to debug. Save yourself a turn: run every new tool through the inspector once before letting a model invoke it.
 
-### Good Validation Pattern
+!!! example "Useful external MCP servers"
+    - Claude Desktop / Claude Code via Streamable HTTP
+    - Cursor's MCP server entry
+    - Awesome MCP Servers list — a directory of community servers
 
-1. verify the document indexed correctly in Vector Database
-2. run similarity search first
-3. then test the same knowledge source in Agentic Chat
+→ Next: [Tutorial 3 — Index a Document for RAG](#tutorial-3-index-a-document-for-rag)
 
-## Tutorial 6: Agentic Chat With Tools and RAG Together
+---
 
-This is the full product workflow.
+## Tutorial 3 — Index a Document for RAG
 
-### Goal
+**Time** 6 min · **Difficulty** ★☆☆ · **Surfaces** Vector Database
 
-Use both knowledge grounding and MCP-based tool execution in a single conversation.
+!!! abstract "Goal"
+    Upload a document, watch it pass through the ETL pipeline (extract → chunk → embed → store), and verify retrieval quality with a similarity search before relying on it in chat.
+
+### Steps
+
+1. Open **Vector Database**. The header shows the active store and embedding model: `SimpleVectorStore — Ollama: qwen3-embedding:0.6b`.
+
+![Vector Database with the search controls and document sidebar](assets/images/tutorials/tutorial-3-search-controls.png)
+*① indexed-doc sidebar (single source of truth), ② similarity-search input (hit Enter to query), ③ Spring AI metadata filter expression — same syntax you'd use in code.*
+
+2. Click the document-add icon next to the sidebar to open the **New Document & ETL Pipeline** dialog. Drop in a PDF, DOCX, or PPTX — up to 20 MB.
+3. Tune the splitter only if the defaults don't match your content shape. `Chunk Size` and `Min Chunk Size Chars` are the two that move retrieval quality the most.
+
+![New document dialog showing the splitter settings](assets/images/tutorials/tutorial-3-new-document-pipeline.png)
+*① upload the file (drag-drop also works), ② token-splitter settings — `Chunk Size` and `Min Chunk Size Chars` move retrieval quality the most, ③ `Chunk Document` runs extraction + splitting and shows the chunks before embedding, so you can adjust the splitter without re-uploading.*
+
+4. After embedding, run a similarity search to confirm retrieval works. Use a phrase that should be in the document.
+
+![Similarity search results with score, retrieved text, and metadata](assets/images/tutorials/tutorial-3-chunk-summary.png)
+*① cosine similarity score (0.0–1.0), ② the retrieved chunk text, ③ metadata used by Spring AI filter expressions (`source`, `chunk_index`, custom fields).*
+
+!!! tip "Why this matters"
+    Bad RAG starts here, not in chat. If the chunk you expect to be retrieved doesn't show up here at a reasonable similarity score (≥ 0.6 for most cases), the chat answer will be ungrounded — no amount of prompting fixes that.
+
+!!! warning "Don't change the embedding model after indexing"
+    The vector store stores raw vectors. Switching from `qwen3-embedding:0.6b` to a different model leaves the old vectors in place but indexed in a different space. Re-import or rebuild before trusting retrieval again.
+
+→ Next: [Tutorial 4 — Chat With Tools](#tutorial-4-chat-with-tools)
+
+---
+
+## Tutorial 4 — Chat With Tools
+
+**Time** 5 min · **Difficulty** ★★☆ · **Surfaces** Agentic Chat
+
+!!! abstract "Goal"
+    Call a built-in MCP tool from a real chat turn. Watch the model decide to call it, see the tool result, then read the final answer. The example below uses `getCurrentTime` because it returns instantly — but any tool published in Tutorial 1 (`getWeather` and the rest) works the same way.
+
+### Steps
+
+1. Open **Agentic Chat**. Click the gear icon to open **Chat Model Setting** and switch the model.
+
+![Chat Model Setting panel with the model dropdown open showing qwen3.5:latest and gemma4:latest](assets/images/tutorials/tutorial-4-chat-tool-setup.png)
+*① `Model` dropdown — open it to switch from the default `qwen3.5:2b`, ② recommended models for tool use are `qwen3.5:latest` and `gemma4:latest`. Pick one and click **Apply & New Chat**.*
+
+2. With the chat started under the new model, enable the built-in MCP connection in the **tools** combo at the bottom, then type a prompt that should trigger a tool call.
+
+![Agentic Chat ready to send a tool-trigger prompt](assets/images/tutorials/tutorial-4-tool-prompt-ready.png)
+*① MCP connection enabled — its tools are now in the model's tool inventory. ② prompt typed but not sent — click the send arrow on the right to dispatch.*
+
+3. Send the prompt. The chat stream interleaves the model's reasoning, the tool call, and the final answer.
+
+![Tool call result with reasoning, MCP tool block, and assistant turn](assets/images/tutorials/tutorial-4-tool-call-result.png)
+*The collapsible **THINK** section shows the model's reasoning. **MCP TOOLS** shows the actual tool invocation (here `getCurrentTime`, 330 ms, 1 call). **ASSISTANT** is the final user-facing answer that uses the tool result.*
+
+### What to observe
+
+- The model decides on its own whether to call a tool — there's no forced tool-use directive.
+- The tool name in the MCP TOOLS block matches the one you saw in MCP Inspector.
+- If the tool fails or returns garbage, the model explains it instead of fabricating an answer (assuming you picked a tool-capable model).
+
+!!! tip "Why this matters"
+    `qwen3.5:2b` (the default) sometimes skips tool calls or returns empty tool turns. `qwen3.5:latest` is much more reliable for this. If a tool turn comes back empty, that is the signal to upgrade the model — not to rewrite the prompt.
+
+→ Next: [Tutorial 5 — Chat With RAG](#tutorial-5-chat-with-rag)
+
+---
+
+## Tutorial 5 — Chat With RAG
+
+**Time** 5 min · **Difficulty** ★★☆ · **Surfaces** Agentic Chat, Vector Database
+
+!!! abstract "Goal"
+    Use the document you indexed in Tutorial 3 as grounded context in a chat answer — no tools yet, just retrieval-augmented generation.
+
+### Steps
+
+1. Open **Agentic Chat** with the `qwen3.5:latest` model already selected (from Tutorial 4 — it sticks until you change it).
+2. Open the **documents** combo at the bottom and pick the indexed document. The chip appears in the combo; the model now has the document available as a RAG source.
+
+![Chat with the indexed document selected as a RAG source](assets/images/tutorials/tutorial-5-rag-source-controls.png)
+*① the indexed `test-rag.pdf` is selected — every prompt in this chat will retrieve relevant chunks from the document before the model answers.*
+
+3. Ask a question that should be answerable from the document.
+
+![Chat with a RAG-friendly prompt typed](assets/images/tutorials/tutorial-5-rag-prompt-ready.png)
+*① grounded prompt — the model will retrieve chunks first, then answer using their content rather than generic memory.*
+
+### What to observe
+
+- The chat trace shows a **retrieval** step before the final answer — that's the chunks pulled from the vector store.
+- If the answer doesn't reflect the document, go back to Tutorial 3 and re-check the similarity search. Ungrounded answers usually mean retrieval failed, not generation.
+
+!!! warning "RAG only as good as your chunks"
+    A great chat model can't recover from poorly chunked content. If your document has tables or code blocks, look at the chunked output in Vector Database before relying on it in chat — the splitter may have cut at unhelpful boundaries.
+
+→ Next: [Tutorial 6 — Tools and RAG Together](#tutorial-6-tools-and-rag-together)
+
+---
+
+## Tutorial 6 — Tools and RAG Together
+
+**Time** 6 min · **Difficulty** ★★★ · **Surfaces** Agentic Chat (full)
+
+!!! abstract "Goal"
+    Run a single chat turn that needs both grounded knowledge *and* live tool execution. This is the full product workflow — what the rest of the tutorials build toward.
 
 ### Setup
 
-Before starting, make sure you have:
+Before sending the prompt, make sure you have:
 
-- at least one validated tool from Tool Studio or an external MCP connection
-- any external MCP connection you plan to use has already been added and trusted by you
-- at least one indexed document in Vector Database
-
-### Steps
-
-1. Open **Agentic Chat**.
-2. Enable the relevant MCP connections.
-3. Enable the relevant indexed documents.
-4. Select an appropriate reasoning-capable model.
-5. Send a prompt that may need both retrieved knowledge and live tool execution.
-
-### What to Observe
-
-- RAG supplies grounded factual context
-- tool calls happen only when needed
-- the final answer reflects both retrieved knowledge and external action results
-
-### Recommended Workflow Integration
-
-1. develop tools in Tool Studio
-2. validate them in MCP Server
-3. register documents in Vector Database
-4. compose documents and MCP connections in Agentic Chat
-5. observe retrieval and tool execution together
-
-### Why This Tutorial Is the Most Important
-
-Spring AI Playground is designed around composition:
-
-- Tool Studio creates capabilities
-- MCP Server validates and manages them
-- Vector Database prepares grounded knowledge
-- Agentic Chat composes all of that into one working workflow
-
-This final tutorial is where that architecture becomes visible to the user. It shows the intended balance of the product: deterministic knowledge grounding through RAG, dynamic action through MCP tools, and a shared chat runtime where both can be validated together.
-
-## Tutorial 7: Weather to Slack — Your First Agentic Workflow
-
-### Goal
-
-Trigger a chain of two built-in tools in a single chat turn. This is the fastest way to see the agentic loop end to end without writing any code, and it is the canonical "Try an agentic workflow" task the Home screen checklist points at.
-
-### Why Start Here
-
-- Uses only pre-loaded built-in tools: `getWeather` and `sendSlackMessage`. No Tool Studio authoring required.
-- Exercises the full agent path: plan → call tool A → read result → call tool B with that result → summarize.
-- Works the moment the model provider is connected. Every tool has already earned its Local Pass and is live on the built-in MCP server.
-
-### Prerequisites
-
-- Provider pill on Home shows a green dot and "Ready" (Ollama reachable or OpenAI key set)
-- `SLACK_WEBHOOK_URL` is set in the environment the app runs in, so `sendSlackMessage` can actually post. On the desktop launcher, add it under **Environment Variables**; when running from source or Docker, export it before launching.
-- A tool-capable model (see Tutorial 4 for the recommended Ollama models)
+- a tool you trust — any built-in (`getCurrentTime`, `getWeather`, …) is fine, or one you authored in Tool Studio
+- an indexed document from Tutorial 3
+- a tool-capable model — `qwen3.5:latest` or `gemma4:latest`
 
 ### Steps
 
-1. Open **Agentic Chat**.
-2. Make sure the built-in MCP connection is enabled. The tools you need — `getWeather`, `sendSlackMessage` — will appear in the tool inventory.
-3. Send this prompt, verbatim:
+1. Enable both controls at the bottom: the **MCP connection** chip and the **document** chip.
 
-        Get today's weather for Seoul and send a short summary to Slack.
+![Combined setup with both MCP and RAG enabled](assets/images/tutorials/tutorial-6-combined-setup.png)
+*① the MCP connection is active — every tool the connection exposes is in the inventory, ② the RAG source is active — the model will retrieve chunks before answering. The model can use either, both, or neither, per turn.*
 
-4. Watch the chat stream:
-    - the assistant calls `getWeather` with your location
+2. Send a prompt that requires both. The example below asks for a document summary *and* a current ISO time — the model should retrieve from the doc and call `getCurrentTime` in the same turn.
+
+![Combined-mode prompt ready to send](assets/images/tutorials/tutorial-6-combined-prompt-ready.png)
+*① one prompt that needs RAG + tools — the model decides on its own which to use when.*
+
+### What to observe
+
+- The trace shows **both** a retrieval step and an MCP tool call.
+- The final answer references concrete document content (not generic) **and** uses the tool result (not made up).
+- If only one happens, that's a model-quality signal — switch to `gemma4:latest` and try again.
+
+!!! tip "Why this is the most important tutorial"
+    Spring AI Playground is built around composition. Tool Studio creates capabilities, MCP Server validates them, Vector Database prepares grounded knowledge, and Agentic Chat composes all of that. This tutorial is where the architecture becomes visible from a single chat turn.
+
+→ Next: [Tutorial 7 — Weather to Slack: A Two-Tool Chain](#tutorial-7-weather-to-slack-a-two-tool-chain)
+
+---
+
+## Tutorial 7 — Weather to Slack: A Two-Tool Chain
+
+**Time** 4 min · **Difficulty** ★★★ · **Surfaces** Agentic Chat
+
+!!! abstract "Goal"
+    Trigger a chain of two built-in tools (`getWeather` → `sendSlackMessage`) in a single chat turn. Watch the agent loop in action: plan → call tool A → read result → call tool B with that result → summarize.
+
+This is the canonical *"try an agentic workflow"* task on the Home checklist. No Tool Studio authoring required — both tools are pre-loaded and already passed their Local Pass.
+
+!!! warning "Slack webhook required"
+    `sendSlackMessage` posts to whatever URL is in `SLACK_WEBHOOK_URL`. Set it in the desktop launcher's **Environment Variables** (or as a shell env var when running from source) **before** launching the app. Without it, the second tool call will fail and the chain breaks at step 2.
+
+### Steps
+
+1. In **Agentic Chat**, switch to a tool-capable model (`qwen3.5:latest` works; `gemma4:latest` chains more reliably for longer prompts) and enable the built-in MCP connection.
+2. Send this prompt verbatim:
+
+    ```text
+    Get today's weather for Seoul and send a short summary to Slack.
+    ```
+
+![Tool-chain prompt ready with MCP enabled](assets/images/tutorials/tutorial-7-tool-chain.png)
+*① MCP connection enabled — `getWeather` and `sendSlackMessage` are both in the inventory, ② one prompt that requires two tool calls in the right order.*
+
+3. Watch the chat stream:
+    - the assistant calls `getWeather` with `Seoul`
     - the tool returns a compact weather payload
     - the assistant reasons over the result and calls `sendSlackMessage` with a short natural-language summary
-    - the final assistant turn confirms the Slack message was posted
+    - the assistant's final turn confirms the post
 
-5. Open Slack and verify the message actually landed in the target channel.
+4. Open Slack and verify the message landed.
 
-### What to Validate
+### What to validate
 
-- The assistant makes **two distinct tool calls in order**, not a single one.
-- The Slack message content is derived from the weather tool's output — the agent is chaining, not guessing.
-- If either tool fails, the failure shows up in the chat stream with the tool name and the error. That same failure would also have blocked the tool from earning its Local Pass — every tool you see here already passed its local test.
+- **Two distinct tool calls in order**, not one. The MCP TOOLS block in the trace should list both, with `getWeather` before `sendSlackMessage`.
+- The Slack message body is **derived from** the weather result — the agent is chaining, not guessing.
+- If either tool fails, the failure surfaces in the chat with the tool name and error. The same failure would have blocked the tool from earning its Local Pass — so `sendSlackMessage` failing here means the webhook URL is wrong, not the tool itself.
 
-### Where to Go Next
+### Where to go from here
 
-- Swap `sendSlackMessage` for one of your own tools authored in Tool Studio. The moment it passes its test, it goes live on the built-in MCP server and becomes available to the assistant in the same way.
-- Combine this flow with a RAG document (Tutorial 5) — ask the assistant to summarize a policy document and post the summary to Slack. That is the full Tool + RAG composition from Tutorial 6, phrased as a concrete task.
+- Replace `sendSlackMessage` with a Tool Studio tool of your own. The moment it passes its Local Pass, it's live on the built-in MCP server and the chat can use it the same way.
+- Combine this flow with a RAG document — *"summarize this policy document and post the summary to Slack"* — and you've got Tutorial 6's composition phrased as a real task.
+
+---
 
 ## Further Reading
 
 - [Overview](index.md): return to the main product overview and documentation map
-- [Getting Started](getting-started.md): review installation, runtime options, and provider configuration
+- [Getting Started](getting-started.md): install the app, configure providers, and choose a runtime
 - [Architecture](architecture.md): runtime layers, data flows, and extension points
-- [Features](features.md): the main product areas in more detail
+- [Features](features.md): the main product areas and what they do

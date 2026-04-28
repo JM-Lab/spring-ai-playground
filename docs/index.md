@@ -40,7 +40,7 @@ Spring AI Playground is a standalone desktop app, so you can install it and star
 
 ### 1. Download the Desktop App
 
-Pick the installer for your platform. Each link resolves to the latest published release automatically; the downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M4-mac-arm64.dmg`).
+Pick the installer for your platform. Each link resolves to the latest published release automatically.
 
 <p class="download-badges">
   <a id="win-x64" class="download-badge" href="https://github.com/spring-ai-community/spring-ai-playground/releases/latest" data-pattern="win-x64.exe" data-label="Windows (NSIS, x64)" rel="noopener"><img src="https://img.shields.io/badge/Windows-NSIS%20Installer-0078D6?logo=windows&logoColor=white" alt="Windows NSIS Installer"/></a>
