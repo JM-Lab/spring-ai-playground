@@ -65,3 +65,23 @@
   }
   </script>
 {% endblock %}
+
+{% block content %}
+  {{ super() }}
+
+  {% set discussions_url = "https://github.com/spring-ai-community/spring-ai-playground/discussions" %}
+  {% set page_source = config.site_url ~ (page.url if page and page.url else "") %}
+  {% set docs_issue_url = "https://github.com/spring-ai-community/spring-ai-playground/issues/new"
+                       ~ "?template=docs_issue_report.yml"
+                       ~ "&page-url=" ~ page_source|urlencode %}
+  <div class="docs-feedback">
+    <span class="docs-feedback__prompt">Was this page helpful?</span>
+    <a class="docs-feedback__link" href="{{ discussions_url }}" target="_blank" rel="noopener">
+      Ask on Discussions
+    </a>
+    <span class="docs-feedback__sep">·</span>
+    <a class="docs-feedback__link" href="{{ docs_issue_url }}" target="_blank" rel="noopener">
+      Report a docs issue
+    </a>
+  </div>
+{% endblock %}

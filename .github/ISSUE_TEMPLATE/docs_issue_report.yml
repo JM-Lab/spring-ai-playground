@@ -1,0 +1,44 @@
+name: 📝 Documentation Issue
+description: Report an error, missing info, or unclear explanation in the docs.
+title: "[Docs]: "
+labels: ["docs", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For general questions, prefer
+        [GitHub Discussions Q&A](https://github.com/spring-ai-community/spring-ai-playground/discussions/categories/q-a).
+        If you can fix it yourself, a PR is the fastest path.
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      description: Link to the page where you found the issue.
+      placeholder: https://spring-ai-community.github.io/spring-ai-playground/...
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Issue type
+      options:
+        - Typo or grammar
+        - Broken link or image
+        - Outdated information
+        - Missing information
+        - Unclear explanation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What's wrong?
+      description: Quote the affected text or describe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix (optional)
+      description: If you have a proposal, share it here. PRs welcome too.

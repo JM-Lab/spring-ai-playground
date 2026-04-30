@@ -1,0 +1,54 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Phrase your title as a question — "How do I ...?", "Why does ...?", "Can I ...?".
+        For confirmed bugs, please use the
+        [Bug Report issue template](https://github.com/spring-ai-community/spring-ai-playground/issues/new?template=bug_report.yml) instead.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: One or two sentences on your goal.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What did you try?
+      description: Steps you took, snippets, configs.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: Actual behavior, error messages, logs.
+  - type: input
+    id: version
+    attributes:
+      label: Spring AI Playground version
+      placeholder: e.g. v0.2.0-M4
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: e.g. macOS 14, Windows 11, Ubuntu 24.04
+  - type: input
+    id: java
+    attributes:
+      label: Java/JDK
+      placeholder: e.g. Eclipse Temurin 21
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Ollama
+        - OpenAI
+        - OpenAI-compatible
+        - Other
+        - Not applicable
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, links to related issues/discussions.

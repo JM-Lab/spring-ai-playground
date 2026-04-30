@@ -2,6 +2,7 @@ site_name: Spring AI Playground
 site_description: Cross-platform desktop app and safe local execution layer for AI agent tools with Tool Studio, MCP, Agentic Chat, RAG, and No pass, no run validation.
 site_url: https://spring-ai-community.github.io/spring-ai-playground/
 repo_url: https://github.com/spring-ai-community/spring-ai-playground
+edit_uri: edit/main/docs/
 copyright: Copyright &copy; 2025 Spring AI Community · <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>
 
 extra:
@@ -26,6 +27,8 @@ theme:
     - navigation.tabs
     - search.highlight
     - content.code.copy
+    - content.action.edit
+    - content.action.view
 
 nav:
   - Home: index.md

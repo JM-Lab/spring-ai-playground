@@ -344,3 +344,34 @@ body.dl-confirm-open {
   height: 1rem;
   flex: 0 0 auto;
 }
+
+/* Per-page feedback callout (Discussions + docs issue) */
+.docs-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 2.5rem 0 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.docs-feedback__prompt {
+  color: var(--md-default-fg-color--light);
+}
+
+.docs-feedback__link {
+  color: var(--md-primary-fg-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.docs-feedback__link:hover {
+  text-decoration: underline;
+}
+
+.docs-feedback__sep {
+  color: var(--md-default-fg-color--lighter);
+}

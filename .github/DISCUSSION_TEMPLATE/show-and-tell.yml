@@ -1,0 +1,28 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share what you built, set up, or learned with Spring AI Playground —
+        a tool, MCP server, agentic flow, integration, or tip.
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you make or set up?
+      description: Brief description — a tool, MCP server, flow, integration, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How it works
+      description: Inputs, outputs, key logic.
+  - type: textarea
+    id: link
+    attributes:
+      label: Code or demo
+      description: Repo link, screenshot, gif, video.
+  - type: textarea
+    id: tech
+    attributes:
+      label: Tech notes (optional)
+      description: Provider, model, libraries you leaned on.

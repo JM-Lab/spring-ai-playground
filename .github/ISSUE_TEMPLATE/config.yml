@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 💬 Q&A and Discussions
+    url: https://github.com/spring-ai-community/spring-ai-playground/discussions
+    about: Ask questions, share ideas, and get help from the community.
   - name: 📘 Project Scope & Contribution Policy
     url: https://github.com/spring-ai-community/spring-ai-playground/blob/HEAD/README.md#contributing--scope
     about: Please read our policy on feature requests before submitting.
