@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.webui.mcp;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
@@ -23,6 +24,8 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.shared.Tooltip;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
@@ -31,6 +34,8 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.mcp.client.McpClientService.ServerStatus;
+import org.springaicommunity.playground.service.mcp.client.McpClientService.StatusEntry;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.VaadinUtils;
@@ -42,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 
 import static org.springaicommunity.playground.webui.mcp.McpServerView.MCP_CONNECTION_DELETE_EVENT;
 import static org.springaicommunity.playground.webui.mcp.McpServerView.MCP_CONNECTION_SELECT_EVENT;
@@ -113,14 +119,60 @@ public class McpServerConnectionView extends WorkspaceSidebar implements BeforeE
         ListBox<McpServerInfo> mcpServerInfoListBox = new ListBox<>();
         mcpServerInfoListBox.addClassName("custom-list-box");
         mcpServerInfoListBox.setRenderer(new ComponentRenderer<>(mcpServerInfo -> {
+            StatusEntry status = mcpClientService.getStatus(mcpServerInfo);
+            Span dot = statusDot(status);
             Span title = listItemText(mcpServerInfo.serverName());
-            Tooltip.forComponent(title).withText(mcpServerInfo.description()).withHoverDelay(1);
-            return title;
+            HorizontalLayout row = new HorizontalLayout(dot, title);
+            row.setSpacing(false);
+            row.setPadding(false);
+            row.setAlignItems(FlexComponent.Alignment.CENTER);
+            row.getStyle().set("gap", "0.4em");
+            String tooltipText = mcpServerInfo.description() == null ? "" : mcpServerInfo.description();
+            if (status.status() == ServerStatus.ERROR && status.error() != null) {
+                tooltipText = (tooltipText.isBlank() ? "" : tooltipText + "\n") + "Error: " + status.error();
+            } else if (status.status() == ServerStatus.AWAITING_AUTHORIZATION) {
+                tooltipText = (tooltipText.isBlank() ? "" : tooltipText + "\n")
+                        + "Awaiting OAuth authorization — open the config panel and click Authorize.";
+            }
+            Tooltip.forComponent(row).withText(tooltipText).withHoverDelay(1);
+            schedulePing(mcpServerInfo, mcpServerInfoListBox);
+            return row;
         }));
         mcpServerInfoListBox.addValueChangeListener(
                 event -> notifyMcpServerInfoSelection(event.getOldValue(), event.getValue())
         );
         return mcpServerInfoListBox;
+    }
+
+    private Span statusDot(StatusEntry status) {
+        Span dot = new Span();
+        String color = switch (status.status()) {
+            case OK -> "var(--lumo-success-color)";
+            case ERROR -> "var(--lumo-error-color)";
+            case AWAITING_AUTHORIZATION -> "var(--lumo-warning-color)";
+            case OFFLINE -> "var(--lumo-contrast-30pct)";
+        };
+        dot.getStyle()
+                .set("display", "inline-block")
+                .set("width", "0.55em")
+                .set("height", "0.55em")
+                .set("border-radius", "50%")
+                .set("flex", "0 0 auto")
+                .set("background-color", color);
+        return dot;
+    }
+
+    private void schedulePing(McpServerInfo mcpServerInfo, ListBox<McpServerInfo> listBox) {
+        UI ui = VaadinUtils.getUi(this);
+        if (ui == null) return;
+        Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+            StatusEntry before = mcpClientService.getStatus(mcpServerInfo);
+            StatusEntry after = mcpClientService.pingAndUpdateStatus(mcpServerInfo);
+            if (!Objects.equals(before, after)) {
+                ui.access(listBox::getDataProvider);
+                ui.access(() -> listBox.getDataProvider().refreshItem(mcpServerInfo));
+            }
+        });
     }
 
     private void notifyMcpServerInfoSelection(McpServerInfo oldMcpServerInfo, McpServerInfo newMcpServerInfo) {

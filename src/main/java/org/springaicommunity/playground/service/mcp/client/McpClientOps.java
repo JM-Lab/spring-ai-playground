@@ -35,5 +35,23 @@ public interface McpClientOps {
 
     CallToolResult callTool(String name, Map<String, Object> args, Map<String, Object> meta);
 
+    List<McpSchema.Resource> listResources();
+
+    McpSchema.ReadResourceResult readResource(String uri);
+
+    List<McpSchema.ResourceTemplate> listResourceTemplates();
+
+    List<McpSchema.Prompt> listPrompts();
+
+    McpSchema.GetPromptResult getPrompt(String name, Map<String, Object> args);
+
+    void setLoggingLevel(McpSchema.LoggingLevel level);
+
+    void addRoot(McpSchema.Root root);
+
+    void removeRoot(String name);
+
+    void notifyRootsListChanged();
+
     ToolCallbackProvider toolCallbackProvider();
 }

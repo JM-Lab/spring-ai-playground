@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
@@ -48,6 +49,7 @@ class HomeSurfaceCards extends Div {
     private final ToolSpecService toolSpecService;
     private final ToolSpecPersistenceService toolSpecPersistenceService;
     private final McpServerInfoService mcpServerInfoService;
+    private final McpClientService mcpClientService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
 
     private final Span toolStatus;
@@ -57,10 +59,12 @@ class HomeSurfaceCards extends Div {
     HomeSurfaceCards(ToolSpecService toolSpecService,
             ToolSpecPersistenceService toolSpecPersistenceService,
             McpServerInfoService mcpServerInfoService,
+            McpClientService mcpClientService,
             VectorStoreDocumentService vectorStoreDocumentService) {
         this.toolSpecService = toolSpecService;
         this.toolSpecPersistenceService = toolSpecPersistenceService;
         this.mcpServerInfoService = mcpServerInfoService;
+        this.mcpClientService = mcpClientService;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
 
         this.toolStatus = cardStatusSpan();
@@ -141,15 +145,26 @@ class HomeSurfaceCards extends Div {
 
     private void applyMcpStatus() {
         McpServerInfo defaultInfo = mcpServerInfoService.getDefaultMcpServerInfo();
-        long external = mcpServerInfoService.getMcpServerInfos().values().stream()
+        List<McpServerInfo> external = mcpServerInfoService.getMcpServerInfos().values().stream()
                 .flatMap(List::stream)
                 .filter(info -> !Objects.equals(info, defaultInfo))
-                .count();
-        if (external == 0) {
+                .toList();
+        if (external.isEmpty()) {
             setStatus(mcpStatus, "Only built-in MCP server running", StatusTone.MUTED);
+            return;
+        }
+        long awaitingAuth = external.stream()
+                .filter(info -> mcpClientService.getStatus(info).status()
+                        == McpClientService.ServerStatus.AWAITING_AUTHORIZATION)
+                .count();
+        long total = external.size();
+        if (awaitingAuth > 0) {
+            setStatus(mcpStatus,
+                    awaitingAuth + " awaiting authorization · " + (total - awaitingAuth) + " connected",
+                    StatusTone.WARNING);
         } else {
             setStatus(mcpStatus,
-                    external + " external server" + plural(external) + " connected",
+                    total + " external server" + plural(total) + " connected",
                     StatusTone.NORMAL);
         }
     }

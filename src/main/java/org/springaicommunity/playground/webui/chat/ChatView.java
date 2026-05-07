@@ -20,6 +20,7 @@ import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.chat.ChatHistory;
@@ -41,6 +42,7 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 
 @SpringComponent
 @UIScope
+@AnonymousAllowed
 @CssImport("./playground/chat-styles.css")
 @PageTitle("Agentic Chat")
 @Route(value = "agentic-chat", layout = SpringAiPlaygroundAppLayout.class)

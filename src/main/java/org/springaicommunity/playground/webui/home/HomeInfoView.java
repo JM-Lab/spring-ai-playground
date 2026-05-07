@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
@@ -81,6 +82,7 @@ public class HomeInfoView extends Div {
 
     public HomeInfoView(ToolSpecService toolSpecService,
             McpServerInfoService mcpServerInfoService,
+            McpClientService mcpClientService,
             VectorStoreDocumentService vectorStoreDocumentService,
             ChatHistoryService chatHistoryService,
             ToolSpecPersistenceService toolSpecPersistenceService,
@@ -108,7 +110,7 @@ public class HomeInfoView extends Div {
                 chatModelProvider, embeddingModelProvider, embeddingOptions, environment);
         HomeSurfaceCards surfaceCards = new HomeSurfaceCards(
                 toolSpecService, toolSpecPersistenceService,
-                mcpServerInfoService, vectorStoreDocumentService);
+                mcpServerInfoService, mcpClientService, vectorStoreDocumentService);
         this.checklist = new HomeChecklist(
                 chatModelProvider, toolSpecService, toolSpecPersistenceService,
                 vectorStoreDocumentService, chatHistoryService, environment);

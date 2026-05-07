@@ -148,10 +148,19 @@ Detailed installation, configuration, features, and tutorials live in the docume
 - Features: https://spring-ai-community.github.io/spring-ai-playground/features/
 - Tutorials: https://spring-ai-community.github.io/spring-ai-playground/tutorials/
 
-Alternative runtimes are still supported:
+Alternative runtimes are still supported. The same Spring Boot fat JAR drives every channel; switching to a stdio MCP transport is opt-in via the `mcp-stdio` Spring profile.
 
-- Docker for server-style deployment
-- local source execution for development workflows and MCP STDIO testing
+For the **app/web experience** (default — `streamable-http` MCP server on port 8282, Vaadin UI front and center):
+
+- Docker — `docker run -p 8282:8282 -v spring-ai-playground:/root ghcr.io/spring-ai-community/spring-ai-playground`
+- Local source run — `./mvnw -Pproduction spring-boot:run`
+
+For the **stdio MCP server** (drop-in for Claude Desktop, Claude Code, IDEs, and any other MCP-compatible client) — set `SPRING_PROFILES_INCLUDE=mcp-stdio` to layer the stdio transport on top of the default profile (so model config like Ollama / OpenAI is preserved):
+
+- Docker — `docker run -i --rm -e SPRING_PROFILES_INCLUDE=mcp-stdio -v spring-ai-playground:/root ghcr.io/spring-ai-community/spring-ai-playground`. Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel.
+- Raw fat JAR — download `spring-ai-playground-*.jar` from [Releases](https://github.com/spring-ai-community/spring-ai-playground/releases) (or `./mvnw -Pproduction package`) and run `SPRING_PROFILES_INCLUDE=mcp-stdio java -jar spring-ai-playground-*.jar`. No Docker required, ideal for Java/Spring developers and CI integrations.
+
+Full setup details for both modes live in [Getting Started: Alternative Runtimes](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#alternative-runtimes).
 
 <p align="center">
   <b>Agentic Chat Demo</b><br/>

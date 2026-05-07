@@ -16,18 +16,27 @@
 package org.springaicommunity.playground.service.mcp.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.client.transport.customizer.McpSyncHttpClientRequestCustomizer;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
-import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpSseClientProperties.SseParameters;
+import org.springaicommunity.playground.service.oauth.McpOAuth2AuthorizationCodeRequestCustomizer;
+import org.springaicommunity.playground.service.util.EnvVarResolver;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStdioClientProperties.Parameters;
-import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStreamableHttpClientProperties.ConnectionParameters;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.util.StringUtils;
 
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface McpClientPropertiesService<P> {
 
@@ -36,33 +45,97 @@ public interface McpClientPropertiesService<P> {
     Map<String, P> getDefaultConnections();
 
     default McpClientTransport buildClientTransport(ObjectMapper objectMapper, String parametersAsJson) {
+        return buildClientTransport(objectMapper, parametersAsJson, null, null);
+    }
+
+    default McpClientTransport buildClientTransport(ObjectMapper objectMapper, String parametersAsJson,
+            String oauthRegistrationId, OAuth2AuthorizedClientManager oauth2ClientManager) {
         try {
             return switch (getTransportType()) {
                 case SSE -> {
-                    SseParameters sseParameters = objectMapper.readValue(parametersAsJson, SseParameters.class);
+                    HttpConnectionParametersWithExtras.Sse params = objectMapper.readValue(
+                            parametersAsJson, HttpConnectionParametersWithExtras.Sse.class);
+                    requireEnv(collectHttpRefs(params.headers(), params.requiredEnv()));
+                    Map<String, String> resolvedHeaders = EnvVarResolver.substituteAll(params.headers());
                     HttpClientSseClientTransport.Builder builder =
-                            HttpClientSseClientTransport.builder(sseParameters.url());
-                    if (StringUtils.hasText(sseParameters.sseEndpoint()))
-                        builder.sseEndpoint(sseParameters.sseEndpoint());
+                            HttpClientSseClientTransport.builder(params.url());
+                    if (StringUtils.hasText(params.sseEndpoint())) builder.sseEndpoint(params.sseEndpoint());
+                    if (!resolvedHeaders.isEmpty())
+                        builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
+                    McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
+                            oauthRegistrationId, oauth2ClientManager);
+                    if (oauthCustomizer != null) builder.httpRequestCustomizer(oauthCustomizer);
                     yield builder.build();
                 }
                 case STREAMABLE_HTTP -> {
-                    ConnectionParameters connectionParameters =
-                            objectMapper.readValue(parametersAsJson, ConnectionParameters.class);
+                    HttpConnectionParametersWithExtras.StreamableHttp params = objectMapper.readValue(
+                            parametersAsJson, HttpConnectionParametersWithExtras.StreamableHttp.class);
+                    requireEnv(collectHttpRefs(params.headers(), params.requiredEnv()));
+                    Map<String, String> resolvedHeaders = EnvVarResolver.substituteAll(params.headers());
                     HttpClientStreamableHttpTransport.Builder builder =
-                            HttpClientStreamableHttpTransport.builder(connectionParameters.url());
-                    if (StringUtils.hasText(connectionParameters.endpoint()))
-                        builder.endpoint(connectionParameters.endpoint());
+                            HttpClientStreamableHttpTransport.builder(params.url());
+                    if (StringUtils.hasText(params.endpoint())) builder.endpoint(params.endpoint());
+                    if (!resolvedHeaders.isEmpty())
+                        builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
+                    McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
+                            oauthRegistrationId, oauth2ClientManager);
+                    if (oauthCustomizer != null) builder.httpRequestCustomizer(oauthCustomizer);
                     yield builder.build();
                 }
                 case STDIO -> {
-                    Parameters parameters = objectMapper.readValue(parametersAsJson, Parameters.class);
-                    yield new StdioClientTransport(parameters.toServerParameters(), new JacksonMcpJsonMapper(objectMapper));
+                    String resolvedJson = substituteStdioEnv(objectMapper, parametersAsJson);
+                    Parameters parameters = objectMapper.readValue(resolvedJson, Parameters.class);
+                    yield new StdioClientTransport(parameters.toServerParameters(),
+                            new JacksonMcpJsonMapper(objectMapper));
                 }
             };
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(
                     "Failed to parse MCP client connection parameters for transport " + getTransportType(), e);
         }
+    }
+
+    private static McpSyncHttpClientRequestCustomizer oauthCustomizer(HttpConnectionParametersWithExtras.OAuth oauth,
+            String registrationId, OAuth2AuthorizedClientManager manager) {
+        if (oauth == null) return null;
+        if (!StringUtils.hasText(registrationId)) return null;
+        if (manager == null) return null;
+        if (!StringUtils.hasText(oauth.clientId())) return null;
+        return new McpOAuth2AuthorizationCodeRequestCustomizer(manager, registrationId);
+    }
+
+    private static Set<String> collectHttpRefs(Map<String, String> headers, List<String> declared) {
+        Set<String> refs = new LinkedHashSet<>();
+        if (declared != null) refs.addAll(declared);
+        if (headers != null) for (String value : headers.values()) refs.addAll(EnvVarResolver.findRefs(value));
+        return refs;
+    }
+
+    private static void requireEnv(Set<String> names) {
+        Set<String> missing = EnvVarResolver.missing(names);
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("Missing env vars: " + String.join(", ", missing));
+        }
+    }
+
+    private static String substituteStdioEnv(ObjectMapper objectMapper, String parametersAsJson)
+            throws JsonProcessingException {
+        JsonNode root = objectMapper.readTree(parametersAsJson);
+        if (!root.isObject()) return parametersAsJson;
+        JsonNode envNode = root.get("env");
+        if (envNode == null || !envNode.isObject()) return parametersAsJson;
+        ObjectNode envObj = (ObjectNode) envNode;
+        Set<String> refs = new LinkedHashSet<>();
+        Map<String, String> values = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> it = envObj.fields();
+        while (it.hasNext()) {
+            Map.Entry<String, JsonNode> e = it.next();
+            String v = e.getValue().isNull() ? null : e.getValue().asText(null);
+            values.put(e.getKey(), v);
+            if (v != null) refs.addAll(EnvVarResolver.findRefs(v));
+        }
+        requireEnv(refs);
+        values.forEach((k, v) -> envObj.put(k, v == null ? null : EnvVarResolver.substitute(v)));
+        return objectMapper.writeValueAsString(root);
     }
 }

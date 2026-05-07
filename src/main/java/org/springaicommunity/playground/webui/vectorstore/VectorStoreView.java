@@ -34,6 +34,7 @@ import com.vaadin.flow.component.popover.PopoverVariant;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
@@ -62,6 +63,7 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 
 @SpringComponent
 @UIScope
+@AnonymousAllowed
 @CssImport("./playground/vectorstore-styles.css")
 @PageTitle("Vector Database")
 @Route(value = "vector-database", layout = SpringAiPlaygroundAppLayout.class)

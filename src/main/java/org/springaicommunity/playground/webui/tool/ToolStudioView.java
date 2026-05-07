@@ -27,6 +27,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.tool.ToolSpec;
@@ -45,6 +46,7 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 
 @SpringComponent
 @UIScope
+@AnonymousAllowed
 @PageTitle("Tool Studio")
 @Route(value = "tool-studio", layout = SpringAiPlaygroundAppLayout.class)
 public class ToolStudioView extends ContentWorkspaceView {

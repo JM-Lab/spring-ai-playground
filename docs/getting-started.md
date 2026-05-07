@@ -408,14 +408,34 @@ For `OpenAI-Compatible` settings, whether Ollama is still required depends on th
 
 The desktop app is the default runtime — covered earlier in [Desktop App First](#desktop-app-first). The runtimes below are alternatives for non-desktop environments (server-style deployment, source-level development, browser-only use).
 
+#### How distribution channels map to MCP transports
+
+Every channel below ships the same Spring Boot fat JAR. The default mode is the web app with a `streamable-http` MCP server on port 8282 — switching to a stdio MCP server is opt-in by adding the `mcp-stdio` profile.
+
+| Mode | Profile setup | MCP transport | Channel |
+|---|---|---|---|
+| **App (web/desktop)** — default | (nothing extra) | `streamable-http` on port 8282 | DMG / EXE / DEB / RPM, web app, Docker, source `mvn spring-boot:run` |
+| **MCP server (for Claude Desktop, Claude Code, IDEs, …)** | `SPRING_PROFILES_INCLUDE=mcp-stdio` | `stdio` (process stdin/stdout) | Docker, or `java -jar` against the released JAR |
+
+`SPRING_PROFILES_INCLUDE` (rather than `ACTIVE`) is what lets the stdio profile **layer on top of** the default profile — so model config like Ollama / OpenAI keeps applying. Setting `SPRING_PROFILES_ACTIVE=mcp-stdio` would *replace* the active list and disable the default `ollama` profile, which is rarely what you want.
+
+In other words:
+
+- The **desktop app and PWA** are the primary user-facing experience — full Vaadin UI, tool authoring, agentic chat. The built-in MCP server is reachable over `streamable-http` so the in-app Inspector and other HTTP clients can introspect it.
+- The **stdio path** is the same product with the stdio profile layered in for direct MCP client integration. Docker handles it for non-Java users; the raw JAR handles it for Java developers and CI integrations.
+
+The web UI on port 8282 keeps booting in stdio mode too, so a Docker user can both connect Claude Desktop over stdio and open the Inspector in a browser at the same time when they pass `-p 8282:8282`.
+
 #### Docker
 
-Docker is a strong option when you want a server-style deployment instead of the desktop launcher.
+The published container behaves like the desktop / source app by default — Vaadin UI on `http://localhost:8282` and the embedded MCP server speaking `streamable-http`. Stdio mode is one env var away (`SPRING_PROFILES_INCLUDE=mcp-stdio`).
+
+##### Use as a plain web app (default)
 
 ```bash
 docker run -d -p 8282:8282 --name spring-ai-playground \
   -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-  -v spring-ai-playground:/home \
+  -v spring-ai-playground:/root \
   --restart unless-stopped \
   ghcr.io/spring-ai-community/spring-ai-playground:latest
 ```
@@ -427,7 +447,40 @@ Notes:
 - on Linux, `host.docker.internal` may not resolve, so you may need host networking or a bridge IP such as `172.17.0.1`
 - the `--restart unless-stopped` option keeps the container available after restarts
 
-Docker is not suitable for MCP STDIO transport testing because STDIO-based MCP depends on direct process-to-process communication.
+##### Use as an MCP server (opt-in via env)
+
+```bash
+docker run -i --rm \
+  -e SPRING_PROFILES_INCLUDE=mcp-stdio \
+  -v spring-ai-playground:/root \
+  ghcr.io/spring-ai-community/spring-ai-playground:latest
+```
+
+Add the same command to your MCP client config (Claude Desktop's `claude_desktop_config.json` shown):
+
+```json
+{
+  "mcpServers": {
+    "spring-ai-playground": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "SPRING_PROFILES_INCLUDE=mcp-stdio",
+        "-v", "spring-ai-playground:/root",
+        "ghcr.io/spring-ai-community/spring-ai-playground:latest"
+      ]
+    }
+  }
+}
+```
+
+The `-v spring-ai-playground:/root` named volume keeps authored tools, saved tool selections, secrets, and the local vector store across restarts; without it everything resets when the container exits.
+
+Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel — the web UI runs in the same process either way; the port mapping just exposes it. Pick a different host port (e.g. `-p 9000:8282`) if 8282 is in use.
+
+The container ships with the gateway and authoring UI on, but **built-in tools and built-in MCP servers stay dormant until you set their per-tool credentials as environment variables**. Pass them with `-e NAME=value` flags on the same `docker run` line — the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PSE_ID`, `SLACK_WEBHOOK_URL`, …) are listed in [Use Environment Variables for Keys and Secrets](#7-use-environment-variables-for-keys-and-secrets); each is optional and only enables the matching tool.
+
+The `mcp-stdio` profile silences the CONSOLE log appender so stdout stays a clean JSON-RPC channel; rolling-file logs at `~/spring-ai-playground/logs/` are unaffected.
 
 #### Local Source Run
 
@@ -441,6 +494,50 @@ cd spring-ai-playground
 ```
 
 Then open `http://localhost:8282`.
+
+##### Use as an MCP server from the fat JAR
+
+Java developers who already have JDK 21+ on the machine can connect their MCP client straight at the Spring Boot fat JAR — no Docker, no Vaadin dev mode. The same `mcp-stdio` profile that powers the container is portable to any `java -jar` launch.
+
+Pick the JAR up in one of two ways:
+
+- Download `spring-ai-playground-<version>.jar` from the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases) (uploaded alongside the desktop installers; verify with the matching `.sha256` if you want).
+- Or build it yourself from a source clone:
+  ```bash
+  ./mvnw -Pproduction -DskipTests package
+  # produces target/spring-ai-playground-*.jar
+  ```
+
+Then launch it with the stdio profile included on top of the default:
+
+```bash
+SPRING_PROFILES_INCLUDE=mcp-stdio java -jar spring-ai-playground-*.jar
+```
+
+`SPRING_PROFILES_INCLUDE` adds `mcp-stdio` to the active profile list without replacing the default `ollama` profile — so model config keeps applying. Use `--spring.profiles.include=mcp-stdio` as a CLI alternative if you'd rather not rely on the env var.
+
+For Claude Desktop, point `claude_desktop_config.json` at the absolute JAR path:
+
+```json
+{
+  "mcpServers": {
+    "spring-ai-playground": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "/absolute/path/to/spring-ai-playground-0.2.0-M5.jar",
+        "--spring.profiles.include=mcp-stdio"
+      ]
+    }
+  }
+}
+```
+
+Notes:
+
+- the JVM must be Java 21 or newer (preferably GraalVM, so the JavaScript tool sandbox runs at full speed; on a non-GraalVM JVM the `-Dpolyglot.engine.WarnInterpreterOnly=false` flag falls back to interpreter mode automatically).
+- the same caveats as the container apply: stdout is the MCP JSON-RPC channel, so the `mcp-stdio` profile silences the CONSOLE log appender. Rolling logs still land at `~/spring-ai-playground/logs/`.
+- the Vaadin Inspector also boots on `http://localhost:8282` by default, so the same JAR doubles as the authoring UI. Set `SERVER_PORT=0` if you want a random port (or just don't open the browser).
 
 ### PWA Installation
 
@@ -513,7 +610,7 @@ Docker:
 docker run -d -p 8282:8282 --name spring-ai-playground \
   -e SPRING_PROFILES_ACTIVE=openai \
   -e OPENAI_API_KEY=your-openai-api-key \
-  -v spring-ai-playground:/home \
+  -v spring-ai-playground:/root \
   --restart unless-stopped \
   ghcr.io/spring-ai-community/spring-ai-playground:latest
 ```

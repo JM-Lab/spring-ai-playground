@@ -17,16 +17,24 @@ package org.springaicommunity.playground.service.mcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.SharedDataReader;
+import org.springaicommunity.playground.service.mcp.client.HttpConnectionParametersWithExtras;
 import org.springaicommunity.playground.service.mcp.client.McpClientPropertiesService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
+import org.springaicommunity.playground.service.oauth.McpClientRegistrationRepository;
+import org.springaicommunity.playground.service.oauth.OAuthClientRegistrations;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStreamableHttpClientProperties;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -39,22 +47,36 @@ import java.util.stream.Collectors;
 public class McpServerInfoService implements SharedDataReader<List<McpServerInfo>>,
         ApplicationListener<WebServerInitializedEvent> {
 
+    private static final Logger logger = LoggerFactory.getLogger(McpServerInfoService.class);
+
     private final ObjectMapper objectMapper;
     private final Map<McpTransportType, Map<String, McpServerInfo>> typeMcpServerInfosMap;
     private final McpClientService mcpClientService;
     private final ObjectProvider<McpServerInfoPersistenceService> mcpServerInfoPersistenceServiceProvider;
+    private final McpClientRegistrationRepository mcpClientRegistrationRepository;
     private final String defaultMcpServerName;
+    private final boolean stdioServerMode;
     private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private volatile boolean applicationReady = false;
     private McpServerInfo defaultMcpServerInfo;
 
     public McpServerInfoService(ObjectMapper objectMapper, McpClientPropertiesService<?>[] mcpClientPropertiesServices,
             McpClientService mcpClientService,
             ObjectProvider<McpServerInfoPersistenceService> mcpServerInfoPersistenceServiceProvider,
+            McpClientRegistrationRepository mcpClientRegistrationRepository,
             @Value("${server.port:8282}") int serverPort, McpServerProperties mcpServerProperties) {
         this.objectMapper = objectMapper;
         this.mcpClientService = mcpClientService;
         this.mcpServerInfoPersistenceServiceProvider = mcpServerInfoPersistenceServiceProvider;
+        this.mcpClientRegistrationRepository = mcpClientRegistrationRepository;
         this.defaultMcpServerName = mcpServerProperties.getName();
+        // When the embedded MCP server is configured for stdio transport, the
+        // app has no HTTP /mcp endpoint to introspect itself through. The
+        // default MCP server entry is still kept for UI display, but the
+        // self-connecting MCP client (`updateDefaultMcpTool`) must be a no-op
+        // in stdio mode — otherwise boot crashes with "Unknown media type:
+        // text/html" when the client hits the Vaadin index page instead.
+        this.stdioServerMode = mcpServerProperties.isStdio();
         this.typeMcpServerInfosMap = Arrays.stream(mcpClientPropertiesServices)
                 .collect(Collectors.toMap(McpClientPropertiesService::getTransportType,
                         mcpClientPropertiesService -> mcpClientPropertiesService.getDefaultConnections().entrySet()
@@ -71,8 +93,13 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
             this.defaultMcpServerInfo = buildDefaultMcpServerInfo(event.getWebServer().getPort());
             updateMcpServerInfo(defaultMcpServerInfo.mcpTransportType(), defaultMcpServerInfo.serverName(),
                     defaultMcpServerInfo);
-            updateDefaultMcpTool();
         }
+    }
+
+    @EventListener
+    public void onApplicationReady(ApplicationReadyEvent event) {
+        this.applicationReady = true;
+        updateDefaultMcpTool();
     }
 
     public McpServerInfo getDefaultMcpServerInfo() {
@@ -109,14 +136,16 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     public McpServerInfo createBlankMcpServerInfo() {
         String defaultDescription = "Please edit the description of the MCP Server.";
         long timestamp = System.currentTimeMillis();
-        return new McpServerInfo(McpTransportType.STDIO, "New MCP Server", defaultDescription, timestamp, timestamp,
-                null);
+        return new McpServerInfo(McpTransportType.STREAMABLE_HTTP, "New MCP Server", defaultDescription, timestamp,
+                timestamp, null);
     }
 
     public void deleteMcpServerInfo(McpTransportType transportType, String serverName) {
         McpServerInfo mcpServerInfo = this.typeMcpServerInfosMap.get(transportType).remove(serverName);
-        if (mcpServerInfo != null)
+        if (mcpServerInfo != null) {
+            this.mcpClientRegistrationRepository.unregister(OAuthClientRegistrations.registrationId(mcpServerInfo));
             this.mcpServerInfoPersistenceServiceProvider.getObject().deleteAsync(mcpServerInfo);
+        }
     }
 
     public void loadAll(Runnable loadAction) {
@@ -140,10 +169,40 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
             deleteMcpServerInfo(transportType, serverName);
         this.typeMcpServerInfosMap.get(updateMcpServerInfo.mcpTransportType())
                 .put(updateMcpServerInfo.serverName(), updateMcpServerInfo);
+        syncOAuthRegistration(updateMcpServerInfo);
         if (!Boolean.TRUE.equals(this.skipPersist.get()) &&
                 !updateMcpServerInfo.equals(this.defaultMcpServerInfo))
             this.mcpServerInfoPersistenceServiceProvider.getObject().saveAsync(updateMcpServerInfo);
         return updateMcpServerInfo;
+    }
+
+    private void syncOAuthRegistration(McpServerInfo server) {
+        if (server.equals(this.defaultMcpServerInfo)) return;
+        String regId = OAuthClientRegistrations.registrationId(server);
+        try {
+            HttpConnectionParametersWithExtras.OAuth oauth = parseOAuthConfig(server);
+            ClientRegistration registration = OAuthClientRegistrations.toClientRegistration(server, oauth);
+            if (registration != null) {
+                this.mcpClientRegistrationRepository.register(registration);
+            } else {
+                this.mcpClientRegistrationRepository.unregister(regId);
+            }
+        } catch (Exception e) {
+            logger.warn("OAuth registration sync failed for {}: {}", server.serverName(), e.getMessage());
+            this.mcpClientRegistrationRepository.unregister(regId);
+        }
+    }
+
+    private HttpConnectionParametersWithExtras.OAuth parseOAuthConfig(McpServerInfo server)
+            throws JsonProcessingException {
+        if (server.connectionAsJson() == null || server.connectionAsJson().isBlank()) return null;
+        return switch (server.mcpTransportType()) {
+            case STREAMABLE_HTTP -> objectMapper.readValue(server.connectionAsJson(),
+                    HttpConnectionParametersWithExtras.StreamableHttp.class).oauth();
+            case SSE -> objectMapper.readValue(server.connectionAsJson(),
+                    HttpConnectionParametersWithExtras.Sse.class).oauth();
+            case STDIO -> null;
+        };
     }
 
     @Override
@@ -152,6 +211,20 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     }
 
     public void updateDefaultMcpTool() {
-        this.mcpClientService.startMcpClient(this.defaultMcpServerInfo);
+        // In stdio server mode the app exposes its tools over process stdio,
+        // not HTTP, so trying to start an MCP client against the local
+        // /mcp endpoint would either hit nothing or get the Vaadin HTML.
+        // Skipping the loopback-client setup avoids the misleading error log
+        // that the broader try/catch below would otherwise emit on every call.
+        if (this.stdioServerMode || this.defaultMcpServerInfo == null) {
+            return;
+        }
+        if (!this.applicationReady) return;
+        try {
+            this.mcpClientService.startMcpClient(this.defaultMcpServerInfo);
+        } catch (RuntimeException e) {
+            logger.error("Failed to start default loopback MCP client (serverName={}): {}",
+                    this.defaultMcpServerInfo.serverName(), e.getMessage(), e);
+        }
     }
 }

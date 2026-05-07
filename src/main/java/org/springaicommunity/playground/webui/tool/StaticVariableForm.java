@@ -95,4 +95,12 @@ public class StaticVariableForm extends HorizontalLayout {
         this.keyField.setValue(entry.getKey());
         this.valueField.setValue(entry.getValue());
     }
+
+    public void setKeyPlaceholder(String placeholder) {
+        this.keyField.setPlaceholder(placeholder);
+    }
+
+    public void setValuePlaceholder(String placeholder) {
+        this.valueField.setPlaceholder(placeholder);
+    }
 }

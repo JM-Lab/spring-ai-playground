@@ -45,9 +45,20 @@
         </rollingPolicy>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="ROLLING_FILE"/>
-    </root>
+    <!-- mcp-stdio profile: stdout is the MCP JSON-RPC channel, so CONSOLE
+         must not attach. Other profiles keep CONSOLE for normal dev/run.
+         <springProfile> must wrap a top-level element (not be nested inside
+         <root>), so we duplicate the <root> declaration per branch. -->
+    <springProfile name="!mcp-stdio">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </root>
+    </springProfile>
+    <springProfile name="mcp-stdio">
+        <root level="INFO">
+            <appender-ref ref="ROLLING_FILE"/>
+        </root>
+    </springProfile>
 
 </configuration>

@@ -51,6 +51,39 @@ public class McpSyncClientOps implements McpClientOps {
     }
 
     @Override
+    public List<McpSchema.Resource> listResources() {return mcpSyncClient.listResources().resources();}
+
+    @Override
+    public McpSchema.ReadResourceResult readResource(String uri) {
+        return mcpSyncClient.readResource(new McpSchema.ReadResourceRequest(uri));
+    }
+
+    @Override
+    public List<McpSchema.ResourceTemplate> listResourceTemplates() {
+        return mcpSyncClient.listResourceTemplates().resourceTemplates();
+    }
+
+    @Override
+    public List<McpSchema.Prompt> listPrompts() {return mcpSyncClient.listPrompts().prompts();}
+
+    @Override
+    public McpSchema.GetPromptResult getPrompt(String name, Map<String, Object> args) {
+        return mcpSyncClient.getPrompt(new McpSchema.GetPromptRequest(name, args == null ? Map.of() : args));
+    }
+
+    @Override
+    public void setLoggingLevel(McpSchema.LoggingLevel level) {mcpSyncClient.setLoggingLevel(level);}
+
+    @Override
+    public void addRoot(McpSchema.Root root) {mcpSyncClient.addRoot(root);}
+
+    @Override
+    public void removeRoot(String name) {mcpSyncClient.removeRoot(name);}
+
+    @Override
+    public void notifyRootsListChanged() {mcpSyncClient.rootsListChangedNotification();}
+
+    @Override
     public ToolCallbackProvider toolCallbackProvider() {
         return new SyncMcpToolCallbackProvider(mcpSyncClient);
     }

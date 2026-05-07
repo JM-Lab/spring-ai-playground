@@ -42,6 +42,36 @@ public interface McpClientServiceTest {
                 mcpClientService.getToolListAsOpt(mcpServerInfo).orElseThrow();
         assertThat(toolList).hasSize(8);
 
+        List<McpSchema.Resource> resourceList =
+                mcpClientService.getResourceListAsOpt(mcpServerInfo).orElseThrow();
+        assertThat(resourceList).isNotEmpty();
+
+        McpSchema.ReadResourceResult readResult =
+                mcpClientService.readResourceAsOpt(mcpServerInfo, resourceList.getFirst().uri())
+                        .orElseThrow();
+        assertThat(readResult.contents()).isNotEmpty();
+
+        List<McpSchema.ResourceTemplate> templates =
+                mcpClientService.getResourceTemplateListAsOpt(mcpServerInfo).orElseThrow();
+        assertThat(templates).isNotNull();
+
+        List<McpSchema.Prompt> prompts =
+                mcpClientService.getPromptListAsOpt(mcpServerInfo).orElseThrow();
+        assertThat(prompts).isNotEmpty();
+
+        McpSchema.Prompt firstPrompt = prompts.getFirst();
+        Map<String, Object> promptArgs = new java.util.LinkedHashMap<>();
+        if (firstPrompt.arguments() != null) {
+            for (McpSchema.PromptArgument arg : firstPrompt.arguments()) {
+                if (Boolean.TRUE.equals(arg.required())) {
+                    promptArgs.put(arg.name(), "test");
+                }
+            }
+        }
+        McpSchema.GetPromptResult promptResult = mcpClientService.getPromptAsOpt(mcpServerInfo,
+                firstPrompt.name(), promptArgs).orElseThrow();
+        assertThat(promptResult.messages()).isNotNull();
+
         McpSchema.CallToolResult toolResult = mcpClientService.callTool(mcpServerInfo, "echo", Map.of("message",
                 "Hello World!"), Map.of()).get();
         McpSchema.TextContent content = (McpSchema.TextContent) toolResult.content().getFirst();

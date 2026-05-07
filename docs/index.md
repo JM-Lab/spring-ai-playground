@@ -337,12 +337,12 @@ The desktop build is intended to be the easiest way to get started without setti
 
 ### 4. Optional: Use Docker Instead
 
-If you prefer container-based startup, run:
+By default the container behaves like the desktop / source app — Vaadin web UI on `http://localhost:8282` and a `streamable-http` MCP server in the same process. To use it as a stdio MCP server for Claude Desktop and other MCP clients instead, add `-e SPRING_PROFILES_INCLUDE=mcp-stdio` (see the [Docker section in Getting Started](getting-started.md#docker)).
 
 ```bash
 docker run -d -p 8282:8282 --name spring-ai-playground \
   -e SPRING_AI_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-  -v spring-ai-playground:/home \
+  -v spring-ai-playground:/root \
   --restart unless-stopped \
   ghcr.io/spring-ai-community/spring-ai-playground:latest
 ```

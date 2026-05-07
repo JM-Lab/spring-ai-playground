@@ -19,6 +19,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
@@ -36,6 +37,7 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 
 @SpringComponent
 @UIScope
+@AnonymousAllowed
 @PageTitle("MCP Server")
 @Route(value = "mcp-server", layout = SpringAiPlaygroundAppLayout.class)
 public class McpServerView extends ContentWorkspaceView {

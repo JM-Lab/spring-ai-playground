@@ -1,0 +1,34 @@
+# mcp-stdio profile.
+#
+# Loaded automatically when the `mcp-stdio` Spring profile is active
+# (the published container sets SPRING_PROFILES_ACTIVE=mcp-stdio in its
+# Dockerfile, so a plain `docker run -i image` already runs in this mode).
+#
+# In stdio mode the MCP JSON-RPC channel IS process stdout/stdin, so any
+# stray write to stdout corrupts the protocol. This profile:
+#   - switches the Spring AI MCP server transport to STDIO
+#   - silences the boot banner and Spring's startup-info line
+#   - relies on logback-spring.xml's <springProfile name="!mcp-stdio">
+#     guard to detach the CONSOLE appender (ROLLING_FILE keeps writing
+#     to ${user.home}/spring-ai-playground/logs)
+#
+# The Spring web stack and Vaadin UI stay up on port 8282 — pass
+# `-p 8282:8282` to docker run to make the Inspector reachable in a
+# browser alongside the stdio MCP channel.
+spring:
+  main:
+    banner-mode: "off"
+    log-startup-info: false
+  ai:
+    mcp:
+      server:
+        # Spring AI 1.1.x: ServerProtocol enum is SSE | STREAMABLE | STATELESS
+        # (no STDIO entry). Stdio transport is toggled by the separate boolean
+        # `stdio` flag — when true, the HTTP auto-configs back off via
+        # McpServerStdioDisabledCondition and the stdio transport wires up.
+        stdio: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ""

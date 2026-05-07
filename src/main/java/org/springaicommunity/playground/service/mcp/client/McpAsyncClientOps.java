@@ -52,6 +52,39 @@ public class McpAsyncClientOps implements McpClientOps {
     }
 
     @Override
+    public List<McpSchema.Resource> listResources() {return mcpAsyncClient.listResources().block().resources();}
+
+    @Override
+    public McpSchema.ReadResourceResult readResource(String uri) {
+        return mcpAsyncClient.readResource(new McpSchema.ReadResourceRequest(uri)).block();
+    }
+
+    @Override
+    public List<McpSchema.ResourceTemplate> listResourceTemplates() {
+        return mcpAsyncClient.listResourceTemplates().block().resourceTemplates();
+    }
+
+    @Override
+    public List<McpSchema.Prompt> listPrompts() {return mcpAsyncClient.listPrompts().block().prompts();}
+
+    @Override
+    public McpSchema.GetPromptResult getPrompt(String name, Map<String, Object> args) {
+        return mcpAsyncClient.getPrompt(new McpSchema.GetPromptRequest(name, args == null ? Map.of() : args)).block();
+    }
+
+    @Override
+    public void setLoggingLevel(McpSchema.LoggingLevel level) {mcpAsyncClient.setLoggingLevel(level).block();}
+
+    @Override
+    public void addRoot(McpSchema.Root root) {mcpAsyncClient.addRoot(root).block();}
+
+    @Override
+    public void removeRoot(String name) {mcpAsyncClient.removeRoot(name).block();}
+
+    @Override
+    public void notifyRootsListChanged() {mcpAsyncClient.rootsListChangedNotification().block();}
+
+    @Override
     public ToolCallbackProvider toolCallbackProvider() {
         return new AsyncMcpToolCallbackProvider(mcpAsyncClient);
     }

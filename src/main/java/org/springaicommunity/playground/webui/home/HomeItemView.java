@@ -39,8 +39,12 @@ public class HomeItemView extends WorkspaceSidebar {
                         "https://spring-ai-community.github.io/spring-ai-playground/"),
                 link(VaadinIcon.CODE, "Repository",
                         "https://github.com/spring-ai-community/spring-ai-playground"),
-                link(VaadinIcon.USERS, "Community",
-                        "https://springaicommunity.mintlify.app/projects/incubating/spring-ai-playground")
+                link(VaadinIcon.USERS, "Spring AI Community",
+                        "https://springaicommunity.mintlify.app/projects/incubating/spring-ai-playground"),
+                link(VaadinIcon.COMMENT_ELLIPSIS, "Discussions",
+                        "https://github.com/spring-ai-community/spring-ai-playground/discussions"),
+                link(VaadinIcon.BUG, "Report a Bug",
+                        "https://github.com/spring-ai-community/spring-ai-playground/issues/new?template=bug_report.yml")
         );
 
         container.add(sectionHeader("Related"));

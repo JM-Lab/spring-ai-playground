@@ -17,6 +17,7 @@ package org.springaicommunity.playground.service.tool;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
+import org.springaicommunity.playground.service.util.EnvVarResolver;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.ResourceLimits;
@@ -43,7 +44,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ConfigurationProperties(prefix = "tool-studio.sandbox")
@@ -53,7 +53,6 @@ public class JsToolExecutor {
 
     public record JsExecutionParams(Map<String, Object> params, String code) {}
 
-    private static final Pattern ENV_VAR_PATTERN = Pattern.compile("^\\$\\{([A-Z_]+[A-Z0-9_]*)}$");
     private static final Pattern BLACKLIST_PATTERN =
             Pattern.compile("^(java\\.lang\\.(System|Runtime|ProcessBuilder|Process)|java\\.lang\\.invoke\\..*)$");
 
@@ -146,28 +145,13 @@ public class JsToolExecutor {
 
     private Object resolveParamValue(Object rawValue, String paramName,
             Map<String, String> envBackedVariables) {
-        if (!(rawValue instanceof String str)) {
-            return rawValue;
-        }
-
-        Matcher matcher = ENV_VAR_PATTERN.matcher(str);
-        if (!matcher.matches()) {
-            return rawValue;
-        }
-
-        String envName = matcher.group(1);
-
-        String resolved = System.getenv(envName);
-        if (resolved == null) {
-            resolved = System.getProperty(envName);
-        }
-
-        if (resolved == null) {
-            return rawValue;
-        }
-
-        envBackedVariables.put(paramName, envName);
-        return resolved;
+        if (!(rawValue instanceof String str)) return rawValue;
+        Optional<String> envName = EnvVarResolver.anchoredEnvName(str);
+        if (envName.isEmpty()) return rawValue;
+        Optional<String> resolved = EnvVarResolver.lookup(envName.get());
+        if (resolved.isEmpty()) return rawValue;
+        envBackedVariables.put(paramName, envName.get());
+        return resolved.get();
     }
 
     private Object deepCopyPolyglot(Object value) {
