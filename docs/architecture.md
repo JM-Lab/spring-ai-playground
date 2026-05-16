@@ -1,10 +1,11 @@
-Description: The architecture of Spring AI Playground — runtime layers, feature modules, data flows, and extension points behind the Tool Studio, MCP Server, Vector Database, and Agentic Chat surfaces.
+title: Application Architecture
+description: Spring AI Playground architecture — runtime layers, feature modules, data flows, and extension points across Tool Studio, MCP, RAG, and Agentic Chat.
 
-# Architecture
+# Application Architecture
 
 Spring AI Playground is a **tool-first Spring Boot application** with several UI surfaces layered on top of a shared runtime. The primary packaged experience is a cross-platform desktop app; Docker and source execution are supported as alternative runtimes.
 
-This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood.
+This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood. The sandbox-specific architecture — defense-in-depth model, policy resolution, threat-to-layer mapping, and known limitations — has its own page at [AI Agent Tool Safety Architecture](safety-architecture.md).
 
 ## Design Goals
 
@@ -20,7 +21,7 @@ Most playground-style apps stop at prompt entry and response display. Spring AI 
 
 The application is easiest to think about as five layers. Each layer has a well-defined responsibility and a narrow interface with the one above it.
 
-![Runtime Layers](assets/images/architecture-layers.svg){ loading=lazy }
+![Runtime layer diagram — five stacked layers from Electron launcher down to data stores, with feature modules and JS sandbox annotated](assets/images/architecture-layers.svg){ loading=lazy }
 
 ### Layer 1 — Desktop Launcher (Electron)
 
@@ -53,7 +54,9 @@ Under `src/main/java/org/springaicommunity/playground/service/`. One service per
 | Package | Key services | Owns |
 |---|---|---|
 | `service/chat` | `ChatService`, `ChatHistoryService` | Chat execution, history, tool/RAG composition |
-| `service/tool` | `ToolSpecService`, `JsToolExecutor` | Tool definitions, sandboxed JavaScript execution |
+| `service/tool` | `ToolSpecService`, `ToolCategoryCatalog`, `ChipListBinding`, `DefaultToolPresetCatalog`, `DefaultToolsPreference{Resolver,Service}`, `ToolActivationCalculator`, `McpToolDefinition` + `ToolManifest` envelope | Tool definitions, preset/preference resolution, draft/exposure state |
+| `service/tool/runtime` | `JsToolExecutor`, `JsRuntimeGlobals`, `SafeHttpFetch`, `SafeFs`, `JsHelperException` | GraalVM sandbox, `fetch` SSRF guard, `safety.fs`, `safety.parser.*` |
+| `service/tool/policy` | `EffectivePolicyResolver`, `SandboxPostureCalculator` | Per-tool capability overrides + risk-level (L0–L5) calculation |
 | `service/mcp` | `McpServerInfoService`, `McpToolCallingManager` | Built-in MCP server metadata, tool-call eventing |
 | `service/mcp/client` | `McpClientService`, `Mcp*PropertiesService` | External MCP clients across STDIO / HTTP / SSE |
 | `service/vectorstore` | `VectorStoreService`, `VectorStoreDocumentService` | Tika ingestion, chunking, embedding, search |
@@ -130,7 +133,9 @@ flowchart TB
     MCPSRV --> MCPEP
 ```
 
-Sandbox policy is configurable under `spring.ai.playground.tool-studio.js-sandbox` — network I/O is enabled by default, file I/O and thread creation are disabled, and a host-class allowlist (`java.util.*`, `org.jsoup.*`, and similar) governs interop.
+Sandbox policy is configurable under `spring.ai.playground.tool-studio.js-sandbox`. The defaults are deny-first: raw network I/O, file I/O, native access, and thread creation are all blocked at the Java level. A `deny-classes` list (System, Runtime, Process, Class, reflect, invoke, Thread, ClassLoader, ServiceLoader, spi) is evaluated before any allow-class match, so deny always wins. The allow-classes are limited to pure-compute packages (`java.lang/math/time/util/text.*`). Tools talk to the outside world through built-in helpers — `fetch` (four-layer SSRF guard, `strict` egress), `safety.fs` (rooted at `tool-studio.fs.base-path`), and `safety.parser.{html,yaml,csv,xml}` — and a tool that genuinely needs more opens specific capabilities through per-tool overrides on its `SandboxOverrides` block (`addAllowClasses`, `hostsAllow`, `networkMode`, `fileRead`/`fileWrite`, `fsBasePath`), which raise its visible risk level (L0–L5) computed by `SandboxPostureCalculator`. See [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities) for the full override shape, egress mode behavior, and risk-level rules.
+
+Publishing has two states. A new or unverified tool is a **Draft** — it lives in Tool Studio and is **not** registered with the built-in MCP server. A Local Pass (a successful test run with the declared test values) flips the `McpToolDefinition` exposure flag and `ToolActivationCalculator` registers the callback with `McpSyncServer`. Which Local-Passed tools ship to MCP on boot is decided by `DefaultToolPresetCatalog` + `DefaultToolsPreferenceResolver` (configurable through Tool Studio's Tool MCP Server Setting drawer, the launcher's Default MCP Tools card, or a CLI override).
 
 ### Flow 2 — External MCP server connection
 
@@ -292,6 +297,14 @@ sequenceDiagram
 
 Retrieved documents, every tool call, every tool result, and any reasoning trace are all surfaced in the UI — the agent's path from question to answer is explicit rather than hidden.
 
+## Sandbox Safety
+
+Tool Studio is the only part of the system that runs user-authored code. The implementation models safety as three independent layers — an always-on Java-level sandbox, a per-tool override surface with a visible risk badge, and a transport-level security layer in front of the MCP endpoint.
+
+For the system-level reference (three-layer diagram, policy resolution, per-execution enforcement, threat-to-layer mapping, known limitations, and the next-pass HITL design), see → [**AI Agent Tool Safety Architecture**](safety-architecture.md).
+
+For the user-facing surface (override fields, Risk Level rules, SSRF four-layer steps), see → [Tool Studio → Safety](features/tool-studio.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities).
+
 ## Configuration and Profiles
 
 | Location | Purpose |
@@ -333,5 +346,5 @@ The five-layer model is deliberate. Each capability has a dedicated runtime area
 
 - [Overview](index.md) — product positioning, quick start path, and documentation map
 - [Getting Started](getting-started.md) — install, configure, and run the app
-- [Features](features.md) — what each product area does and how to use it
-- [Tutorials](tutorials.md) — end-to-end walkthroughs that exercise these flows
+- [Features](features/index.md) — what each product area does and how to use it
+- [Tutorials](tutorials/index.md) — end-to-end walkthroughs that exercise these flows

@@ -30,8 +30,15 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.tool.DefaultToolPresetCatalog;
+import org.springaicommunity.playground.service.tool.DefaultToolsPreferenceResolver;
 import org.springaicommunity.playground.service.tool.ToolSpec;
+import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
+import org.springaicommunity.playground.service.tool.ToolCategoryCatalog;
+import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
+import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
 import org.springaicommunity.playground.webui.VaadinUtils;
@@ -56,6 +63,9 @@ public class ToolStudioView extends ContentWorkspaceView {
     public static final String TOOL_EMPTY_EVENT = "TOOL_EMPTY_EVENT";
 
     private final ToolSpecService toolSpecService;
+    private final ToolCategoryCatalog toolCategoryCatalog;
+    private final SpringAiPlaygroundOptions playgroundOptions;
+    private final SandboxPostureCalculator sandboxPostureCalculator;
     private final ObjectMapper objectMapper;
     private final PropertyChangeSupport toolChangeSupport;
     private final ToolListView toolListView;
@@ -65,21 +75,30 @@ public class ToolStudioView extends ContentWorkspaceView {
     private ToolBuilderView toolBuilderView;
 
     public ToolStudioView(PersistentUiDataStorage persistentUiDataStorage, ObjectMapper objectMapper,
-            ToolSpecService toolSpecService) {
+            ToolSpecService toolSpecService, ToolCategoryCatalog toolCategoryCatalog,
+            ToolActivationCalculator toolActivationCalculator, SpringAiPlaygroundOptions playgroundOptions,
+            SandboxPostureCalculator sandboxPostureCalculator,
+            ToolSpecPersistenceService toolSpecPersistenceService,
+            DefaultToolPresetCatalog defaultToolPresetCatalog,
+            DefaultToolsPreferenceResolver defaultToolsPreferenceResolver) {
         this.toolSpecService = toolSpecService;
+        this.toolCategoryCatalog = toolCategoryCatalog;
+        this.playgroundOptions = playgroundOptions;
+        this.sandboxPostureCalculator = sandboxPostureCalculator;
         this.objectMapper = objectMapper;
         this.toolChangeSupport = new PropertyChangeSupport(this);
 
-        this.toolListView = new ToolListView(persistentUiDataStorage, toolSpecService, toolChangeSupport);
+        this.toolListView = new ToolListView(persistentUiDataStorage, toolSpecService, toolCategoryCatalog,
+                toolActivationCalculator, toolChangeSupport,
+                toolSpecPersistenceService, defaultToolPresetCatalog, defaultToolsPreferenceResolver);
         toolChangeSupport.addPropertyChangeListener(TOOL_SELECT_EVENT,
                 event -> Optional.ofNullable(event.getNewValue()).map(value -> (ToolSpec) value)
                         .ifPresent(this::changeToolContent));
-        toolChangeSupport.addPropertyChangeListener(TOOL_CHANGE_EVENT,
-                event -> this.toolListView.changeToolContent((ToolSpec) event.getNewValue()));
         toolChangeSupport.addPropertyChangeListener(TOOL_EMPTY_EVENT, event -> {
             if ((boolean) event.getNewValue()) {displayNewToolDesignView();}
         });
 
+        setSidebarSplitterPosition(20);
         configureSidebar(this.toolListView, "Tools");
 
         Button newToolButton = styledButton("New Tool", VaadinIcon.TOOLS.create(),
@@ -99,15 +118,29 @@ public class ToolStudioView extends ContentWorkspaceView {
         String mcpTitle = "Tool MCP Server Setting";
         this.toolMcpServerSettingView = new ToolMcpServerSettingView(
                 this.toolSpecService.getToolSpecList(),
-                this.toolSpecService.getToolMcpServerSetting());
+                this.toolSpecService.getToolMcpServerSetting(),
+                toolSpecPersistenceService, defaultToolPresetCatalog,
+                defaultToolsPreferenceResolver, toolCategoryCatalog);
         this.mcpServerSettingsDrawer = installSettingsDrawer(VaadinIcon.TOOLBOX, mcpTitle, mcpTitle);
         this.mcpServerSettingsDrawer.setBody(this.toolMcpServerSettingView);
         this.mcpServerSettingsDrawer.setOnOpen(() -> this.toolMcpServerSettingView.update(
                 this.toolSpecService.getToolSpecList(),
                 this.toolSpecService.getToolMcpServerSetting()));
-        this.mcpServerSettingsDrawer.setApplyButton("Confirm", () ->
-                this.toolSpecService.updateToolMcpServerSetting(
-                        this.toolMcpServerSettingView.getUiToolMcpServerSetting()));
+        this.mcpServerSettingsDrawer.setApplyButton("Confirm", () -> {
+            this.toolSpecService.updateToolMcpServerSetting(
+                    this.toolMcpServerSettingView.getUiToolMcpServerSetting());
+            this.toolMcpServerSettingView.applyCurationPreference();
+            this.toolListView.refreshAfterCurationChange();
+        });
+
+        toolChangeSupport.addPropertyChangeListener(TOOL_CHANGE_EVENT, event -> {
+            ToolSpec newSpec = (ToolSpec) event.getNewValue();
+            this.toolListView.changeToolContent(newSpec);
+            changeToolContent(newSpec);
+            this.toolMcpServerSettingView.update(
+                    this.toolSpecService.getToolSpecList(),
+                    this.toolSpecService.getToolMcpServerSetting());
+        });
 
         displayNewToolDesignView();
     }
@@ -118,11 +151,12 @@ public class ToolStudioView extends ContentWorkspaceView {
 
     private void changeToolContent(ToolSpec toolSpec) {
         if (Objects.isNull(toolSpec)) {
-            this.toolBuilderView = new ToolBuilderView(null, this.toolChangeSupport, toolSpecService, objectMapper);
+            this.toolBuilderView = new ToolBuilderView(null, this.toolChangeSupport, toolSpecService,
+                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper);
             this.toolListView.clearSelectTool();
         } else {
-            this.toolBuilderView =
-                    new ToolBuilderView(toolSpec, toolChangeSupport, toolSpecService, objectMapper);
+            this.toolBuilderView = new ToolBuilderView(toolSpec, toolChangeSupport, toolSpecService,
+                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper);
             if (Objects.isNull(toolSpec.toolId())) {
                 this.toolListView.clearSelectTool();
             }

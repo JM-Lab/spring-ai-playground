@@ -1,0 +1,1827 @@
+[
+  {
+    "toolId": "bf909786-0223-5da0-8217-d2123b19d80e",
+    "name": "getUpbitTicker",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nFetches the current KRW ticker(s) from Upbit, a major Korean crypto exchange (no auth). `markets` is comma-separated, e.g. 'KRW-BTC,KRW-ETH'. Returns an array of { market, tradePrice, openingPrice, highPrice, lowPrice, change, changeRate, accTradeVolume24h, timestamp }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "markets",
+        "description": "Comma-separated Upbit market codes",
+        "required": true,
+        "type": "STRING",
+        "testValue": "KRW-BTC,KRW-ETH"
+      }
+    ],
+    "code": "/**\n * Upbit Korean exchange ticker (no auth).\n *\n * GET https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-ETH\n *\n * Upbit denominates KRW pairs natively, so this is the easiest way to fetch\n * Korean-won-denominated crypto prices.\n */\n\nif (markets == null || markets === '') throw new Error('markets required');\nconst url = 'https://api.upbit.com/v1/ticker?markets=' + encodeURIComponent(markets);\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 1_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nreturn (resp.json() || []).map(t => ({\n  market:            t.market,\n  tradePrice:        t.trade_price,\n  openingPrice:      t.opening_price,\n  highPrice:         t.high_price,\n  lowPrice:          t.low_price,\n  change:            t.change,\n  changeRate:        t.change_rate,\n  accTradeVolume24h: t.acc_trade_volume_24h,\n  timestamp:         t.timestamp,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.upbit.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.upbit.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "2271915e-9e3f-55a8-ac59-c290a71e196c",
+    "name": "getUpbitOrderbook",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nFetches Upbit live orderbook (bids/asks) for one or more KRW markets (no auth). `markets` is comma-separated like 'KRW-BTC,KRW-ETH'. Optional `level` controls price aggregation upstream. Returns an array of { market, timestamp, totalAskSize, totalBidSize, units:[{askPrice,bidPrice,askSize,bidSize}] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "markets",
+        "description": "Comma-separated Upbit market codes",
+        "required": true,
+        "type": "STRING",
+        "testValue": "KRW-BTC,KRW-ETH"
+      },
+      {
+        "name": "level",
+        "description": "Optional price-aggregation level (e.g. 10000 for 10k KRW buckets)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * Upbit live orderbook (no auth).\n *\n * GET https://api.upbit.com/v1/orderbook?markets=KRW-BTC,KRW-ETH\n *\n * Returns top-N bid/ask units for each market. `level` is optional and\n * controls aggregation in the upstream API (omit for raw).\n */\n\nif (markets == null || markets === '') throw new Error('markets required');\nlet url = 'https://api.upbit.com/v1/orderbook?markets=' + encodeURIComponent(markets);\nif (level != null && level !== '') url += '&level=' + encodeURIComponent(String(level));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 1_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nreturn (resp.json() || []).map(b => ({\n  market:           b.market,\n  timestamp:        b.timestamp,\n  totalAskSize:     b.total_ask_size,\n  totalBidSize:     b.total_bid_size,\n  units: (b.orderbook_units || []).map(u => ({\n    askPrice: u.ask_price,\n    bidPrice: u.bid_price,\n    askSize:  u.ask_size,\n    bidSize:  u.bid_size,\n  })),\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.upbit.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.upbit.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "f76ff1f2-dcd7-5212-af53-4efc7d006aab",
+    "name": "getUpbitCandles",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nFetches Upbit OHLCV candles for a market (no auth). `interval` accepts 'days' (default), 'weeks', 'months', or 'minutes/N' where N is one of 1, 3, 5, 10, 15, 30, 60, 240. `count` is capped at 200 upstream. Returns an array (most recent first) of { market, candleDateTimeKst, candleDateTimeUtc, openingPrice, highPrice, lowPrice, tradePrice, candleAccTradeVolume, candleAccTradePrice }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "market",
+        "description": "Upbit market code, e.g. 'KRW-BTC'",
+        "required": true,
+        "type": "STRING",
+        "testValue": "KRW-BTC"
+      },
+      {
+        "name": "interval",
+        "description": "'days' | 'weeks' | 'months' | 'minutes/1' | 'minutes/60' ...",
+        "required": false,
+        "type": "STRING",
+        "testValue": "days"
+      },
+      {
+        "name": "count",
+        "description": "How many candles (max 200)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "10"
+      }
+    ],
+    "code": "/**\n * Upbit OHLCV candles (no auth).\n *\n * GET https://api.upbit.com/v1/candles/days?market=KRW-BTC&count=10\n * GET https://api.upbit.com/v1/candles/minutes/{unit}?market=KRW-BTC&count=10\n *\n * `interval` accepts: 'days' (default), 'weeks', 'months', or 'minutes/N'\n *   where N is one of 1, 3, 5, 10, 15, 30, 60, 240.\n * `count` caps at 200 upstream.\n */\n\nif (market == null || market === '') throw new Error('market required');\nconst itv  = (interval == null || interval === '') ? 'days' : String(interval);\nconst cnt  = (count == null || count === '') ? 30 : Math.max(1, Math.min(200, parseInt(count, 10)));\n\nlet path;\nif (itv.startsWith('minutes/')) path = 'minutes/' + encodeURIComponent(itv.slice('minutes/'.length));\nelse if (itv === 'days' || itv === 'weeks' || itv === 'months') path = itv;\nelse throw new Error(\"interval must be 'days', 'weeks', 'months', or 'minutes/N'\");\n\nconst url = 'https://api.upbit.com/v1/candles/' + path\n          + '?market=' + encodeURIComponent(market)\n          + '&count='  + cnt;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nreturn (resp.json() || []).map(c => ({\n  market:                 c.market,\n  candleDateTimeKst:      c.candle_date_time_kst,\n  candleDateTimeUtc:      c.candle_date_time_utc,\n  openingPrice:           c.opening_price,\n  highPrice:              c.high_price,\n  lowPrice:               c.low_price,\n  tradePrice:             c.trade_price,\n  candleAccTradeVolume:   c.candle_acc_trade_volume,\n  candleAccTradePrice:    c.candle_acc_trade_price,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.upbit.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.upbit.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "1e069245-f2ce-5170-ac2a-4d4694ecdca0",
+    "name": "listUpbitMarkets",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nLists all tradable markets on Upbit (no auth). Pass `quote` (e.g. 'KRW', 'BTC', 'USDT') to filter by quote currency. Returns { count, markets: [{ market, koreanName, englishName }] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "quote",
+        "description": "Optional quote currency filter (KRW, BTC, USDT). Omit for all.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "KRW"
+      }
+    ],
+    "code": "/**\n * Upbit market catalog (no auth).\n *\n * GET https://api.upbit.com/v1/market/all?isDetails=false\n *\n * Lists every tradable market on Upbit. Pass `quote` (e.g. 'KRW', 'BTC',\n * 'USDT') to filter by quote currency. Useful to discover what coins are\n * available before calling ticker/candles.\n */\n\nconst resp = await fetch('https://api.upbit.com/v1/market/all?isDetails=false', {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nlet rows = (resp.json() || []).map(m => ({\n  market:       m.market,\n  koreanName:   m.korean_name,\n  englishName:  m.english_name,\n}));\n\nif (quote != null && quote !== '') {\n  const prefix = String(quote).toUpperCase() + '-';\n  rows = rows.filter(r => r.market && r.market.startsWith(prefix));\n}\n\nreturn { count: rows.length, markets: rows };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.upbit.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.upbit.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "54c6770c-a331-5200-90e2-493c107d1725",
+    "name": "getBithumbTicker",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nFetches the current KRW ticker for a symbol from Bithumb (no auth). Used as an Upbit alternative or for cross-exchange checks. Returns: { symbol, openingPrice, closingPrice, minPrice, maxPrice, unitsTraded24h, accTradeValue24h, change24h, changeRate24h, fluctate24h, fluctateRate24h }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "symbol",
+        "description": "Coin symbol (e.g. BTC, ETH). Pair against KRW is implicit.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "BTC"
+      }
+    ],
+    "code": "/**\n * Bithumb Korean exchange public ticker.\n *\n * GET https://api.bithumb.com/public/ticker/{symbol}_KRW\n *\n * The KRW pair is implicit in the URL path. No auth, no rate-limit listed\n * but be polite.\n */\n\nif (symbol == null || symbol === '') throw new Error('symbol required');\nconst url = 'https://api.bithumb.com/public/ticker/' + encodeURIComponent(symbol) + '_KRW';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 500_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nif (d.status !== '0000') return { success: false, status: d.status, message: d.message || 'bithumb error' };\nconst t = d.data || {};\nreturn {\n  symbol:            String(symbol).toUpperCase(),\n  openingPrice:      Number(t.opening_price),\n  closingPrice:      Number(t.closing_price),\n  minPrice:          Number(t.min_price),\n  maxPrice:          Number(t.max_price),\n  unitsTraded24h:    Number(t.units_traded_24H),\n  accTradeValue24h:  Number(t.acc_trade_value_24H),\n  fluctate24h:       Number(t.fluctate_24H),\n  fluctateRate24h:   Number(t.fluctate_rate_24H),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.bithumb.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.bithumb.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "953ab3a5-fcfe-5157-bfa4-1d7da765a1ae",
+    "name": "getBithumbOrderbook",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nFetches Bithumb public orderbook depth for a KRW pair (no auth). `count` defaults to 5, max 30. Returns { symbol, paymentCurrency, orderCurrency, timestamp, bids:[{price,quantity}], asks:[{price,quantity}] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "symbol",
+        "description": "Coin symbol (e.g. BTC, ETH). Pair against KRW is implicit.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "BTC"
+      },
+      {
+        "name": "count",
+        "description": "Depth (1-30). Default 5.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * Bithumb public orderbook depth (no auth).\n *\n * GET https://api.bithumb.com/public/orderbook/{symbol}_KRW?count=5\n *\n * Returns top bids/asks for a KRW pair. `count` defaults to 5, max 30.\n */\n\nif (symbol == null || symbol === '') throw new Error('symbol required');\nconst cnt = (count == null || count === '') ? 5 : Math.max(1, Math.min(30, parseInt(count, 10)));\nconst url = 'https://api.bithumb.com/public/orderbook/'\n          + encodeURIComponent(symbol) + '_KRW?count=' + cnt;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 500_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nif (d.status !== '0000') return { success: false, status: d.status, message: d.message || 'bithumb error' };\nconst t = d.data || {};\nconst lift = arr => (arr || []).map(o => ({ price: Number(o.price), quantity: Number(o.quantity) }));\nreturn {\n  symbol:        String(symbol).toUpperCase(),\n  paymentCurrency: t.payment_currency,\n  orderCurrency:   t.order_currency,\n  timestamp:     t.timestamp,\n  bids:          lift(t.bids),\n  asks:          lift(t.asks),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.bithumb.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "api.bithumb.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "246c7e44-c5cf-5f1e-8ddb-ae98b55cdfe1",
+    "name": "searchNaver",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nNaver Search API (KR; key required). Searches across blog, news, webkr, encyc, book, image, shop, kin, or cafearticle. Issue Client-Id + Client-Secret at https://developers.naver.com/apps/ and set NAVER_CLIENT_ID + NAVER_CLIENT_SECRET on the tool's staticVariables, or inject as env vars. Returns: { type, total, start, display, items:[{title, description, link, pubDate, bloggerName, author}] }.",
+    "staticVariables": [
+      {
+        "naverClientId": "${NAVER_CLIENT_ID}"
+      },
+      {
+        "naverClientSecret": "${NAVER_CLIENT_SECRET}"
+      }
+    ],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search keyword — Korean queries typical (e.g. '스프링 AI'); other languages also accepted.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "스프링 AI"
+      },
+      {
+        "name": "type",
+        "description": "blog | news | webkr | encyc | book | image | shop | kin | cafearticle",
+        "required": false,
+        "type": "STRING",
+        "testValue": "blog"
+      },
+      {
+        "name": "display",
+        "description": "Result count (1-100, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      },
+      {
+        "name": "start",
+        "description": "Start index (1-1000, default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * Naver Search API (KR; requires Naver Open API credentials).\n *\n * GET https://openapi.naver.com/v1/search/{type}.json?query=...&display=...&start=...\n *\n * Auth headers:\n *   X-Naver-Client-Id:     <Naver Open API client id>\n *   X-Naver-Client-Secret: <Naver Open API client secret>\n *\n * Credentials are pulled from the tool's staticVariables, which support `${ENV_VAR}` —\n * by default `${NAVER_CLIENT_ID}` and `${NAVER_CLIENT_SECRET}`. Issue them at\n * https://developers.naver.com/apps/.\n *\n * `type` is one of: blog | news | webkr | encyc | book | image | shop | kin | cafearticle.\n */\n\nif (query == null || query === '') throw new Error('query required');\n\nconst allowed = ['blog', 'news', 'webkr', 'encyc', 'book', 'image', 'shop', 'kin', 'cafearticle'];\nconst typ = (type == null || type === '') ? 'blog' : String(type);\nif (allowed.indexOf(typ) < 0) throw new Error(\"type must be one of: \" + allowed.join(', '));\n\nconst dsp = (display == null || display === '') ? 10 : Math.max(1, Math.min(100, parseInt(display, 10)));\nconst st  = (start   == null || start   === '') ?  1 : Math.max(1, Math.min(1000, parseInt(start, 10)));\n\nconst url = 'https://openapi.naver.com/v1/search/' + typ + '.json'\n          + '?query='   + encodeURIComponent(query)\n          + '&display=' + dsp\n          + '&start='   + st;\n\nconst resp = await fetch(url, {\n  headers: {\n    'X-Naver-Client-Id':     naverClientId,\n    'X-Naver-Client-Secret': naverClientSecret,\n    'Accept': 'application/json',\n  },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nreturn {\n  type:        typ,\n  total:       d.total,\n  start:       d.start,\n  display:     d.display,\n  items: (d.items || []).map(it => ({\n    title:       (it.title       || '').replace(/<\\/?b>/g, ''),\n    description: (it.description || '').replace(/<\\/?b>/g, ''),\n    link:        it.link,\n    pubDate:     it.pubDate || it.postdate || null,\n    bloggerName: it.bloggername || null,\n    author:      it.author      || null,\n  })),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "openapi.naver.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "openapi.naver.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "93f230ec-e828-5160-bf60-64e918461152",
+    "name": "searchKakaoLocal",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKakao Local keyword search — finds places/POIs and returns WGS84 coordinates (KR; key required). Issue a REST API key at https://developers.kakao.com/ and set KAKAO_REST_API_KEY on the tool's staticVariables, or inject as env var. Optionally pass (longitude, latitude, radius) to search around a point. Returns: { totalCount, pageableCount, isEnd, places:[{ name, category, categoryGroup, phone, address, roadAddress, latitude, longitude, placeUrl, distance }] }.",
+    "staticVariables": [
+      {
+        "kakaoRestApiKey": "${KAKAO_REST_API_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search keyword — Korean queries typical for KR POIs (e.g. '강남역 스타벅스'); other languages also accepted.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "강남역 스타벅스"
+      },
+      {
+        "name": "size",
+        "description": "Results per page (1-15, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      },
+      {
+        "name": "page",
+        "description": "Page number (1-45, default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      },
+      {
+        "name": "longitude",
+        "description": "Center longitude (WGS84). Leave empty for nationwide search.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "latitude",
+        "description": "Center latitude (WGS84). Leave empty for nationwide search.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "radius",
+        "description": "Radius in meters (0-20000). Used only when longitude/latitude are set.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * Kakao Local — keyword place search (KR; requires Kakao REST API key).\n *\n * GET https://dapi.kakao.com/v2/local/search/keyword.json?query=...&size=...&page=...\n *\n * Auth header: Authorization: KakaoAK <REST_API_KEY>\n *\n * Credential lives in staticVariables — `${KAKAO_REST_API_KEY}` by default.\n * Issue a REST API key at https://developers.kakao.com/.\n *\n * Optional (longitude, latitude, radius) narrows the search to a circle.\n */\n\nif (query == null || query === '') throw new Error('query required');\n\nconst sz = (size == null || size === '') ? 10 : Math.max(1, Math.min(15, parseInt(size, 10)));\nconst pg = (page == null || page === '') ?  1 : Math.max(1, Math.min(45, parseInt(page, 10)));\n\nlet url = 'https://dapi.kakao.com/v2/local/search/keyword.json'\n        + '?query=' + encodeURIComponent(query)\n        + '&size='  + sz\n        + '&page='  + pg;\n\nif (longitude != null && longitude !== '' && latitude != null && latitude !== '') {\n  url += '&x=' + encodeURIComponent(String(longitude))\n       + '&y=' + encodeURIComponent(String(latitude));\n  if (radius != null && radius !== '') {\n    url += '&radius=' + encodeURIComponent(String(Math.max(0, Math.min(20000, parseInt(radius, 10)))));\n  }\n}\n\nconst resp = await fetch(url, {\n  headers: {\n    'Authorization': 'KakaoAK ' + kakaoRestApiKey,\n    'Accept': 'application/json',\n  },\n  maxLength: 1_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nconst meta = d.meta || {};\nreturn {\n  totalCount:    meta.total_count,\n  pageableCount: meta.pageable_count,\n  isEnd:         meta.is_end,\n  places: (d.documents || []).map(p => ({\n    name:          p.place_name,\n    category:      p.category_name,\n    categoryGroup: p.category_group_name,\n    phone:         p.phone,\n    address:       p.address_name,\n    roadAddress:   p.road_address_name,\n    latitude:      Number(p.y),\n    longitude:     Number(p.x),\n    placeUrl:      p.place_url,\n    distance:      p.distance ? Number(p.distance) : null,\n  })),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "dapi.kakao.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "dapi.kakao.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "af634412-24b9-5ae7-8026-6bcbf6cd23a3",
+    "name": "getAirKoreaPm",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nAirKorea (data.go.kr) real-time air quality readings by Korean province (KR; data.go.kr key required). Issue the air-quality serviceKey at https://www.data.go.kr/data/15073861/openapi.do and set DATA_GO_KR_AIR_KEY on the tool's staticVariables, or inject as env var. Returns: { sidoName, totalCount, stations:[{ stationName, sidoName, dataTime, pm10, pm25, o3, no2, co, so2, khaiValue, khaiGrade }] }. On auth error: { success:false, status, message }.",
+    "staticVariables": [
+      {
+        "dataGoKrAirKey": "${DATA_GO_KR_AIR_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "sidoName",
+        "description": "Korean string required — province name as the AirKorea API expects. Examples: '전국' (nationwide), '서울', '부산', '제주', '경기'.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "서울"
+      },
+      {
+        "name": "numOfRows",
+        "description": "Stations per call (1-1000, default 100)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "20"
+      }
+    ],
+    "code": "/**\n * AirKorea — 시도별 실시간 대기질 (PM10/PM2.5/O3/...) (KR; requires data.go.kr key).\n *\n * GET http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty\n *     ?sidoName={sido}&pageNo=1&numOfRows=100&returnType=json&serviceKey={key}&ver=1.3\n *\n * Credential lives in staticVariables — `${DATA_GO_KR_AIR_KEY}` by default.\n * Issue a serviceKey at https://www.data.go.kr/data/15073861/openapi.do.\n *\n * `sidoName` is the Korean province name: 전국 | 서울 | 부산 | 대구 | 인천 | 광주 | 대전 |\n *   울산 | 경기 | 강원 | 충북 | 충남 | 전북 | 전남 | 경북 | 경남 | 제주 | 세종.\n *\n * NOTE: data.go.kr endpoints are HTTP not HTTPS — included in the allowlist.\n *       data.go.kr returns HTTP 200 with an error envelope when the serviceKey\n *       is bad — we detect `OpenAPI_ServiceResponse.cmmMsgHeader` and surface\n *       a structured failure.\n */\n\nif (sidoName == null || sidoName === '') throw new Error('sidoName required (예: 서울 / 경기 / 전국)');\n\nconst rows = (numOfRows == null || numOfRows === '') ? 100 : Math.max(1, Math.min(1000, parseInt(numOfRows, 10)));\n\nconst url = 'http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty'\n          + '?sidoName='   + encodeURIComponent(sidoName)\n          + '&pageNo=1'\n          + '&numOfRows='  + rows\n          + '&returnType=json'\n          + '&serviceKey=' + encodeURIComponent(dataGoKrAirKey)\n          + '&ver=1.3';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\n\n// data.go.kr returns HTTP 200 with this envelope on auth / quota / service errors.\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false,\n    status:  hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg    || hdr.errMsg || 'data.go.kr service error',\n  };\n}\n\nconst body = (d.response && d.response.body) || {};\nconst items = (body.items || []).map(s => ({\n  stationName:    s.stationName,\n  sidoName:       s.sidoName,\n  dataTime:       s.dataTime,\n  pm10:           s.pm10Value === '-' ? null : Number(s.pm10Value),\n  pm25:           s.pm25Value === '-' ? null : Number(s.pm25Value),\n  o3:             s.o3Value   === '-' ? null : Number(s.o3Value),\n  no2:            s.no2Value  === '-' ? null : Number(s.no2Value),\n  co:             s.coValue   === '-' ? null : Number(s.coValue),\n  so2:            s.so2Value  === '-' ? null : Number(s.so2Value),\n  khaiValue:      s.khaiValue === '-' ? null : Number(s.khaiValue),\n  khaiGrade:      s.khaiGrade,\n}));\n\nreturn {\n  sidoName:    sidoName,\n  totalCount:  body.totalCount,\n  stations:    items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "weather"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "713ae0cd-ea01-506b-9d39-ecdd4e649319",
+    "name": "searchKpopOnItunes",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\niTunes Search API — Korean music catalog including K-pop (no auth). Default country=kr biases results to the Korean iTunes storefront. Suitable for song / musicArtist / album / musicVideo lookups. Each result includes a 30s preview URL and album artwork URL. Catalog metadata is in the storefront language (Korean for kr). `entity`: musicArtist | song | album | musicVideo | mix. `country`: ISO-2 storefront code (kr/us/jp/...). Default kr. Returns: { country, entity, resultCount, results:[{ kind, artistName, trackName, collection, releaseDate, primaryGenre, previewUrl, trackViewUrl, artworkUrl, ... }] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "term",
+        "description": "Search keyword (artist / track / album) — Korean (e.g. '블랙핑크') or romanized ('BLACKPINK') both work.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "BLACKPINK"
+      },
+      {
+        "name": "entity",
+        "description": "song | musicArtist | album | musicVideo | mix (default song)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "song"
+      },
+      {
+        "name": "country",
+        "description": "ISO-2 storefront code (kr/us/jp/...), default kr",
+        "required": false,
+        "type": "STRING",
+        "testValue": "kr"
+      },
+      {
+        "name": "limit",
+        "description": "Result count (1-200, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * iTunes Search API — K-pop & Korean music catalog (no auth).\n *\n * GET https://itunes.apple.com/search?term=BTS&country=kr&media=music&entity=song&limit=10\n *\n * Defaults to Korean storefront (country=kr) which surfaces K-pop releases. Useful for:\n *   - finding K-pop tracks/albums/artists\n *   - getting Apple Music preview URLs (30 s) + album art\n *   - looking up release dates & genres\n *\n * `entity` is one of: musicArtist | song | album | musicVideo | mix.\n * `country` is an ISO-2 storefront code (kr / us / jp / ...).\n */\n\nif (term == null || term === '') throw new Error('term required');\n\nconst allowedEntities = ['musicArtist', 'song', 'album', 'musicVideo', 'mix'];\nconst ent = (entity == null || entity === '') ? 'song' : String(entity);\nif (allowedEntities.indexOf(ent) < 0) throw new Error('entity must be one of: ' + allowedEntities.join(', '));\n\nconst cc = (country == null || country === '') ? 'kr' : String(country).toLowerCase();\nconst lim = (limit == null || limit === '') ? 10 : Math.max(1, Math.min(200, parseInt(limit, 10)));\n\nconst url = 'https://itunes.apple.com/search'\n          + '?term='    + encodeURIComponent(term)\n          + '&country=' + encodeURIComponent(cc)\n          + '&media=music'\n          + '&entity='  + encodeURIComponent(ent)\n          + '&limit='   + lim;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nreturn {\n  country:      cc,\n  entity:       ent,\n  resultCount:  d.resultCount,\n  results: (d.results || []).map(r => ({\n    kind:         r.kind || r.wrapperType,\n    artistName:   r.artistName,\n    trackName:    r.trackName,\n    collection:   r.collectionName,\n    releaseDate:  r.releaseDate,\n    primaryGenre: r.primaryGenreName,\n    previewUrl:   r.previewUrl,\n    trackViewUrl: r.trackViewUrl,\n    artistViewUrl:r.artistViewUrl,\n    artworkUrl:   r.artworkUrl100,\n    trackTimeMs:  r.trackTimeMillis,\n    country:      r.country,\n  })),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "itunes.apple.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "itunes.apple.com"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "d779277d-714b-59d4-b605-4e8facd20cd6",
+    "name": "searchKBeautyProducts",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nK-beauty cosmetics product search via Open Beauty Facts (no auth). Default country=south-korea biases the lookup to Korean brand catalogs (Innisfree / Laneige / COSRX / ...). Returns ingredients, allergens, packaging, and product image URLs. For a global search pass country='', or other slugs like country='japan'. Note: localized product names may appear in Korean. Pass a barcode (e.g. '8809610706106') as `query` for single-product lookup — useful for ingredient checks. Returns: { country, count, page, pageSize, products:[{ code, productName, brands, countries, categories, allergens, ingredients, packaging, imageUrl, openBeautyFactsUrl }] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search keyword or barcode — English typical for ingredients ('snail mucin'), Korean works for brand names ('이니스프리').",
+        "required": true,
+        "type": "STRING",
+        "testValue": "snail mucin essence"
+      },
+      {
+        "name": "country",
+        "description": "Open Beauty Facts country slug. Default 'south-korea'. Empty string for global, 'japan' for Japan, etc.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "south-korea"
+      },
+      {
+        "name": "pageSize",
+        "description": "Result count (1-50, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * K-beauty product search via Open Beauty Facts (no auth).\n *\n * GET https://world.openbeautyfacts.org/api/v2/search\n *     ?search_terms=...&page_size=...&countries_tags_en=south-korea\n *     &fields=product_name,brands,code,countries_tags,ingredients_text,\n *             image_front_url,packaging,allergens_tags,categories_tags\n *\n * Defaults to `country=south-korea` so the catalog is K-beauty-flavoured. Override\n * to '' for a global search, or to any country slug Open Beauty Facts knows\n * (e.g. 'japan', 'united-states').\n *\n * Tip: passing a barcode (e.g. '8809610706106') usually returns a single product;\n * use that for ingredient lookup of a specific item you have in hand.\n */\n\nif (query == null || query === '') throw new Error('query required (search term or barcode)');\n\nconst sz = (pageSize == null || pageSize === '') ? 10 : Math.max(1, Math.min(50, parseInt(pageSize, 10)));\nconst cc = country == null ? 'south-korea' : String(country);\nconst fields = [\n  'code','product_name','brands','countries_tags','ingredients_text',\n  'image_front_url','image_front_small_url','packaging','allergens_tags',\n  'categories_tags','url',\n].join(',');\n\nlet url = 'https://world.openbeautyfacts.org/api/v2/search'\n        + '?search_terms=' + encodeURIComponent(query)\n        + '&page_size='   + sz\n        + '&fields='      + encodeURIComponent(fields);\nif (cc !== '') url += '&countries_tags_en=' + encodeURIComponent(cc);\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\n\nfunction lift(tag) {\n  // Open Beauty Facts uses prefixed tags like \"en:south-korea\" or \"en:fragrance\".\n  if (typeof tag !== 'string') return tag;\n  const colon = tag.indexOf(':');\n  return colon >= 0 ? tag.slice(colon + 1) : tag;\n}\n\nreturn {\n  country:    cc,\n  count:      d.count,\n  page:       d.page,\n  pageSize:   d.page_size,\n  products: (d.products || []).map(p => ({\n    code:         p.code,\n    productName:  p.product_name,\n    brands:       p.brands,\n    countries:   (p.countries_tags  || []).map(lift),\n    categories:  (p.categories_tags || []).map(lift),\n    allergens:   (p.allergens_tags  || []).map(lift),\n    ingredients:  p.ingredients_text,\n    packaging:    p.packaging,\n    imageUrl:     p.image_front_url || p.image_front_small_url,\n    openBeautyFactsUrl: p.url,\n  })),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "world.openbeautyfacts.org"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "world.openbeautyfacts.org"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "eecd3ec8-518c-5e7f-9457-2a408264eb31",
+    "name": "searchKoreaTour",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKorea Tourism Organization TourAPI 4.0 keyword search — tourist spots, cultural facilities, festivals, lodging, restaurants by Korean keyword (KR; data.go.kr key required, separate from the air-quality key). Issue the Korean tourism serviceKey at https://www.data.go.kr/data/15101578/openapi.do and set DATA_GO_KR_TOUR_KEY on the tool's staticVariables, or inject as env var. Filters: `areaCode` (province) + `sigunguCode` (city/county) + `contentTypeId` (content type). Examples: Jeonju = areaCode 37 + sigunguCode 12, Gyeongju = 35+2, Jeju City = 39+4, Seogwipo = 39+5. Metropolitan cities (Busan=6, Daegu=4, ...) do not require sigunguCode. Returns: { keyword, totalCount, pageNo, numOfRows, items:[{ contentId, contentTypeId, title, addr1, addr2, areaCode, sigunguCode, firstImage, mapX, mapY, tel, ... }] }.",
+    "staticVariables": [
+      {
+        "dataGoKrTourKey": "${DATA_GO_KR_TOUR_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "keyword",
+        "description": "Korean string required — Korean-language tour keyword (e.g. '경복궁', '제주 흑돼지', '부산 해운대').",
+        "required": true,
+        "type": "STRING",
+        "testValue": "경복궁"
+      },
+      {
+        "name": "areaCode",
+        "description": "Optional. Province code (Seoul=1, Busan=6, Gyeongbuk=35, Jeonbuk=37, Jeju=39, ...)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "sigunguCode",
+        "description": "Optional. City/county code (e.g. Jeonju=12 in Jeonbuk, Gyeongju=2 in Gyeongbuk, Jeju City=4 in Jeju, Seogwipo=5)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "contentTypeId",
+        "description": "Optional. 12=tourist spot, 14=cultural facility, 15=festival, 25=travel course, 28=leisure sports, 32=lodging, 38=shopping, 39=restaurant",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "pageNo",
+        "description": "Page number (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      },
+      {
+        "name": "numOfRows",
+        "description": "Results per page (1-100, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * Korea TourAPI 4.0 — 한국관광공사 키워드 검색 (KR; requires data.go.kr key).\n *\n * GET http://apis.data.go.kr/B551011/KorService2/searchKeyword2\n *     ?serviceKey={KEY}&keyword=경복궁&areaCode=&sigunguCode=&contentTypeId=\n *     &MobileOS=ETC&MobileApp=spring-ai-playground&_type=json&pageNo=1&numOfRows=10\n *\n * Credential lives in staticVariables — `${DATA_GO_KR_TOUR_KEY}` by default.\n * Issue a serviceKey at https://www.data.go.kr/data/15101578/openapi.do.\n *\n * Optional filters:\n *   areaCode        서울=1, 인천=2, 대전=3, 대구=4, 광주=5, 부산=6, 울산=7, 세종=8,\n *                   경기=31, 강원=32, 충북=33, 충남=34, 경북=35, 경남=36, 전북=37,\n *                   전남=38, 제주=39.\n *   sigunguCode     시·군·구 코드. areaCode와 함께 사용. 대표 값:\n *                     전북(37) → 전주=12, 군산=11, 익산=14, 남원=15\n *                     경북(35) → 경주=2,  안동=1,  포항=23\n *                     제주(39) → 제주시=4, 서귀포시=5\n *                   (광역시는 sigungu 불필요)\n *   contentTypeId   관광지=12, 문화시설=14, 축제공연행사=15, 여행코스=25,\n *                   레포츠=28, 숙박=32, 쇼핑=38, 음식점=39.\n */\n\nif (keyword == null || keyword === '') throw new Error('keyword required');\n\nconst rows = (numOfRows == null || numOfRows === '') ? 10 : Math.max(1, Math.min(100, parseInt(numOfRows, 10)));\nconst pg   = (pageNo    == null || pageNo    === '') ?  1 : Math.max(1, parseInt(pageNo, 10));\n\nlet url = 'http://apis.data.go.kr/B551011/KorService2/searchKeyword2'\n        + '?serviceKey=' + encodeURIComponent(dataGoKrTourKey)\n        + '&keyword='    + encodeURIComponent(keyword)\n        + '&MobileOS=ETC&MobileApp=spring-ai-playground'\n        + '&_type=json'\n        + '&pageNo='     + pg\n        + '&numOfRows='  + rows;\n\nif (areaCode      != null && areaCode      !== '') url += '&areaCode='      + encodeURIComponent(String(areaCode));\nif (sigunguCode   != null && sigunguCode   !== '') url += '&sigunguCode='   + encodeURIComponent(String(sigunguCode));\nif (contentTypeId != null && contentTypeId !== '') url += '&contentTypeId=' + encodeURIComponent(String(contentTypeId));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false,\n    status:  hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg    || hdr.errMsg || 'TourAPI service error',\n  };\n}\n\nconst body = (d.response && d.response.body) || {};\nlet itemsRaw = (body.items && body.items.item) || [];\nif (itemsRaw && !Array.isArray(itemsRaw) && typeof itemsRaw === 'object') itemsRaw = [itemsRaw];\n\nconst items = itemsRaw.map(s => ({\n  contentId:     s.contentid,\n  contentTypeId: s.contenttypeid,\n  title:         s.title,\n  addr1:         s.addr1,\n  addr2:         s.addr2,\n  areaCode:      s.areacode,\n  sigunguCode:   s.sigungucode,\n  cat1:          s.cat1,\n  cat2:          s.cat2,\n  cat3:          s.cat3,\n  firstImage:    s.firstimage,\n  firstImage2:   s.firstimage2,\n  mapX:          s.mapx ? Number(s.mapx) : null,\n  mapY:          s.mapy ? Number(s.mapy) : null,\n  tel:           s.tel,\n  modifiedTime:  s.modifiedtime,\n}));\n\nreturn {\n  keyword:      keyword,\n  totalCount:   body.totalCount,\n  pageNo:       body.pageNo,\n  numOfRows:    body.numOfRows,\n  items:        items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "ba5fc8a3-0a67-56ea-83b4-af62d6ea531f",
+    "name": "searchSeoulCulturalEvents",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nSeoul Open Data Plaza (data.seoul.go.kr) cultural events search (KR; separate key required). This API is operated directly by the Seoul city government and is separate from the data.go.kr keychain. Issue a free key at https://data.seoul.go.kr/together/apikey.do (1,000 req/day) and set SEOUL_OPEN_API_KEY on the tool's staticVariables, or inject as env var. Optional filters: `codename` (category: musical / exhibition / Korean classical music / concert / ...), `titleSearch` (partial title match), `eventDate` ('YYYY-MM-DD'; events active on that date only). Returns: { totalCount, events:[{ category, gu, title, period, startDate, endDate, place, organizer, audience, fee, isFree, program, imageUrl, latitude, longitude, ... }] }.",
+    "staticVariables": [
+      {
+        "seoulOpenApiKey": "${SEOUL_OPEN_API_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "startIndex",
+        "description": "Start index (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      },
+      {
+        "name": "endIndex",
+        "description": "End index (max 1000 per call)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "10"
+      },
+      {
+        "name": "codename",
+        "description": "Optional. Korean string required when used — category in Korean (e.g. '뮤지컬', '전시', '국악', '콘서트').",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "titleSearch",
+        "description": "Optional. Partial title match — Korean strings typical (e.g. '봄꽃').",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "eventDate",
+        "description": "Optional. 'YYYY-MM-DD' — only events active on that date",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * Seoul Open Data Plaza — 서울시 문화행사 정보 (KR; requires Seoul Open API key,\n * issued separately from data.go.kr).\n *\n * URL is positional (path-segment style):\n *   http://openapi.seoul.go.kr:8088/{KEY}/json/culturalEventInfo/{START}/{END}\n *      /{CODENAME}/{TITLE}/{DATE}\n *\n * - CODENAME: optional 분류 (예: '뮤지컬', '전시/미술', '국악', '콘서트')\n * - TITLE:    optional 제목 부분 일치\n * - DATE:     optional 'YYYY-MM-DD' — 해당 날짜에 진행되는 행사만\n *\n * Empty trailing params are simply omitted. Issue a key at\n * https://data.seoul.go.kr/together/apikey.do (free; 1,000 req/day).\n *\n * Top-level RESULT envelope carries auth/quota errors (CODE != 'INFO-000').\n */\n\n\nconst start = (startIndex == null || startIndex === '') ?  1 : Math.max(1, parseInt(startIndex, 10));\nconst end   = (endIndex   == null || endIndex   === '') ? 10 : Math.max(start, parseInt(endIndex, 10));\nif (end - start + 1 > 1000) throw new Error('Seoul Open API allows max 1000 rows per call');\n\nconst segs = [encodeURIComponent(seoulOpenApiKey), 'json', 'culturalEventInfo', String(start), String(end)];\nconst hasDate     = (eventDate != null && eventDate !== '');\nconst hasTitle    = (titleSearch != null && titleSearch !== '');\nconst hasCodename = (codename != null && codename !== '');\nif (hasCodename || hasTitle || hasDate)\n  segs.push(hasCodename ? encodeURIComponent(codename)    : '%20');\nif (hasTitle || hasDate)\n  segs.push(hasTitle    ? encodeURIComponent(titleSearch) : '%20');\nif (hasDate)\n  segs.push(encodeURIComponent(eventDate));\n\nconst url = 'http://openapi.seoul.go.kr:8088/' + segs.join('/');\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\n// Top-level error envelope (auth failure, system error, etc.)\nif (d && d.RESULT && d.RESULT.CODE && d.RESULT.CODE !== 'INFO-000')\n  return { success: false, status: d.RESULT.CODE, message: d.RESULT.MESSAGE };\nconst svc = d.culturalEventInfo || {};\nif (svc.RESULT && svc.RESULT.CODE && svc.RESULT.CODE !== 'INFO-000')\n  return { success: false, status: svc.RESULT.CODE, message: svc.RESULT.MESSAGE };\n\nconst events = (svc.row || []).map(r => ({\n  category:   r.CODENAME,\n  gu:         r.GUNAME,\n  title:      r.TITLE,\n  period:     r.DATE,\n  startDate:  r.STRTDATE,\n  endDate:    r.END_DATE,\n  place:      r.PLACE,\n  organizer:  r.ORG_NAME,\n  audience:   r.USE_TGT,\n  fee:        r.USE_FEE,\n  isFree:     r.IS_FREE === '무료',\n  program:    r.PROGRAM,\n  description:r.ETC_DESC,\n  imageUrl:   r.MAIN_IMG,\n  homepage:   r.HMPG_ADDR,\n  link:       r.ORG_LINK,\n  latitude:   r.LAT ? Number(r.LAT) : null,\n  longitude:  r.LOT ? Number(r.LOT) : null,\n}));\n\nreturn {\n  totalCount: svc.list_total_count,\n  events:     events,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "openapi.seoul.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "openapi.seoul.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "7c771b32-01e6-549f-9278-abfd6cf9cc60",
+    "name": "getKamisAgriPrice",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKAMIS agricultural product wholesale/retail prices — daily price data operated by aT (Korea Agro-Fisheries & Food Trade Corp). KR; cert_id + cert_key required, free. Issue credentials at https://www.kamis.or.kr/customer/reference/openapi_list.do and set KAMIS_CERT_ID + KAMIS_CERT_KEY on the tool's staticVariables, or inject as env vars. `productClsCode`: 01=retail, 02=wholesale (default). `itemCode` is the KAMIS product code (rice=111, apple=411, napa cabbage=211, pork belly=515, ...). Returns: { productClass, itemCode, startDay, endDay, count, rows:[{ itemName, kindName, county, market, year, date, price, unit }] }.",
+    "staticVariables": [
+      {
+        "kamisCertId": "${KAMIS_CERT_ID}"
+      },
+      {
+        "kamisCertKey": "${KAMIS_CERT_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "itemCode",
+        "description": "KAMIS product code (e.g. rice=111, apple=411, napa cabbage=211)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "411"
+      },
+      {
+        "name": "startDay",
+        "description": "Query start date (YYYY-MM-DD or YYYYMMDD)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-05-01"
+      },
+      {
+        "name": "endDay",
+        "description": "Query end date (YYYY-MM-DD or YYYYMMDD)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-05-13"
+      },
+      {
+        "name": "productClsCode",
+        "description": "01=retail, 02=wholesale (default 02)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "02"
+      },
+      {
+        "name": "itemCategoryCode",
+        "description": "Optional. 100=grain, 200=vegetable, 300=specialty, 400=fruit, 500=livestock, 600=fishery",
+        "required": false,
+        "type": "STRING",
+        "testValue": "400"
+      },
+      {
+        "name": "kindCode",
+        "description": "Optional. Variety code (omit for all)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * KAMIS — 한국농수산식품유통공사 농산물 도·소매 가격 조회 (KR; cert_id + cert_key 필요).\n *\n * GET http://www.kamis.or.kr/service/price/xml.do?action=periodProductList\n *     &p_cert_key={KEY}&p_cert_id={ID}&p_returntype=json\n *     &p_productclscode=02&p_itemcategorycode=400&p_itemcode=411\n *     &p_startday=2026-05-01&p_endday=2026-05-13\n *\n * Credentials live in staticVariables — `${KAMIS_CERT_ID}` and `${KAMIS_CERT_KEY}` by default.\n * Sign up at https://www.kamis.or.kr/customer/reference/openapi_list.do (free).\n *\n * Codes (a small subset):\n *   p_productclscode    01=소매, 02=도매\n *   p_itemcategorycode  100=식량작물, 200=채소류, 300=특용작물, 400=과일류,\n *                       500=축산물, 600=수산물\n *   p_itemcode          품목 코드. 자주 쓰는 예:\n *                         식량 111=쌀, 112=찹쌀, 113=현미\n *                         채소 211=배추, 215=상추, 226=양파, 233=양배추\n *                         과일 411=사과, 412=배, 418=포도, 422=감귤\n *                         축산 514=한우(등심), 515=돼지(삼겹)\n */\n\nif (itemCode == null || itemCode === '') throw new Error('itemCode required (KAMIS 품목 코드)');\n\nconst cls = (productClsCode == null || productClsCode === '') ? '02' : String(productClsCode);\nconst cat = (itemCategoryCode == null || itemCategoryCode === '') ? '' : String(itemCategoryCode);\n\nfunction fmt(d) {\n  if (d == null || d === '') return '';\n  const s = String(d);\n  // Accept YYYYMMDD and reformat to YYYY-MM-DD.\n  if (/^\\d{8}$/.test(s)) return s.slice(0,4) + '-' + s.slice(4,6) + '-' + s.slice(6,8);\n  return s;\n}\nconst start = fmt(startDay);\nconst end   = fmt(endDay);\nif (start === '') throw new Error('startDay required (YYYY-MM-DD or YYYYMMDD)');\nif (end   === '') throw new Error('endDay required (YYYY-MM-DD or YYYYMMDD)');\n\nlet url = 'http://www.kamis.or.kr/service/price/xml.do?action=periodProductList'\n        + '&p_cert_key=' + encodeURIComponent(kamisCertKey)\n        + '&p_cert_id='  + encodeURIComponent(kamisCertId)\n        + '&p_returntype=json'\n        + '&p_productclscode='   + encodeURIComponent(cls)\n        + '&p_itemcode='         + encodeURIComponent(String(itemCode))\n        + '&p_startday=' + encodeURIComponent(start)\n        + '&p_endday='   + encodeURIComponent(end);\nif (cat !== '') url += '&p_itemcategorycode=' + encodeURIComponent(cat);\nif (kindCode != null && kindCode !== '')\n  url += '&p_kindcode=' + encodeURIComponent(String(kindCode));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nconst data = d.data || {};\nif (data.error_code && data.error_code !== '000')\n  return { success: false, status: data.error_code, message: data.error_message || 'KAMIS error' };\n\nconst rows = (data.item || []).map(r => ({\n  itemName:    r.itemname,\n  kindName:    r.kindname,\n  county:      r.countyname,\n  market:      r.marketname,\n  year:        r.yyyy,\n  date:        r.regday,\n  price:       r.price ? Number(String(r.price).replace(/,/g, '')) : null,\n  unit:        r.unit,\n  productClass: cls === '01' ? '소매' : '도매',\n}));\n\nreturn {\n  productClass: cls === '01' ? '소매' : '도매',\n  itemCode:     String(itemCode),\n  startDay:     start,\n  endDay:       end,\n  count:        rows.length,\n  rows:         rows,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "www.kamis.or.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "www.kamis.or.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "1ebc1d66-fc8b-591e-96d5-fbeaad420a5e",
+    "name": "getKoficBoxOffice",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKOFIC (Korean Film Council) daily box-office ranking (KR; single API key required, free instant issuance). Issue the key at https://www.kobis.or.kr/kobisopenapi/ and set KOFIC_API_KEY on the tool's staticVariables, or inject as env var. `targetDate` is typically yesterday's date (same-day totals are tallied after market close). Both YYYYMMDD and YYYY-MM-DD are accepted. Optional filters: `multiMovieYn` (Y=diversity films only / N=commercial films only), `repNationCd` (K=Korean / F=foreign), `wideAreaCd` (screening region). Returns: { type, showRange, count, movies:[{ rank, rankChange, isNew, movieCode, title, openDate, salesAmount, salesShare, salesAccumulated, audience, audienceAccumulated, screens, shows }] }.",
+    "staticVariables": [
+      {
+        "koficApiKey": "${KOFIC_API_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "targetDate",
+        "description": "Target date (YYYYMMDD or YYYY-MM-DD)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "20260512"
+      },
+      {
+        "name": "multiMovieYn",
+        "description": "Optional. Y=diversity films only / N=commercial films only (omit for all)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "repNationCd",
+        "description": "Optional. K=Korean / F=foreign (omit for all)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "wideAreaCd",
+        "description": "Optional. Screening region code (omit for nationwide)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * KOFIC — 영화진흥위원회 일별 박스오피스 순위 (KR; single API key, lightweight signup).\n *\n * GET http://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json\n *     ?key={KEY}&targetDt=20260512\n *\n * Optional filters:\n *   multiMovieYn  Y=다양성영화만 / N=상업영화만 (omit for both)\n *   repNationCd   K=한국영화 / F=외국영화 (omit for both)\n *   wideAreaCd    상영지역 코드 (omit for 전국)\n *\n * Issue a key at https://www.kobis.or.kr/kobisopenapi/ (free, immediate).\n */\n\nif (targetDate == null || targetDate === '') throw new Error('targetDate required (YYYYMMDD)');\n// Normalise YYYY-MM-DD → YYYYMMDD\nconst tgt = String(targetDate).replace(/-/g, '');\nif (!/^\\d{8}$/.test(tgt)) throw new Error('targetDate must be YYYYMMDD or YYYY-MM-DD');\n\nlet url = 'http://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json'\n        + '?key='      + encodeURIComponent(koficApiKey)\n        + '&targetDt=' + tgt;\nif (multiMovieYn != null && multiMovieYn !== '')\n  url += '&multiMovieYn=' + encodeURIComponent(String(multiMovieYn).toUpperCase());\nif (repNationCd != null && repNationCd !== '')\n  url += '&repNationCd='  + encodeURIComponent(String(repNationCd).toUpperCase());\nif (wideAreaCd != null && wideAreaCd !== '')\n  url += '&wideAreaCd='   + encodeURIComponent(String(wideAreaCd));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 1_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\n// KOFIC returns a `faultInfo` envelope on auth/quota errors (HTTP 200).\nif (d.faultInfo)\n  return { success: false, status: d.faultInfo.errorCode, message: d.faultInfo.message };\n\nconst r = d.boxOfficeResult || {};\nconst num = v => v == null || v === '' ? null : Number(String(v).replace(/,/g, ''));\n\nconst rows = (r.dailyBoxOfficeList || []).map(m => ({\n  rank:          num(m.rank),\n  rankChange:    num(m.rankInten),\n  isNew:         m.rankOldAndNew === 'NEW',\n  movieCode:     m.movieCd,\n  title:         m.movieNm,\n  openDate:      m.openDt,\n  salesAmount:   num(m.salesAmt),\n  salesShare:    num(m.salesShare),\n  salesChange:   num(m.salesInten),\n  salesAccumulated: num(m.salesAcc),\n  audience:      num(m.audiCnt),\n  audienceChange: num(m.audiInten),\n  audienceAccumulated: num(m.audiAcc),\n  screens:       num(m.scrnCnt),\n  shows:         num(m.showCnt),\n}));\n\nreturn {\n  type:        r.boxofficeType,\n  showRange:   r.showRange,\n  count:       rows.length,\n  movies:      rows,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "www.kobis.or.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "www.kobis.or.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "44e48db0-0955-5de9-93b7-0fd90f803b02",
+    "name": "getKrxStockPrice",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKRX Korea Exchange daily stock quotes (data.go.kr) — KOSPI/KOSDAQ/KONEX daily open/close/change/volume/market cap. KR; data.go.kr serviceKey required, separate service application from other dgk keys. Register the `Financial Services Commission stock quote info` service at data.go.kr (https://www.data.go.kr/data/15094808/openapi.do), receive a serviceKey, and set DATA_GO_KR_STOCK_KEY on the tool's staticVariables, or inject as env var. Note: the KIS API (Korea Investment & Securities) is a two-step token → Bearer flow that is inefficient for stateless tools (token consumed per call). This tool uses the KRX-official channel that exposes the same data behind a single key. Filters: `basDt` (business day YYYYMMDD), `itmsNm` (exact stock name), `likeItmsNm` (partial name match), `srtnCd` (short code e.g. 005930), `mrktCls` (KOSPI/KOSDAQ/KONEX). Returns: { totalCount, pageNo, numOfRows, items:[{ baseDate, shortCode, isinCode, name, market, close, diff, changePct, open, high, low, volume, tradeValue, listedShares, marketCap }] }.",
+    "staticVariables": [
+      {
+        "dataGoKrStockKey": "${DATA_GO_KR_STOCK_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "basDt",
+        "description": "Business day (YYYYMMDD or YYYY-MM-DD). Latest if omitted.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "20260512"
+      },
+      {
+        "name": "itmsNm",
+        "description": "Korean string required — exact stock name (e.g. '삼성전자', '현대자동차', 'SK하이닉스').",
+        "required": false,
+        "type": "STRING",
+        "testValue": "삼성전자"
+      },
+      {
+        "name": "likeItmsNm",
+        "description": "Korean string required when used — partial stock name match (e.g. '삼성', '현대').",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "srtnCd",
+        "description": "Short stock code (e.g. '005930' for Samsung Electronics)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "mrktCls",
+        "description": "Market segment: KOSPI / KOSDAQ / KONEX (omit for all)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "numOfRows",
+        "description": "Results per page (1-1000, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "10"
+      },
+      {
+        "name": "pageNo",
+        "description": "Page (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * KRX 주식시세정보 via data.go.kr (KR; data.go.kr serviceKey 필요).\n *\n * GET http://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo\n *     ?serviceKey={KEY}&numOfRows=10&pageNo=1&resultType=json\n *     &basDt=20260512&itmsNm=삼성전자\n *\n * Why this and not KIS API?\n *   KIS(한국투자증권 OpenAPI)는 OAuth 토큰 발급 후 Bearer 호출 방식이라 stateless 툴\n *   호출에는 비효율적입니다(매 호출 토큰 새로 발급 → 일일 한도 소모). data.go.kr KRX\n *   엔드포인트는 다른 data.go.kr 툴과 동일한 단일 serviceKey 패턴이고, 일·종목별\n *   시세를 깔끔하게 돌려줍니다.\n *\n * 필터: `basDt`(영업일, YYYYMMDD), `itmsNm`(종목명), `likeItmsNm`(부분일치),\n *       `srtnCd`(단축종목코드, 예: 005930), `mrktCls`(KOSPI/KOSDAQ/KONEX).\n *\n * data.go.kr에서 `금융위원회_주식시세정보` 서비스를 별도 신청 후 serviceKey를 받습니다\n * (https://www.data.go.kr/data/15094808/openapi.do).\n */\n\n\nconst rows = (numOfRows == null || numOfRows === '') ? 10 : Math.max(1, Math.min(1000, parseInt(numOfRows, 10)));\nconst pg   = (pageNo    == null || pageNo    === '') ?  1 : Math.max(1, parseInt(pageNo, 10));\n\nlet url = 'http://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo'\n        + '?serviceKey=' + encodeURIComponent(dataGoKrStockKey)\n        + '&numOfRows='  + rows\n        + '&pageNo='     + pg\n        + '&resultType=json';\n\nif (basDt != null && basDt !== '') {\n  const s = String(basDt).replace(/-/g, '');\n  url += '&basDt=' + encodeURIComponent(s);\n}\nif (itmsNm     != null && itmsNm     !== '') url += '&itmsNm='     + encodeURIComponent(String(itmsNm));\nif (likeItmsNm != null && likeItmsNm !== '') url += '&likeItmsNm=' + encodeURIComponent(String(likeItmsNm));\nif (srtnCd     != null && srtnCd     !== '') url += '&srtnCd='     + encodeURIComponent(String(srtnCd));\nif (mrktCls    != null && mrktCls    !== '') url += '&mrktCls='    + encodeURIComponent(String(mrktCls).toUpperCase());\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false,\n    status:  hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg    || hdr.errMsg || 'KRX service error',\n  };\n}\n\nconst body = (d.response && d.response.body) || {};\nlet itemsRaw = (body.items && body.items.item) || [];\nif (itemsRaw && !Array.isArray(itemsRaw) && typeof itemsRaw === 'object') itemsRaw = [itemsRaw];\n\nconst num = v => v == null || v === '' ? null : Number(v);\n\nconst items = itemsRaw.map(s => ({\n  baseDate:        s.basDt,\n  shortCode:       s.srtnCd,\n  isinCode:        s.isinCd,\n  name:            s.itmsNm,\n  market:          s.mrktCtg,\n  close:           num(s.clpr),\n  diff:            num(s.vs),\n  changePct:       num(s.fltRt),\n  open:            num(s.mkp),\n  high:            num(s.hipr),\n  low:             num(s.lopr),\n  volume:          num(s.trqu),\n  tradeValue:      num(s.trPrc),\n  listedShares:    num(s.lstgStCnt),\n  marketCap:       num(s.mrktTotAmt),\n}));\n\nreturn {\n  totalCount: num(body.totalCount),\n  pageNo:     num(body.pageNo),\n  numOfRows:  num(body.numOfRows),\n  items:      items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "b7d6a920-186f-52c4-9281-1f60a5968ce3",
+    "name": "callDataGoKrOpenApi",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\ndata.go.kr generic dispatcher — calls arbitrary data.go.kr services not covered by dedicated tools in this catalog. High-frequency services (air quality / tourism / stocks / ...) have their own tools; use this dispatcher for the 7,000+ other services (real-estate transactions / postal codes / road-name addresses / drug-safety agency / national statistics / ...). Most responses are in Korean. Set the data.go.kr serviceKey on the tool's staticVariables as DATA_GO_KR_KEY, or inject as env var. NOTE: each data.go.kr dataset requires its own service registration (the key value can be the same, but each OpenAPI service is approved separately). Inputs: { servicePath: 'B551011/KorService2/...' (the path after apis.data.go.kr/), query: { pageNo:1, numOfRows:10, ... } (extra query parameters) }. On success: { ok:true, totalCount, pageNo, numOfRows, items, raw }. On failure: { ok:false, status, message } (HTTP error or OpenAPI_ServiceResponse.cmmMsgHeader error).",
+    "staticVariables": [
+      {
+        "dataGoKrKey": "${DATA_GO_KR_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "servicePath",
+        "description": "Path after apis.data.go.kr/ (e.g. '1741000/StanReginCd/getStanReginCdList' for the MOIS region-code service)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "1741000/StanReginCd/getStanReginCdList"
+      },
+      {
+        "name": "query",
+        "description": "Extra query parameters as an object (the example payload — including any Korean region name — lives in testValue)",
+        "required": false,
+        "type": "OBJECT",
+        "testValue": "{\"pageNo\":1,\"numOfRows\":5,\"locatadd_nm\":\"서울특별시\"}"
+      }
+    ],
+    "code": "/**\n * Generic data.go.kr OpenAPI dispatcher — call any service under apis.data.go.kr\n * that isn't covered by a purpose-built tool in this catalog.\n *\n * GET http://apis.data.go.kr/{servicePath}?serviceKey={KEY}&{...query}\n *\n * Inputs:\n *   - servicePath  : path under apis.data.go.kr (예: '1160100/service/.../getStockPriceInfo').\n *                    Must NOT include the scheme or host.\n *   - query        : object of extra query parameters\n *                    (예: { pageNo: 1, numOfRows: 10, basDt: '20260512', itmsNm: '삼성전자' })\n *   - serviceKey   : data.go.kr serviceKey (from staticVariable / env-backed `${DATA_GO_KR_KEY}`).\n *\n * Each service on data.go.kr requires its own approval — the same physical\n * serviceKey is reused, but the developer must have \"신청\" the dataset.\n *\n * Output envelope:\n *   - success: { ok:true, totalCount, pageNo, numOfRows, items, raw }\n *   - failure: { ok:false, status, message }   (HTTP non-2xx OR cmmMsgHeader error)\n */\n\nif (servicePath == null || servicePath === '') throw new Error('servicePath required');\n\nlet path = String(servicePath).trim();\nif (path.startsWith('http://') || path.startsWith('https://'))\n  throw new Error('servicePath must be relative under apis.data.go.kr (no scheme/host)');\nif (path.startsWith('/')) path = path.substring(1);\n\nlet url = 'http://apis.data.go.kr/' + path\n        + '?serviceKey=' + encodeURIComponent(dataGoKrKey);\n\n// Append additional query parameters.\nconst q = query || {};\nlet sawType = false;\nfor (const k of Object.keys(q)) {\n  const v = q[k];\n  if (v == null || v === '') continue;\n  if (k === '_type' || k === 'resultType') sawType = true;\n  url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(String(v));\n}\n// Default to JSON if the caller didn't specify a return type.\nif (!sawType) url += '&_type=json&resultType=json';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { ok: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\n\n// data.go.kr surfaces auth/quota/system errors via this top-level envelope (HTTP 200).\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    ok:      false,\n    status:  hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg    || hdr.errMsg || 'data.go.kr service error',\n  };\n}\n\n// Unwrap the typical response.body shape. Many data.go.kr services use this layout\n// (TourAPI, AirKorea, KRX, etc.) — return items as a flat array when present.\nconst body = (d.response && d.response.body) || d.body || null;\nlet items = body && body.items;\nif (items && items.item) items = items.item;\nif (items && !Array.isArray(items) && typeof items === 'object') items = [items];\n\nreturn {\n  ok:         true,\n  totalCount: body ? body.totalCount : null,\n  pageNo:     body ? body.pageNo     : null,\n  numOfRows:  body ? body.numOfRows  : null,\n  items:      items || null,\n  raw:        d,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "a94bf574-41f7-5e1f-b081-58a87a301a64",
+    "name": "getKmaShortTermForecast",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nKMA short-term weather forecast — hourly forecast for the next ~72 hours by lat/lon or KMA grid coordinates (nx,ny). KR; data.go.kr serviceKey required, separate KMA service registration. Register the `KMA short-term forecast service` at data.go.kr, receive a serviceKey, and set DATA_GO_KR_KMA_KEY on the tool's staticVariables, or inject as env var. Coordinates: pass either (latitude, longitude) or (nx, ny). Lat/lon are converted internally to KMA Lambert grid. baseDate/baseTime default to today's 0500 release (KMA releases at 02/05/08/11/14/17/20/23). Response is pivoted to 1-hour slots: { fcstDate, fcstTime, temp(℃), humidity(%), precipProbability(%), precipType, precipAmount, skyCondition, windSpeed(m/s), windDirection(deg) }.",
+    "staticVariables": [
+      {
+        "dataGoKrKmaKey": "${DATA_GO_KR_KMA_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "latitude",
+        "description": "Latitude (WGS84). Use instead of nx/ny.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "37.5665"
+      },
+      {
+        "name": "longitude",
+        "description": "Longitude (WGS84). Use instead of nx/ny.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "126.9780"
+      },
+      {
+        "name": "nx",
+        "description": "KMA grid X (Seoul=60, Busan=98, Jeju=52, ...)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "ny",
+        "description": "KMA grid Y (Seoul=127, Busan=76, Jeju=38, ...)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "baseDate",
+        "description": "Release date YYYYMMDD (today if omitted)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "baseTime",
+        "description": "Release time HHMM (one of 0200/0500/0800/1100/1400/1700/2000/2300, default 0500)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "0500"
+      }
+    ],
+    "code": "/**\n * 기상청(KMA) 단기예보 (KR; requires data.go.kr serviceKey).\n *\n * GET http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst\n *     ?serviceKey={KEY}&pageNo=1&numOfRows=1000&dataType=JSON\n *     &base_date=20260513&base_time=0500&nx=60&ny=127\n *\n * 좌표 입력 방식 (둘 중 하나):\n *   (1) latitude + longitude  — 위경도 (WGS84) → 내부에서 KMA Lambert Conformal Conic\n *       격자 (nx, ny)로 변환\n *   (2) nx + ny               — KMA 격자 좌표 (예: 서울 60,127 / 부산 98,76 / 제주 52,38)\n *\n * base_date/base_time 미지정 시 오늘 0500 발표분. KMA는 02/05/08/11/14/17/20/23시\n * 발표하며 데이터는 발표 ~30분 후 가용.\n *\n * 응답은 (fcstDate, fcstTime) 단위로 pivot되어 시간슬롯별 한 행으로 정리됩니다.\n * 컬럼: temp(℃), humidity(%), precipProbability(%), precipType, precipAmount,\n *       skyCondition, windSpeed(m/s), windDirection(deg).\n */\n\n\n// Convert lat/lon → KMA Lambert Conformal Conic grid (nx, ny).\nfunction latLonToGrid(lat, lon) {\n  const RE = 6371.00877, GRID = 5.0;\n  const SLAT1 = 30.0, SLAT2 = 60.0;\n  const OLON  = 126.0, OLAT  = 38.0;\n  const XO = 43, YO = 136;\n  const D = Math.PI / 180.0;\n  const re = RE / GRID;\n  const slat1 = SLAT1 * D, slat2 = SLAT2 * D;\n  const olon  = OLON  * D, olat  = OLAT  * D;\n  let sn = Math.log(Math.cos(slat1) / Math.cos(slat2))\n         / Math.log(Math.tan(Math.PI*0.25 + slat2*0.5) / Math.tan(Math.PI*0.25 + slat1*0.5));\n  const sf = Math.pow(Math.tan(Math.PI*0.25 + slat1*0.5), sn) * Math.cos(slat1) / sn;\n  const ro = re * sf / Math.pow(Math.tan(Math.PI*0.25 + olat*0.5), sn);\n  const ra = re * sf / Math.pow(Math.tan(Math.PI*0.25 + lat*D*0.5), sn);\n  let theta = lon*D - olon;\n  if (theta >  Math.PI) theta -= 2*Math.PI;\n  if (theta < -Math.PI) theta += 2*Math.PI;\n  theta *= sn;\n  return {\n    nx: Math.floor(ra * Math.sin(theta) + XO + 0.5),\n    ny: Math.floor(ro - ra * Math.cos(theta) + YO + 0.5),\n  };\n}\n\nlet gx, gy;\nif (nx != null && nx !== '' && ny != null && ny !== '') {\n  gx = parseInt(nx, 10); gy = parseInt(ny, 10);\n} else if (latitude != null && latitude !== '' && longitude != null && longitude !== '') {\n  const g = latLonToGrid(Number(latitude), Number(longitude));\n  gx = g.nx; gy = g.ny;\n} else {\n  throw new Error('Either (latitude, longitude) or (nx, ny) required');\n}\n\nfunction todayYmd() {\n  const d = new Date();\n  const pad = n => (n < 10 ? '0' + n : '' + n);\n  return d.getUTCFullYear().toString() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate());\n}\nconst bdate = (baseDate == null || baseDate === '') ? todayYmd() : String(baseDate).replace(/-/g, '');\nconst btime = (baseTime == null || baseTime === '') ? '0500'      : String(baseTime).padStart(4, '0');\n\nconst url = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'\n          + '?serviceKey=' + encodeURIComponent(dataGoKrKmaKey)\n          + '&pageNo=1&numOfRows=1000&dataType=JSON'\n          + '&base_date=' + bdate + '&base_time=' + btime\n          + '&nx=' + gx + '&ny=' + gy;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false, status: hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg || hdr.errMsg || 'KMA service error',\n  };\n}\n\nconst body = (d.response && d.response.body) || {};\nconst items = (body.items && body.items.item) || [];\n\n// Pivot long-format rows into one row per (fcstDate, fcstTime).\nconst SKY = { '1': '맑음', '3': '구름많음', '4': '흐림' };\nconst PTY = { '0': '없음',  '1': '비',      '2': '비/눈', '3': '눈', '4': '소나기' };\nconst slotsMap = new Map();\nfor (const row of items) {\n  const key = row.fcstDate + 'T' + row.fcstTime;\n  let slot = slotsMap.get(key);\n  if (!slot) {\n    slot = { fcstDate: row.fcstDate, fcstTime: row.fcstTime };\n    slotsMap.set(key, slot);\n  }\n  const v = row.fcstValue;\n  switch (row.category) {\n    case 'TMP': slot.temp              = Number(v); break;\n    case 'TMN': slot.minTemp           = Number(v); break;\n    case 'TMX': slot.maxTemp           = Number(v); break;\n    case 'REH': slot.humidity          = Number(v); break;\n    case 'POP': slot.precipProbability = Number(v); break;\n    case 'PCP': slot.precipAmount      = v;          break;\n    case 'PTY': slot.precipType        = PTY[v] || v; break;\n    case 'SKY': slot.skyCondition      = SKY[v] || v; break;\n    case 'WSD': slot.windSpeed         = Number(v); break;\n    case 'VEC': slot.windDirection     = Number(v); break;\n  }\n}\nconst forecasts = Array.from(slotsMap.values()).sort((a, b) =>\n  (a.fcstDate + a.fcstTime).localeCompare(b.fcstDate + b.fcstTime));\n\nreturn {\n  baseDate:  bdate,\n  baseTime:  btime,\n  grid:      { nx: gx, ny: gy },\n  count:     forecasts.length,\n  forecasts: forecasts,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "weather"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "4c2c593e-5a1c-584d-bb64-cba24c977dca",
+    "name": "getApartmentTradePrice",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nMOLIT (Ministry of Land, Infrastructure & Transport) apartment sale transactions (KR; data.go.kr serviceKey required). Register the MOLIT apartment-trade data service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_APT_KEY on the tool's staticVariables, or inject as env var. `lawdCode` is the 5-digit legal-dong city/county code (not the road-name address). Examples: Gangnam=11680, Seocho=11650, Songpa=11710, Haeundae=26350, Bundang(Seongnam)=41135, Jeju City=50110. `dealYmd` is the transaction month as YYYYMM. Returns: { lawdCode, dealYmd, totalCount, pageNo, numOfRows, items:[{ aptName, dealYear, dealMonth, dealDay, dealAmount(10K KRW), excluUseAr(sqm), floor, buildYear, umdNm(legal dong), jibun(lot), roadName, dealingType }] }.",
+    "staticVariables": [
+      {
+        "dataGoKrAptKey": "${DATA_GO_KR_APT_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "lawdCode",
+        "description": "5-digit legal-dong city/county code (Gangnam=11680, Haeundae=26350, ...)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "11680"
+      },
+      {
+        "name": "dealYmd",
+        "description": "Transaction month YYYYMM or YYYY-MM (e.g. 202604)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "202604"
+      },
+      {
+        "name": "numOfRows",
+        "description": "Results per page (1-1000, default 100)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "20"
+      },
+      {
+        "name": "pageNo",
+        "description": "Page number (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * 국토교통부 아파트 매매 실거래가 (KR; data.go.kr serviceKey 필요).\n *\n * GET http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev\n *     ?serviceKey={KEY}&LAWD_CD=11680&DEAL_YMD=202604&pageNo=1&numOfRows=100\n *\n * LAWD_CD = 5자리 법정동 시군구 코드 (도로명 X). 자주 쓰는 값:\n *   강남구 11680, 서초구 11650, 송파구 11710, 마포구 11440, 성동구 11200,\n *   영등포구 11560, 용산구 11170, 종로구 11110, 중구 11140,\n *   해운대구(부산) 26350, 수영구(부산) 26410,\n *   분당구(성남) 41135, 일산동구(고양) 41281,\n *   제주시 50110, 서귀포시 50130.\n *\n * DEAL_YMD = 거래연월 YYYYMM (필수).\n *\n * data.go.kr 에서 `국토교통부_아파트매매 실거래자료` 신청 후 serviceKey 사용.\n */\n\nif (lawdCode == null || lawdCode === '') throw new Error('lawdCode required (5자리 법정동 시군구 코드)');\nif (dealYmd  == null || dealYmd  === '') throw new Error('dealYmd required (거래연월 YYYYMM)');\n\nconst ym = String(dealYmd).replace(/-/g, '').slice(0, 6);\nif (!/^\\d{6}$/.test(ym)) throw new Error('dealYmd must be YYYYMM');\n\nconst rows = (numOfRows == null || numOfRows === '') ? 100 : Math.max(1, Math.min(1000, parseInt(numOfRows, 10)));\nconst pg   = (pageNo    == null || pageNo    === '') ?   1 : Math.max(1, parseInt(pageNo, 10));\n\nconst url = 'http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev'\n          + '?serviceKey=' + encodeURIComponent(dataGoKrAptKey)\n          + '&LAWD_CD='   + encodeURIComponent(String(lawdCode))\n          + '&DEAL_YMD='  + ym\n          + '&pageNo='    + pg\n          + '&numOfRows=' + rows;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false, status: hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg || hdr.errMsg || 'apt-trade service error',\n  };\n}\n\nconst body = (d.response && d.response.body) || {};\nlet itemsRaw = (body.items && body.items.item) || [];\nif (itemsRaw && !Array.isArray(itemsRaw) && typeof itemsRaw === 'object') itemsRaw = [itemsRaw];\n\nconst num = v => v == null || v === '' ? null : Number(String(v).replace(/,/g, '').trim());\n\nconst items = itemsRaw.map(t => ({\n  aptName:      (t.aptNm || t.아파트 || '').trim(),\n  dealYear:     num(t.dealYear || t.년),\n  dealMonth:    num(t.dealMonth || t.월),\n  dealDay:      num(t.dealDay   || t.일),\n  dealAmount:   num(t.dealAmount || t.거래금액),   // 단위: 만원\n  excluUseAr:   num(t.excluUseAr || t.전용면적),   // 단위: ㎡\n  floor:        num(t.floor      || t.층),\n  buildYear:    num(t.buildYear  || t.건축년도),\n  umdNm:        t.umdNm || t.법정동,\n  jibun:        t.jibun || t.지번,\n  roadName:     t.roadNm || t.도로명,\n  dealingType:  t.dealingGbn || t.거래유형,        // 중개 / 직거래\n}));\n\nreturn {\n  lawdCode:   String(lawdCode),\n  dealYmd:    ym,\n  totalCount: body.totalCount,\n  pageNo:     body.pageNo,\n  numOfRows:  body.numOfRows,\n  items:      items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "96e7ac24-a4b7-56c7-a91c-3cf988720b82",
+    "name": "searchKoreaDrugInfo",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nMFDS (Ministry of Food & Drug Safety) drug product approval search (KR; data.go.kr serviceKey required). Register the `MFDS drug product approval info` service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_DRUG_KEY on the tool's staticVariables, or inject as env var. At least one of `itemName` (partial product name), `entpName` (company name), or `itemSeq` (product sequence) is required. Returns: { totalCount, pageNo, numOfRows, items:[{ itemSeq, itemName, entpName, itemPermitDate, className, storageMethod, packUnit, validTerm, cancelDate, cancelName, chart }] }.",
+    "staticVariables": [
+      {
+        "dataGoKrDrugKey": "${DATA_GO_KR_DRUG_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "itemName",
+        "description": "Korean string required — partial product name (e.g. '타이레놀', '아스피린').",
+        "required": false,
+        "type": "STRING",
+        "testValue": "타이레놀"
+      },
+      {
+        "name": "entpName",
+        "description": "Optional. Company name in Korean (e.g. '한국얀센', '유한양행').",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "itemSeq",
+        "description": "Product sequence code (MFDS unique ID)",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "numOfRows",
+        "description": "Results per page (1-100, default 10)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "5"
+      },
+      {
+        "name": "pageNo",
+        "description": "Page number (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * 식약처 의약품 품목허가 정보 검색 (KR; data.go.kr serviceKey 필요).\n *\n * GET http://apis.data.go.kr/1471000/MdcinPrductPrmsnInfoService02/getMdcinPrductItem02\n *     ?serviceKey={KEY}&type=json&pageNo=1&numOfRows=10\n *     &item_name=타이레놀&entp_name=&item_seq=\n *\n * 한 가지 이상의 검색 조건 필요: `itemName`(품목명, 부분일치),\n * `entpName`(업체명), `itemSeq`(품목 시퀀스코드).\n *\n * data.go.kr 에서 `식품의약품안전처_의약품 품목허가 정보` 신청 후 serviceKey 사용.\n */\n\n\nconst hasName = itemName != null && itemName !== '';\nconst hasEntp = entpName != null && entpName !== '';\nconst hasSeq  = itemSeq  != null && itemSeq  !== '';\nif (!hasName && !hasEntp && !hasSeq)\n  throw new Error('Provide at least one of: itemName / entpName / itemSeq');\n\nconst rows = (numOfRows == null || numOfRows === '') ? 10 : Math.max(1, Math.min(100, parseInt(numOfRows, 10)));\nconst pg   = (pageNo    == null || pageNo    === '') ?  1 : Math.max(1, parseInt(pageNo, 10));\n\nlet url = 'http://apis.data.go.kr/1471000/MdcinPrductPrmsnInfoService02/getMdcinPrductItem02'\n        + '?serviceKey=' + encodeURIComponent(dataGoKrDrugKey)\n        + '&type=json&pageNo=' + pg + '&numOfRows=' + rows;\nif (hasName) url += '&item_name=' + encodeURIComponent(String(itemName));\nif (hasEntp) url += '&entp_name=' + encodeURIComponent(String(entpName));\nif (hasSeq ) url += '&item_seq='  + encodeURIComponent(String(itemSeq));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false, status: hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg || hdr.errMsg || 'drug service error',\n  };\n}\n\nconst body = (d.body) || (d.response && d.response.body) || {};\nlet itemsRaw = body.items || [];\nif (itemsRaw && itemsRaw.item) itemsRaw = itemsRaw.item;\nif (itemsRaw && !Array.isArray(itemsRaw) && typeof itemsRaw === 'object') itemsRaw = [itemsRaw];\n\nconst items = (itemsRaw || []).map(t => ({\n  itemSeq:        t.ITEM_SEQ        || t.item_seq,\n  itemName:       t.ITEM_NAME       || t.item_name,\n  entpName:       t.ENTP_NAME       || t.entp_name,\n  itemPermitDate: t.ITEM_PERMIT_DATE|| t.item_permit_date,\n  industryType:   t.INDUTY_TYPE     || t.induty_type,\n  permittedType:  t.PRDLST_STDR_CODE|| t.prdlst_stdr_code,\n  className:      t.CLASS_NAME      || t.class_name,\n  storageMethod:  t.STORAGE_METHOD  || t.storage_method,\n  packUnit:       t.PACK_UNIT       || t.pack_unit,\n  validTerm:      t.VALID_TERM      || t.valid_term,\n  cancelDate:     t.CANCEL_DATE     || t.cancel_date,\n  cancelName:     t.CANCEL_NAME     || t.cancel_name,\n  chart:          t.CHART           || t.chart,\n}));\n\nreturn {\n  totalCount: body.totalCount || body.numOfRows,\n  pageNo:     body.pageNo,\n  numOfRows:  body.numOfRows,\n  items:      items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "42d4ea5e-62eb-57cc-a943-efff3740cfc5",
+    "name": "getKoreaEmergencyAlerts",
+    "description": "Korea-locale (KR) tool — Korean responses; some parameters require Korean input.\n\nMOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (KR; data.go.kr serviceKey required). Register the `MOIS emergency disaster alerts` service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_DISASTER_KEY on the tool's staticVariables, or inject as env var. `area` matches the dispatch region name partially (Korean string). `fromDate`/`toDate` accept YYYYMMDD or YYYY-MM-DD. Returns: { totalCount, pageNo, numOfRows, items:[{ serialNo, createDate, message, emergencyStep, disasterType, location }] }.",
+    "staticVariables": [
+      {
+        "dataGoKrDisasterKey": "${DATA_GO_KR_DISASTER_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "area",
+        "description": "Korean string required when used — partial dispatch-region name (e.g. '서울특별시', '경기도', '부산광역시'). Omit for nationwide.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "fromDate",
+        "description": "Query start date YYYYMMDD or YYYY-MM-DD",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "toDate",
+        "description": "Query end date YYYYMMDD or YYYY-MM-DD",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "numOfRows",
+        "description": "Results per page (1-1000, default 20)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "10"
+      },
+      {
+        "name": "pageNo",
+        "description": "Page number (default 1)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * 행정안전부 재난문자 발송 내역 (KR; data.go.kr serviceKey 필요).\n *\n * GET http://apis.data.go.kr/1741000/DisasterMsg3/getDisasterMsg1List\n *     ?serviceKey={KEY}&pageNo=1&numOfRows=20&type=json\n *     &fromTm=20260512&toTm=20260513&location_name=서울특별시\n *\n * data.go.kr 에서 `행정안전부_긴급재난문자` 서비스 신청 후 serviceKey 사용.\n * `area`(지역명 부분일치)와 `fromDate`/`toDate`(YYYYMMDD)는 모두 선택.\n */\n\n\nconst rows = (numOfRows == null || numOfRows === '') ? 20 : Math.max(1, Math.min(1000, parseInt(numOfRows, 10)));\nconst pg   = (pageNo    == null || pageNo    === '') ?  1 : Math.max(1, parseInt(pageNo, 10));\n\nlet url = 'http://apis.data.go.kr/1741000/DisasterMsg3/getDisasterMsg1List'\n        + '?serviceKey=' + encodeURIComponent(dataGoKrDisasterKey)\n        + '&pageNo=' + pg + '&numOfRows=' + rows + '&type=json';\nif (fromDate != null && fromDate !== '') url += '&fromTm=' + encodeURIComponent(String(fromDate).replace(/-/g, ''));\nif (toDate   != null && toDate   !== '') url += '&toTm='   + encodeURIComponent(String(toDate).replace(/-/g, ''));\nif (area     != null && area     !== '') url += '&location_name=' + encodeURIComponent(String(area));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 3_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst d = resp.json();\nif (d && d.OpenAPI_ServiceResponse) {\n  const hdr = d.OpenAPI_ServiceResponse.cmmMsgHeader || {};\n  return {\n    success: false, status: hdr.returnReasonCode || 'unknown',\n    message: hdr.returnAuthMsg || hdr.errMsg || 'disaster-msg service error',\n  };\n}\n\nconst body = (d.body) || (d.response && d.response.body) || {};\nlet itemsRaw = body.items || [];\nif (itemsRaw && itemsRaw.item) itemsRaw = itemsRaw.item;\nif (itemsRaw && !Array.isArray(itemsRaw) && typeof itemsRaw === 'object') itemsRaw = [itemsRaw];\n\nconst items = (itemsRaw || []).map(t => ({\n  serialNo:     t.SN          || t.sn        || t.serial_no,\n  createDate:   t.CREATE_DATE || t.create_date || t.createDate,\n  message:      t.MSG         || t.msg,\n  emergencyStep:t.EMRG_STEP_NAME || t.emrgStepName,\n  disasterType: t.DST_SE_NAME    || t.dstSeName,\n  location:     t.LOCATION_NAME  || t.locationName || t.LOCATION_ID,\n}));\n\nreturn {\n  totalCount: body.totalCount,\n  pageNo:     body.pageNo,\n  numOfRows:  body.numOfRows,\n  items:      items,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "korea"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "apis.data.go.kr"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": [
+            "apis.data.go.kr"
+          ]
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  }
+]

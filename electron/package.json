@@ -1,6 +1,6 @@
 {
   "name": "spring-ai-playground",
-  "version": "0.2.0-M4",
+  "version": "0.0.0-dev",
   "description": "Desktop launcher for the Spring AI Community incubating project Spring AI Playground",
   "homepage": "https://github.com/spring-ai-community/spring-ai-playground",
   "author": {
@@ -16,7 +16,9 @@
     "dist:mac:dir": "electron-builder --mac dir",
     "dist:mac:dmg": "electron-builder --mac dmg",
     "dist:win": "electron-builder --win nsis",
-    "dist:linux": "electron-builder --linux deb rpm"
+    "dist:linux": "electron-builder --linux deb rpm",
+    "dist:linux:deb": "electron-builder --linux deb",
+    "dist:linux:rpm": "electron-builder --linux rpm"
   },
   "build": {
     "appId": "com.springai.playground",
@@ -41,7 +43,7 @@
       "!resources/app.jar",
       "!resources/jre-bundle{,/**}",
       "!resources/default-application.yaml",
-      "!resources/default-tool-specs.json"
+      "!resources/catalog{,/**}"
     ],
     "extraResources": [
       {
@@ -57,8 +59,8 @@
         "to": "default-application.yaml"
       },
       {
-        "from": "resources/default-tool-specs.json",
-        "to": "default-tool-specs.json"
+        "from": "resources/catalog",
+        "to": "catalog"
       }
     ],
     "win": {

@@ -131,7 +131,7 @@ class ChatServiceTest {
         ChatClient chatClient = mock(ChatClient.class);
         SpringAiPlaygroundOptions playgroundOptions =
                 new SpringAiPlaygroundOptions(null, true, "", new SpringAiPlaygroundOptions.Chat("systemPrompt",
-                        List.of("MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()));
+                        List.of("MockLlmProvider"), (DefaultChatOptions) chatService.getDefaultOptions()), null);
         ChatMemory chatMemory = mock(ChatMemory.class);
         ChatService service = new ChatService(chatModel, chatClient, chatMemory, playgroundOptions,
                 vectorStoreDocumentService, null);

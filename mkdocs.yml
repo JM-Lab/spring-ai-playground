@@ -14,6 +14,16 @@ extra:
 
 plugins:
   - search
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      auto_caption: false
   - social:
       cards_layout_options:
         background_color: "#3F51B5"
@@ -23,8 +33,28 @@ theme:
   custom_dir: docs-overrides
   logo: assets/images/icon.png
   favicon: assets/images/icon.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
     - search.highlight
     - content.code.copy
     - content.action.edit
@@ -33,9 +63,36 @@ theme:
 nav:
   - Home: index.md
   - "Getting Started": getting-started.md
-  - "Architecture": architecture.md
-  - "Features": features.md
-  - "Tutorials": tutorials.md
+  - "Architecture":
+      - "Application": architecture.md
+      - "AI Agent Tool Safety": safety-architecture.md
+  - "Features":
+      - features/index.md
+      - "Tool Studio": features/tool-studio.md
+      - "MCP Server": features/mcp-server.md
+      - "Vector Database": features/vector-database.md
+      - "Agentic Chat": features/agentic-chat.md
+      - "Default Tools":
+          - features/default-tools/index.md
+          - "Examples": features/default-tools/examples.md
+          - "Utilities": features/default-tools/utilities.md
+          - "Filesystem": features/default-tools/filesystem.md
+          - "Global": features/default-tools/global.md
+          - "Korea": features/default-tools/korea.md
+  - "Tutorials":
+      - tutorials/index.md
+      - "1. Author a Tool": tutorials/1-author-tool.md
+      - "2. External MCP Server": tutorials/2-external-mcp.md
+      - "3. Index a Document": tutorials/3-index-document.md
+      - "4. Chat with Tools": tutorials/4-chat-tools.md
+      - "5. Chat with RAG": tutorials/5-chat-rag.md
+      - "6. Tools and RAG": tutorials/6-tools-and-rag.md
+      - "7. Weather to Slack": tutorials/7-weather-to-slack.md
+      - "8. Default Tool Recipes": tutorials/8-default-tool-recipes.md
+  # Changelog is published in the repo as CHANGELOG.md (and rendered at
+  # /changelog/ when reached by URL via the docs/changelog.md include).
+  # Intentionally omitted from main nav to avoid duplicating GitHub-hosted
+  # release notes in the site menu.
 
 docs_dir: docs
 
@@ -50,6 +107,8 @@ extra_css:
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js
   - assets/javascripts/mermaid-pan-zoom.js
+  - assets/javascripts/card-stretched-link.js
+  - assets/javascripts/default-tools-search.js
 
 markdown_extensions:
   - meta
@@ -57,7 +116,17 @@ markdown_extensions:
   - md_in_html
   - admonition
   - tables
+  - toc:
+      # Right-rail TOC shows only h2 (## headings). h3+ stay in body
+      # so per-page index stays short on every page including mobile.
+      toc_depth: 2
+      permalink: true
   - pymdownx.details
+  - pymdownx.snippets:
+      base_path:
+        - .
+        - docs
+      check_paths: true
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.emoji:

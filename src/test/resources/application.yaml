@@ -34,6 +34,7 @@ spring:
         speech: none
         transcription: none
     playground:
+      default-tool-location: "classpath*:default-tool-specs*.json"
       tool-studio:
         js-sandbox:
           allow-network-io: true
@@ -41,6 +42,19 @@ spring:
           allow-native-access: false
           allow-create-thread: false
           max-statements: 500000
+          deny-classes:
+            - java.lang.System
+            - java.lang.Runtime
+            - java.lang.ProcessBuilder
+            - java.lang.Process
+            - java.lang.Class
+            - java.lang.invoke.*
+            - java.lang.reflect.*
+            - java.lang.Thread
+            - java.lang.ThreadGroup
+            - java.lang.ClassLoader
+            - java.util.ServiceLoader
+            - java.util.spi.*
           allow-classes:
             # Completely safe core packages — strongly recommended to allow entirely
             - java.lang.*                  # String, StringBuilder, System.getProperty, etc. (basic utilities)

@@ -1,4 +1,5 @@
-Description: Spring AI Playground is a cross-platform desktop app for AI agent tools with a desktop launcher, Tool Studio, MCP, Agentic Chat, RAG, and safe local execution.
+title: Safe Local Execution Layer for AI Agent Tools
+description: Cross-platform desktop app for building, testing, and publishing MCP tools — Tool Studio, defense-in-depth sandbox, Risk Level (L0–L5), Agentic Chat, and RAG.
 
 # Spring AI Playground
 
@@ -17,9 +18,10 @@ Unlike many playgrounds that stop at prompt testing, this project connects AI co
 - build JavaScript tools directly in the app
 - earn a **Local Pass** by test-running each tool against sample arguments you define
 - **add tools live to the built-in MCP server** the moment each passes — no restart, no redeploy
-- start immediately with seven pre-loaded built-in tools (`getWeather`, `sendSlackMessage`, `googlePseSearch`, and more)
+- start immediately with **86 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services — searchable + filterable on the [Default Tools directory](features/default-tools/index.md#browse-all-tools), and grouped across 5 reference pages: [Examples](features/default-tools/examples.md) (7) · [Utilities](features/default-tools/utilities.md) (26) · [Filesystem](features/default-tools/filesystem.md) (10) · [Global](features/default-tools/global.md) (22) · [Korea](features/default-tools/korea.md) (21)
 - validate retrieval pipelines against your own documents
 - run agentic chat that combines tool use and grounded context (e.g. *"Get today's weather and send it to Slack"*)
+- run every tool through a **defense-in-depth GraalVM sandbox** with a deny-first class allowlist, SSRF-guarded `fetch`, rooted `safety.fs`, statement + wall-clock limits, and a visible per-tool **Risk Level** (L0–L5) — see [AI Agent Tool Safety Architecture](safety-architecture.md)
 
 <div style="text-align: center;">
   <b>Agentic Chat Demo</b><br/>
@@ -227,9 +229,19 @@ Pick the asset that matches your platform.
     .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
     .then((release) => {
       const assets = release.assets || [];
+      // Defensive filter: only consider assets whose filename also contains
+      // the release tag's version. Without this, a release whose draft was
+      // polluted with older-version assets (the way `0.2.0-M4-*.dmg` lived
+      // inside the `v0.2.0-M5` draft) would let `find()` return the older
+      // file just because it appeared first in upload order.
+      const releaseVersion = (release.tag_name || '').replace(/^v/, '');
       buttons.forEach((button) => {
         const pattern = button.dataset.pattern;
-        const asset = assets.find((a) => a.name && a.name.endsWith(pattern));
+        const asset = assets.find((a) =>
+          a.name &&
+          a.name.endsWith(pattern) &&
+          (!releaseVersion || a.name.includes(releaseVersion))
+        );
         if (asset) {
           button.href = asset.browser_download_url;
           button.dataset.resolved = asset.name;
@@ -311,12 +323,12 @@ If you install the app, you can run Spring AI Playground immediately without set
 
 <div style="text-align: center;">
   <b>First-Launch Configuration Screen</b><br/>
-  Desktop launcher overview with the built-in config editor
+  Desktop launcher overview — config editor, Default MCP Tools curation, JVM &amp; environment cards on one screen
 </div>
 
 <div style="text-align: center;">
   <a href="assets/images/launcher-openai.png">
-    <img src="assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen"/>
+    <img src="assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen — Spring AI Playground Config + Ollama startup + Default MCP Tools + Environment Variables + JVM Settings"/>
   </a>
 </div>
 
@@ -352,10 +364,10 @@ Then open `http://localhost:8282`.
 ## :material-view-grid-outline: What You Can Do
 
 - [:material-robot-outline: AI Models](getting-started.md#model-configuration): switch between Ollama, OpenAI, and OpenAI-compatible runtime paths.
-- [:material-tools: Tool Studio](features.md#tool-studio): build low-code tools in JavaScript and expose them instantly through MCP.
-- [:material-connection: MCP Server](features.md#mcp-server): inspect external MCP servers and consume built-in MCP tools.
-- [:material-database-search: RAG](features.md#vector-database): upload content, chunk it, embed it, index it, and validate retrieval quality.
-- [:material-chat-processing: Agentic Chat](features.md#agentic-chat): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow.
+- [:material-tools: Tool Studio](features/tool-studio.md): build low-code tools in JavaScript and expose them instantly through MCP.
+- [:material-connection: MCP Server](features/mcp-server.md): inspect external MCP servers and consume built-in MCP tools.
+- [:material-database-search: RAG](features/vector-database.md): upload content, chunk it, embed it, index it, and validate retrieval quality.
+- [:material-chat-processing: Agentic Chat](features/agentic-chat.md): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow.
 
 ## :material-lightbulb-on-outline: Why This Project Exists
 
@@ -367,7 +379,7 @@ Its current focus is:
 - making test-before-publish the default path for built-in local tool exposure
 - testing tool execution flows, environment-backed tool configuration, and RAG integration in one place
 - making tools easier to inspect, easier to test, and easier to operationalize before they are reused elsewhere
-- supporting practical single-agent workflows through Agentic Chat with tools and grounded context. See [Agentic Chat Architecture Overview](features.md#agentic-chat-architecture-overview).
+- supporting practical single-agent workflows through Agentic Chat with tools and grounded context. See [Agentic Chat Architecture Overview](features/agentic-chat.md#agentic-chat-architecture-overview).
 - promoting validated built-in tools into reusable MCP-hosted runtimes that can be shared across multiple MCP-compatible hosts and clients
 
 It is intentionally opinionated and scope-limited in its current stage. The goal is a stable, reproducible platform for practical MCP tool work rather than a feature-complete agent orchestration product.
@@ -375,13 +387,14 @@ It is intentionally opinionated and scope-limited in its current stage. The goal
 ## :material-book-open-page-variant: Documentation Flow
 
 - Getting Started: install the desktop app first, configure models, and understand alternative runtimes
-- Architecture: runtime layers, data flows, and extension points
+- Architecture: runtime layers, data flows, and extension points (Application + AI Agent Tool Safety)
 - Features: the main product areas and what they do
 - Tutorials: follow real workflows for tools, MCP, vector search, and agentic chat
 
 ## Further Reading
 
 - [Getting Started](getting-started.md): install the desktop app, configure models, and understand alternative runtimes
-- [Architecture](architecture.md): runtime layers, data flows, and extension points
-- [Features](features.md): the main product areas and what they do
-- [Tutorials](tutorials.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat
+- [Application Architecture](architecture.md): runtime layers, data flows, and extension points
+- [AI Agent Tool Safety Architecture](safety-architecture.md): defense-in-depth sandbox model, policy resolution, threat model, and Risk Level reference
+- [Features](features/index.md): the main product areas and what they do
+- [Tutorials](tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat

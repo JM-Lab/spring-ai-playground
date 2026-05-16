@@ -1,0 +1,68 @@
+[
+  {
+    "id": "starter-5",
+    "displayName": "Starter 5",
+    "description": "Minimal cross-locale essentials — no setup, agent-friendly first impression.",
+    "isDefault": true,
+    "tools": [
+      "getCurrentTime",
+      "getWeather",
+      "searchWikipedia",
+      "extractPageContent",
+      "evalExpression"
+    ]
+  },
+  {
+    "id": "dev-essentials",
+    "displayName": "Dev Essentials",
+    "description": "Local dev utilities (uuid, hash, base64, jwtDecode, regexExtract) plus getCurrentTime and evalExpression from Starter 5.",
+    "isDefault": false,
+    "tools": [
+      "getCurrentTime",
+      "evalExpression",
+      "uuid",
+      "hash",
+      "base64",
+      "jwtDecode",
+      "regexExtract"
+    ]
+  },
+  {
+    "id": "korea-toolkit",
+    "displayName": "Korea Toolkit (free)",
+    "description": "Free Korean services (Upbit, Bithumb, iTunes K-pop, K-beauty search) plus getCurrentTime and evalExpression. No API key required.",
+    "isDefault": false,
+    "tools": [
+      "getCurrentTime",
+      "evalExpression",
+      "getUpbitTicker",
+      "getBithumbTicker",
+      "searchKpopOnItunes",
+      "searchKBeautyProducts"
+    ]
+  },
+  {
+    "id": "file-toolkit",
+    "displayName": "File Toolkit",
+    "description": "Filesystem pipeline (read, list, grep, slice, sort, find, cut) plus getCurrentTime and evalExpression. Set TOOL_STUDIO_FS_BASE for a custom workspace root.",
+    "isDefault": false,
+    "tools": [
+      "getCurrentTime",
+      "evalExpression",
+      "readTextFile",
+      "listDir",
+      "grepFile",
+      "findFiles",
+      "sliceFile",
+      "sortFile",
+      "cutFileFields"
+    ]
+  },
+  {
+    "id": "everything",
+    "displayName": "Everything",
+    "description": "Expose every default tool — no curation. Heavy MCP catalog.",
+    "isDefault": false,
+    "tools": []
+  }
+]

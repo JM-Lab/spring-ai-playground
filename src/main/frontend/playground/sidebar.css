@@ -1,0 +1,49 @@
+/* Consistent left/right padding for sidebar list items across all features.
+ * Outer space-s (8px) plus Vaadin's internal ~24px content offset puts item
+ * text at ~32px from the sidebar's left edge — one icon-width past the
+ * sibling header text at 16px. */
+.custom-list-box vaadin-item,
+.custom-list-box vaadin-multi-select-list-box-item,
+vaadin-multi-select-list-box.custom-list-box vaadin-item {
+    padding-inline-start: var(--lumo-space-m);
+    padding-inline-end: var(--lumo-space-s);
+    padding-block: var(--lumo-space-s);
+    overflow: hidden;
+}
+
+/* MCP transport accordions: summary has no internal content offset, so use
+ * space-m to align its text with the surrounding header at 16px. */
+.workspace-sidebar-details > vaadin-details-summary {
+    padding-inline-start: var(--lumo-space-m);
+    padding-inline-end: var(--lumo-space-m);
+}
+
+/* Selection effect — drop the default checkmark, paint a subtle background tint
+ * with a left accent border so the selected row is obvious without the icon. */
+.custom-list-box vaadin-item::part(checkmark) {
+    display: none;
+}
+.custom-list-box vaadin-item {
+    width: 100%;
+    box-sizing: border-box;
+}
+.custom-list-box vaadin-item[selected] {
+    background-color: var(--lumo-primary-color-10pct);
+    border-left: 3px solid var(--lumo-primary-color);
+    padding-inline-start: calc(var(--lumo-space-s) - 3px);
+}
+.custom-list-box vaadin-item[selected]:hover {
+    background-color: var(--lumo-primary-color-10pct);
+}
+
+/* Debug Console — the inner <textarea> is slotted (light DOM child), so style
+ * it directly. Lumo doesn't define a --lumo-font-family-monospace variable,
+ * so we set an explicit monospace stack instead. */
+vaadin-text-area.debug-console > textarea {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--lumo-font-size-s);
+    line-height: 1.5;
+}
+vaadin-text-area.debug-console::part(input-field) {
+    background: var(--lumo-contrast-5pct);
+}

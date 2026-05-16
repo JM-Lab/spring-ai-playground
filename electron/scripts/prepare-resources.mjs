@@ -5,10 +5,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 const repoRoot = path.resolve(import.meta.dirname, '..', '..');
 const targetDir = path.join(repoRoot, 'target');
 const electronResourcesDir = path.join(repoRoot, 'electron', 'resources');
-const defaultApplicationYaml = path.join(repoRoot, 'src', 'main', 'resources', 'application.yaml');
-const defaultToolSpecsJson = path.join(repoRoot, 'src', 'main', 'resources', 'default-tool-specs.json');
+const springResourcesDir = path.join(repoRoot, 'src', 'main', 'resources');
+const defaultApplicationYaml = path.join(springResourcesDir, 'application.yaml');
 const outputDefaultYaml = path.join(electronResourcesDir, 'default-application.yaml');
-const outputDefaultToolSpecs = path.join(electronResourcesDir, 'default-tool-specs.json');
+const catalogOutputDir = path.join(electronResourcesDir, 'catalog');
 const outputJar = path.join(electronResourcesDir, 'app.jar');
 const jreOutputDir = path.join(electronResourcesDir, 'jre-bundle');
 const editorOutputDir = path.join(electronResourcesDir, 'editor');
@@ -111,10 +111,19 @@ if (!jarFile) {
 
 fs.mkdirSync(electronResourcesDir, { recursive: true });
 fs.mkdirSync(editorOutputDir, { recursive: true });
+fs.mkdirSync(catalogOutputDir, { recursive: true });
 fs.copyFileSync(defaultApplicationYaml, outputDefaultYaml);
 console.log(`Copied default config: ${defaultApplicationYaml} -> ${outputDefaultYaml}`);
-fs.copyFileSync(defaultToolSpecsJson, outputDefaultToolSpecs);
-console.log(`Copied default tool specs: ${defaultToolSpecsJson} -> ${outputDefaultToolSpecs}`);
+
+const catalogFiles = fs.readdirSync(springResourcesDir).filter(name =>
+  /^default-tool-specs.*\.json$/.test(name)
+  || name === 'default-tool-categories.json'
+  || name === 'default-tool-presets.json');
+for (const name of catalogFiles) {
+  fs.copyFileSync(path.join(springResourcesDir, name), path.join(catalogOutputDir, name));
+  console.log(`Mirrored catalog: ${name} -> electron/resources/catalog/${name}`);
+}
+
 fs.copyFileSync(path.join(targetDir, jarFile), outputJar);
 console.log(`Copied executable JAR: ${jarFile} -> ${outputJar}`);
 

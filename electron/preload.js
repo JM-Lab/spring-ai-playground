@@ -5,6 +5,7 @@ const ALLOWED_INVOKE = new Set([
   'config:load', 'config:save', 'config:save-as', 'config:select',
   'config:select-provider', 'config:export', 'config:import', 'config:reset',
   'config:delete', 'config:launch',
+  'config:get-tools-preset', 'config:set-tools-preference', 'config:get-tools-curation-data',
   'config:environment-info', 'config:open-ollama-download', 'config:fit-window',
   'ollama-manager:open',
   'app:launch-state', 'app:restart-to-config', 'app:quit-launcher', 'app:set-auto-copy-logs',

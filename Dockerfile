@@ -20,16 +20,6 @@
 # -------------------------------------------------------------------
 FROM ghcr.io/graalvm/jdk-community:21 AS builder
 WORKDIR /app
-
-RUN microdnf install -y nodejs npm findutils gzip tar maven \
-    && microdnf clean all
-
-# Resolve Maven deps based on pom.xml only — this layer survives any
-# Java/frontend source change, so subsequent rebuilds skip dep download.
-COPY pom.xml ./
-RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
-    mvn -B -q dependency:go-offline -P production || true
-
 COPY . .
 
 # Cache mounts (only consulted when the fallback `mvn package` actually runs):
@@ -37,14 +27,20 @@ COPY . .
 #   /root/.npm           : npm package download cache for Vaadin's build-frontend goal.
 #   /app/node_modules    : the materialized node_modules directory.
 # `sharing=locked` prevents two parallel builds from corrupting these caches.
+#
+# Toolchain (nodejs / npm / maven) and `mvn package` are gated on the absence
+# of a pre-built JAR so the CI fast-path skips both — no microdnf install and
+# no Maven Central round-trip when `build-jar` already produced the artifact.
 RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     --mount=type=cache,target=/root/.npm,sharing=locked \
     --mount=type=cache,target=/app/node_modules,sharing=locked \
     if compgen -G 'target/spring-ai-playground-*.jar' > /dev/null; then \
-      echo 'Pre-built fat JAR detected in build context, skipping mvn package'; \
+      echo 'Pre-built fat JAR detected in build context — skipping toolchain install + mvn'; \
     else \
-      echo 'No pre-built JAR in target/, running mvn package -Pproduction'; \
-      mvn -B package -Pproduction -DskipTests; \
+      echo 'No pre-built JAR in target/ — installing toolchain + running mvn package -Pproduction'; \
+      microdnf install -y nodejs npm findutils gzip tar maven \
+        && microdnf clean all \
+        && mvn -B package -Pproduction -DskipTests; \
     fi
 
 # -------------------------------------------------------------------

@@ -1,0 +1,85 @@
+/*
+ * Copyright © 2025 Jemin Huh (hjm1980@gmail.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.springaicommunity.playground.service.tool;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.FsConfig;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.ToolStudio;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ToolWorkspaceBootstrapTest {
+
+    @Test
+    void seedsSampleFilesIntoBasePath(@TempDir Path tempDir) throws Exception {
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(tempDir.toString()));
+
+        bootstrap.seed();
+
+        assertThat(tempDir.resolve("README.md")).exists();
+        assertThat(tempDir.resolve("data.csv")).exists();
+        assertThat(Files.readString(tempDir.resolve("README.md"))).contains("TODO", "FIXME");
+        assertThat(Files.readString(tempDir.resolve("data.csv"))).startsWith("id,name,score,category");
+    }
+
+    @Test
+    void doesNotOverwriteExistingFiles(@TempDir Path tempDir) throws Exception {
+        Files.writeString(tempDir.resolve("README.md"), "user-edited content");
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(tempDir.toString()));
+
+        bootstrap.seed();
+
+        assertThat(Files.readString(tempDir.resolve("README.md"))).isEqualTo("user-edited content");
+        assertThat(tempDir.resolve("data.csv")).exists();
+    }
+
+    @Test
+    void createsBasePathIfMissing(@TempDir Path tempDir) throws Exception {
+        Path nestedBase = tempDir.resolve("never-existed").resolve("workspace");
+        assertThat(nestedBase).doesNotExist();
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(nestedBase.toString()));
+
+        bootstrap.seed();
+
+        assertThat(nestedBase).isDirectory();
+        assertThat(nestedBase.resolve("README.md")).exists();
+    }
+
+    @Test
+    void resolveBasePathFallsBackToFsToolWorkspaceSubdir() {
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(""));
+        Path resolved = bootstrap.resolveBasePath();
+        Path expected = Path.of(System.getProperty("user.home"), "spring-ai-playground", "fs-tool-workspace")
+                .toAbsolutePath().normalize();
+        assertThat(resolved).isEqualTo(expected);
+    }
+
+    private SpringAiPlaygroundOptions buildOptions(String basePath) {
+        return new SpringAiPlaygroundOptions(
+                new ToolStudio(30L, null, new FsConfig(basePath)),
+                true, null, null,
+                new SpringAiPlaygroundOptions.DefaultTools(null,
+                        new SpringAiPlaygroundOptions.SelectionRule(Set.of(), Set.of(), Set.of()),
+                        new SpringAiPlaygroundOptions.SelectionRule(java.util.Set.of(), java.util.Set.of(), java.util.Set.of())));
+    }
+}

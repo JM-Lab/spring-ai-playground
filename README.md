@@ -21,6 +21,8 @@ Every tool you build earns a **Local Pass** — a local test-run with your sampl
 
 In Tool Studio, new or updated built-in tools are test-run before they are published to the built-in MCP server. You do not need to know Java, Spring, or JVM internals to use it. If you can install a desktop app and write a small JavaScript function, you can build tools here and connect them to hosts and clients such as Claude Desktop, Claude Code, Cursor, IDEs, and other MCP-compatible environments.
 
+Ships with **86 default tools** across five source bundles — web fetch, datetime, math, security, encoding, crypto, filesystem, GitHub, Wikipedia, weather, finance, geo, and a Korean-domain bundle (Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain) — searchable and filterable in the [Default Tools directory](docs/features/default-tools/index.md#browse-all-tools).
+
 ## The Problem
 
 AI agents can generate tools quickly, but generated tools are not inherently safe to execute.
@@ -55,7 +57,7 @@ Choose the installer for your platform from the latest release:
 [![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-deb)
 [![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-rpm)
 
-Each badge resolves to the latest published release automatically and opens a confirm dialog with the filename, size, and OS-specific default save path. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M4-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
+Each badge resolves to the latest published release automatically and opens a confirm dialog with the filename, size, and OS-specific default save path. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M6-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
 
 ### 2. Install and Launch
 
@@ -101,17 +103,17 @@ Each release ships with two integrity guarantees. You do not have to verify, but
 
 ```bash
 # macOS / Linux
-shasum -a 256 -c spring-ai-playground-0.2.0-M4-mac-arm64.dmg.sha256
+shasum -a 256 -c spring-ai-playground-0.2.0-M6-mac-arm64.dmg.sha256
 
 # Windows (PowerShell)
-Get-FileHash spring-ai-playground-0.2.0-M4-win-x64.exe -Algorithm SHA256
+Get-FileHash spring-ai-playground-0.2.0-M6-win-x64.exe -Algorithm SHA256
 # compare the value with the one inside the .sha256 file
 ```
 
 **2. Sigstore build provenance (SLSA)** — every installer is signed by the official GitHub Actions release workflow using a short-lived Sigstore key, and the attestation is recorded in the public transparency log.
 
 ```bash
-gh attestation verify spring-ai-playground-0.2.0-M4-mac-arm64.dmg \
+gh attestation verify spring-ai-playground-0.2.0-M6-mac-arm64.dmg \
   --owner spring-ai-community
 ```
 
@@ -119,12 +121,12 @@ A successful verification proves the file came from this repo's release workflow
 
 <p align="center">
   <b>First-Launch Configuration Screen</b><br/>
-  Desktop launcher overview with the built-in config editor
+  Desktop launcher overview — config editor, Default MCP Tools curation, JVM &amp; environment cards on one screen
 </p>
 
 <p align="center">
   <a href="docs/assets/images/launcher-openai.png">
-    <img src="docs/assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen"/>
+    <img src="docs/assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen — Spring AI Playground Config + Ollama startup + Default MCP Tools + Environment Variables + JVM Settings"/>
   </a>
 </p>
 
@@ -145,6 +147,8 @@ Detailed installation, configuration, features, and tutorials live in the docume
 
 - Documentation site: https://spring-ai-community.github.io/spring-ai-playground/
 - Getting Started: https://spring-ai-community.github.io/spring-ai-playground/getting-started/
+- Application Architecture: https://spring-ai-community.github.io/spring-ai-playground/architecture/
+- **AI Agent Tool Safety Architecture**: https://spring-ai-community.github.io/spring-ai-playground/safety-architecture/ — defense-in-depth sandbox model, policy resolution, threat model, and per-tool Risk Level reference
 - Features: https://spring-ai-community.github.io/spring-ai-playground/features/
 - Tutorials: https://spring-ai-community.github.io/spring-ai-playground/tutorials/
 
@@ -176,7 +180,8 @@ Full setup details for both modes live in [Getting Started: Alternative Runtimes
 ## Why Spring AI Playground?
 
 - **Built-In MCP Server**: Publish tools directly from the app and expose them immediately through the built-in MCP server instead of wiring ad-hoc local scripts by hand.
-- **No Pass, No Run Workflow**: In Tool Studio, built-in tools are test-run before they are published, making validation part of the default product flow instead of an optional afterthought.
+- **No Pass, No Run Workflow**: A new tool starts as a **Draft** — invisible to the MCP server and to chat. It only crosses the exposure gate after a Local Pass (a successful test run with its declared sample inputs), making validation part of the default product flow instead of an optional afterthought.
+- **Tool MCP Server Setting**: The launcher's Default MCP Tools card and Tool Studio's Tool MCP Server Setting drawer both edit the same `default-tools-preference.json` — pick a preset (`Starter 5`, `Dev Essentials`, `Korea Toolkit`, `File Toolkit`, `Everything`, `Custom`) plus per-tool include / exclude rules to decide exactly which subset of the 86 bundled tools the built-in MCP server exposes.
 - **Executable Tool Validation**: Test tools with real inputs, outputs, and runtime constraints before you reuse them from other MCP-compatible hosts and clients.
 - **Secure Secret Management**: Keep API keys and sensitive configuration out of YAML and manage them through the desktop app's secret storage and launcher-backed environment settings. When OS-backed secure storage is unavailable, the app clearly warns before falling back to plain-text local storage.
 - **Tool-to-Agent Workflow**: Create tools in Tool Studio, inspect them through MCP, and use them in Agentic Chat in one continuous workflow.
@@ -186,10 +191,10 @@ Full setup details for both modes live in [Getting Started: Alternative Runtimes
 
 The intended workflow is practical and composable:
 
-- create or adapt tools in Tool Studio
-- test them before publishing
-- expose them through the built-in MCP server
-- inspect them through MCP Inspector
+- create or adapt tools in Tool Studio (drafts stay private until they pass)
+- test them before publishing — the Local Pass is what opens the MCP exposure gate
+- curate which bundled defaults the MCP server exposes alongside your own tools
+- inspect everything live through MCP Inspector
 - index knowledge in Vector Database
 - combine tools and documents in Agentic Chat
 

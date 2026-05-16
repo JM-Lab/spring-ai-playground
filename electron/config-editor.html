@@ -117,9 +117,10 @@
         #setup-notes-card { order: 1; }
         #config-card { order: 2; }
         #ollama-card { order: 3; }
-        #env-card { order: 4; }
-        #jvm-card { order: 5; }
-        .footer { order: 6; }
+        #tools-card { order: 4; }
+        #env-card { order: 5; }
+        #jvm-card { order: 6; }
+        .footer { order: 7; }
 
         .meta {
             display: grid;
@@ -295,7 +296,7 @@
             border: 1px solid var(--border);
             border-radius: var(--lumo-border-radius-m);
             background: #fffdf8;
-            max-height: 30rem;
+            max-height: 23.5rem;
             overflow-y: auto;
             align-content: start;
         }
@@ -555,7 +556,303 @@
         .meta-grid {
             display: grid;
             gap: 12px;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        }
+
+        .section-summary {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+            display: none;
+        }
+
+        .section-summary code {
+            font-family: "SF Mono", "Monaco", "Cascadia Code", "Consolas", monospace;
+            background: var(--lumo-shade-5pct);
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .section-summary.muted {
+            font-style: italic;
+        }
+
+        .wizard-section.collapsed .section-summary {
+            display: block;
+        }
+
+        .preset-tools-list {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: var(--lumo-shade-5pct);
+            border-radius: var(--lumo-border-radius-m);
+            line-height: 2;
+        }
+
+        .preset-tools-list > * { vertical-align: middle; }
+
+        .preset-tools-list .preset-tools-label {
+            display: inline-block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-right: 10px;
+        }
+
+        .preset-tools-list .preset-tools-summary {
+            margin-right: 12px;
+            font-size: 14px;
+        }
+
+        .preset-tools-list .tool-chip {
+            display: inline-block;
+            padding: 2px 9px;
+            background: rgba(31, 122, 90, 0.10);
+            color: var(--accent);
+            border-radius: 999px;
+            font: 12px/1.4 "SF Mono", "Monaco", "Cascadia Code", "Consolas", monospace;
+            margin-right: 4px;
+        }
+
+        .preset-tools-list .tool-chip[hidden] { display: none; }
+
+        .preset-tools-list .tool-chip.more {
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            border: 0;
+            font-weight: 700;
+            font-family: inherit;
+            transition: background 120ms ease;
+        }
+
+        .preset-tools-list .tool-chip.more:hover { background: var(--accent-2); }
+
+        .preset-tools-list .preset-tools-empty {
+            color: var(--muted);
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        .curation-wrapper {
+            margin-top: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        .curation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .curation-header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .curation-header p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .curation-content[hidden] {
+            display: none !important;
+        }
+
+        .curation-content {
+            margin-top: 14px;
+        }
+
+        .curation-toggle .button-content svg {
+            transition: transform 150ms ease;
+        }
+
+        .curation-wrapper:not(.expanded) .curation-toggle .button-content svg {
+            transform: rotate(-90deg);
+        }
+
+        .curation-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            align-items: start;
+        }
+
+        .curation-column {
+            border: 1px solid var(--border);
+            border-radius: var(--lumo-border-radius-m);
+            padding: 14px;
+        }
+
+        .curation-column.include {
+            border-left: 3px solid var(--accent);
+            background: rgba(31, 122, 90, 0.025);
+        }
+
+        .curation-column.exclude {
+            border-left: 3px solid var(--danger);
+            background: rgba(192, 57, 43, 0.025);
+        }
+
+        .curation-column-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .curation-pill {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            padding: 3px 10px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .curation-pill.include { background: var(--accent); }
+        .curation-pill.exclude { background: var(--danger); }
+
+        .curation-column-help {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .curation-column .field {
+            margin-bottom: 10px;
+            min-width: 0;
+        }
+
+        .curation-column .field:last-child {
+            margin-bottom: 0;
+        }
+
+        .curation-column .field label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .curation-column .chip-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 8px;
+            min-height: 40px;
+            max-height: 180px;
+            overflow-y: auto;
+            background: #fffdfa;
+            border: 1px solid var(--border);
+            border-radius: var(--lumo-border-radius-m);
+        }
+
+        .curation-column .chip-picker.expanded {
+            max-height: none;
+            overflow-y: visible;
+        }
+
+        .global-tooltip {
+            position: fixed;
+            z-index: 10000;
+            padding: 6px 10px;
+            background: rgba(27, 43, 65, 0.95);
+            color: white;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 360px;
+            word-wrap: break-word;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+            display: none;
+        }
+
+        .curation-column .chip-picker .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 999px;
+            font: 12px/1.4 var(--lumo-font-family);
+            cursor: pointer;
+            transition: all 120ms ease;
+            user-select: none;
+        }
+
+        .curation-column .chip-picker .chip:hover {
+            background: var(--lumo-shade-5pct);
+        }
+
+        .curation-column.include .chip-picker .chip.selected {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .curation-column.exclude .chip-picker .chip.selected {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            font-weight: 600;
+        }
+
+        .curation-column .chip-picker .chip-empty {
+            color: var(--muted);
+            font-size: 12px;
+            font-style: italic;
+            padding: 4px 6px;
+        }
+
+        .curation-column.include .chip-picker .chip.chip-more {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            font-weight: 700;
+        }
+
+        .curation-column.exclude .chip-picker .chip.chip-more {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            font-weight: 700;
+        }
+
+        .curation-column .chip-picker .chip.chip-more:hover {
+            opacity: 0.88;
+        }
+
+        .curation-column .curation-filter {
+            width: 100%;
+            background: #fffdfa;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--lumo-border-radius-m);
+            padding: 6px 10px;
+            font: 12px/1.4 var(--lumo-font-family);
+            margin-bottom: 6px;
+        }
+
+        .curation-column .curation-filter:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(93, 187, 138, 0.18);
+            outline: none;
         }
 
         .mini-card {
@@ -707,6 +1004,195 @@
     </style>
 </head>
 <body>
+<script>
+  if (typeof window !== 'undefined' && window.location.protocol === 'http:' && !window.electronAPI) {
+    const search = new URLSearchParams(window.location.search);
+    const presetState = search.get('tools') || 'curated';
+    const mockYaml = [
+      'spring:',
+      '  ai:',
+      '    model:',
+      '      chat: ollama',
+      '      embedding: ollama',
+      '    ollama:',
+      '      chat:',
+      '        options:',
+      '          model: qwen3.5:2b',
+      '      embedding:',
+      '        options:',
+      '          model: qwen3-embedding:0.6b',
+      '    playground:',
+      '      chat:',
+      '        models:',
+      '          - qwen3.5:2b',
+      '          - qwen3.5:9b',
+    ].join('\n');
+    const mockPayload = {
+      activeConfigId: 'cfg-ollama',
+      configs: [
+        { id: 'cfg-ollama', name: 'Ollama', providerType: 'ollama' },
+        { id: 'cfg-openai', name: 'OpenAI', providerType: 'openai' },
+        { id: 'cfg-openai-compatible-ollama', name: 'OpenAI Compatible - Ollama', providerType: 'openai-compatible' },
+      ],
+      selectedConfig: {
+        id: 'cfg-ollama',
+        name: 'Ollama',
+        providerType: 'ollama',
+        yaml: mockYaml,
+        embeddingConfigured: true,
+      },
+      runtimeSettings: {
+        jvmOptionsText: '-Xmx2g',
+        appArgsText: '--logging.level.root=INFO',
+        envVariablesMap: {},
+      },
+      preferences: { skipOllamaCheck: false, autoCopyLogs: true },
+      secretsStorage: { encrypted: true, label: 'macOS Keychain' },
+      secretSuggestions: [
+        { key: 'OPENAI_API_KEY', description: 'OpenAI API key for chat or embeddings.', toolText: 'Used by OpenAI provider.', whenText: 'Only when you use the OpenAI provider.' },
+        { key: 'KAKAO_REST_API_KEY', description: 'Kakao Local REST API key for KR POI search.', toolText: 'Tools: searchKakaoLocal.', whenText: 'Only when KR tools are exposed.' },
+        { key: 'NAVER_CLIENT_ID', description: 'Naver search client ID (paired with secret).', toolText: 'Tools: searchNaver.', whenText: 'Only when KR tools are exposed.' },
+        { key: 'NAVER_CLIENT_SECRET', description: 'Naver search client secret.', toolText: 'Tools: searchNaver.', whenText: 'Only when KR tools are exposed.' },
+        { key: 'DATA_GO_KR_KEY', description: 'data.go.kr serviceKey for KR public APIs.', toolText: 'Tools: getAirKoreaPm, searchKoreaTour, others.', whenText: 'Only when KR tools are exposed.' },
+        { key: 'KOFIC_API_KEY', description: 'Korean Film Council box-office API key.', toolText: 'Tools: getKoficBoxOffice.', whenText: 'Only when KR tools are exposed.' },
+        { key: 'SEOUL_OPEN_API_KEY', description: 'Seoul Open Data Plaza key for cultural events.', toolText: 'Tools: searchSeoulCulturalEvents.', whenText: 'Only when KR tools are exposed.' },
+      ],
+      isFirstLaunch: true,
+    };
+    const mockPresets = [
+      { id: 'starter-5', displayName: 'Starter 5', description: 'Minimal cross-locale essentials — no setup, agent-friendly first impression.', isDefault: true, tools: ['getCurrentTime', 'getWeather', 'searchWikipedia', 'extractPageContent', 'evalExpression'] },
+      { id: 'dev-essentials', displayName: 'Dev Essentials', description: 'Starter 5 plus everyday local utilities (crypto / regex / encoding).', isDefault: false, tools: ['getCurrentTime', 'evalExpression', 'uuid', 'hash', 'base64', 'jwtDecode', 'regexExtract'] },
+      { id: 'korea-toolkit', displayName: 'Korea Toolkit (free)', description: 'Starter 5 plus free Korean services (no API key required).', isDefault: false, tools: ['getCurrentTime', 'evalExpression', 'getUpbitTicker', 'getBithumbTicker', 'searchKpopOnItunes', 'searchKBeautyProducts'] },
+      { id: 'file-toolkit', displayName: 'File Toolkit', description: 'Starter 5 plus filesystem pipeline (configure fs.basePath).', isDefault: false, tools: ['getCurrentTime', 'evalExpression', 'readTextFile', 'listDir', 'grepFile', 'findFiles', 'sliceFile', 'sortFile', 'cutFileFields'] },
+      { id: 'everything', displayName: 'Everything', description: 'Expose all 86 default tools — no curation. Heavy MCP catalog.', isDefault: false, tools: [] },
+    ];
+    let mockSavedPreference = presetState === 'pending' ? null : {
+      schemaVersion: 3,
+      preset: 'starter-5',
+      include: { names: [], tags: [], categories: [] },
+      exclude: { names: [], tags: [] },
+    };
+    // Real catalog loaded from the http server (mirrors production main.js IPC).
+    const SPEC_FILES = [
+      'default-tool-specs.json',
+      'default-tool-specs-builtin.json',
+      'default-tool-specs-builtin-fs.json',
+      'default-tool-specs-builtin-helpers.json',
+      'default-tool-specs-kr.json',
+      'default-tool-specs-network.json',
+    ];
+    let _mockCurationDataCache = null;
+    async function mockGetCurationData() {
+      if (_mockCurationDataCache) return _mockCurationDataCache;
+      const tools = [];
+      const tagSet = new Set();
+      for (const f of SPEC_FILES) {
+        try {
+          const resp = await fetch(`./resources/catalog/${f}`);
+          if (!resp.ok) continue;
+          const arr = await resp.json();
+          if (!Array.isArray(arr)) continue;
+          for (const spec of arr) {
+            if (!spec?.name) continue;
+            const tags = Array.isArray(spec.tags) ? spec.tags.slice() : [];
+            const description = typeof spec.description === 'string'
+              ? spec.description.replace(/\s+/g, ' ').trim().slice(0, 220)
+              : '';
+            tools.push({ name: spec.name, category: spec.category || null, tags, description });
+            for (const t of tags) tagSet.add(t);
+          }
+        } catch (e) {
+          console.warn('[preview-mock] failed to fetch', f, e);
+        }
+      }
+      let categories = [];
+      try {
+        const resp = await fetch('./resources/catalog/default-tool-categories.json');
+        if (resp.ok) {
+          const arr = await resp.json();
+          if (Array.isArray(arr)) {
+            categories = arr.map(c => ({
+              id: c.id || c.name,
+              displayName: c.displayName || c.id || c.name,
+              description: c.description || '',
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('[preview-mock] failed to fetch categories', e);
+      }
+      _mockCurationDataCache = {
+        tools: tools.sort((a, b) => a.name.localeCompare(b.name)),
+        categories,
+        tags: [...tagSet].sort(),
+      };
+      console.log(`[preview-mock] loaded real catalog: ${tools.length} tools, ${categories.length} categories, ${tagSet.size} tags`);
+      return _mockCurationDataCache;
+    }
+
+    async function mockGetToolsPreset() {
+      const data = await mockGetCurationData();
+      const total = data.tools.length;
+      if (!mockSavedPreference?.preset) {
+        return { active: { state: 'pending' }, presets: mockPresets, total, preference: mockSavedPreference };
+      }
+      const preset = mockPresets.find(p => p.id === mockSavedPreference.preset);
+      if (!preset) {
+        return { active: { state: 'unknown', presetId: mockSavedPreference.preset }, presets: mockPresets, total, preference: mockSavedPreference };
+      }
+      const toolCount = preset.tools.length > 0 ? preset.tools.length : total;
+      return { active: { state: 'curated', presetId: preset.id, displayName: preset.displayName, toolCount }, presets: mockPresets, total, preference: mockSavedPreference };
+    }
+    const mockEnv = {
+      baseUrl: 'http://localhost:11434',
+      ollamaRequired: true,
+      ollamaInstalled: false,
+      running: false,
+      version: null,
+      error: null,
+      chatModel: { provider: 'ollama', model: 'qwen3.5:2b', installationKnown: false, installed: false },
+      embeddingModel: { provider: 'ollama', model: 'qwen3-embedding:0.6b', installationKnown: false, installed: false },
+      installedChatModels: [],
+      installedEmbeddingModels: [],
+    };
+    window.electronAPI = {
+      invoke: async (channel, ...args) => {
+        switch (channel) {
+          case 'config:load':
+          case 'config:save':
+          case 'config:save-as':
+          case 'config:select':
+          case 'config:select-provider':
+          case 'config:import':
+          case 'config:delete':
+            return mockPayload;
+          case 'config:get-tools-preset':
+            return await mockGetToolsPreset();
+          case 'config:set-tools-preference':
+            mockSavedPreference = args[0];
+            return { ok: true };
+          case 'config:get-tools-curation-data':
+            return await mockGetCurationData();
+          case 'config:environment-info':
+            return mockEnv;
+          case 'config:export':
+            return { canceled: true };
+          case 'config:fit-window':
+          case 'config:open-ollama-download':
+          case 'config:reset':
+          case 'config:launch':
+          case 'ollama-manager:open':
+            return { ok: true };
+          default:
+            console.log('[preview-mock] unhandled invoke:', channel);
+            return null;
+        }
+      },
+      on: () => () => {},
+    };
+    console.log('[preview-mock] window.electronAPI installed (state=' + presetState + ')');
+  }
+</script>
 <div class="shell">
     <div class="hero">
         <div class="brand">
@@ -834,6 +1320,74 @@
         <div class="validation" id="validation-status">Preparing editor...</div>
     </div>
 
+    <div class="card wizard-section" id="tools-card">
+        <div class="section-header">
+            <h2>Default MCP Tools</h2>
+            <p>Pick which preset of tools the MCP server exposes at boot. Fine-tune later from the toolbox icon inside Tool Studio.</p>
+        </div>
+        <div class="preset-tools-list" id="preset-tools-list">
+            <span class="preset-tools-label">Tools exposed</span>
+            <span class="preset-tools-summary" id="tools-preset-summary">Loading...</span>
+            <span class="preset-tools-chips" id="tools-preset-chips"></span>
+        </div>
+        <div class="toolbar">
+            <div class="field grow">
+                <label for="tools-preset-select">Preset</label>
+                <select id="tools-preset-select" aria-label="default tools preset selector"></select>
+            </div>
+        </div>
+        <div class="section-copy" id="tools-preset-description"></div>
+        <div class="curation-wrapper" id="curation-wrapper">
+            <div class="curation-header">
+                <div>
+                    <h3>Advanced curation</h3>
+                    <p>Apply fine-grained include / exclude rules on top of the preset. Mirrors Tool Studio's Curate Defaults dialog.</p>
+                </div>
+                <button class="secondary curation-toggle" id="curation-toggle-button" type="button" aria-expanded="false">
+                    <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span id="curation-toggle-label">Show</span></span>
+                </button>
+            </div>
+            <div class="curation-content" id="curation-content" hidden>
+                <div class="curation-grid">
+                    <div class="curation-column include">
+                        <div class="curation-column-header">
+                            <span class="curation-pill include">+ Include</span>
+                            <span class="curation-column-help">Adds tools matching any rule</span>
+                        </div>
+                        <div class="field">
+                            <label>By tag</label>
+                            <div id="include-tag-picker" class="chip-picker" role="listbox" aria-multiselectable="true" aria-label="include by tag"></div>
+                        </div>
+                        <div class="field">
+                            <label>By category</label>
+                            <div id="include-category-picker" class="chip-picker" role="listbox" aria-multiselectable="true" aria-label="include by category"></div>
+                        </div>
+                        <div class="field">
+                            <label for="include-name-filter">By name</label>
+                            <input type="text" id="include-name-filter" class="curation-filter" placeholder="Type to filter tool names...">
+                            <div id="include-name-picker" class="chip-picker" role="listbox" aria-multiselectable="true" aria-label="include by name"></div>
+                        </div>
+                    </div>
+                    <div class="curation-column exclude">
+                        <div class="curation-column-header">
+                            <span class="curation-pill exclude">− Exclude</span>
+                            <span class="curation-column-help">Removes tools matching any rule</span>
+                        </div>
+                        <div class="field">
+                            <label>By tag</label>
+                            <div id="exclude-tag-picker" class="chip-picker" role="listbox" aria-multiselectable="true" aria-label="exclude by tag"></div>
+                        </div>
+                        <div class="field">
+                            <label for="exclude-name-filter">By name</label>
+                            <input type="text" id="exclude-name-filter" class="curation-filter" placeholder="Type to filter tool names...">
+                            <div id="exclude-name-picker" class="chip-picker" role="listbox" aria-multiselectable="true" aria-label="exclude by name"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card wizard-section" id="env-card">
         <div class="section-header">
             <h2>Environment Variables</h2>
@@ -867,6 +1421,7 @@
             <div class="collapsible-copy">
                 <h2>JVM Settings</h2>
                 <p>Only JVM options and application arguments belong here. They are passed when Spring AI Playground starts.</p>
+                <p class="section-summary" id="jvm-summary"></p>
             </div>
             <button class="secondary section-toggle" id="jvm-toggle-button" type="button" aria-expanded="false" title="Show or hide JVM settings">
                 <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span id="jvm-toggle-label">Show</span></span>
@@ -934,6 +1489,34 @@
     const ollamaSection = document.getElementById('ollama-section');
     const jvmOptions = document.getElementById('jvm-options');
     const appArgs = document.getElementById('app-args');
+    const jvmSummary = document.getElementById('jvm-summary');
+    const toolsPresetSelect = document.getElementById('tools-preset-select');
+    const toolsPresetSummary = document.getElementById('tools-preset-summary');
+    const toolsPresetDescription = document.getElementById('tools-preset-description');
+    const curationWrapper = document.getElementById('curation-wrapper');
+    const curationToggleButton = document.getElementById('curation-toggle-button');
+    const curationToggleLabel = document.getElementById('curation-toggle-label');
+    const curationContent = document.getElementById('curation-content');
+    const presetToolsListEl = document.getElementById('preset-tools-list');
+    const toolsPresetChips = document.getElementById('tools-preset-chips');
+    const includeTagPicker = document.getElementById('include-tag-picker');
+    const includeCategoryPicker = document.getElementById('include-category-picker');
+    const excludeTagPicker = document.getElementById('exclude-tag-picker');
+    const includeNamePicker = document.getElementById('include-name-picker');
+    const excludeNamePicker = document.getElementById('exclude-name-picker');
+    const includeNameFilter = document.getElementById('include-name-filter');
+    const excludeNameFilter = document.getElementById('exclude-name-filter');
+
+    const chipPickerSelections = {
+      includeTag: new Set(),
+      includeCategory: new Set(),
+      excludeTag: new Set(),
+      includeName: new Set(),
+      excludeName: new Set(),
+    };
+
+    const namePickerExpanded = { include: false, exclude: false };
+    const NAME_PICKER_COMPACT_VISIBLE = 12;
     const embeddingWarning = document.getElementById('embedding-warning');
     const secretsStorageStatus = document.getElementById('secrets-storage-status');
     const skipOllamaCheckCheckbox = document.getElementById('skip-ollama-check');
@@ -1109,10 +1692,411 @@
     }
 
     function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = String(text || '');
-      return div.innerHTML;
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
+
+    function refreshJvmSummary() {
+      const optsText = (jvmOptions.value || '').trim();
+      const argsText = (appArgs.value || '').trim();
+      const formatTokens = text => text.split(/\s+/).filter(Boolean).map(escapeHtml).join(' ');
+      const parts = [];
+      if (optsText) parts.push(`<strong>JVM</strong> <code>${formatTokens(optsText)}</code>`);
+      if (argsText) parts.push(`<strong>Args</strong> <code>${formatTokens(argsText)}</code>`);
+      if (parts.length === 0) {
+        jvmSummary.classList.add('muted');
+        jvmSummary.innerHTML = 'No JVM options or arguments set — defaults apply.';
+      } else {
+        jvmSummary.classList.remove('muted');
+        jvmSummary.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+      }
+    }
+
+    const CUSTOM_PRESET_VALUE = '';
+    let toolsCatalogPresets = [];
+    let toolsCatalogTotal = 0;
+    let curationData = null;
+    let currentPreference = null;
+    let curationSaveTimer = null;
+
+    function findToolsPreset(presetId) {
+      return toolsCatalogPresets.find(p => p.id === presetId);
+    }
+
+    function presetToolCount(preset) {
+      if (!preset) return 0;
+      return preset.tools && preset.tools.length > 0 ? preset.tools.length : toolsCatalogTotal;
+    }
+
+    function emptyRules() {
+      return { include: { names: [], tags: [], categories: [] }, exclude: { names: [], tags: [] } };
+    }
+
+    function buildCurrentPreference() {
+      return {
+        schemaVersion: 3,
+        preset: toolsPresetSelect.value === CUSTOM_PRESET_VALUE ? null : toolsPresetSelect.value,
+        include: {
+          names: [...chipPickerSelections.includeName],
+          tags: [...chipPickerSelections.includeTag],
+          categories: [...chipPickerSelections.includeCategory],
+        },
+        exclude: {
+          names: [...chipPickerSelections.excludeName],
+          tags: [...chipPickerSelections.excludeTag],
+        },
+      };
+    }
+
+    function hasAnyRules(pref) {
+      const inc = pref.include || {};
+      const exc = pref.exclude || {};
+      return (inc.tags?.length || 0) + (inc.categories?.length || 0) + (inc.names?.length || 0)
+           + (exc.tags?.length || 0) + (exc.names?.length || 0) > 0;
+    }
+
+    function clearCurationSelections() {
+      Object.values(chipPickerSelections).forEach(s => s.clear());
+      populateCurationSelectors();
+    }
+
+    function replaceSetContents(set, values) {
+      set.clear();
+      (values || []).forEach(v => set.add(v));
+    }
+
+    function applyPreferenceToSelectors(preference) {
+      if (!curationData || !preference) return;
+      const inc = preference.include || {};
+      const exc = preference.exclude || {};
+      replaceSetContents(chipPickerSelections.includeTag, inc.tags);
+      replaceSetContents(chipPickerSelections.includeCategory, inc.categories);
+      replaceSetContents(chipPickerSelections.excludeTag, exc.tags);
+      replaceSetContents(chipPickerSelections.includeName, inc.names);
+      replaceSetContents(chipPickerSelections.excludeName, exc.names);
+      populateCurationSelectors();
+    }
+
+    function chipAttrs(value, selected, tooltip) {
+      const tipAttr = tooltip
+        ? ` data-tip="${escapeHtml(tooltip)}" aria-label="${escapeHtml(value)} — ${escapeHtml(tooltip)}"`
+        : '';
+      return `data-value="${escapeHtml(value)}" role="option" aria-selected="${selected}"${tipAttr}`;
+    }
+
+    function renderChipPicker(picker, options, selectedSet) {
+      if (!options.length) {
+        picker.innerHTML = '<span class="chip-empty">none available</span>';
+        return;
+      }
+      picker.innerHTML = options.map(o => {
+        const sel = selectedSet.has(o.value);
+        return `<button type="button" class="chip${sel ? ' selected' : ''}" ${chipAttrs(o.value, sel, o.tooltip)}>${escapeHtml(o.label)}</button>`;
+      }).join('');
+    }
+
+    function buildToolTooltip(tool) {
+      const parts = [];
+      if (tool.category) parts.push(`Category: ${tool.category}`);
+      if (tool.tags?.length) parts.push(`Tags: ${tool.tags.join(', ')}`);
+      if (tool.description) parts.push(tool.description);
+      return parts.join(' · ');
+    }
+
+    function renderNameChipPicker(picker, filterText, selectedSet, kind) {
+      if (!curationData) return;
+      const f = filterText.toLowerCase().trim();
+      const allTools = curationData.tools;
+      // Selected always shown first (filter never hides selected)
+      const selectedArr = allTools.filter(t => selectedSet.has(t.name));
+      // Unselected: filter if filter text present, otherwise show all
+      const unselectedShown = allTools.filter(t =>
+        !selectedSet.has(t.name) && (!f || t.name.toLowerCase().includes(f))
+      );
+      if (selectedArr.length === 0 && unselectedShown.length === 0) {
+        picker.innerHTML = '<span class="chip-empty">no tools match</span>';
+        return;
+      }
+      const expanded = kind && namePickerExpanded[kind];
+      // Filter active = show all matching. No filter + compact = limit unselected.
+      const showAllUnselected = expanded || Boolean(f);
+      const visibleUnselected = showAllUnselected
+        ? unselectedShown
+        : unselectedShown.slice(0, NAME_PICKER_COMPACT_VISIBLE);
+      const hiddenCount = showAllUnselected ? 0 : Math.max(0, unselectedShown.length - NAME_PICKER_COMPACT_VISIBLE);
+
+      const chipHtml = [
+        ...selectedArr.map(t => `<button type="button" class="chip selected" ${chipAttrs(t.name, true, buildToolTooltip(t))}>${escapeHtml(t.name)}</button>`),
+        ...visibleUnselected.map(t => `<button type="button" class="chip" ${chipAttrs(t.name, false, buildToolTooltip(t))}>${escapeHtml(t.name)}</button>`),
+      ].join('');
+      const moreBtn = hiddenCount > 0 && kind
+        ? `<button type="button" class="chip chip-more" data-kind="${escapeHtml(kind)}" data-tip="Show ${hiddenCount} more" aria-label="Show ${hiddenCount} more">+${hiddenCount}</button>`
+        : '';
+      picker.innerHTML = chipHtml + moreBtn;
+      picker.classList.toggle('expanded', showAllUnselected);
+    }
+
+    function populateCurationSelectors() {
+      if (!curationData) return;
+      const tagToolCount = {};
+      for (const tool of curationData.tools) {
+        for (const tag of (tool.tags || [])) tagToolCount[tag] = (tagToolCount[tag] || 0) + 1;
+      }
+      const tagOptions = curationData.tags.map(t => ({
+        value: t,
+        label: t,
+        tooltip: `${tagToolCount[t] || 0} tools tagged "${t}"`,
+      }));
+      const categoryOptions = curationData.categories.map(c => ({
+        value: c.id,
+        label: c.displayName || c.id,
+        tooltip: c.description || '',
+      }));
+      renderChipPicker(includeTagPicker, tagOptions, chipPickerSelections.includeTag);
+      renderChipPicker(excludeTagPicker, tagOptions, chipPickerSelections.excludeTag);
+      renderChipPicker(includeCategoryPicker, categoryOptions, chipPickerSelections.includeCategory);
+      renderNameChipPicker(includeNamePicker, includeNameFilter.value, chipPickerSelections.includeName, 'include');
+      renderNameChipPicker(excludeNamePicker, excludeNameFilter.value, chipPickerSelections.excludeName, 'exclude');
+    }
+
+    function resolveActiveNames(pref) {
+      if (!curationData) return new Set();
+      const active = new Set();
+      const preset = pref.preset ? findToolsPreset(pref.preset) : null;
+      if (preset) {
+        if (preset.tools && preset.tools.length > 0) {
+          preset.tools.forEach(n => active.add(n));
+        } else {
+          curationData.tools.forEach(t => active.add(t.name));
+        }
+      }
+      (pref.include?.names || []).forEach(n => active.add(n));
+      (pref.include?.tags || []).forEach(tag => {
+        curationData.tools.forEach(t => { if (t.tags?.includes(tag)) active.add(t.name); });
+      });
+      (pref.include?.categories || []).forEach(cat => {
+        curationData.tools.forEach(t => { if (t.category === cat) active.add(t.name); });
+      });
+      (pref.exclude?.names || []).forEach(n => active.delete(n));
+      (pref.exclude?.tags || []).forEach(tag => {
+        curationData.tools.forEach(t => { if (t.tags?.includes(tag)) active.delete(t.name); });
+      });
+      return active;
+    }
+
+    const TOOL_CHIPS_VISIBLE = 10;
+
+    function renderTopSummary() {
+      if (!curationData) {
+        toolsPresetSummary.textContent = 'Loading...';
+        toolsPresetDescription.textContent = '';
+        renderToolChips(null);
+        return;
+      }
+      const pref = buildCurrentPreference();
+      const total = curationData.tools.length || toolsCatalogTotal;
+      const activeNames = resolveActiveNames(pref);
+      if (pref.preset) {
+        const preset = findToolsPreset(pref.preset);
+        const suffix = hasAnyRules(pref) ? ' <span class="status-warn">+ custom rules</span>' : '';
+        toolsPresetSummary.innerHTML = `<strong>${escapeHtml(preset?.displayName || pref.preset)}</strong>${suffix} · ${activeNames.size} of ${total} tools`;
+        toolsPresetDescription.textContent = preset?.description || '';
+      } else {
+        toolsPresetSummary.innerHTML = `<strong>Custom</strong> · ${activeNames.size} of ${total} tools`;
+        toolsPresetDescription.textContent = 'Preset disabled — tools picked only by rules below.';
+      }
+      renderToolChips(activeNames);
+    }
+
+    function renderToolChips(activeNames) {
+      if (!activeNames || activeNames.size === 0) {
+        toolsPresetChips.innerHTML = '<span class="preset-tools-empty">no tools — pick a preset or add rules below</span>';
+        return;
+      }
+      const arr = [...activeNames];
+      const visible = arr.slice(0, TOOL_CHIPS_VISIBLE);
+      const hidden = arr.slice(TOOL_CHIPS_VISIBLE);
+      const visibleHtml = visible.map(n => `<span class="tool-chip">${escapeHtml(n)}</span>`).join('');
+      const hiddenHtml = hidden.map(n => `<span class="tool-chip" hidden>${escapeHtml(n)}</span>`).join('');
+      const more = hidden.length > 0
+        ? `<button type="button" class="tool-chip more" id="tool-chip-more" title="Show ${hidden.length} more">+${hidden.length}</button>`
+        : '';
+      toolsPresetChips.innerHTML = `${visibleHtml}${hiddenHtml}${more}`;
+      const moreBtn = document.getElementById('tool-chip-more');
+      if (moreBtn) {
+        moreBtn.addEventListener('click', () => {
+          toolsPresetChips.querySelectorAll('.tool-chip[hidden]').forEach(c => c.hidden = false);
+          moreBtn.remove();
+        });
+      }
+    }
+
+    async function loadCurationData() {
+      if (curationData) return;
+      try {
+        curationData = await window.electronAPI.invoke('config:get-tools-curation-data');
+        populateCurationSelectors();
+        applyPreferenceToSelectors(currentPreference);
+        renderTopSummary();
+      } catch (error) {
+        console.error('Failed to load curation data:', error);
+        curationData = { tools: [], categories: [], tags: [] };
+      }
+    }
+
+    async function saveCurrentPreference() {
+      const pref = buildCurrentPreference();
+      try {
+        await window.electronAPI.invoke('config:set-tools-preference', pref);
+        currentPreference = pref;
+        setStatus('Default MCP tools preference saved.');
+        renderTopSummary();
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      }
+    }
+
+    async function refreshToolsPreset() {
+      try {
+        await loadCurationData();
+        const info = await window.electronAPI.invoke('config:get-tools-preset');
+        toolsCatalogPresets = info.presets || [];
+        toolsCatalogTotal = info.total || 0;
+        currentPreference = info.preference || null;
+        toolsPresetSelect.innerHTML = '';
+        for (const preset of toolsCatalogPresets) {
+          const option = document.createElement('option');
+          option.value = preset.id;
+          option.textContent = preset.displayName;
+          toolsPresetSelect.appendChild(option);
+        }
+        const customOption = document.createElement('option');
+        customOption.value = CUSTOM_PRESET_VALUE;
+        customOption.textContent = 'Custom (rules only)';
+        toolsPresetSelect.appendChild(customOption);
+
+        if (currentPreference) {
+          toolsPresetSelect.value = currentPreference.preset || CUSTOM_PRESET_VALUE;
+        } else {
+          const fallback = toolsCatalogPresets.find(p => p.isDefault) || toolsCatalogPresets[0];
+          if (fallback) toolsPresetSelect.value = fallback.id;
+        }
+        applyPreferenceToSelectors(currentPreference);
+        renderTopSummary();
+      } catch (error) {
+        toolsPresetSummary.textContent = 'Unavailable';
+        toolsPresetDescription.textContent = '';
+      }
+    }
+
+    toolsPresetSelect.addEventListener('change', async () => {
+      const presetId = toolsPresetSelect.value;
+      if (presetId !== CUSTOM_PRESET_VALUE) {
+        clearCurationSelections();
+      }
+      await saveCurrentPreference();
+    });
+
+    curationToggleButton.addEventListener('click', async () => {
+      const isExpanded = curationToggleButton.getAttribute('aria-expanded') === 'true';
+      const nextExpanded = !isExpanded;
+      curationToggleButton.setAttribute('aria-expanded', String(nextExpanded));
+      curationToggleLabel.textContent = nextExpanded ? 'Hide' : 'Show';
+      curationContent.hidden = !nextExpanded;
+      curationWrapper.classList.toggle('expanded', nextExpanded);
+      if (nextExpanded) await loadCurationData();
+      scheduleWindowFit();
+    });
+
+    function scheduleCurationSave() {
+      renderTopSummary();
+      clearTimeout(curationSaveTimer);
+      curationSaveTimer = setTimeout(() => saveCurrentPreference(), 300);
+    }
+
+    function attachChipPickerHandler(picker, selectedSet, rerender) {
+      picker.addEventListener('click', (event) => {
+        const more = event.target.closest('.chip-more');
+        if (more && rerender) {
+          const kind = more.dataset.kind;
+          if (kind) namePickerExpanded[kind] = true;
+          rerender();
+          return;
+        }
+        const chip = event.target.closest('.chip');
+        if (!chip) return;
+        const val = chip.dataset.value;
+        if (!val) return;
+        if (selectedSet.has(val)) selectedSet.delete(val);
+        else selectedSet.add(val);
+        if (rerender) {
+          rerender();
+        } else {
+          chip.classList.toggle('selected');
+          chip.setAttribute('aria-selected', String(selectedSet.has(val)));
+        }
+        scheduleCurationSave();
+      });
+    }
+
+    attachChipPickerHandler(includeTagPicker, chipPickerSelections.includeTag, null);
+    attachChipPickerHandler(includeCategoryPicker, chipPickerSelections.includeCategory, null);
+    attachChipPickerHandler(excludeTagPicker, chipPickerSelections.excludeTag, null);
+    attachChipPickerHandler(includeNamePicker, chipPickerSelections.includeName,
+      () => renderNameChipPicker(includeNamePicker, includeNameFilter.value, chipPickerSelections.includeName, 'include'));
+    attachChipPickerHandler(excludeNamePicker, chipPickerSelections.excludeName,
+      () => renderNameChipPicker(excludeNamePicker, excludeNameFilter.value, chipPickerSelections.excludeName, 'exclude'));
+
+    includeNameFilter.addEventListener('input', () => {
+      namePickerExpanded.include = false;
+      renderNameChipPicker(includeNamePicker, includeNameFilter.value, chipPickerSelections.includeName, 'include');
+    });
+    excludeNameFilter.addEventListener('input', () => {
+      namePickerExpanded.exclude = false;
+      renderNameChipPicker(excludeNamePicker, excludeNameFilter.value, chipPickerSelections.excludeName, 'exclude');
+    });
+
+    (function setupGlobalTooltip() {
+      const tooltip = document.createElement('div');
+      tooltip.className = 'global-tooltip';
+      tooltip.setAttribute('role', 'tooltip');
+      document.body.appendChild(tooltip);
+      let active = null;
+      function position(target) {
+        const rect = target.getBoundingClientRect();
+        tooltip.style.display = 'block';
+        const tipRect = tooltip.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        let left = rect.left;
+        if (left + tipRect.width > viewportWidth - 8) left = Math.max(8, viewportWidth - tipRect.width - 8);
+        let top = rect.bottom + 6;
+        if (top + tipRect.height > window.innerHeight - 8) top = rect.top - tipRect.height - 6;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+      }
+      document.addEventListener('mouseover', (event) => {
+        const target = event.target.closest('[data-tip]');
+        if (!target) return;
+        const text = target.dataset.tip;
+        if (!text) return;
+        active = target;
+        tooltip.textContent = text;
+        tooltip.style.display = 'block';
+        // Position after content size known
+        position(target);
+      });
+      document.addEventListener('mouseout', (event) => {
+        if (event.target.closest('[data-tip]') === active) {
+          active = null;
+          tooltip.style.display = 'none';
+        }
+      });
+      document.addEventListener('scroll', () => { active = null; tooltip.style.display = 'none'; }, true);
+    })();
 
     async function refreshOllamaStatus() {
       if (ollamaCard.style.display === 'none') return;
@@ -1393,6 +2377,7 @@
       configPath.textContent = selectedConfig.name;
       jvmOptions.value = payload.runtimeSettings?.jvmOptionsText || '';
       appArgs.value = payload.runtimeSettings?.appArgsText || '';
+      refreshJvmSummary();
       skipOllamaCheckCheckbox.checked = Boolean(payload.preferences?.skipOllamaCheck ?? false);
 
       const storage = payload.secretsStorage || { encrypted: false, label: 'Unknown' };
@@ -1485,6 +2470,9 @@
       const isExpanded = jvmToggleButton.getAttribute('aria-expanded') === 'true';
       setSectionExpanded(jvmCard, jvmContent, jvmToggleButton, jvmToggleLabel, !isExpanded);
     });
+
+    jvmOptions.addEventListener('input', refreshJvmSummary);
+    appArgs.addEventListener('input', refreshJvmSummary);
 
     openOllamaManagerButton.addEventListener('click', async () => {
       try {
@@ -1630,6 +2618,7 @@
         await initializeEditor();
         setValidationStatus('Editor ready. Loading configuration...');
         await loadConfig();
+        await refreshToolsPreset();
       } catch (error) {
         const message = error.message || String(error);
         setStatus(message, true);

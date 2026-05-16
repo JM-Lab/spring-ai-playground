@@ -170,8 +170,8 @@ function collectSecretSuggestions(yamlText = '') {
     });
   }
 
-  const toolSpecsPath = getDefaultToolSpecsPath();
-  if (fs.existsSync(toolSpecsPath)) {
+  for (const toolSpecsPath of getDefaultToolSpecsPaths()) {
+    if (!fs.existsSync(toolSpecsPath)) continue;
     try {
       const toolSpecs = JSON.parse(fs.readFileSync(toolSpecsPath, 'utf8'));
       for (const tool of toolSpecs) {
@@ -236,15 +236,80 @@ function getDefaultConfigPath() {
 }
 
 function getDefaultToolSpecsPath() {
-  const packagedPath = path.join(process.resourcesPath, 'default-tool-specs.json');
-  if (!isDev && fs.existsSync(packagedPath)) return packagedPath;
-  const preparedResourcePath = path.join(__dirname, 'resources', 'default-tool-specs.json');
-  if (fs.existsSync(preparedResourcePath)) return preparedResourcePath;
-  return path.join(__dirname, '..', 'src', 'main', 'resources', 'default-tool-specs.json');
+  const paths = getDefaultToolSpecsPaths();
+  return paths.length > 0 ? paths[0] : '';
+}
+
+function getDefaultToolSpecsPaths() {
+  const candidateDirs = [
+    !isDev ? path.join(process.resourcesPath, 'catalog') : null,
+    path.join(__dirname, 'resources', 'catalog'),
+    path.join(__dirname, '..', 'src', 'main', 'resources'),
+  ].filter(Boolean);
+  for (const dir of candidateDirs) {
+    if (!fs.existsSync(dir)) continue;
+    const matches = fs.readdirSync(dir)
+      .filter(f => /^default-tool-specs.*\.json$/.test(f))
+      .map(f => path.join(dir, f));
+    if (matches.length > 0) return matches;
+  }
+  return [];
 }
 
 function getUserConfigPath() {
   return path.join(app.getPath('userData'), 'application.yaml');
+}
+
+function getCatalogDir() {
+  const candidates = [
+    !isDev ? path.join(process.resourcesPath, 'catalog') : null,
+    path.join(__dirname, 'resources', 'catalog'),
+    path.join(__dirname, '..', 'src', 'main', 'resources'),
+  ].filter(Boolean);
+  return candidates.find(dir => fs.existsSync(dir)) || null;
+}
+
+function getSpringAiPlaygroundHomeDir() {
+  return path.join(app.getPath('userData'), 'spring-ai-playground');
+}
+
+function getDefaultToolsPreferencePath() {
+  return path.join(getSpringAiPlaygroundHomeDir(), 'tool', 'save', 'default-tools-preference.json');
+}
+
+function loadPresetCatalog() {
+  const catalogDir = getCatalogDir();
+  if (!catalogDir) {
+    return { presets: [], defaultToolCount: 0 };
+  }
+  let presets = [];
+  const presetsFile = path.join(catalogDir, 'default-tool-presets.json');
+  if (fs.existsSync(presetsFile)) {
+    try {
+      presets = JSON.parse(fs.readFileSync(presetsFile, 'utf8'));
+    } catch (error) {
+      console.error('Failed to parse default-tool-presets.json:', error);
+    }
+  }
+  let defaultToolCount = 0;
+  for (const file of fs.readdirSync(catalogDir)) {
+    if (!/^default-tool-specs.*\.json$/.test(file)) continue;
+    try {
+      const specs = JSON.parse(fs.readFileSync(path.join(catalogDir, file), 'utf8'));
+      defaultToolCount += Array.isArray(specs) ? specs.length : 0;
+    } catch (error) {
+      console.warn(`Failed to count specs in ${file}:`, error.message);
+    }
+  }
+  return { presets, defaultToolCount };
+}
+
+function writeDefaultToolsPreference(preference) {
+  const file = getDefaultToolsPreferencePath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(preference));
+  fs.renameSync(tmp, file);
 }
 
 function getEffectiveYamlText(overrideYamlText = '') {
@@ -1732,8 +1797,8 @@ function createMainWindow() {
   }
 
   const { workAreaSize } = screen.getPrimaryDisplay();
-  const width = Math.max(1280, Math.floor(workAreaSize.width * 0.67));
-  const height = Math.max(820, Math.floor(workAreaSize.height * 0.82));
+  const width = Math.max(1280, Math.floor(workAreaSize.width * 0.82));
+  const height = Math.max(820, Math.floor(workAreaSize.height * 0.9));
   mainWindow = new BrowserWindow({
     width, height,
     minWidth: 1280, minHeight: 820,
@@ -2317,6 +2382,98 @@ function launchApplicationWithConfig(configPath) {
 
 ipcMain.handle('config:load', async () => buildConfigLoadPayload());
 
+ipcMain.handle('config:get-tools-preset', async () => {
+  try {
+    const prefPath = getDefaultToolsPreferencePath();
+    const catalog = loadPresetCatalog();
+    let active = { state: 'pending' };
+    if (fs.existsSync(prefPath)) {
+      const pref = JSON.parse(fs.readFileSync(prefPath, 'utf8'));
+      const presetId = pref?.preset;
+      if (presetId) {
+        const preset = catalog.presets.find(p => p.id === presetId);
+        if (preset) {
+          const toolCount = preset.tools && preset.tools.length > 0 ? preset.tools.length : catalog.defaultToolCount;
+          active = { state: 'curated', presetId, displayName: preset.displayName, toolCount };
+        } else {
+          active = { state: 'unknown', presetId };
+        }
+      }
+    }
+    return { active, presets: catalog.presets, total: catalog.defaultToolCount };
+  } catch (error) {
+    console.error('Failed to read tools preset:', error);
+    return { active: { state: 'error', message: error.message }, presets: [], total: 0 };
+  }
+});
+
+ipcMain.handle('config:set-tools-preference', async (event, preference) => {
+  if (!preference || typeof preference !== 'object') throw new Error('preference payload required');
+  const catalog = loadPresetCatalog();
+  if (preference.preset && !catalog.presets.find(p => p.id === preference.preset)) {
+    throw new Error(`Unknown preset: ${preference.preset}`);
+  }
+  writeDefaultToolsPreference({
+    schemaVersion: 3,
+    preset: preference.preset || null,
+    include: {
+      names: Array.isArray(preference.include?.names) ? preference.include.names : [],
+      tags: Array.isArray(preference.include?.tags) ? preference.include.tags : [],
+      categories: Array.isArray(preference.include?.categories) ? preference.include.categories : [],
+    },
+    exclude: {
+      names: Array.isArray(preference.exclude?.names) ? preference.exclude.names : [],
+      tags: Array.isArray(preference.exclude?.tags) ? preference.exclude.tags : [],
+      categories: [],
+    },
+  });
+  return { ok: true };
+});
+
+ipcMain.handle('config:get-tools-curation-data', async () => {
+  try {
+    const specPaths = getDefaultToolSpecsPaths();
+    const tools = [];
+    const tagSet = new Set();
+    for (const filepath of specPaths) {
+      const arr = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+      if (!Array.isArray(arr)) continue;
+      for (const spec of arr) {
+        if (!spec?.name) continue;
+        const tags = Array.isArray(spec.tags) ? spec.tags.slice() : [];
+        const description = typeof spec.description === 'string'
+          ? spec.description.replace(/\s+/g, ' ').trim().slice(0, 220)
+          : '';
+        tools.push({ name: spec.name, category: spec.category || null, tags, description });
+        for (const tag of tags) tagSet.add(tag);
+      }
+    }
+    let categories = [];
+    const catalogDir = getCatalogDir();
+    if (catalogDir) {
+      const catFile = path.join(catalogDir, 'default-tool-categories.json');
+      if (fs.existsSync(catFile)) {
+        const catData = JSON.parse(fs.readFileSync(catFile, 'utf8'));
+        if (Array.isArray(catData)) {
+          categories = catData.map(c => ({
+            id: c.id || c.name,
+            displayName: c.displayName || c.id || c.name,
+            description: c.description || '',
+          }));
+        }
+      }
+    }
+    return {
+      tools: tools.sort((a, b) => a.name.localeCompare(b.name)),
+      categories,
+      tags: [...tagSet].sort(),
+    };
+  } catch (error) {
+    console.error('Failed to load curation data:', error);
+    return { tools: [], categories: [], tags: [] };
+  }
+});
+
 ipcMain.handle('config:save', async (event, payload) => {
   const index = readConfigIndex();
   const selectedConfigId = currentConfigId || index.activeConfigId;
@@ -2393,12 +2550,34 @@ ipcMain.handle('config:reset', async () => {
       fs.rmSync(configDir, { recursive: true, force: true });
     }
     clearSecretsStoreCache();
+    const preferenceFile = getDefaultToolsPreferencePath();
+    if (fs.existsSync(preferenceFile)) {
+      fs.unlinkSync(preferenceFile);
+    }
   } catch (error) {
     console.error("Failed to delete config directory:", error);
   }
 
   isQuitting = true;
   app.relaunch({ args: process.argv.slice(1).concat(['--relaunch']) });
+  app.exit(0);
+});
+
+ipcMain.handle('app:factoryReset', async () => {
+  if (serverProcess) {
+    await stopSpringServer();
+  }
+  try {
+    const configDir = getConfigDirectory();
+    if (fs.existsSync(configDir)) fs.rmSync(configDir, { recursive: true, force: true });
+    clearSecretsStoreCache();
+    const springHome = getSpringAiPlaygroundHomeDir();
+    if (fs.existsSync(springHome)) fs.rmSync(springHome, { recursive: true, force: true });
+  } catch (error) {
+    console.error('Failed to factory-reset user data:', error);
+  }
+  isQuitting = true;
+  app.relaunch({ args: process.argv.slice(1).concat(['--relaunch', '--factory-reset']) });
   app.exit(0);
 });
 
@@ -2688,7 +2867,10 @@ app.whenReady().then(async () => {
   ensureConfigStore();
   const index = readConfigIndex();
 
-  splashWindow.close();
+  // Hide splash but keep it alive so window-all-closed doesn't fire during
+  // the async window-handoff below (createConfigWindow / launchApplicationWithConfig).
+  // Close it once the replacement window exists.
+  if (splashWindow && !splashWindow.isDestroyed()) splashWindow.hide();
 
   if (isFirstLaunch(index)) {
     createConfigWindow();
@@ -2696,6 +2878,8 @@ app.whenReady().then(async () => {
     const configPath = getConfigFilePath(index.activeConfigId);
     launchApplicationWithConfig(configPath);
   }
+
+  if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
 });
 
 app.on('before-quit', async (event) => {

@@ -92,10 +92,17 @@ public interface PersistenceServiceInterface<T> {
         return resolved;
     }
 
+    default boolean shouldLoadFile(Path path) {
+        String name = path.getFileName().toString();
+        return name.endsWith(".json") && !name.endsWith(".tmp")
+                && !name.endsWith(".tmp.json") && !name.endsWith(".deprecated");
+    }
+
     default List<T> loads() throws IOException {
         List<T> saveObjectList = new ArrayList<>();
         try (Stream<Path> paths = Files.list(getSaveDir())) {
-            List<File> fileList = paths.map(Path::toFile).filter(Predicate.not(File::isHidden))
+            List<File> fileList = paths.filter(this::shouldLoadFile).map(Path::toFile)
+                    .filter(Predicate.not(File::isHidden))
                     .peek(file -> getLogger().info("Load file : {}", file.getAbsolutePath())).toList();
             for (File file : fileList)
                 saveObjectList.add(convertTo(OBJECT_MAPPER.readValue(file, MAP_TYPE_REFERENCE)));

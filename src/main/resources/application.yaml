@@ -15,7 +15,6 @@ spring:
       max-request-size: 20MB
   application:
     name: spring-ai-playground
-    default-tool-location: classpath:default-tool-specs.json
   profiles:
     default: ollama
   ai:
@@ -28,31 +27,41 @@ spring:
         speech: none
         transcription: none
     playground:
+      default-tool-location: "classpath*:default-tool-specs*.json"
       tool-studio:
         timeout-seconds: 30
+        fs:
+          base-path: ${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}
         js-sandbox:
-          allow-network-io: true
+          allow-network-io: false
           allow-file-io: false
           allow-native-access: false
           allow-create-thread: false
           max-statements: 500000
+          # Classes/packages user JS must never access. Evaluated before allow-classes — deny ALWAYS wins.
+          # Removing entries lowers sandbox security; keep defaults unless you know what you are doing.
+          deny-classes:
+            - java.lang.System              # env vars, System.exit, etc.
+            - java.lang.Runtime             # exec / halt
+            - java.lang.ProcessBuilder      # spawn external processes
+            - java.lang.Process             # ProcessBuilder result
+            - java.lang.Class               # Class.forName bypass
+            - java.lang.invoke.*            # MethodHandle and dynamic dispatch
+            - java.lang.reflect.*           # Method.invoke and reflection
+            - java.lang.Thread              # thread spawn (allow-create-thread:false also guards runtime)
+            - java.lang.ThreadGroup         # thread group manipulation
+            - java.lang.ClassLoader         # defineClass — sandbox escape vector
+            - java.util.ServiceLoader       # SPI load — instantiates arbitrary classes from classpath
+            - java.util.spi.*               # Service Provider Interface — same risk
           allow-classes:
-            # Completely safe core packages — strongly recommended to allow entirely
-            - java.lang.*                  # String, StringBuilder, System.getProperty, etc. (basic utilities)
-            - java.math.*                  # BigDecimal, BigInteger, etc. (mathematical calculations)
-            - java.time.*                  # Instant, Duration, ZonedDateTime, etc. (date/time handling)
-            - java.util.*                  # List, Map, Set, UUID, Base64, Collections, etc. (collections and utilities)
-            - java.text.*                  # DateFormat, NumberFormat, etc. (formatting utilities)
-            - java.net.*                   # URL, HttpURLConnection, URI, URLEncoder, etc.
-            # I/O streams — used for handling network responses (safe because allowIO(false) blocks file access)
-            - java.io.*
-            # HttpClient
-            - java.net.http.HttpClient
-            - java.net.http.HttpRequest
-            - java.net.http.HttpResponse
-            - java.net.http.HttpHeaders
-            # HTML parsing library — currently used in examples
-            - org.jsoup.*
+            # Safe core packages — pure compute, no I/O capability
+            - java.lang.*                  # String, StringBuilder, System.getProperty, etc.
+            - java.math.*                  # BigDecimal, BigInteger, etc.
+            - java.time.*                  # Instant, Duration, ZonedDateTime, etc.
+            - java.util.*                  # List, Map, Set, UUID, Base64, Collections, etc.
+            - java.text.*                  # DateFormat, NumberFormat, etc.
+            # network / fs / parser classes removed — use built-in `fetch`, `safety.fs`, `safety.parser.*`
+            # tools needing raw Java network/fs must opt in via per-tool `addAllowClasses` (raises L4–L5).
 
       user-home: ${user.home}
       chat:

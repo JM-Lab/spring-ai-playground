@@ -1,4 +1,4 @@
-Description: Install Spring AI Playground, use the desktop launcher, configure Ollama or OpenAI, manage Ollama models and secrets, and launch the app, Docker image, or local source build.
+Description: Install Spring AI Playground via desktop launcher, Docker, or source — configure Ollama / OpenAI, manage secrets, curate default MCP tools.
 
 # Getting Started
 
@@ -97,9 +97,35 @@ That behavior is reflected in the desktop UI:
 
 This makes it much easier to keep multiple clean launch profiles without hand-managing full runtime configuration files.
 
+## Default MCP Tools Curation
+
+Preset selection for the built-in MCP server happens **inside the configuration editor**. The first launch opens Configure Spring AI Playground (the walkthrough below); pick a preset on the **Default MCP Tools** card before clicking Save and Launch and that choice is written to `<home>/spring-ai-playground/tool/save/default-tools-preference.json`. Without an explicit pick the app falls back to `Starter 5` — the cross-locale defaults that need no API keys.
+
+![Default MCP Tools card on the configuration editor — collapsed view: TOOLS EXPOSED line shows the active preset (Starter 5 · 5 of 86 tools) + per-tool chips, a preset dropdown, and an Advanced curation section with a Show toggle](assets/images/launcher/launcher-default-tools-card.png)
+*The Default MCP Tools card, collapsed — preset chooser with the active preset's tools listed as chips. `Advanced curation` is folded by default.*
+
+The card and Tool Studio's **Tool MCP Server Setting drawer** (toolbox icon, available once the app is running) write to the same `default-tools-preference.json` file. Two surfaces, one source of truth.
+
+The five presets:
+
+- `Starter 5` (default, no API keys) — `getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`.
+- `Dev Essentials` — local dev utilities (`uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract`) plus `getCurrentTime` and `evalExpression`.
+- `Korea Toolkit (free)` — free Korean services (Upbit, Bithumb, iTunes K-pop, K-beauty search) plus `getCurrentTime` and `evalExpression`.
+- `File Toolkit` — filesystem pipeline (`readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields`) plus `getCurrentTime` and `evalExpression`. Set `TOOL_STUDIO_FS_BASE` to pin a custom workspace root.
+- `Everything` — exposes every default tool. Heavy MCP catalog.
+
+The non-Starter presets each carry only `getCurrentTime` and `evalExpression` from Starter 5 by design — they do not stack on top of it.
+
+Clicking **Advanced curation → Show** expands an Include / Exclude pair that mirrors Tool Studio's **Tool MCP Server Setting** drawer: add tools by tag, by category, or by name; remove tools by tag or by name. The chip pickers populate from the live catalog when the section opens (a brief flash of `Loading…` is normal — that's the IPC fetch).
+
+![Default MCP Tools card with Advanced curation expanded — two columns (Include / Exclude) with By tag chips, By category chips, and a By name picker on each side](assets/images/launcher/launcher-default-tools-card-expanded.png)
+*The same card with `Advanced curation` expanded — Include (`+`) on the left adds tools matching any rule; Exclude (`−`) on the right removes them. Rules layer in this order: name-add → tag-add → category-add → name-remove → tag-remove → category-remove.*
+
+For the full preset contents, the CLI override, and the migration note from the prior `defaultToolOverrides.json`, see [Tool Studio → Pre-built Example Tools](features/tool-studio.md#pre-built-example-tools).
+
 ## Desktop Configuration Walkthrough
 
-The first desktop launch opens **Configure Spring AI Playground**. Later launches reuse the selected saved setting automatically.
+The launcher's **Configure Spring AI Playground** screen opens on the very first launch and any later launch where you re-enter configuration mode. Once you have saved a configuration and chosen a preset, subsequent launches reuse them automatically and skip straight to the app.
 
 ### 1. Read the Setup Notes First
 
@@ -129,41 +155,50 @@ This selector changes the kind of starter setting you are working with. It does 
 
 ### 3. Choose a Saved Setting
 
-`Setting Name` selects a saved launcher profile for the chosen config type.
+??? note "Show details"
 
-![OpenAI-Compatible starter profiles](assets/images/launcher/launcher-openai-compatible-card.png)
 
-In the current desktop build:
+    `Setting Name` selects a saved launcher profile for the chosen config type.
 
-- `Ollama` starts with the built-in `Ollama` setting
-- `OpenAI` starts with the built-in `OpenAI` setting
-- `OpenAI-Compatible` starts with built-in compatible profiles such as `OpenAI Compatible - Ollama`, `OpenAI Compatible - llama.cpp`, `OpenAI Compatible - TabbyAPI`, `OpenAI Compatible - LM Studio`, and `OpenAI Compatible - vLLM`
+    ![OpenAI-Compatible starter profiles](assets/images/launcher/launcher-openai-compatible-card.png)
 
-`OpenAI-Compatible` is intended for servers that expose an OpenAI-style API but are not the official OpenAI endpoint.
+    In the current desktop build:
+
+    - `Ollama` starts with the built-in `Ollama` setting
+    - `OpenAI` starts with the built-in `OpenAI` setting
+    - `OpenAI-Compatible` starts with built-in compatible profiles such as `OpenAI Compatible - Ollama`, `OpenAI Compatible - llama.cpp`, `OpenAI Compatible - TabbyAPI`, `OpenAI Compatible - LM Studio`, and `OpenAI Compatible - vLLM`
+
+    `OpenAI-Compatible` is intended for servers that expose an OpenAI-style API but are not the official OpenAI endpoint.
 
 ### 4. Save, Clone, Delete, or Reset Settings
 
-The launcher lets you manage settings without editing the bundled base configuration directly.
+??? note "Show details"
 
-- `Save As` creates a new saved setting from the current YAML and launcher state
-- `Delete` removes the current saved setting
-- `Export` writes a portable config bundle
-- `Import` loads a previously exported bundle
-- `Factory Reset` deletes all saved configs, profiles, and stored API keys, then restarts the launcher
-- `Save` stores the current launcher state without starting the app
-- `Save and Launch` saves first, then starts Spring AI Playground
 
-Config export intentionally leaves out local environment-variable values for safety.
+    The launcher lets you manage settings without editing the bundled base configuration directly.
+
+    - `Save As` creates a new saved setting from the current YAML and launcher state
+    - `Delete` removes the current saved setting
+    - `Export` writes a portable config bundle
+    - `Import` loads a previously exported bundle
+    - `Factory Reset` deletes all saved configs, profiles, and stored API keys, then restarts the launcher
+    - `Save` stores the current launcher state without starting the app
+    - `Save and Launch` saves first, then starts Spring AI Playground
+
+    Config export intentionally leaves out local environment-variable values for safety.
 
 ### 5. Edit Only the Override YAML
 
-The YAML editor is intentionally scoped to override content, not the full base file. At launch, the selected YAML is merged on top of the bundled default configuration.
+??? note "Show details"
 
-That design keeps the common configuration flow simpler:
 
-- keep a stable bundled default
-- store only what differs for this setting
-- switch between clean launch profiles quickly
+    The YAML editor is intentionally scoped to override content, not the full base file. At launch, the selected YAML is merged on top of the bundled default configuration.
+
+    That design keeps the common configuration flow simpler:
+
+    - keep a stable bundled default
+    - store only what differs for this setting
+    - switch between clean launch profiles quickly
 
 ### 6. Understand the Ollama Startup Card
 
@@ -189,45 +224,64 @@ This section is currently shown for the `Ollama` config type. Even if an `OpenAI
 
 ### 7. Use Environment Variables for Keys and Secrets
 
-When the selected setting or bundled tools need secrets, the launcher shows an **Environment Variables** section. This is where you keep API keys and tool secrets out of YAML.
+??? note "Show details"
 
-![Environment variables card](assets/images/launcher/launcher-env-card.png)
 
-Typical entries include:
+    When the selected setting or bundled tools need secrets, the launcher shows an **Environment Variables** section. This is where you keep API keys and tool secrets out of YAML.
 
-- `OPENAI_API_KEY`
-- `GOOGLE_API_KEY`
-- `PSE_ID`
-- `SLACK_WEBHOOK_URL`
-- custom variables added with `Add Environment Variable`
+    ![Environment variables card](assets/images/launcher/launcher-env-card.png)
 
-The launcher behavior is important here:
+    Typical entries include:
 
-- values are stored per saved setting
-- values are exported only for the app launch process
-- values are not meant to be written into the YAML override
-- the UI can list both backend-required keys and optional tool-related keys
+    - `OPENAI_API_KEY`
+    - `GOOGLE_API_KEY`
+    - `PSE_ID`
+    - `SLACK_WEBHOOK_URL`
+    - custom variables added with `Add Environment Variable`
 
-The card also shows the current secret-storage mode. When Electron `safeStorage` is available, the launcher stores secrets encrypted at rest and exports them only as environment variables during launch.
+    The launcher behavior is important here:
 
-For the current desktop behavior:
+    - values are stored per saved setting
+    - values are exported only for the app launch process
+    - values are not meant to be written into the YAML override
+    - the UI can list both backend-required keys and optional tool-related keys
 
-- `OpenAI` requires `OPENAI_API_KEY` before launch
-- `OpenAI-Compatible` can show an API key field, but it is only needed when that compatible server expects one
-- `Ollama` usually does not require an API key for the backend itself, but optional tool integrations may still use environment variables
+    The card also shows the current **secret-storage mode**:
+
+    - **Encrypted by your OS secure storage** — Electron's `safeStorage` API is using the platform secure store under the hood: **macOS Keychain**, **Windows DPAPI** (current-user scope), or **libsecret / GNOME Keyring / KWallet** on Linux. The launcher writes the ciphertext to `<userData>/spring-ai-playground/config/secrets.store` on disk; the decryption key never leaves the OS keychain.
+    - **OS-backed encryption unavailable — stored as plain text in this session** — fallback when no platform secure store is reachable (typical on bare Linux without a keyring daemon, or in some sandboxed Linux containers). The same file is written in plain JSON so values still survive the launch, but they are no longer encrypted at rest.
+
+    The launcher's secret workflow is the same in both modes:
+
+    - values are stored **per saved setting** (`configId` keyed)
+    - values are **exported only as environment variables to the launched Spring AI Playground JVM** — they never get written into the YAML override or into chat history
+    - the secrets file is rewritten on every save; a legacy `secrets.json.enc` from older versions is auto-renamed to `secrets.store` on first read
+
+    This is why the env-var pathway is the recommended place for `OPENAI_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_API_KEY`, and any other tool-side secret — the value reaches `Tool Studio` and the bundled tools through `System.getenv()` rather than through a config file checked into git.
+
+    **The resolved value is also masked from `console.log` output** in Tool Studio's Debug Console and in Agentic Chat's tool-call trace — any tool that references the env var as a static variable (or builds a string containing its resolved value) sees the secret substring replaced before the line surfaces in the UI. See [Tool Studio → Built-in JavaScript Helpers — `console.log`](features/tool-studio.md#built-in-javascript-helpers) for the masking rule details (anchored full-string env-refs are auto-collected; substring-concatenated values are masked best-effort).
+
+    For the current desktop behavior:
+
+    - `OpenAI` requires `OPENAI_API_KEY` before launch
+    - `OpenAI-Compatible` can show an API key field, but it is only needed when that compatible server expects one
+    - `Ollama` usually does not require an API key for the backend itself, but optional tool integrations may still use environment variables
 
 ### 8. Set JVM and App Args Only When Needed
 
-The desktop editor also includes a **JVM Settings** section for launch-time runtime options.
+??? note "Show details"
 
-![JVM settings and launch actions](assets/images/launcher/launcher-jvm-footer.png)
 
-That section includes:
+    The desktop editor also includes a **JVM Settings** section for launch-time runtime options.
 
-- JVM options such as `-Xmx2g`
-- application args such as `--logging.level.root=INFO`
+    ![JVM settings and launch actions](assets/images/launcher/launcher-jvm-footer.png)
 
-These are launch-time settings, not provider secrets.
+    That section includes:
+
+    - JVM options such as `-Xmx2g`
+    - application args such as `--logging.level.root=INFO`
+
+    These are launch-time settings, not provider secrets.
 
 ### 9. Recommended First-Launch Flow
 
@@ -241,25 +295,28 @@ For a clean first launch:
 
 ### 10. What You See After Save and Launch
 
-After you click `Save and Launch`, the launcher opens a separate startup window while Spring AI Playground boots in the background.
+??? note "Show details"
 
-![Spring AI Playground launcher startup screen](assets/images/launcher-springai.png)
 
-That startup window shows:
+    After you click `Save and Launch`, the launcher opens a separate startup window while Spring AI Playground boots in the background.
 
-- `Current Config`: the saved setting being launched
-- `Config File`: the resolved YAML file path used for this launch
-- `Final Launch Command`: the full Java command the launcher built for Spring AI Playground
-- `Launch Log`: live startup output, including Ollama checks, config resolution, and server readiness messages
+    ![Spring AI Playground launcher startup screen](assets/images/launcher-springai.png)
 
-The action row also includes:
+    That startup window shows:
 
-- `Back to Settings`: stops the current launch and returns to the configuration screen
-- `Auto-copy launch logs to clipboard`: keeps launch logs copied automatically while the app starts
-- `Retry Check`: reruns readiness checks if startup is taking longer than expected
-- `Quit`: stops the launch and closes the launcher
+    - `Current Config`: the saved setting being launched
+    - `Config File`: the resolved YAML file path used for this launch
+    - `Final Launch Command`: the full Java command the launcher built for Spring AI Playground
+    - `Launch Log`: live startup output, including Ollama checks, config resolution, and server readiness messages
 
-If startup takes longer than expected, the launcher stays open and keeps streaming logs instead of failing immediately. This is especially helpful when local models are still warming up or downloads are still completing.
+    The action row also includes:
+
+    - `Back to Settings`: stops the current launch and returns to the configuration screen
+    - `Auto-copy launch logs to clipboard`: keeps launch logs copied automatically while the app starts
+    - `Retry Check`: reruns readiness checks if startup is taking longer than expected
+    - `Quit`: stops the launch and closes the launcher
+
+    If startup takes longer than expected, the launcher stays open and keeps streaming logs instead of failing immediately. This is especially helpful when local models are still warming up or downloads are still completing.
 
 ### 11. Download and Manage Ollama Models
 
@@ -315,10 +372,10 @@ Once the app is running, the **Home** screen shows a live checklist that mirrors
 ![Getting started checklist on the Home screen](assets/images/home-getting-started.png)
 
 1. **Configure a model provider** — Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider — recheck the launcher config or env vars.
-2. **Start a chat** — Agentic Chat is ready the moment a provider is connected. The app ships with seven built-in tools (`getWeather`, `sendSlackMessage`, `googlePseSearch`, `buildGoogleCalendarCreateLink`, `extractPageContent`, `getCurrentTime`, `openaiResponseGenerator`), so you can test end-to-end without writing any code.
+2. **Start a chat** — Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 86-tool bundled catalog you can opt into through Tool Studio's **Tool MCP Server Setting** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
 3. **Upload a document for RAG** — Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
-4. **Create your first tool** — Open Tool Studio, write a small JavaScript function, and define its sample arguments. Run it locally: if it passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
-5. **Try an agentic workflow** — Ask the assistant: *"Get today's weather and send it to Slack."* This exercises two built-in tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
+4. **Create your first tool** — Open Tool Studio, write a small JavaScript function, and define its sample arguments. A new tool starts as a **Draft** — invisible to MCP and to chat. Run it locally: if the test passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
+5. **Try an agentic workflow** — Ask the assistant: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
 
 > Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking…" or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
 
@@ -343,13 +400,13 @@ Every installer has a matching `.sha256` file in the release assets. Compare the
 macOS / Linux:
 
 ```bash
-shasum -a 256 -c spring-ai-playground-0.2.0-M4-mac-arm64.dmg.sha256
+shasum -a 256 -c spring-ai-playground-0.2.0-M6-mac-arm64.dmg.sha256
 ```
 
 Windows (PowerShell):
 
 ```powershell
-Get-FileHash spring-ai-playground-0.2.0-M4-win-x64.exe -Algorithm SHA256
+Get-FileHash spring-ai-playground-0.2.0-M6-win-x64.exe -Algorithm SHA256
 # then compare the value with the one inside the .sha256 file
 ```
 
@@ -358,7 +415,7 @@ Get-FileHash spring-ai-playground-0.2.0-M4-win-x64.exe -Algorithm SHA256
 Every installer is signed at build time by the official GitHub Actions release workflow using a short-lived Sigstore key, and the attestation is recorded in the public transparency log. The [GitHub CLI](https://cli.github.com/) can verify the file came from this repo's release workflow:
 
 ```bash
-gh attestation verify spring-ai-playground-0.2.0-M4-mac-arm64.dmg \
+gh attestation verify spring-ai-playground-0.2.0-M6-mac-arm64.dmg \
   --owner spring-ai-community
 ```
 
@@ -386,7 +443,7 @@ ollama pull gemma4
 ollama pull qwen3-embedding:0.6b
 ```
 
-`qwen3.5` is the recommended chat model for tool-calling and the [Tutorials](tutorials.md). Pull `gemma4` as well if you want a stronger natural-language alternative for longer tool chains.
+`qwen3.5` is the recommended chat model for tool-calling and the [Tutorials](tutorials/index.md). Pull `gemma4` as well if you want a stronger natural-language alternative for longer tool chains.
 
 ### If You Use OpenAI Instead of Ollama
 
@@ -478,7 +535,7 @@ The `-v spring-ai-playground:/root` named volume keeps authored tools, saved too
 
 Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel — the web UI runs in the same process either way; the port mapping just exposes it. Pick a different host port (e.g. `-p 9000:8282`) if 8282 is in use.
 
-The container ships with the gateway and authoring UI on, but **built-in tools and built-in MCP servers stay dormant until you set their per-tool credentials as environment variables**. Pass them with `-e NAME=value` flags on the same `docker run` line — the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PSE_ID`, `SLACK_WEBHOOK_URL`, …) are listed in [Use Environment Variables for Keys and Secrets](#7-use-environment-variables-for-keys-and-secrets); each is optional and only enables the matching tool.
+The container ships with the gateway and authoring UI on. The **Starter 5** preset has no required credentials and works out of the box; other presets and individual catalog tools stay dormant until you supply the matching environment variables. Pass them with `-e NAME=value` flags on the same `docker run` line — the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PSE_ID`, `SLACK_WEBHOOK_URL`, …) are listed in [Use Environment Variables for Keys and Secrets](#7-use-environment-variables-for-keys-and-secrets). The File Toolkit preset additionally honors `TOOL_STUDIO_FS_BASE` to set the base path for `safety.fs`; if unset it defaults to the container's `$HOME` (typically `/root`).
 
 The `mcp-stdio` profile silences the CONSOLE log appender so stdout stays a clean JSON-RPC channel; rolling-file logs at `~/spring-ai-playground/logs/` are unaffected.
 
@@ -525,7 +582,7 @@ For Claude Desktop, point `claude_desktop_config.json` at the absolute JAR path:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/spring-ai-playground-0.2.0-M5.jar",
+        "/absolute/path/to/spring-ai-playground-0.2.0-M6.jar",
         "--spring.profiles.include=mcp-stdio"
       ]
     }
@@ -748,8 +805,8 @@ If you change the embedding model after documents have already been indexed, exi
 
 After the app is running and the model backend is configured:
 
-1. read [Features](features.md) to understand the product structure
-2. follow [Tutorials](tutorials.md) to create tools, connect MCP servers, register knowledge, and run Agentic Chat with tools and RAG
+1. read [Features](features/index.md) to understand the product structure
+2. follow [Tutorials](tutorials/index.md) to create tools, connect MCP servers, register knowledge, and run Agentic Chat with tools and RAG
 
 ## Anonymous Usage Telemetry
 
@@ -771,5 +828,5 @@ For more details, see the [README](https://github.com/spring-ai-community/spring
 
 - [Overview](index.md): see the product positioning, quick start path, and documentation map
 - [Architecture](architecture.md): runtime layers, data flows, and extension points
-- [Features](features.md): the main product areas and what they do
-- [Tutorials](tutorials.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat
+- [Features](features/index.md): the main product areas and what they do
+- [Tutorials](tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat

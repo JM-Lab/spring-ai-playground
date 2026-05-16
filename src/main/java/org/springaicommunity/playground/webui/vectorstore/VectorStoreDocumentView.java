@@ -68,6 +68,7 @@ public class VectorStoreDocumentView extends WorkspaceSidebar implements BeforeE
         addHeaderIcon(VaadinIcon.PENCIL, "Rename", e -> renameDocument());
 
         this.documentListBox = new MultiSelectListBox<>();
+        this.documentListBox.addClassName("custom-list-box");
         this.documentListBox.setSizeFull();
         this.documentListBox.getStyle().set("overflow-x", "hidden").set("white-space", "nowrap");
         this.documentListBox.setRenderer(new ComponentRenderer<>(documentInfo -> {

@@ -104,6 +104,7 @@ public class McpServerConnectionView extends WorkspaceSidebar implements BeforeE
             ListBox<McpServerInfo> mcpServerInfoListBox = buildMcpServerInfoListBox();
             this.mcpServerInfoListBoxMap.put(mcpTransportType, mcpServerInfoListBox);
             Details details = new Details(mcpTransportType.name().replace('_', ' '), mcpServerInfoListBox);
+            details.addClassName("workspace-sidebar-details");
             details.setOpened(true);
             detailsLayout.add(details);
         }

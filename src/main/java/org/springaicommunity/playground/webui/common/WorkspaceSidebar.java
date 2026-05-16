@@ -81,6 +81,10 @@ public abstract class WorkspaceSidebar extends VerticalLayout {
         return this.headerMenuBar.addItem(iconInstance, listener);
     }
 
+    protected void setSidebarTitle(String title) {
+        this.titleSpan.setText(title);
+    }
+
     protected void setSidebarContent(Component content) {
         this.contentSlot.removeAll();
         if (content != null) {

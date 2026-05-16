@@ -36,7 +36,8 @@ public class SecurityConfig {
     SecurityFilterChain mcpClientSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/mcp", "/mcp/**", "/sse", "/sse/**", "/actuator/**",
-                        "/oauth2/authorization/**", "/login/oauth2/code/**")
+                        "/oauth2/authorization/**", "/login/oauth2/code/**",
+                        "/ace-builds/**")
                 .permitAll());
 
         http.csrf(csrf -> csrf.disable());

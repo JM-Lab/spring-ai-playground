@@ -9,6 +9,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Local speech-to-text mic in Agentic Chat — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
+- Developer-facing **Observability dashboards** — Micrometer-backed collector with MDC + scheduled samplers, ring-buffer + time-series data store with disk mirror and pricing inputs, ECharts dashboard shell with sidebar nav, and per-area surfaces (Overview, Tokens & Cost, Models, Tools, MCP, Vector, System, Logs, Traces).
+- **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
+- **Vendor-official remote MCP server catalog** — curated list of remote MCP servers grouped by category in a sidebar, with env-gated activation so only entries whose required env vars are set become enabled.
+
+## [0.2.0-M6]
+
+### Added
+
+- Bundled **default-tool catalog of 86 tools** split across five JSON source files (`default-tool-specs.json`, `default-tool-specs-builtin.json`, `default-tool-specs-builtin-helpers.json`, `default-tool-specs-builtin-fs.json`, `default-tool-specs-network.json`, `default-tool-specs-kr.json`) loaded via wildcard `classpath*:default-tool-specs*.json`. Categories: Text & Strings, Data Formats, Date & Time, Math & Compute, Encoding, Crypto & Random, Security, Files, Web (global + Korea), Productivity, Messaging, AI APIs.
+- **`DefaultToolPresetCatalog` + preset/preference resolver** picking which slice of the bundled catalog the built-in MCP server exposes. Five presets shipped: `Starter 5` (default, no setup), `Dev Essentials`, `Korea Toolkit (free)`, `File Toolkit`, `Everything`. `DefaultToolsPreferenceService` layers per-tool include / exclude rules (by tag / category / name) on top of the chosen preset and persists to `~/spring-ai-playground/tool/save/default-tools-preference.json`. CLI override resolvable through `defaultToolsPreferenceResolver`.
+- **Tool MCP Server Setting drawer** in Tool Studio (toolbox icon) — single surface for what the built-in MCP server exposes. Three sections: **Tools exposed** chip summary, **Custom tools (you created)** with auto-add toggle + Manually exposed combo, **Default tools (built-in)** with Preset radio and Advanced curation (include / exclude rules). Writes to the same `default-tools-preference.json` file as the desktop launcher.
+- **Desktop launcher Default MCP Tools card** in the config editor — preset chooser with active-preset chip preview + collapsible Advanced curation block (include / exclude by tag / category / name). Edits the same `default-tools-preference.json` as Tool Studio's drawer.
+- **Tool Studio Draft state + MCP exposure gate**: a new or unverified tool sits in the **Drafts** section and is **not** registered with the built-in MCP server. A Local Pass flips the `McpToolDefinition` exposure flag and `ToolActivationCalculator` registers the callback with `McpSyncServer` live (no restart). Tool Studio sidebar surfaces Drafts and Local Pass panels separately.
+- **`McpToolDefinition` record + `ToolManifest` envelope** for every published tool — manifest hash, code hash, runtime helpers list, sandbox risk level, audit timestamps, integrity hashes, optional signature.
+- **Per-tool sandbox capability overrides** via `EffectivePolicyResolver` — `addAllowClasses`, `addAllowedHosts`, `egressLevel` (`strict` / `allowlist` / `custom` / `permissive`), `fileRead` / `fileWrite`, `fsBasePath`. Exposed in the **Sandbox & Capabilities** pane with a visible per-tool **Risk Level** badge (L0–L5) computed by `SandboxPostureCalculator`.
+- **Tool Studio per-tool surface** — category-grouped sidebar (backed by `ToolCategoryCatalog` + `ChipListBinding`) with chip filters across cohort tags (`korea`, `example`, `util`, `pipeline`, `github`, `search`, `finance`, `weather`, `geo`).
+- **Tier 1 built-in JavaScript helpers** (registered through `JsRuntimeGlobals`):
+  - `fetch` with a 4-layer SSRF guard — scheme allowlist, literal-IP check, DNS resolve check, and per-tool egress policy. 5 redirect cap, 10 MB body cap, 30 s timeout, 5 s connect timeout. Restricted hop-by-hop headers stripped before sending; 303 redirects downgrade `POST → GET`. Response paging via `init.maxLength` / `init.startIndex`. Backed by `SafeHttpFetch`.
+  - `URL`, `URLSearchParams`, `atob`, `btoa`, and `crypto.subtle` (digest / sign / verify / `getRandomValues`).
+- **Tier 2 built-in JavaScript helpers**:
+  - `safety.fs` — `readText`, `writeText`, `list`, `stat`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find`. All paths resolved against `tool-studio.fs.base-path` and rejected on escape. Backed by `SafeFs`.
+  - `safety.parser.{html,yaml,csv,xml}` — strict, non-instantiating parsers (HTML via jsoup, XML via XXE-hardened `javax.xml.parsers`, YAML via SnakeYAML, CSV via Apache Commons CSV) exposed without leaking host classes to user code.
+- **`JsHelperException`** for structured helper errors (security / invalid-input / helper-runtime) plus an executor-level error classifier so JS-side failures surface consistently on both the Test Run path and the MCP path.
+- **Tool execution observability** — per-execution `tool.exec.start` / `tool.exec.done` / `tool.exec.crash` log lines with correlation id, risk level, capability summary, allowed hosts, fs base path, masked params, and `durationMs`. Env-backed static-variable values are masked from the params summary before logging.
+- **Spring AI MCP client capability surface** expanded with an in-memory notification store and loopback safety so the embedded tool MCP server can co-host with the loopback `spring-ai-playground-tool-mcp` client on the same JVM without race conditions.
+
+### Changed
+
+- **Default sandbox posture is now deny-first**:
+  - `allow-network-io` defaults to `false` (was `true`).
+  - `allow-classes` shrunk to pure-compute packages only (`java.lang/math/time/util/text.*`). `java.net.*`, `java.io.*`, `java.net.http.*`, `org.jsoup.*` are no longer reachable directly.
+  - New `deny-classes` list (evaluated before allow-classes; deny always wins) covers `System`, `Runtime`, `ProcessBuilder`, `Process`, `Class`, `java.lang.invoke.*`, `java.lang.reflect.*`, `Thread`, `ThreadGroup`, `ClassLoader`, `ServiceLoader`, `java.util.spi.*` — closing reflection / SPI / process-spawn escape vectors.
+  - `tool-studio.fs.base-path` introduced for `safety.fs`, defaulting to `${TOOL_STUDIO_FS_BASE:${user.home}}`.
+- `default-tool-location` moved under `spring.ai.playground` and switched to wildcard `classpath*:default-tool-specs*.json` so the bundled catalog can ship as multiple JSON files without code changes.
+- Tool taxonomy refactored to a tool-centric category model (`ToolCategoryCatalog`, `ToolCategory` taxonomy). Sidebar grouped by category and filterable with chips.
+- Tool studio view extracted (`SandboxCapabilitiesView`, `ToolMcpServerSettingView`) and polished alongside Electron window chrome and chat send affordances.
+- `JsToolExecutor` and its helpers moved to `service/tool/runtime/`; policy code lives under `service/tool/policy/`.
+- Env-var fail-fast hoisted into Java (drop JS-side `ensureResolved`) so a tool with an unresolved `${ENV_VAR}` placeholder fails at registration / load time instead of inside the JS sandbox.
+- Strict network mode now rehydrates sandbox overrides on tool edit so capability changes (e.g. switching `egressLevel` from `strict` to `allowlist`) are reflected in the next test run without restarting Tool Studio.
+
+### Fixed
+
+- Surface JS errors on the MCP path consistently with the Test Run path; correctly materialise `Map` / `List` parameters from MCP JSON.
+- Scope **Manually exposed tools** combo in the Tool MCP Server Setting drawer to custom-authored tools only — the 86 bundled default tools are managed through the Preset / Advanced curation block above and no longer leak into this combo.
+
+### Security
+
+- Network access from tool JS goes through a single reviewable choke point (`fetch` → `SafeHttpFetch`). Strict mode rejects loopback / link-local / site-local / any-local / multicast / IPv6 ULA / CGNAT addresses both as literals and after DNS resolution.
+- `safety.fs` enforces a base-path jail; any path that resolves outside `tool-studio.fs.base-path` is rejected before any I/O.
+- Environment-backed static variables are masked in `console.log` output, in the Test Run debug pane, and in `tool.exec.*` observability log lines.
+- `deny-classes` evaluation order (deny before allow) closes reflection / `invoke` / `ClassLoader` / `ServiceLoader` / `Thread` / `Process` escape vectors that a permissive allow-list could otherwise re-open per tool.
+
+### Documentation
+
+- Docs site restructured to a per-page surface: **Features** (`tool-studio`, `mcp-server`, `vector-database`, `agentic-chat`) and **Tutorials** (1–8 individually) replace the previous monolithic `features.md` / `tutorials.md`.
+- New **Default Tools** reference set under `docs/features/default-tools/` — index + Examples / Utilities / Filesystem / Global / Korea pages, each with per-tool cards (params, env vars, sandbox risk level, JS source), a Keys & secrets footer (issuance URLs for every required key including the eight-service `data.go.kr` keychain), and shared composition-pattern guidance.
+- New **AI Agent Tool Safety Architecture** page (`docs/safety-architecture.md`) — defense-in-depth sandbox model, policy resolution, per-execution enforcement, Risk Level decision matrix, threat-to-layer mapping, known limitations, configuration reference.
+- New **Tutorial 8: Default Tool Recipes** walks composition patterns (search → summarise, fetch → notify, time + calendar, cross-exchange spread, disaster → Slack, etc.) end-to-end.
+- README and Home updated for the 86-default-tool blurb, version refs `M4` → `M6`, and the Default MCP Tools curation entry-point.
 
 ## [0.2.0-M5] - 2026-05-06
 

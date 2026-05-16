@@ -1,0 +1,589 @@
+[
+  {
+    "toolId": "e30d037d-20cf-55f2-b43a-1b89560417da",
+    "name": "base64",
+    "description": "Encodes UTF-8 text to base64, or decodes base64 back to UTF-8 text. Use mode='encode' (default) or 'decode'. URL-safe variant via urlSafe=true.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to encode/decode",
+        "required": true,
+        "type": "STRING",
+        "testValue": "hello world"
+      },
+      {
+        "name": "mode",
+        "description": "encode | decode",
+        "required": false,
+        "type": "STRING",
+        "testValue": "encode"
+      },
+      {
+        "name": "urlSafe",
+        "description": "Use URL-safe alphabet (- _ instead of + /)",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "false"
+      }
+    ],
+    "code": "/**\n * Base64 encode / decode of UTF-8 text.\n *\n * - `mode='encode'` (default) — UTF-8 text → base64 string.\n * - `mode='decode'`           — base64 string → UTF-8 text.\n * - `urlSafe=true`            — emit/accept the URL-safe alphabet\n *                                (`-` `_` instead of `+` `/`, padding stripped).\n *\n * Uses host-injected btoa / atob and the standard TextEncoder / TextDecoder.\n */\n\nif (text == null) throw new Error('text required');\nconst m = (mode || 'encode').toLowerCase();\n\nif (m === 'encode') {\n  const bytes = new TextEncoder().encode(String(text));\n  // btoa expects a Latin-1 binary string — assemble it byte-by-byte.\n  let bin = '';\n  for (const b of bytes) bin += String.fromCharCode(b);\n  let b64 = btoa(bin);\n  if (urlSafe) b64 = b64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n  return b64;\n}\n\nif (m === 'decode') {\n  let s = String(text);\n  if (urlSafe) {\n    s = s.replace(/-/g, '+').replace(/_/g, '/');\n    const pad = s.length % 4; if (pad) s += '='.repeat(4 - pad);\n  }\n  const bin = atob(s);\n  const bytes = new Uint8Array(bin.length);\n  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);\n  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);\n}\n\nthrow new Error('mode must be encode or decode');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "ENCODING",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#encoding"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "ENCODING"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "d2668b77-85ca-5af8-8fe0-9045a725a0b6",
+    "name": "hex",
+    "description": "Encodes UTF-8 text to hex string, or decodes hex back to UTF-8 text. Use mode='encode' (default) or 'decode'.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to encode/decode",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Hello"
+      },
+      {
+        "name": "mode",
+        "description": "encode | decode",
+        "required": false,
+        "type": "STRING",
+        "testValue": "encode"
+      },
+      {
+        "name": "upperCase",
+        "description": "Use uppercase hex when encoding",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "false"
+      }
+    ],
+    "code": "/**\n * Hex encode / decode of UTF-8 text.\n *\n * - `mode='encode'` (default) — UTF-8 text → lowercase hex string.\n * - `mode='decode'`           — hex string → UTF-8 text.\n * - `upperCase=true`          — emit uppercase hex when encoding.\n *\n * Whitespace inside the hex input is ignored on decode.\n * Uses host TextEncoder / TextDecoder.\n */\n\nif (text == null) throw new Error('text required');\nconst m = (mode || 'encode').toLowerCase();\n\nif (m === 'encode') {\n  const bytes = new TextEncoder().encode(String(text));\n  let out = '';\n  for (const b of bytes) out += b.toString(16).padStart(2, '0');\n  return upperCase ? out.toUpperCase() : out;\n}\n\nif (m === 'decode') {\n  const s = String(text).replace(/\\s+/g, '');\n  if (s.length % 2 !== 0)       throw new Error('hex length must be even');\n  if (!/^[0-9a-fA-F]*$/.test(s)) throw new Error('invalid hex character');\n  const bytes = new Uint8Array(s.length / 2);\n  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(s.substr(i * 2, 2), 16);\n  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);\n}\n\nthrow new Error('mode must be encode or decode');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "ENCODING",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#encoding"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "ENCODING"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "c9167d2d-9c02-51a4-91f5-15370ac48524",
+    "name": "uuid",
+    "description": "Generates a cryptographically random UUID v4 string.",
+    "staticVariables": [],
+    "params": [],
+    "code": "/**\n * Generates a cryptographically random UUID v4.\n *\n * Uses the host-injected crypto.randomUUID() (no static seeding —\n * each call is unpredictable).\n */\n\nreturn crypto.randomUUID();\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "cbd82ade-2209-53af-9794-3fc54c141318",
+    "name": "hash",
+    "description": "Computes the cryptographic hash of UTF-8 text. Algorithms: SHA-256 (default), SHA-384, SHA-512. Returns lowercase hex.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to hash",
+        "required": true,
+        "type": "STRING",
+        "testValue": "hello world"
+      },
+      {
+        "name": "algorithm",
+        "description": "SHA-256 | SHA-384 | SHA-512",
+        "required": false,
+        "type": "STRING",
+        "testValue": "SHA-256"
+      }
+    ],
+    "code": "/**\n * Computes a cryptographic hash of UTF-8 text and returns lowercase hex.\n *\n * Supported algorithms:  SHA-256 (default), SHA-384, SHA-512.\n *\n * Uses the host-injected WebCrypto API (crypto.subtle.digest).\n */\n\nif (text == null) throw new Error('text required');\nconst alg = algorithm || 'SHA-256';\n\nconst bytes  = new TextEncoder().encode(String(text));\nconst digest = await crypto.subtle.digest(alg, bytes);\n\nconst arr = Array.isArray(digest) ? digest : Array.from(digest);\nreturn arr.map(b => (b & 0xff).toString(16).padStart(2, '0')).join('');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "3fc8212f-c808-5095-9907-a0c748cfbd6c",
+    "name": "hmac",
+    "description": "Computes an HMAC signature over UTF-8 text using a secret. Algorithms: SHA-256 (default), SHA-384, SHA-512. Returns lowercase hex.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "secret",
+        "description": "Secret key (UTF-8 string)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "my-shared-secret"
+      },
+      {
+        "name": "text",
+        "description": "Text to sign",
+        "required": true,
+        "type": "STRING",
+        "testValue": "hello world"
+      },
+      {
+        "name": "algorithm",
+        "description": "SHA-256 | SHA-384 | SHA-512",
+        "required": false,
+        "type": "STRING",
+        "testValue": "SHA-256"
+      }
+    ],
+    "code": "/**\n * Computes an HMAC over UTF-8 text using a shared secret. Returns lowercase hex.\n *\n * Supported HMAC hashes:  SHA-256 (default), SHA-384, SHA-512.\n *\n * Uses WebCrypto:  importKey('raw', …, HMAC) → sign('HMAC', key, data).\n */\n\nif (secret == null || secret === '') throw new Error('secret required');\nif (text   == null)                  throw new Error('text required');\nconst alg = algorithm || 'SHA-256';\n\nconst keyBytes = new TextEncoder().encode(String(secret));\nconst key = await crypto.subtle.importKey(\n  'raw', keyBytes, { name: 'HMAC', hash: alg }, false, ['sign']);\n\nconst sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(String(text)));\n\nconst arr = Array.isArray(sig) ? sig : Array.from(sig);\nreturn arr.map(b => (b & 0xff).toString(16).padStart(2, '0')).join('');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "cbaf4c83-b109-5d50-a0be-c0058abdba91",
+    "name": "secureRandom",
+    "description": "Generates cryptographically secure random bytes. encoding: 'hex' (default), 'base64', or 'base64url'.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "bytes",
+        "description": "Number of random bytes (default 16, max 4096)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "16"
+      },
+      {
+        "name": "encoding",
+        "description": "hex | base64 | base64url",
+        "required": false,
+        "type": "STRING",
+        "testValue": "hex"
+      }
+    ],
+    "code": "/**\n * Generates cryptographically secure random bytes.\n *\n * - `bytes`     — number of bytes (1..4096, default 16).\n * - `encoding`  — 'hex' (default), 'base64', or 'base64url'.\n *\n * Uses crypto.getRandomValues, which delegates to the OS CSPRNG.\n */\n\nconst n = bytes == null ? 16 : Number(bytes);\nif (!Number.isInteger(n) || n < 1 || n > 4096) throw new Error('bytes must be 1..4096');\n\nconst buf = new Uint8Array(n);\ncrypto.getRandomValues(buf);\n\nconst enc = (encoding || 'hex').toLowerCase();\nif (enc === 'hex') {\n  let out = '';\n  for (const b of buf) out += b.toString(16).padStart(2, '0');\n  return out;\n}\n\nlet bin = '';\nfor (const b of buf) bin += String.fromCharCode(b);\nlet b64 = btoa(bin);\nif (enc === 'base64url') b64 = b64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\nreturn b64;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "83f2a9dc-7860-59ff-8275-576adeec28e4",
+    "name": "passwordGenerate",
+    "description": "Generates a strong random password from selected character classes. Uses crypto.getRandomValues for unbiased selection.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "length",
+        "description": "Password length (default 16, min 4, max 256)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "20"
+      },
+      {
+        "name": "includeLowercase",
+        "description": "Include a-z",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      },
+      {
+        "name": "includeUppercase",
+        "description": "Include A-Z",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      },
+      {
+        "name": "includeDigits",
+        "description": "Include 0-9",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      },
+      {
+        "name": "includeSymbols",
+        "description": "Include ASCII punctuation",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      }
+    ],
+    "code": "/**\n * Generates a strong random password from selected character classes.\n *\n * Guarantees one character from EACH enabled class, then fills the rest\n * uniformly from the union and shuffles cryptographically. Uses unbiased\n * rejection sampling — no modulo bias.\n *\n * Defaults: length 16, classes lower/upper/digits enabled, symbols off.\n * Uses host crypto.getRandomValues.\n */\n\nconst len = length == null ? 16 : Number(length);\nif (!Number.isInteger(len) || len < 4 || len > 256) throw new Error('length must be 4..256');\n\nconst lo = 'abcdefghijklmnopqrstuvwxyz';\nconst up = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';\nconst di = '0123456789';\nconst sy = '!@#$%^&*()-_=+[]{};:,.<>/?';\n\nconst useLo = includeLowercase !== false;\nconst useUp = includeUppercase !== false;\nconst useDi = includeDigits    !== false;\nconst useSy = includeSymbols    === true;\n\nlet pool = '';\nif (useLo) pool += lo;\nif (useUp) pool += up;\nif (useDi) pool += di;\nif (useSy) pool += sy;\nif (pool.length === 0) throw new Error('at least one character class required');\n\nconst required = [];\nif (useLo) required.push(lo);\nif (useUp) required.push(up);\nif (useDi) required.push(di);\nif (useSy) required.push(sy);\n\n// Unbiased pick via rejection sampling on the high-resolution random pool.\nfunction pick(alphabet) {\n  const buf = new Uint32Array(1);\n  const max = Math.floor(0xFFFFFFFF / alphabet.length) * alphabet.length;\n  do { crypto.getRandomValues(buf); } while (buf[0] >= max);\n  return alphabet[buf[0] % alphabet.length];\n}\n\nconst chars = required.map(pick);\nwhile (chars.length < len) chars.push(pick(pool));\n\n// Fisher-Yates shuffle, also with rejection-sampled randomness.\nfor (let i = chars.length - 1; i > 0; i--) {\n  const buf = new Uint32Array(1);\n  const max = Math.floor(0xFFFFFFFF / (i + 1)) * (i + 1);\n  do { crypto.getRandomValues(buf); } while (buf[0] >= max);\n  const j = buf[0] % (i + 1);\n  [chars[i], chars[j]] = [chars[j], chars[i]];\n}\nreturn chars.join('');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "cb28dca2-04d3-5603-93d9-fbd00b8dfdaf",
+    "name": "jwtDecode",
+    "description": "Decodes a JWT without verifying its signature. Returns the header and payload as JSON, plus signaturePresent.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "token",
+        "description": "JWT compact form (header.payload.signature)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      }
+    ],
+    "code": "/**\n * Decodes a JWT (header + payload) WITHOUT verifying the signature.\n *\n * Returns:  { header, payload, signaturePresent }\n *\n * Use this for inspection only. To validate authenticity, pass the token\n * through `jwtVerify` with the shared secret.\n *\n * Uses host-injected atob + standard TextDecoder.\n */\n\nif (token == null || token === '') throw new Error('token required');\nconst parts = String(token).split('.');\nif (parts.length < 2) throw new Error('not a JWT (expected at least 2 segments)');\n\nfunction b64urlDecode(s) {\n  s = s.replace(/-/g, '+').replace(/_/g, '/');\n  const pad = s.length % 4; if (pad) s += '='.repeat(4 - pad);\n  return new TextDecoder('utf-8', { fatal: false })\n    .decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));\n}\n\nconst header  = JSON.parse(b64urlDecode(parts[0]));\nconst payload = JSON.parse(b64urlDecode(parts[1]));\nreturn {\n  header,\n  payload,\n  signaturePresent: parts.length >= 3 && parts[2].length > 0,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "75543325-3b10-584f-a3c4-9994f955df57",
+    "name": "jwtVerify",
+    "description": "Verifies a HS256/HS384/HS512 JWT signature using a shared secret and returns the decoded payload on success. Also checks exp and nbf claims when present.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "token",
+        "description": "JWT compact form",
+        "required": true,
+        "type": "STRING",
+        "testValue": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      },
+      {
+        "name": "secret",
+        "description": "Shared HMAC secret",
+        "required": true,
+        "type": "STRING",
+        "testValue": "your-256-bit-secret"
+      }
+    ],
+    "code": "/**\n * Verifies a HS256/HS384/HS512 JWT signature with a shared secret and\n * returns the decoded payload, plus any structural validity issues.\n *\n * Return shape:\n *   { valid, algorithm, header, payload, reasons }\n *\n * `reasons` is empty on success; otherwise it lists every failed check\n * (bad signature, token expired, token not yet valid).\n *\n * Uses host WebCrypto + atob.  Constant-time-style equality (XOR-accumulate)\n * so the verifier doesn't leak signature bytes via timing.\n */\n\nif (token  == null || token  === '') throw new Error('token required');\nif (secret == null || secret === '') throw new Error('secret required');\n\nconst parts = String(token).split('.');\nif (parts.length !== 3) throw new Error('JWT must have 3 segments');\n\nfunction b64urlDecode(s) {\n  s = s.replace(/-/g, '+').replace(/_/g, '/');\n  const pad = s.length % 4; if (pad) s += '='.repeat(4 - pad);\n  return Uint8Array.from(atob(s), c => c.charCodeAt(0));\n}\nfunction b64urlDecodeJson(s) {\n  return JSON.parse(new TextDecoder().decode(b64urlDecode(s)));\n}\n\nconst header  = b64urlDecodeJson(parts[0]);\nconst payload = b64urlDecodeJson(parts[1]);\n\nconst alg = String(header.alg || '').toUpperCase();\nconst hashAlg = ({ HS256: 'SHA-256', HS384: 'SHA-384', HS512: 'SHA-512' })[alg];\nif (!hashAlg) throw new Error('unsupported alg: ' + alg);\n\nconst keyBytes = new TextEncoder().encode(String(secret));\nconst key = await crypto.subtle.importKey(\n  'raw', keyBytes, { name: 'HMAC', hash: hashAlg }, false, ['sign']);\n\nconst signingInput = new TextEncoder().encode(parts[0] + '.' + parts[1]);\nconst expected     = await crypto.subtle.sign('HMAC', key, signingInput);\n\n// Constant-time compare expected vs provided signature.\nconst expectedBytes = Array.isArray(expected) ? expected : Array.from(expected);\nconst actualBytes   = Array.from(b64urlDecode(parts[2]));\nlet acc = 0;\nconst len = Math.max(expectedBytes.length, actualBytes.length);\nfor (let idx = 0; idx < len; idx++) {\n  acc |= (expectedBytes[idx] || 0) ^ (actualBytes[idx] || 0);\n}\nconst sigOk = expectedBytes.length === actualBytes.length && acc === 0;\n\nconst now = Math.floor(Date.now() / 1000);\nconst reasons = [];\nif (!sigOk)                                                   reasons.push('bad signature');\nif (typeof payload.exp === 'number' && now >= payload.exp)    reasons.push('token expired');\nif (typeof payload.nbf === 'number' && now <  payload.nbf)    reasons.push('token not yet valid');\n\nreturn {\n  valid: reasons.length === 0,\n  algorithm: alg,\n  header,\n  payload,\n  reasons,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "CRYPTO",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#crypto"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "CRYPTO"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "61b89355-dde0-5a12-b946-893a7ba196f2",
+    "name": "parseCsv",
+    "description": "Parses CSV text into an array of rows. If header=true, each row is an object keyed by the first row.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "CSV text",
+        "required": true,
+        "type": "STRING",
+        "testValue": "name,age,city\nAlice,30,Seoul\nBob,25,Tokyo"
+      },
+      {
+        "name": "header",
+        "description": "Treat the first row as the header",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      },
+      {
+        "name": "delimiter",
+        "description": "Field delimiter (default ',')",
+        "required": false,
+        "type": "STRING",
+        "testValue": ","
+      }
+    ],
+    "code": "/**\n * Parses RFC 4180 CSV via the host-bridged Apache Commons CSV parser\n * (`safety.parser.csv`).\n *\n * - `header=true`        — first row is the header; each subsequent row is\n *                          returned as an object keyed by header.\n * - `delimiter`          — single-character field separator (default ',').\n *\n * Always available — no Java interop or network needed.\n */\n\nif (text == null || text === '') return [];\nconst opts = { header: !!header };\nif (delimiter) opts.delimiter = String(delimiter);\nreturn safety.parser.csv(String(text), opts);\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATA",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "tool-safety-helpers/v1#parser"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATA"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  }
+]

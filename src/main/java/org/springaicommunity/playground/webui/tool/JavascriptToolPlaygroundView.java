@@ -34,10 +34,13 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.PendingJavaScriptResult;
 import com.vaadin.flow.component.textfield.TextArea;
-import org.springaicommunity.playground.service.tool.JsToolExecutor.JsExecutionResult;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionResult;
+import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpec.JsonSchemaType;
 import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
+import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
 import org.springaicommunity.playground.webui.VaadinUtils;
 
 import java.time.Instant;
@@ -74,18 +77,27 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     private final List<StaticVariableForm> staticVariableForms;
     private final AceEditor ace;
     private final TextArea consoleTextArea;
+    private final HorizontalLayout consoleStatusRow;
+    private final Span consoleStatusBadge;
+    private final Span consoleTimingBadge;
     private final Button testRunButton;
     private final Button formatButton;
     private final ObjectMapper objectMapper;
     private final ToolSpecService toolSpecService;
     private final Supplier<List<ToolParamSpec>> currentToolParamsSupplier;
+    private final Supplier<String> currentToolNameSupplier;
+    private final SandboxCapabilitiesView sandboxView;
 
     public JavascriptToolPlaygroundView(ObjectMapper objectMapper, ToolSpecService toolSpecService,
-            Supplier<List<ToolParamSpec>> currentToolParamsSupplier) {
+            SpringAiPlaygroundOptions options, SandboxPostureCalculator postureCalculator,
+            Supplier<List<ToolParamSpec>> currentToolParamsSupplier,
+            Supplier<String> currentToolNameSupplier) {
         this.objectMapper = objectMapper;
         this.toolSpecService = toolSpecService;
         this.currentToolParamsSupplier = currentToolParamsSupplier;
+        this.currentToolNameSupplier = currentToolNameSupplier;
         this.staticVariableForms = new ArrayList<>();
+        this.sandboxView = new SandboxCapabilitiesView(options, postureCalculator);
 
         setSizeFull();
         setPadding(false);
@@ -106,34 +118,43 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         ace.setPlaceholder("Type JavaScript code here…");
         String exampleJs = """
                 /**
-                 * NOTE TO DEVELOPERS:
-                 * This code runs on JavaScript (ECMAScript 2023) inside the JVM using GraalJS.
-                 * It is NOT a browser or Node.js environment.
+                 * Tool runtime — ECMAScript 2024 on GraalJS (inside the JVM).
+                 * Not a browser or Node.js: the host bridges a curated set of globals.
+                 * Per-tool policy (network / filesystem / classes) is set in the Sandbox panel above.
                  *
-                 * Unavailable APIs:
-                 * - Browser APIs: fetch, XMLHttpRequest, DOM (window/document), timers, etc.
-                 * - Node.js APIs: require(), modules, process, built-in modules, etc.
+                 * ── Web Standard globals (always available) ──────────────────────────
+                 *   fetch(url, init?)              WHATWG fetch — gated by Network mode
+                 *   URL, URLSearchParams           WHATWG URL parsing
+                 *   atob(b64), btoa(str)           Base64 encode / decode
+                 *   crypto.randomUUID()            UUID v4
+                 *   crypto.getRandomValues(buf)    fill a Uint8Array
+                 *   crypto.subtle.digest|sign|importKey   SHA-256/384/512, HMAC-SHA256
+                 *   console.log(...args)           captured to Debug Console below
                  *
-                 * Available features:
-                 * - Java interop via Java.type() is restricted to a safe allowlist (see application.yml)
-                 * - Common utilities and HTTP client classes are allowed (e.g. java.util.*, java.net.http.HttpClient, ...)
-                 * - Dangerous operations (file I/O, system commands, reflection, etc.) are completely blocked
-                 * - console.log output is captured and displayed in the Debug Console below
+                 * ── safety.* helpers (host-bridged) ──────────────────────────────────
+                 *   safety.parser.html|yaml|csv|xml(text)          always available
+                 *   safety.fs.readText|list|exists|stat|grep|
+                 *            lineCount|slice|cut|sort|find         Filesystem mode ≥ read
+                 *   safety.fs.writeText(path, text)                Filesystem mode = read+write
+                 *   (all fs paths are resolved under the Base path set in the Sandbox panel)
                  *
-                 * Execution model:
-                 * - Your script is executed in a sandboxed environment with strict security restrictions
-                 * - The script runs fresh on every call (stateless)
-                 * - You MUST return a value — this becomes the tool result returned to the agent
+                 * ── Java interop ─────────────────────────────────────────────────────
+                 *   Java.type('java.lang|math|time|util|text.*')   allowlist — see application.yaml
+                 *   Reflection / Thread / ClassLoader / ServiceLoader → denied
+                 *
+                 * ── Execution model ──────────────────────────────────────────────────
+                 *   Your script runs in an async wrapper (top-level await OK), stateless per call.
+                 *   You MUST return a value — it becomes the tool result sent back to the agent.
                  */
-                
-                /* ===== Example: Hello World — delete and replace ===== */
+
+                // ── Example: Hello World — replace with your tool's logic ──
                 const Instant = Java.type('java.time.Instant');
-                
+
                 return {
                   message: 'Hello World from Spring AI Playground 👋',
                   timestamp: new Date().toISOString(),
                   epochMilli: Instant.now().toEpochMilli(),
-                  note: 'You can access allow Java classes, configured safely in application.yml!',
+                  hint: 'Try fetch(url) · safety.parser.yaml(text) · safety.fs.readText(path)',
                 };
                 """;
         ace.setValue(exampleJs);
@@ -144,19 +165,29 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         consoleTextArea = new TextArea();
         consoleTextArea.setReadOnly(true);
         consoleTextArea.setWidthFull();
-        consoleTextArea.getStyle()
-                .set("font-family", "var(--lumo-font-family-monospace)")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("border", "none")
-                .set("background-color", "var(--lumo-contrast-5pct)")
-                .set("flex-grow", "1");
+        consoleTextArea.addClassName("debug-console");
+        consoleTextArea.setPlaceholder("No run yet. Click Test Run to execute the JS code and see output here.");
+        consoleTextArea.getStyle().set("flex-grow", "1");
         consoleTextArea.getElement().getStyle().set("min-height", "300px");
+
+        this.consoleStatusBadge = new Span();
+        this.consoleTimingBadge = new Span();
+        this.consoleTimingBadge.getElement().setAttribute("theme", "badge contrast pill small");
+        this.consoleStatusRow = new HorizontalLayout(this.consoleStatusBadge, this.consoleTimingBadge);
+        this.consoleStatusRow.setSpacing(false);
+        this.consoleStatusRow.getStyle().set("gap", "0.4em");
+        this.consoleStatusRow.setAlignItems(HorizontalLayout.Alignment.CENTER);
+        this.consoleStatusRow.setVisible(false);
 
         VerticalLayout bottomContainer = new VerticalLayout();
         bottomContainer.setPadding(false);
         bottomContainer.setSpacing(true);
         bottomContainer.setWidthFull();
-        bottomContainer.add(new H5("Debug Console"), consoleTextArea);
+        HorizontalLayout consoleHeader = new HorizontalLayout(new H5("Debug Console"), this.consoleStatusRow);
+        consoleHeader.setAlignItems(HorizontalLayout.Alignment.BASELINE);
+        consoleHeader.setSpacing(false);
+        consoleHeader.getStyle().set("gap", "var(--lumo-space-m)");
+        bottomContainer.add(consoleHeader, consoleTextArea);
         bottomContainer.getStyle().set("display", "flex").set("flex-direction", "column");
 
         this.testRunButton = new Button("Test Run", VaadinIcon.PLAY.create(), e -> runTestJavascript());
@@ -189,6 +220,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         staticVarsSection.setPadding(false);
         staticVarsSection.setSpacing(true);
         staticVarsSection.setWidthFull();
+
         HorizontalLayout actionBar = new HorizontalLayout(testRunButton, clearButton, formatButton);
 
         actionBar.setPadding(false);
@@ -196,7 +228,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         actionBar.getStyle().set("gap", "var(--lumo-space-s)");
         actionBar.setWidthFull();
 
-        add(new H4("Tool Action"), staticVarsSection, new H5("JS Code Editor"), ace, actionBar, bottomContainer);
+        add(new H4("Tool Action"), this.sandboxView, staticVarsSection, new H5("JS Code Editor"), ace, actionBar, bottomContainer);
         setFlexGrow(1, ace);
         setFlexGrow(1, bottomContainer);
         addDefaultStaticVariableForm();
@@ -246,6 +278,10 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             String key = staticVariableForm.getKey().trim();
             return !key.isBlank() ? Map.entry(key, staticVariableForm.getValue()) : null;
         }).filter(Objects::nonNull).toList();
+    }
+
+    public ToolSpec.SandboxOverrides currentSandboxOverrides() {
+        return this.sandboxView.currentOverrides();
     }
 
     private void formatCodeWithPrettier() {
@@ -312,6 +348,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     private boolean runTestJavascript() {
         this.testRunButton.setEnabled(false);
         consoleTextArea.clear();
+        this.consoleStatusRow.setVisible(false);
         long start = System.currentTimeMillis();
 
         try {
@@ -319,12 +356,20 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             for (ToolParamSpec spec : this.currentToolParamsSupplier.get()) {
                 toolParams.put(spec.name(), convertValueForType(spec.testValue(), spec.type()));
             }
+            String resolvedName = this.currentToolNameSupplier.get();
+            if (resolvedName == null || resolvedName.isBlank()) {
+                resolvedName = "draft";
+            }
             JsExecutionResult jsExecutionResult =
-                    toolSpecService.executeTool("", getStaticVariables(), getCurrentJsCode(), toolParams);
+                    toolSpecService.executeTool(resolvedName, getStaticVariables(), getCurrentJsCode(),
+                            toolParams, currentSandboxOverrides());
             VaadinUtils.getUi(this).access(() -> {
                 long end = System.currentTimeMillis();
-                String formattedResult = buildResultString(start, end, jsExecutionResult);
-                consoleTextArea.setValue(formattedResult);
+                consoleTextArea.setValue(buildResultString(jsExecutionResult));
+                updateConsoleStatusRow(jsExecutionResult.isOk(), start, end);
+                if (!jsExecutionResult.isOk()) {
+                    VaadinUtils.showErrorNotification("Error Details:\n" + jsExecutionResult.error());
+                }
             });
             return jsExecutionResult.isOk();
         } catch (Exception ex) {
@@ -335,24 +380,25 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         }
     }
 
-    private String buildResultString(long start, long end, JsExecutionResult result) {
+    private static String buildResultString(JsExecutionResult result) {
         StringBuilder sb = new StringBuilder();
-        sb.append(result.debugInfo()).append("\n\n");
-        sb.append("Status: ").append(result.isOk() ? "Success" : "Error").append("\n");
-        sb.append("----------------------------------------\n");
-        sb.append("Start Time:    ").append(formatTs(start)).append("\n");
-        sb.append("End Time:      ").append(formatTs(end)).append("\n");
-        sb.append("Elapsed Time:  ").append(formatDuration(end - start)).append("\n");
-        sb.append("----------------------------------------\n\n");
-
+        sb.append(result.debugInfo()).append("\n");
         if (result.isOk()) {
-            sb.append("Result:\n").append(result.result());
+            sb.append("\nResult:\n").append(result.result());
         } else {
-            String errorMessage = "Error Details:\n" + result.error();
-            sb.append(errorMessage);
-            VaadinUtils.getUi(this).access(() -> VaadinUtils.showErrorNotification(errorMessage));
+            sb.append("\nError Details:\n").append(result.error());
         }
         return sb.toString();
+    }
+
+    private void updateConsoleStatusRow(boolean ok, long startMs, long endMs) {
+        this.consoleStatusBadge.setText(ok ? "✓ Success" : "✗ Error");
+        this.consoleStatusBadge.getElement().setAttribute(
+                "theme", ok ? "badge success pill small" : "badge error pill small");
+        this.consoleTimingBadge.setText(formatDuration(endMs - startMs));
+        this.consoleTimingBadge.getElement().setAttribute("title",
+                "Started " + formatTs(startMs) + "  →  ended " + formatTs(endMs));
+        this.consoleStatusRow.setVisible(true);
     }
 
     private String formatTs(long ts) {
@@ -378,5 +424,9 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             addDefaultStaticVariableForm();
         }
         this.ace.setValue(code);
+    }
+
+    public void applySandboxOverrides(ToolSpec.SandboxOverrides overrides) {
+        this.sandboxView.applyOverrides(overrides);
     }
 }

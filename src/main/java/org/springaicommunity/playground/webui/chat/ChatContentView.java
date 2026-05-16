@@ -302,7 +302,9 @@ public class ChatContentView extends VerticalLayout {
             this.currentStream.dispose();
             this.currentStream = null;
         }
+        this.scrollSpacer.getStyle().set("height", "0px");
         this.messageScroller.scrollToBottom();
+        this.userPromptTextArea.focus();
     }
 
     public ChatOptions getChatOption() {

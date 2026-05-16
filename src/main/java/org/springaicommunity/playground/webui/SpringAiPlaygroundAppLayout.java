@@ -18,6 +18,7 @@ package org.springaicommunity.playground.webui;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Image;
@@ -42,6 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @PageTitle("Spring AI Playground")
+@CssImport("./playground/sidebar.css")
 @EnableGoogleAnalytics("G-52TGT1G9B3")
 public class SpringAiPlaygroundAppLayout extends AppLayout
         implements BeforeEnterObserver {

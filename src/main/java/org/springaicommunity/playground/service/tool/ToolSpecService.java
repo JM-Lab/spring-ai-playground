@@ -23,12 +23,21 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
-import org.springaicommunity.playground.service.tool.JsToolExecutor.JsExecutionParams;
-import org.springaicommunity.playground.service.tool.JsToolExecutor.JsExecutionResult;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.NetworkPolicy;
+import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor;
+import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionParams;
+import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionResult;
+import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver;
+import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
+import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.Overrides;
+import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
 import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.McpToolUtils;
+import org.springframework.ai.tool.execution.ToolExecutionException;
+import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.event.ContextClosedEvent;
@@ -40,11 +49,13 @@ import org.springframework.util.StringUtils;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -64,6 +75,9 @@ public class ToolSpecService {
     private final ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider;
     private final Map<String, ToolSpec> toolIdSpecs;
     private final JsToolExecutor jsToolExecutor;
+    private final JsSandbox sandboxBaseline;
+    private final EffectivePolicyResolver policyResolver;
+    private final SandboxPostureCalculator postureCalculator;
     private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private ToolMcpServerSetting toolMcpServerSetting;
@@ -71,15 +85,20 @@ public class ToolSpecService {
     public ToolSpecService(ObjectProvider<McpSyncServer> syncServerProvider,
             ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService,
             ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider,
-            SpringAiPlaygroundOptions playgroundOptions) throws ClassNotFoundException {
+            SpringAiPlaygroundOptions playgroundOptions, EffectivePolicyResolver policyResolver,
+            SandboxPostureCalculator postureCalculator)
+            throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
         this.mcpServerInfoService = mcpServerInfoService;
         this.toolSpecPersistenceServiceProvider = toolSpecPersistenceServiceProvider;
         this.toolMcpServerSetting = new ToolMcpServerSetting(true, Set.of());
         this.toolIdSpecs = new ConcurrentHashMap<>();
+        this.sandboxBaseline = playgroundOptions.toolStudio().jsSandbox();
+        this.policyResolver = policyResolver;
+        this.postureCalculator = postureCalculator;
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
-                playgroundOptions.toolStudio().jsSandbox());
+                this.sandboxBaseline, playgroundOptions.toolStudio().fs());
     }
 
     public void loadAll(Runnable loadAction) {
@@ -102,8 +121,37 @@ public class ToolSpecService {
     }
 
     public ToolSpec update(ToolSpec toolSpec) {
-        return update(toolSpec.toolId(), toolSpec.name(), toolSpec.description(), toolSpec.staticVariables(),
-                toolSpec.params(), toolSpec.code(), toolSpec.codeType());
+        boolean targetDraft = toolSpec.draft();
+        ToolSpec result = update(toolSpec.toolId(), toolSpec.name(), toolSpec.description(),
+                toolSpec.staticVariables(), toolSpec.params(), toolSpec.code(), toolSpec.codeType());
+        result.withCategory(toolSpec.category())
+                .withTags(toolSpec.tags())
+                .withSandboxOverrides(toolSpec.sandboxOverrides())
+                .withDraft(targetDraft);
+        syncMcpExposureForDraft(result, targetDraft);
+        return result;
+    }
+
+    private void syncMcpExposureForDraft(ToolSpec spec, boolean targetDraft) {
+        boolean currentlyExposed = getMcpToolList().stream()
+                .anyMatch(tool -> tool.name().equals(spec.name()));
+        boolean changed = false;
+        if (targetDraft && currentlyExposed) {
+            removeMcpTool(spec.name());
+            HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
+            ids.remove(spec.toolId());
+            this.toolMcpServerSetting = new ToolMcpServerSetting(this.toolMcpServerSetting.autoAdd(), ids);
+            changed = true;
+        } else if (!targetDraft && !currentlyExposed && this.toolMcpServerSetting.autoAdd()) {
+            addMcpTool(spec);
+            HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
+            ids.add(spec.toolId());
+            this.toolMcpServerSetting = new ToolMcpServerSetting(true, ids);
+            changed = true;
+        }
+        if (changed) {
+            persistAsync();
+        }
     }
 
     public ToolSpec update(String toolId, String toolName, String toolDescription,
@@ -126,8 +174,25 @@ public class ToolSpecService {
     private ToolSpec update(String toolId, String toolName, String toolDescription,
             List<Map.Entry<String, String>> staticVariables, List<ToolParamSpec> toolParamSpecs, String jsCode,
             ToolSpec.CodeType codeType, ToolSpec toolSpec) {
-        Function<Map<String, Object>, Object> executor = toolParams -> executeTool(toolName, staticVariables,
-                jsCode, toolParams).result();
+        Function<Map<String, Object>, Object> executor = toolParams -> {
+            ToolSpec current = this.toolIdSpecs.get(toolId);
+            ToolSpec.SandboxOverrides overrides = current == null ? null : current.sandboxOverrides();
+            Map<String, Object> filled = new HashMap<>(toolParams == null ? Map.of() : toolParams);
+            if (toolParamSpecs != null) {
+                for (ToolParamSpec spec : toolParamSpecs) {
+                    if (spec != null && spec.name() != null) filled.putIfAbsent(spec.name(), null);
+                }
+            }
+            JsExecutionResult result = executeTool(toolName, staticVariables, jsCode, filled, overrides);
+            if (!result.isOk()) {
+                String message = result.error() == null || result.error().isBlank()
+                        ? "tool " + toolName + " failed" : result.error();
+                throw new ToolExecutionException(
+                        DefaultToolDefinition.builder().name(toolName).description(toolDescription).inputSchema("{}").build(),
+                        new RuntimeException(message));
+            }
+            return result.result();
+        };
         ToolSpec newToolSpec =
                 new ToolSpec(toolId, toolName, toolDescription, staticVariables, toolParamSpecs, jsCode, codeType,
                         FunctionToolCallback.builder(toolName, executor).description(toolDescription)
@@ -198,14 +263,134 @@ public class ToolSpecService {
 
     public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
             String jsCode, Map<String, Object> toolParams) {
+        return executeTool(toolName, staticVariables, jsCode, toolParams, null);
+    }
+
+    public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
+            String jsCode, Map<String, Object> toolParams, ToolSpec.SandboxOverrides sandboxOverrides) {
         Map<String, Object> mergeParams = new HashMap<>(toolParams);
         staticVariables.forEach(entry -> mergeParams.put(entry.getKey(), entry.getValue()));
         JsExecutionParams jsExecutionParams = new JsExecutionParams(mergeParams, jsCode);
-        JsExecutionResult jsExecutionResult = this.jsToolExecutor.execute(jsExecutionParams);
-        logger.info("Executing tool: {}, jsExecutionParams: {}, isOk: {}", toolName, jsExecutionParams.params(),
-                jsExecutionResult.isOk());
-        logger.debug("Executing tool Result: {}", jsExecutionResult);
+        EffectivePolicy policy = this.policyResolver.resolve(this.sandboxBaseline, null,
+                toResolverOverrides(sandboxOverrides));
+        java.nio.file.Path overrideBase = sandboxOverrides == null
+                || sandboxOverrides.fsBasePath() == null || sandboxOverrides.fsBasePath().isBlank()
+                ? null
+                : java.nio.file.Paths.get(sandboxOverrides.fsBasePath()).toAbsolutePath().normalize();
+
+        String cid = UUID.randomUUID().toString().substring(0, 8);
+        Set<String> secretKeys = staticVariables.stream().map(Map.Entry::getKey).collect(Collectors.toSet());
+        Map<String, Object> safeParams = maskSecrets(mergeParams, secretKeys);
+        String level = riskLevelFor(sandboxOverrides);
+        String caps = capabilitySummary(sandboxOverrides);
+        Set<String> hosts = sandboxOverrides == null || sandboxOverrides.hostsAllow() == null
+                ? Set.of() : sandboxOverrides.hostsAllow();
+
+        logger.info("tool.exec.start cid={} tool={} level={} caps={} hosts={} fsBase={} params={}",
+                cid, toolName, level, caps, hosts,
+                overrideBase == null ? "-" : overrideBase, safeParams);
+
+        long startNs = System.nanoTime();
+        JsExecutionResult jsExecutionResult;
+        try {
+            jsExecutionResult = this.jsToolExecutor.execute(jsExecutionParams, policy, overrideBase);
+        } catch (RuntimeException e) {
+            long durMs = (System.nanoTime() - startNs) / 1_000_000L;
+            logger.warn("tool.exec.crash cid={} tool={} level={} durationMs={} error={}",
+                    cid, toolName, level, durMs, e.getMessage());
+            throw e;
+        }
+        long durMs = (System.nanoTime() - startNs) / 1_000_000L;
+        if (jsExecutionResult.isOk()) {
+            logger.info("tool.exec.done cid={} tool={} level={} durationMs={} ok=true", cid, toolName, level, durMs);
+        } else {
+            logger.warn("tool.exec.done cid={} tool={} level={} durationMs={} ok=false error={}",
+                    cid, toolName, level, durMs, jsExecutionResult.error());
+        }
+        logger.debug("tool.exec.result cid={} result={}", cid, jsExecutionResult);
         return jsExecutionResult;
+    }
+
+    private String riskLevelFor(ToolSpec.SandboxOverrides sbo) {
+        if (sbo == null) return "L0";
+        Set<String> baselineDeny = this.sandboxBaseline.denyClasses() == null
+                ? Set.of() : this.sandboxBaseline.denyClasses();
+        Set<String> baselineAllow = this.sandboxBaseline.allowClasses() == null
+                ? Set.of() : this.sandboxBaseline.allowClasses();
+        Set<String> effectiveDeny = new HashSet<>(baselineDeny);
+        if (sbo.removeDenyClasses() != null) effectiveDeny.removeAll(sbo.removeDenyClasses());
+        if (sbo.addDenyClasses() != null) effectiveDeny.addAll(sbo.addDenyClasses());
+        Set<String> effectiveAllow = new HashSet<>(baselineAllow);
+        if (sbo.removeAllowClasses() != null) effectiveAllow.removeAll(sbo.removeAllowClasses());
+        if (sbo.addAllowClasses() != null) effectiveAllow.addAll(sbo.addAllowClasses());
+        return this.postureCalculator.compute(new SandboxPostureCalculator.Inputs(
+                sbo.networkMode(),
+                sbo.hostsAllow() == null ? Set.of() : sbo.hostsAllow(),
+                Boolean.TRUE.equals(sbo.fileRead()),
+                Boolean.TRUE.equals(sbo.fileWrite()),
+                baselineDeny,
+                effectiveDeny,
+                baselineAllow,
+                effectiveAllow)).name();
+    }
+
+    private static String capabilitySummary(ToolSpec.SandboxOverrides sbo) {
+        if (sbo == null) return "-";
+        StringBuilder b = new StringBuilder();
+        if (Boolean.TRUE.equals(sbo.fileRead()))  b.append("R");
+        if (Boolean.TRUE.equals(sbo.fileWrite())) b.append("W");
+        String net = sbo.networkMode();
+        if (net != null && !net.isBlank() && !"blocked".equalsIgnoreCase(net)) {
+            if (b.length() > 0) b.append("+");
+            b.append("net:").append(net);
+        }
+        return b.length() == 0 ? "none" : b.toString();
+    }
+
+    static Map<String, Object> maskSecrets(Map<String, Object> merged, Set<String> secretKeys) {
+        if (merged == null || merged.isEmpty()) return Map.of();
+        Map<String, Object> out = new LinkedHashMap<>(merged.size());
+        for (Map.Entry<String, Object> e : merged.entrySet()) {
+            if (secretKeys.contains(e.getKey())) {
+                Object v = e.getValue();
+                if (v == null) {
+                    out.put(e.getKey(), null);
+                } else {
+                    String s = v.toString();
+                    out.put(e.getKey(), s.length() <= 4 ? "***" : "***" + s.substring(s.length() - 2));
+                }
+            } else {
+                out.put(e.getKey(), e.getValue());
+            }
+        }
+        return out;
+    }
+
+    private static Overrides toResolverOverrides(ToolSpec.SandboxOverrides spec) {
+        if (spec == null) return Overrides.empty();
+        return new Overrides(spec.addAllowClasses(), spec.removeAllowClasses(),
+                spec.addDenyClasses(), spec.removeDenyClasses(),
+                mapNetworkPolicy(spec.networkMode(), spec.hostsAllow()),
+                deriveNetworkIo(spec.networkMode()),
+                spec.fileRead(), spec.fileWrite());
+    }
+
+    private static NetworkPolicy mapNetworkPolicy(String mode, Set<String> hostsAllow) {
+        if (mode == null || mode.isBlank()) return null;
+        String egress = switch (mode.toLowerCase()) {
+            case "blocked" -> "blocked";
+            case "allowlist" -> "allowlist";
+            case "strict" -> "strict";
+            case "open" -> "permissive";
+            default -> null;
+        };
+        if (egress == null) return null;
+        return new NetworkPolicy(egress, hostsAllow == null ? Set.of() : hostsAllow, Set.of());
+    }
+
+    private static Boolean deriveNetworkIo(String mode) {
+        if (mode == null || mode.isBlank()) return null;
+        return !"blocked".equalsIgnoreCase(mode);
     }
 
     public List<ToolSpec> getToolSpecList() {

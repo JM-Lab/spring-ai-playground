@@ -52,9 +52,10 @@
     const svg = shadow.querySelector('svg');
     if (!svg) return;
     if (svg.querySelectorAll('g').length === 0) return;
-    if (typeof svgPanZoom !== 'function') return;
 
-    // Ensure viewBox exists so svg-pan-zoom can compute bounds correctly.
+    // Always set viewBox from the rendered bbox so the SVG can scale by
+    // preserveAspectRatio. svg-pan-zoom strips this on init, but we re-apply
+    // before deciding which mode to use.
     if (!svg.getAttribute('viewBox')) {
       try {
         const bbox = svg.getBBox();
@@ -63,13 +64,33 @@
         return;
       }
     }
-
-    // Strip mermaid's inline max-width so the SVG can scale to the host.
     svg.removeAttribute('style');
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
     injectShadowCss(shadow);
 
+    // Mobile / narrow viewports: skip svg-pan-zoom (its transform-based scaling
+    // crops content inside the host clip-box). Let the SVG scale naturally to
+    // the host width via preserveAspectRatio. Wide LR diagrams shrink — the
+    // accompanying table in each section is the authoritative content; the
+    // diagram is a visual companion.
+    const isNarrow = window.matchMedia('(max-width: 768px)').matches;
+    if (isNarrow || typeof svgPanZoom !== 'function') {
+      host.style.display = 'block';
+      host.style.width = '100%';
+      host.style.overflow = 'auto';
+      host.style.padding = '0.5rem';
+      host.style.margin = '1rem 0';
+      host.style.boxSizing = 'border-box';
+      host.style.border = '1px solid var(--md-default-fg-color--lightest, rgba(0,0,0,.07))';
+      host.style.borderRadius = '4px';
+      host.style.height = 'auto';
+      svg.style.width = '100%';
+      svg.style.height = 'auto';
+      host.setAttribute(READY_ATTR, '1');
+      return;
+    }
+
+    // Desktop: full pan-zoom with controlled height.
     host.style.display = 'block';
     host.style.width = '100%';
     host.style.overflow = 'hidden';

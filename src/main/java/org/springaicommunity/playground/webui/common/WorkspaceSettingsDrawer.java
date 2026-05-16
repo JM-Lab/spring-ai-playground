@@ -49,7 +49,7 @@ public class WorkspaceSettingsDrawer extends Div {
                 .set("top", "var(--lumo-space-m)")
                 .set("right", "var(--lumo-space-m)")
                 .set("bottom", "var(--lumo-space-m)")
-                .set("width", "min(440px, calc(100% - 2 * var(--lumo-space-m)))")
+                .set("width", "min(720px, calc(100% - 2 * var(--lumo-space-m)))")
                 .set("box-sizing", "border-box")
                 .set("background-color", "var(--lumo-base-color)")
                 .set("border", "1px solid var(--lumo-contrast-10pct)")

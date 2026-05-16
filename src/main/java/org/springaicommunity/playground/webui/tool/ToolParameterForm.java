@@ -85,7 +85,6 @@ public class ToolParameterForm extends VerticalLayout {
         testValueField.setPlaceholder("Enter a value matching the type");
         testValueField.setRequired(true);
         testValueField.setWidthFull();
-        testValueField.setRequiredIndicatorVisible(requiredField.getValue());
 
         deleteButton = new Button(VaadinIcon.TRASH.create(), e -> this.deleteListener.accept(this));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -115,14 +114,6 @@ public class ToolParameterForm extends VerticalLayout {
                 .set("padding", "var(--lumo-space-m)");
 
         typeField.addValueChangeListener(event -> updateTestValueValidation(event.getValue()));
-        requiredField.addValueChangeListener(e -> {
-            boolean required = Boolean.TRUE.equals(e.getValue());
-            testValueField.setRequiredIndicatorVisible(required);
-            if (!required) {
-                testValueField.setInvalid(false);
-                testValueField.setErrorMessage(null);
-            }
-        });
 
         if (initialSpec != null) {
             nameField.setValue(initialSpec.name() != null ? initialSpec.name() : "");
@@ -191,19 +182,13 @@ public class ToolParameterForm extends VerticalLayout {
     }
 
     private boolean hasValidationErrors() {
-        if (nameField.isEmpty() || typeField.isEmpty())
-            return true;
-
-        if (requiredField.getValue() && testValueField.isEmpty())
+        if (nameField.isEmpty() || typeField.isEmpty() || testValueField.isEmpty())
             return true;
 
         if (nameField.isInvalid() || typeField.isInvalid() || testValueField.isInvalid())
             return true;
 
         updateTestValueValidation(this.typeField.getValue());
-
-        if (!requiredField.getValue() && testValueField.isEmpty())
-            return false;
 
         return testValueField.isInvalid();
     }
@@ -214,7 +199,6 @@ public class ToolParameterForm extends VerticalLayout {
         this.typeField.setValue(paramSpec.type());
         this.descriptionField.setValue(paramSpec.description());
         this.testValueField.setValue(paramSpec.testValue());
-        this.testValueField.setRequiredIndicatorVisible(paramSpec.required());
         updateTestValueValidation(paramSpec.type());
     }
 }

@@ -1,10 +1,230 @@
-@media screen and (min-width: 76.25em) {
-  .md-sidebar--primary {
-    display: none;
+/* The left primary sidebar is now intentionally visible at all widths so the
+   hierarchical nav (Features and Tutorials sections + sub-pages) is reachable
+   without diving into the hamburger on desktop. */
+
+/* Top-tab hover dropdown — rendered by docs-overrides/partials/tabs-item.html.
+   Each top tab whose section has multiple sub-pages gets a panel that lists
+   those sub-pages. The tab link itself still navigates to the section index;
+   the dropdown only opens on hover/focus and is purely a discoverability
+   affordance. Hidden on touch/mobile so the hamburger drawer stays the single
+   source of truth for narrow viewports. */
+@media (hover: hover) and (min-width: 60em) {
+  .md-tabs__item--has-children {
+    position: relative;
   }
 
-  .md-content {
-    margin-left: 0;
+  /* The header sets a dark/primary palette on its descendants; the dropdown
+     is logically a popover, so reset the palette to the page default and
+     hard-set readable colors. */
+  .md-tabs__dropdown {
+    position: absolute;
+    top: 100%;
+    left: -0.4rem;
+    z-index: 4;
+    min-width: 14rem;
+    padding: 0.35rem 0;
+    background: #ffffff;
+    color: #1e1b4b;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.4rem;
+    box-shadow: 0 12px 30px -10px rgba(15, 23, 42, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+  }
+
+  [data-md-color-scheme="slate"] .md-tabs__dropdown {
+    background: #1f2937;
+    color: #f1f5f9;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .md-tabs__item--has-children:hover .md-tabs__dropdown,
+  .md-tabs__item--has-children:focus-within .md-tabs__dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 0s;
+  }
+
+  .md-tabs__dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .md-tabs__dropdown-item {
+    margin: 0;
+  }
+
+  .md-tabs__dropdown-link {
+    display: block;
+    padding: 0.45rem 0.9rem;
+    color: #1e1b4b;
+    text-decoration: none;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: background 80ms ease, color 80ms ease;
+  }
+
+  [data-md-color-scheme="slate"] .md-tabs__dropdown-link {
+    color: #f1f5f9;
+  }
+
+  .md-tabs__dropdown-link:hover,
+  .md-tabs__dropdown-link:focus {
+    background: rgba(63, 81, 181, 0.08);
+    color: var(--md-primary-fg-color);
+    text-decoration: none;
+  }
+
+  /* Also force the tabs nav and list to allow the dropdown to escape the
+     header — mkdocs-material default has overflow:auto for horizontal scroll
+     which would clip the popover. */
+  .md-tabs,
+  .md-tabs__list {
+    overflow: visible;
+  }
+}
+
+
+/* Wider grid on large monitors — default mkdocs-material caps at 61rem which
+   leaves big gutters on 1440px+ displays and makes long code blocks /
+   screenshots feel cramped. */
+@media screen and (min-width: 76.25em) {
+  .md-grid {
+    max-width: 80rem;
+  }
+}
+
+/* Features grid cards — lift on hover, primary-tinted icon, and a soft
+   top-edge accent to make the four product surfaces feel like entry points
+   rather than text boxes. Uses the same primary color in light + dark. */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > .card {
+  position: relative;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.md-typeset .grid.cards > ul > li::before,
+.md-typeset .grid.cards > .card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--md-primary-fg-color),
+    var(--md-accent-fg-color, var(--md-primary-fg-color))
+  );
+  border-top-left-radius: 0.2rem;
+  border-top-right-radius: 0.2rem;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > .card:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 10px 28px -14px rgba(63, 81, 181, 0.45);
+}
+
+.md-typeset .grid.cards > ul > li:hover::before,
+.md-typeset .grid.cards > .card:hover::before {
+  opacity: 1;
+}
+
+.md-typeset .grid.cards .lg.middle {
+  color: var(--md-primary-fg-color);
+}
+
+/* Whole-card click — wired in assets/javascripts/card-stretched-link.js.
+   The cursor hint signals the affordance; the actual navigation happens
+   through a click handler that delegates to the title <a>. */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > .card {
+  cursor: pointer;
+}
+
+/* Wide tables (feature comparison, model matrices) horizontally scroll
+   instead of overflowing the column on narrow viewports. */
+.md-typeset .md-typeset__table {
+  overflow-x: auto;
+}
+
+.md-typeset table:not([class]) {
+  display: table;
+  min-width: max-content;
+}
+
+/* Mobile: reduce h3 / h4 padding so the long Getting Started page does not
+   eat half the screen with whitespace between sub-sections. */
+@media screen and (max-width: 44em) {
+  .md-typeset h3 {
+    margin-top: 1.4em;
+    font-size: 1.05em;
+  }
+
+  .md-typeset h4 {
+    margin-top: 1.1em;
+    font-size: 0.95em;
+  }
+
+  /* Inline screenshot captions stay legible on phones. */
+  .md-typeset p em {
+    font-size: 0.9em;
+  }
+
+  /* H1 / H2 a touch smaller so the title doesn't dominate the first fold. */
+  .md-typeset h1 {
+    font-size: 1.6em;
+    line-height: 1.25;
+  }
+
+  .md-typeset h2 {
+    font-size: 1.25em;
+  }
+
+  /* Body padding — mkdocs-material defaults leave a lot of side gutter on
+     ~375px viewports; trim it so screenshots and tables get more pixels. */
+  .md-content__inner {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  /* Stack the Features grid into a single column so cards stay full-width. */
+  .md-typeset .grid.cards > ul,
+  .md-typeset .grid.cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables: extend the horizontal-scroll affordance with a thin scroll hint. */
+  .md-typeset .md-typeset__table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Code blocks: smaller font so wrap is rarer on phones. */
+  .md-typeset pre > code,
+  .md-typeset code {
+    font-size: 0.78em;
+  }
+
+  /* Larger touch targets for the per-page feedback callout links. */
+  .docs-feedback {
+    padding: 0.95rem 0.85rem;
+    font-size: 0.85rem;
+  }
+
+  /* glightbox: hide the toolbar's irrelevant slide counter when only one
+     image is shown — saves vertical room on phones. */
+  .gslide-description {
+    padding: 0.6rem 0.8rem !important;
   }
 }
 
@@ -374,4 +594,468 @@ body.dl-confirm-open {
 
 .docs-feedback__sep {
   color: var(--md-default-fg-color--lighter);
+}
+
+/* ===== Default Tools — trading card grid (used on Examples / Utilities /
+   Filesystem / Global / Korea reference pages) ===== */
+.tcg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.2em;
+  margin: 1.2em 0;
+}
+.tcg-card {
+  border-radius: 12px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.tcg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+.tcg-name {
+  background: var(--md-code-bg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 4px solid var(--tint, var(--md-primary-fg-color));
+  padding: 0.55em 0.9em;
+  font-family: var(--md-code-font-family);
+  font-weight: 700;
+  font-size: 0.95em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em 0.6em;
+  justify-content: space-between;
+  align-items: center;
+  line-height: 1.35;
+  color: var(--md-default-fg-color);
+}
+.tcg-name__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+.tcg-name .cost {
+  flex-shrink: 0;
+}
+.tcg-name .cost {
+  font-size: 0.7em;
+  background: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color--light);
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  font-weight: 500;
+  font-family: var(--md-text-font-family);
+  letter-spacing: 0.02em;
+}
+.tcg-art {
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-default-bg-color);
+  position: relative;
+}
+.tcg-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--tint, transparent) 0%, transparent 65%);
+  opacity: 0.10;
+  pointer-events: none;
+}
+.tcg-art .twemoji,
+.tcg-art .twemoji svg {
+  width: 84px;
+  height: 84px;
+  position: relative;
+  z-index: 1;
+  color: var(--tint, var(--md-default-fg-color));
+}
+.tcg-art > p,
+.tcg-stats__line > p {
+  margin: 0;
+  padding: 0;
+}
+.tcg-type {
+  background: var(--md-code-bg-color);
+  color: var(--md-default-fg-color--light);
+  padding: 0.4em 0.9em;
+  font-size: 0.72em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5em;
+}
+.tcg-type .risk {
+  background: var(--risk-bg, var(--md-default-fg-color--lightest));
+  color: var(--risk-fg, var(--md-default-fg-color));
+  font-weight: 700;
+  padding: 0.15em 0.55em;
+  border-radius: 4px;
+  font-size: 0.92em;
+  letter-spacing: 0.05em;
+}
+.risk-l0 { --risk-bg: rgba(76,175,80,0.16); --risk-fg: #2e7d32; }
+.risk-l3 { --risk-bg: rgba(255,193,7,0.18); --risk-fg: #b08000; }
+.risk-l4 { --risk-bg: rgba(255,152,0,0.20); --risk-fg: #c25600; }
+.risk-l5 { --risk-bg: rgba(244,67,54,0.18); --risk-fg: #c62828; }
+[data-md-color-scheme="slate"] .risk-l0 { --risk-bg: rgba(76,175,80,0.22); --risk-fg: #81c784; }
+[data-md-color-scheme="slate"] .risk-l3 { --risk-bg: rgba(255,193,7,0.22); --risk-fg: #ffd54f; }
+[data-md-color-scheme="slate"] .risk-l4 { --risk-bg: rgba(255,152,0,0.22); --risk-fg: #ffb74d; }
+[data-md-color-scheme="slate"] .risk-l5 { --risk-bg: rgba(244,67,54,0.22); --risk-fg: #e57373; }
+.tcg-body {
+  padding: 0.8em 0.9em;
+  font-size: 0.85em;
+  line-height: 1.5;
+  flex: 1;
+}
+.tcg-body > p:first-child { margin-top: 0; }
+.tcg-body > p:last-child { margin-bottom: 0; }
+.tcg-body a { color: var(--md-accent-fg-color); }
+.tcg-stats {
+  background: var(--md-code-bg-color);
+  padding: 0.55em 0.9em;
+  font-size: 0.74em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color--light);
+}
+.tcg-stats code {
+  background: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color);
+  padding: 0.05em 0.35em;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+/* Card click-to-open-drawer affordance (sub-page cards) */
+.tcg-card--clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.tcg-card--clickable:hover {
+  border-color: var(--md-accent-fg-color);
+}
+.tcg-card--selected {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: -2px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+}
+.tcg-cta {
+  padding: 0.45em 0.9em;
+  font-size: 0.74em;
+  letter-spacing: 0.04em;
+  text-align: center;
+  background: var(--md-code-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  color: var(--md-accent-fg-color);
+}
+.tcg-card--selected .tcg-cta::before {
+  content: "▾ ";
+}
+.tcg-card:not(.tcg-card--selected) .tcg-cta::before {
+  content: "▸ ";
+}
+.tcg-detail-template { display: none; }
+.tcg-card details > summary {
+  padding: 0.5em 0.9em;
+  font-size: 0.78em;
+  cursor: pointer;
+  color: var(--md-accent-fg-color);
+  user-select: none;
+  list-style: none;
+}
+.tcg-card details > summary::-webkit-details-marker { display: none; }
+.tcg-card details > summary::before { content: "▸ "; }
+.tcg-card details[open] > summary::before { content: "▾ "; }
+.tcg-card details > .highlight,
+.tcg-card details > div > .highlight,
+.tcg-card details pre {
+  margin: 0;
+  border-radius: 0;
+  font-size: 0.8em;
+}
+
+/* Vendor tints — left-ribbon + faint art-panel glow only */
+.tcg-card.t-openai   { --tint: #10A37F; }
+.tcg-card.t-slack    { --tint: #611f69; }
+.tcg-card.t-google   { --tint: #4285F4; }
+.tcg-card.t-github   { --tint: #24292e; }
+.tcg-card.t-wiki     { --tint: #000000; }
+.tcg-card.t-naver    { --tint: #03C75A; }
+.tcg-card.t-kakao    { --tint: #FEE500; }
+.tcg-card.t-hn       { --tint: #FF6600; }
+.tcg-card.t-stack    { --tint: #F48024; }
+.tcg-card.t-arxiv    { --tint: #B31B1B; }
+.tcg-card.t-reddit   { --tint: #FF4500; }
+.tcg-card.t-crypto   { --tint: #F7931A; }
+.tcg-card.t-currency { --tint: #2E7D32; }
+.tcg-card.t-osm      { --tint: #7EBC6F; }
+.tcg-card.t-usgs     { --tint: #1c4a8a; }
+.tcg-card.t-meteo    { --tint: #00aaff; }
+.tcg-card.t-apple    { --tint: #555555; }
+.tcg-card.t-beauty   { --tint: #4caf50; }
+.tcg-card.t-tour     { --tint: #ff5722; }
+.tcg-card.t-seoul    { --tint: #205493; }
+.tcg-card.t-kamis    { --tint: #6d4c41; }
+.tcg-card.t-kofic    { --tint: #d32f2f; }
+.tcg-card.t-krx      { --tint: #1565c0; }
+.tcg-card.t-molit    { --tint: #455a64; }
+.tcg-card.t-mfds     { --tint: #00897b; }
+.tcg-card.t-mois     { --tint: #c62828; }
+.tcg-card.t-kma      { --tint: #0277bd; }
+.tcg-card.t-datagokr { --tint: #37474f; }
+[data-md-color-scheme="slate"] .tcg-card.t-github { --tint: #58a6ff; }
+[data-md-color-scheme="slate"] .tcg-card.t-wiki   { --tint: #c9c9c9; }
+[data-md-color-scheme="slate"] .tcg-card.t-molit  { --tint: #90a4ae; }
+[data-md-color-scheme="slate"] .tcg-card.t-datagokr { --tint: #90a4ae; }
+
+/* ===== Default Tools — directory (search + filter + compact rows on the
+   Default Tools index page) ===== */
+.tool-directory {
+  margin: 1.2em 0;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  background: var(--md-default-bg-color);
+  overflow: hidden;
+}
+.tool-directory__preset {
+  padding: 0.7em 1em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 0.5em;
+  align-items: center;
+  background: color-mix(in srgb, var(--md-accent-fg-color) 6%, var(--md-default-bg-color));
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.tool-directory__preset .tool-directory__chip-label {
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+}
+.tool-directory__controls {
+  padding: 0.9em 1em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  background: var(--md-code-bg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.tool-directory__search {
+  width: 100%;
+  padding: 0.55em 0.9em;
+  font-size: 0.95em;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  box-sizing: border-box;
+}
+.tool-directory__search:focus {
+  outline: none;
+  border-color: var(--md-accent-fg-color);
+}
+.tool-directory__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 0.5em;
+  align-items: center;
+}
+.tool-directory__chip-label {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--md-default-fg-color--light);
+  margin-right: 0.3em;
+}
+.tool-directory__chip {
+  font-size: 0.78em;
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.tool-directory__chip:hover {
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-default-fg-color);
+}
+.tool-directory__chip[aria-pressed="true"] {
+  background: var(--md-accent-fg-color);
+  color: white;
+  border-color: var(--md-accent-fg-color);
+}
+.tool-directory__count {
+  font-size: 0.78em;
+  color: var(--md-default-fg-color--light);
+  padding: 0 1em 0.6em;
+  background: var(--md-code-bg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.tool-directory__list {
+  max-height: 820px;
+  overflow-y: auto;
+  padding: 0.8em;
+  background: color-mix(in srgb, var(--md-default-fg-color--lightest) 30%, transparent);
+}
+.tcg-grid--directory {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.9em;
+  margin: 0;
+}
+.tcg-card--directory {
+  position: relative;
+}
+.tcg-card--directory:hover {
+  border-color: var(--md-accent-fg-color);
+}
+.tcg-card--directory[hidden] { display: none; }
+.tcg-stretched-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  text-indent: -10000px;
+  overflow: hidden;
+  background: transparent;
+}
+.tcg-card--directory > div {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.tcg-card--directory .tcg-body a,
+.tcg-card--directory .tcg-stats a {
+  pointer-events: auto;
+  position: relative;
+  z-index: 3;
+}
+.tcg-card--directory .tcg-page {
+  padding: 0.4em 0.9em;
+  font-size: 0.74em;
+  background: var(--md-code-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  text-align: right;
+  letter-spacing: 0.04em;
+  color: var(--md-accent-fg-color);
+}
+
+/* ===== Sub-page card inline-row expand =====
+   Click a card -> a full-grid-row detail panel appears directly after it
+   (grid-column: 1 / -1). Cards in the same row keep the same height (Grid
+   default = stretch); the dense flow fills the row's remaining cells with
+   the next cards so no empty trailing slots appear in row 1. Later cards
+   simply reflow into the rows after the detail row. */
+.tcg-grid:not(.tcg-grid--directory) {
+  grid-auto-flow: dense;
+}
+.tcg-card { scroll-margin-top: 6em; }
+.tcg-detail-template { display: none; }
+.tcg-detail-row {
+  grid-column: 1 / -1;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-accent-fg-color);
+  border-radius: 12px;
+  margin: 0.4em 0 0.8em;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  animation: tcgExpand 0.22s ease;
+}
+@keyframes tcgExpand {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tcg-detail-row__header {
+  padding: 0.55em 1em;
+  background: var(--md-code-bg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--md-code-font-family);
+  font-weight: 700;
+  font-size: 0.95em;
+}
+.tcg-detail-row__title { color: var(--md-default-fg-color); }
+.tcg-detail-row__close {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  color: var(--md-default-fg-color--light);
+  border-radius: 4px;
+}
+.tcg-detail-row__close:hover {
+  color: var(--md-default-fg-color);
+  background: var(--md-default-fg-color--lightest);
+}
+.tcg-detail-row__content {
+  padding: 0.9em 1.2em 1em;
+  overflow-x: auto;
+}
+.tcg-detail-row__content > *:first-child { margin-top: 0; }
+.tcg-detail-row__content > * { margin-top: 0.7em; }
+.tcg-detail-row__content pre,
+.tcg-detail-row__content .highlight {
+  margin: 0.7em 0;
+  font-size: 0.85em;
+}
+.tcg-detail-row__content table {
+  font-size: 0.86em;
+}
+
+/* Stats footer — explicit row separation between Params and Env */
+.tcg-stats__line {
+  padding: 0.18em 0;
+  line-height: 1.55;
+}
+.tcg-stats__line + .tcg-stats__line {
+  border-top: 1px dashed var(--md-default-fg-color--lightest);
+  margin-top: 0.3em;
+  padding-top: 0.45em;
+}
+.tcg-stats__line strong {
+  display: inline-block;
+  min-width: 3em;
+  color: var(--md-default-fg-color);
+  font-size: 0.92em;
+  letter-spacing: 0.04em;
+}
+
+/* Mobile fix: mkdocs-material's pymdownx tabs apply a -0.8rem side margin in
+   .md-content__inner > .tabbed-set .tabbed-labels at <= ~720px viewports for a
+   "bleed-out" effect, but that pushes the page ~16px past viewport on phones
+   and triggers a horizontal scroll. Match that selector's specificity to
+   clamp the bleed at narrow widths. Internal label-row scroll-x stays intact
+   for too-many-tabs cases (.tabbed-labels has overflow:auto). */
+@media screen and (max-width: 30em) {
+  /* .md-content__inner and .md-typeset are the SAME element (compound
+     class on <article>), so we use a compound selector to win specificity
+     over mkdocs-material's `.md-content__inner > .tabbed-set .tabbed-labels`
+     rule from main.css. */
+  .md-content__inner.md-typeset > .tabbed-set .tabbed-labels {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    /* mkdocs-material forces max-width: 100vw which (combined with the parent
+       being narrower than the viewport due to side padding) makes the labels
+       overflow horizontally. Clamp to parent width on phones. */
+    max-width: 100%;
+  }
 }
