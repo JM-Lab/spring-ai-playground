@@ -83,8 +83,9 @@ public class ToolParameterForm extends VerticalLayout {
 
         testValueField = new TextField("Test Value");
         testValueField.setPlaceholder("Enter a value matching the type");
-        testValueField.setRequired(true);
+        testValueField.setRequired(requiredField.getValue());
         testValueField.setWidthFull();
+        requiredField.addValueChangeListener(e -> testValueField.setRequired(Boolean.TRUE.equals(e.getValue())));
 
         deleteButton = new Button(VaadinIcon.TRASH.create(), e -> this.deleteListener.accept(this));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -162,7 +163,7 @@ public class ToolParameterForm extends VerticalLayout {
                 testValueField.setPlaceholder("Enter 'true' or 'false'");
                 break;
             case ARRAY:
-                testValueField.setPattern("^\\s*(\\[.*\\])?\\s*$");
+                testValueField.setPattern("^\\s*(\\[.*])?\\s*$");
                 testValueField.setErrorMessage(
                         "Must be a valid JSON array format (e.g., [1, \"text\"]).");
                 testValueField.setPlaceholder("Enter a JSON array (e.g., [1, \"text\"])");
@@ -181,15 +182,22 @@ public class ToolParameterForm extends VerticalLayout {
                 requiredField.getValue(), typeField.getValue(), testValueField.getValue());
     }
 
+    public String getName() {
+        return nameField.getValue();
+    }
+
     private boolean hasValidationErrors() {
-        if (nameField.isEmpty() || typeField.isEmpty() || testValueField.isEmpty())
+        if (nameField.isEmpty() || typeField.isEmpty())
             return true;
 
-        if (nameField.isInvalid() || typeField.isInvalid() || testValueField.isInvalid())
+        if (Boolean.TRUE.equals(requiredField.getValue()) && testValueField.isEmpty())
             return true;
 
+        if (nameField.isInvalid() || typeField.isInvalid())
+            return true;
+
+        if (testValueField.isEmpty()) return false;
         updateTestValueValidation(this.typeField.getValue());
-
         return testValueField.isInvalid();
     }
 

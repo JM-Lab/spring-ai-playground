@@ -46,10 +46,13 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -174,16 +177,28 @@ public class ToolSpecService {
     private ToolSpec update(String toolId, String toolName, String toolDescription,
             List<Map.Entry<String, String>> staticVariables, List<ToolParamSpec> toolParamSpecs, String jsCode,
             ToolSpec.CodeType codeType, ToolSpec toolSpec) {
+        List<String> declaredParamNames = new ArrayList<>();
+        if (toolParamSpecs != null) {
+            for (ToolParamSpec spec : toolParamSpecs) {
+                if (spec != null && spec.name() != null && !spec.name().isBlank()) {
+                    declaredParamNames.add(spec.name());
+                }
+            }
+        }
         Function<Map<String, Object>, Object> executor = toolParams -> {
             ToolSpec current = this.toolIdSpecs.get(toolId);
             ToolSpec.SandboxOverrides overrides = current == null ? null : current.sandboxOverrides();
-            Map<String, Object> filled = new HashMap<>(toolParams == null ? Map.of() : toolParams);
-            if (toolParamSpecs != null) {
-                for (ToolParamSpec spec : toolParamSpecs) {
-                    if (spec != null && spec.name() != null) filled.putIfAbsent(spec.name(), null);
+            Map<String, Object> filled = new HashMap<>();
+            if (toolParams != null) {
+                for (Map.Entry<String, Object> entry : toolParams.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null) continue;
+                    if (value instanceof String s && s.isBlank()) continue;
+                    filled.put(entry.getKey(), value);
                 }
             }
-            JsExecutionResult result = executeTool(toolName, staticVariables, jsCode, filled, overrides);
+            JsExecutionResult result = executeTool(toolName, staticVariables, jsCode, filled, overrides,
+                    declaredParamNames);
             if (!result.isOk()) {
                 String message = result.error() == null || result.error().isBlank()
                         ? "tool " + toolName + " failed" : result.error();
@@ -193,10 +208,11 @@ public class ToolSpecService {
             }
             return result.result();
         };
+        List<ToolParamSpec> safeParamSpecs = toolParamSpecs == null ? List.of() : toolParamSpecs;
         ToolSpec newToolSpec =
-                new ToolSpec(toolId, toolName, toolDescription, staticVariables, toolParamSpecs, jsCode, codeType,
+                new ToolSpec(toolId, toolName, toolDescription, staticVariables, safeParamSpecs, jsCode, codeType,
                         FunctionToolCallback.builder(toolName, executor).description(toolDescription)
-                                .inputSchema(toJsonSchema(toolParamSpecs).toPrettyString())
+                                .inputSchema(toJsonSchema(safeParamSpecs).toPrettyString())
                                 .inputType(MAP_PARAMETERIZED_TYPE_REFERENCE).build());
         toolIdSpecs.put(toolId, newToolSpec);
         logger.info("Update Tool spec: toolId={}, name={}", toolId, toolName);
@@ -263,14 +279,25 @@ public class ToolSpecService {
 
     public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
             String jsCode, Map<String, Object> toolParams) {
-        return executeTool(toolName, staticVariables, jsCode, toolParams, null);
+        return executeTool(toolName, staticVariables, jsCode, toolParams, null, List.of());
     }
 
     public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
             String jsCode, Map<String, Object> toolParams, ToolSpec.SandboxOverrides sandboxOverrides) {
+        return executeTool(toolName, staticVariables, jsCode, toolParams, sandboxOverrides, List.of());
+    }
+
+    public JsExecutionResult executeTool(String toolName, List<Map.Entry<String, String>> staticVariables,
+            String jsCode, Map<String, Object> toolParams, ToolSpec.SandboxOverrides sandboxOverrides,
+            Collection<String> declaredParamNames) {
         Map<String, Object> mergeParams = new HashMap<>(toolParams);
         staticVariables.forEach(entry -> mergeParams.put(entry.getKey(), entry.getValue()));
-        JsExecutionParams jsExecutionParams = new JsExecutionParams(mergeParams, jsCode);
+        LinkedHashSet<String> mergedDeclaredNames = new LinkedHashSet<>();
+        if (declaredParamNames != null) mergedDeclaredNames.addAll(declaredParamNames);
+        staticVariables.forEach(entry -> {
+            if (entry.getKey() != null && !entry.getKey().isBlank()) mergedDeclaredNames.add(entry.getKey());
+        });
+        JsExecutionParams jsExecutionParams = new JsExecutionParams(mergeParams, jsCode, mergedDeclaredNames);
         EffectivePolicy policy = this.policyResolver.resolve(this.sandboxBaseline, null,
                 toResolverOverrides(sandboxOverrides));
         java.nio.file.Path overrideBase = sandboxOverrides == null
@@ -341,10 +368,10 @@ public class ToolSpecService {
         if (Boolean.TRUE.equals(sbo.fileWrite())) b.append("W");
         String net = sbo.networkMode();
         if (net != null && !net.isBlank() && !"blocked".equalsIgnoreCase(net)) {
-            if (b.length() > 0) b.append("+");
+            if (!b.isEmpty()) b.append("+");
             b.append("net:").append(net);
         }
-        return b.length() == 0 ? "none" : b.toString();
+        return b.isEmpty() ? "none" : b.toString();
     }
 
     static Map<String, Object> maskSecrets(Map<String, Object> merged, Set<String> secretKeys) {

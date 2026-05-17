@@ -19,7 +19,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.FsConfig;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
-import org.springaicommunity.playground.service.tool.runtime.JsRuntimeGlobals;
 import org.springaicommunity.playground.service.util.EnvVarResolver;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -37,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -58,7 +58,11 @@ public class JsToolExecutor {
 
     public record JsExecutionResult(boolean isOk, Object result, String error, @JsonIgnore String debugInfo) {}
 
-    public record JsExecutionParams(Map<String, Object> params, String code) {}
+    public record JsExecutionParams(Map<String, Object> params, String code, Collection<String> declaredNames) {
+        public JsExecutionParams(Map<String, Object> params, String code) {
+            this(params, code, List.of());
+        }
+    }
 
     private static final Map<String, String> JS_OPTIONS = Map.ofEntries(
             Map.entry("js.ecmascript-version", "2024"),
@@ -141,11 +145,29 @@ public class JsToolExecutor {
 
     public JsExecutionResult execute(JsExecutionParams jsExecutionParams, EffectivePolicy policy,
                                      Path overrideFsBase) {
+        Map<String, Object> filteredParams = new LinkedHashMap<>();
+        if (jsExecutionParams.params() != null) {
+            jsExecutionParams.params().forEach((name, rawValue) -> {
+                if (rawValue == null) return;
+                if (rawValue instanceof String s && s.isBlank()) return;
+                filteredParams.put(name, rawValue);
+            });
+        }
+        String variableDeclarations = "";
+        if (jsExecutionParams.declaredNames() != null) {
+            List<String> missingNames = jsExecutionParams.declaredNames().stream()
+                    .filter(name -> name != null && !name.isBlank() && !filteredParams.containsKey(name))
+                    .distinct()
+                    .toList();
+            if (!missingNames.isEmpty()) {
+                variableDeclarations = "var " + String.join(", ", missingNames) + ";\n";
+            }
+        }
         String jsCode = """
                 (async function() {
-                    %s
+                    %s%s
                 })();
-                """.formatted(jsExecutionParams.code());
+                """.formatted(variableDeclarations, jsExecutionParams.code());
 
         long effectiveTimeout = policy == null ? this.timeoutSeconds : policy.timeoutSeconds();
         Context.Builder contextBuilder = buildContext(policy);
@@ -157,10 +179,8 @@ public class JsToolExecutor {
 
                 Map<String, String> envBackedVariables = new HashMap<>();
                 Set<String> envSecretValues = new HashSet<>();
-                if (jsExecutionParams.params() != null) {
-                    jsExecutionParams.params().forEach((name, rawValue) -> bindings.putMember(name,
-                            resolveParamValue(rawValue, name, envBackedVariables, envSecretValues)));
-                }
+                filteredParams.forEach((name, rawValue) -> bindings.putMember(name,
+                        resolveParamValue(rawValue, name, envBackedVariables, envSecretValues)));
 
                 Map<String, String> initialState = snapshotVariables(bindings);
 
@@ -203,6 +223,7 @@ public class JsToolExecutor {
     }
 
     static String userFacingErrorMessage(Throwable e) {
+        if (e == null) return "unknown";
         JsHelperException helper = unwrapHelper(e);
         if (helper != null) {
             return helper.getMessage();
@@ -279,21 +300,21 @@ public class JsToolExecutor {
     }
 
     private Object maskSecretsInResult(Object value, Set<String> secrets) {
-        if (value == null) return null;
-        if (value instanceof String s) {
-            return maskKnownSecrets(s, secrets);
-        }
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            map.forEach((k, v) -> copy.put(k.toString(), maskSecretsInResult(v, secrets)));
-            return copy;
-        }
-        if (value instanceof Iterable<?> it) {
-            List<Object> copy = new ArrayList<>();
-            for (Object v : it) copy.add(maskSecretsInResult(v, secrets));
-            return copy;
-        }
-        return value;
+        return switch (value) {
+            case null -> null;
+            case String s -> maskKnownSecrets(s, secrets);
+            case Map<?, ?> map -> {
+                Map<String, Object> copy = new LinkedHashMap<>();
+                map.forEach((k, v) -> copy.put(k.toString(), maskSecretsInResult(v, secrets)));
+                yield copy;
+            }
+            case Iterable<?> it -> {
+                List<Object> copy = new ArrayList<>();
+                for (Object item : it) copy.add(maskSecretsInResult(item, secrets));
+                yield copy;
+            }
+            default -> value;
+        };
     }
 
     private Object deepCopyPolyglot(Object value) {
@@ -301,7 +322,7 @@ public class JsToolExecutor {
             case null -> {
                 return null;
             }
-            case Map map -> {
+            case Map<?, ?> map -> {
                 Map<String, Object> copy = new LinkedHashMap<>();
                 map.forEach((k, v) -> copy.put(k.toString(), deepCopyPolyglot(v)));
                 return copy;
@@ -374,7 +395,7 @@ public class JsToolExecutor {
             }
             cur = cur.getCause();
         }
-        return "[RUNTIME_ERROR] execution: " + e.getClass().getSimpleName();
+        return "[RUNTIME_ERROR] execution: " + (e == null ? "null" : e.getClass().getSimpleName());
     }
 
     private static String matchJsErrorPrefix(String msg) {
@@ -505,11 +526,7 @@ public class JsToolExecutor {
         int startKeep = keep;
         int endKeep = keep;
         int middleLen = n - startKeep - endKeep;
-        StringBuilder sb = new StringBuilder();
-        sb.append(value, 0, startKeep);
-        sb.append("*".repeat(middleLen));
-        sb.append(value, n - endKeep, n);
-        return sb.toString();
+        return value.substring(0, startKeep) + "*".repeat(middleLen) + value.substring(n - endKeep, n);
     }
 
 }

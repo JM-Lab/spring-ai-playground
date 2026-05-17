@@ -131,6 +131,7 @@ class JsToolNetworkExamplesTest {
         if (server != null) server.stop(0);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static EffectivePolicy allowlist(String host) {
         NetworkPolicy net = new NetworkPolicy("allowlist", Set.of(host), Set.of());
         return new EffectivePolicy(
@@ -143,14 +144,22 @@ class JsToolNetworkExamplesTest {
                 .map(s -> (String) s.get("code")).orElseThrow();
     }
 
-    private static JsExecutionResult run(String name, Map<String, Object> params) {
-        return executor.execute(new JsExecutionParams(params, code(name)), allowlist("127.0.0.1"));
+    @SuppressWarnings("unchecked")
+    private static List<String> declaredNamesFor(String name) {
+        return specs.stream().filter(s -> name.equals(s.get("name"))).findFirst()
+                .map(s -> (List<Map<String, Object>>) s.get("params"))
+                .orElse(List.of()).stream()
+                .map(param -> (String) param.get("name"))
+                .filter(paramName -> paramName != null && !paramName.isBlank())
+                .toList();
     }
 
     @Test
     void extractPageContentParsesHtmlViaHostFetch() {
-        JsExecutionResult result = run("extractPageContent",
-                Map.of("pageUrl", baseUrl + "/page/demo"));
+        JsExecutionResult result = executor.execute(
+                new JsExecutionParams(Map.of("pageUrl", baseUrl + "/page/demo"),
+                        code("extractPageContent"), declaredNamesFor("extractPageContent")),
+                allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         String payload = (String) result.result();
         assertThat(payload).contains("Hello title");
@@ -161,7 +170,7 @@ class JsToolNetworkExamplesTest {
     void getWeatherReadsWttrFields() {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(Map.of("location", "Seoul"),
-                        code("getWeather").replace("https://wttr.in/", baseUrl + "/wttr/")),
+                        code("getWeather").replace("https://wttr.in/", baseUrl + "/wttr/"), declaredNamesFor("getWeather")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -179,14 +188,14 @@ class JsToolNetworkExamplesTest {
                         Map.of("query", "spring ai", "resultNum", 3L, "startPage", 1L,
                                "googleApiKey", "fake-key", "pseId", "fake-id"),
                         code("googlePseSearch").replace("https://www.googleapis.com/customsearch/v1",
-                                baseUrl + "/customsearch/v1")),
+                                baseUrl + "/customsearch/v1"), declaredNamesFor("googlePseSearch")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) r.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("title")).isEqualTo("Result 1");
+        assertThat(items.getFirst().get("title")).isEqualTo("Result 1");
     }
 
     @Test
@@ -196,7 +205,7 @@ class JsToolNetworkExamplesTest {
                         Map.of("prompt", "hello", "model", "gpt-test",
                                "openaiApiKey", "sk-fake"),
                         code("openaiResponseGenerator").replace("https://api.openai.com/v1/responses",
-                                baseUrl + "/v1/responses")),
+                                baseUrl + "/v1/responses"), declaredNamesFor("openaiResponseGenerator")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -209,7 +218,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(
                         Map.of("text", "hi", "slackWebhookUrl", baseUrl + "/slack/webhook"),
-                        code("sendSlackMessage")),
+                        code("sendSlackMessage"), declaredNamesFor("sendSlackMessage")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -222,7 +231,7 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai"),
                         code("getGithubRepo").replace("https://api.github.com",
-                                baseUrl)),
+                                baseUrl), declaredNamesFor("getGithubRepo")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -258,14 +267,14 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("query", "spring ai", "hits", 3L, "tag", "story"),
                         code("searchHackerNews").replace("https://hn.algolia.com",
-                                baseUrl)),
+                                baseUrl), declaredNamesFor("searchHackerNews")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> hits = (List<Map<String, Object>>) result.result();
         assertThat(hits).hasSize(2);
-        assertThat(hits.get(0).get("title")).isEqualTo("HN Story 1");
-        assertThat(hits.get(0).get("hnLink").toString()).contains("news.ycombinator.com");
+        assertThat(hits.getFirst().get("title")).isEqualTo("HN Story 1");
+        assertThat(hits.getFirst().get("hnLink").toString()).contains("news.ycombinator.com");
     }
 
     @Test
@@ -275,21 +284,21 @@ class JsToolNetworkExamplesTest {
                         Map.of("query", "spring ai", "pageSize", 3L,
                                "sort", "relevance", "tags", "spring;java"),
                         code("searchStackOverflow").replace("https://api.stackexchange.com",
-                                baseUrl)),
+                                baseUrl), declaredNamesFor("searchStackOverflow")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.result();
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("title")).isEqualTo("SO Question 1");
-        assertThat(items.get(0).get("isAnswered")).isEqualTo(true);
+        assertThat(items.getFirst().get("title")).isEqualTo("SO Question 1");
+        assertThat(items.getFirst().get("isAnswered")).isEqualTo(true);
     }
 
     @Test
     void getGithubUserReturnsProfile() {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(Map.of("login", "spring-projects"),
-                        code("getGithubUser").replace("https://api.github.com", baseUrl)),
+                        code("getGithubUser").replace("https://api.github.com", baseUrl), declaredNamesFor("getGithubUser")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -304,13 +313,13 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai",
                                "state", "open", "perPage", 10L, "page", 1L),
-                        code("listGithubRepoIssues").replace("https://api.github.com", baseUrl)),
+                        code("listGithubRepoIssues").replace("https://api.github.com", baseUrl), declaredNamesFor("listGithubRepoIssues")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> issues = (List<Map<String, Object>>) result.result();
         assertThat(issues).hasSize(2);
-        assertThat(issues.get(0).get("title")).isEqualTo("First issue");
+        assertThat(issues.getFirst().get("title")).isEqualTo("First issue");
     }
 
     @Test
@@ -318,13 +327,13 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai", "perPage", 5L),
-                        code("listGithubRepoReleases").replace("https://api.github.com", baseUrl)),
+                        code("listGithubRepoReleases").replace("https://api.github.com", baseUrl), declaredNamesFor("listGithubRepoReleases")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rels = (List<Map<String, Object>>) result.result();
         assertThat(rels).hasSize(2);
-        assertThat(rels.get(0).get("tag")).isEqualTo("v1.0.0");
+        assertThat(rels.getFirst().get("tag")).isEqualTo("v1.0.0");
     }
 
     @Test
@@ -332,7 +341,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai"),
-                        code("getGithubLatestRelease").replace("https://api.github.com", baseUrl)),
+                        code("getGithubLatestRelease").replace("https://api.github.com", baseUrl), declaredNamesFor("getGithubLatestRelease")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -340,7 +349,7 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> assets = (List<Map<String, Object>>) r.get("assets");
         assertThat(assets).hasSize(1);
-        assertThat(assets.get(0).get("name")).isEqualTo("dist.zip");
+        assertThat(assets.getFirst().get("name")).isEqualTo("dist.zip");
     }
 
     @Test
@@ -349,7 +358,7 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai",
                                "path", "README.adoc", "ref", "main"),
-                        code("getGithubFileContent").replace("https://api.github.com", baseUrl)),
+                        code("getGithubFileContent").replace("https://api.github.com", baseUrl), declaredNamesFor("getGithubFileContent")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();
@@ -362,13 +371,13 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(
                         Map.of("query", "spring-ai", "sort", "stars", "perPage", 5L),
-                        code("searchGithubRepos").replace("https://api.github.com", baseUrl)),
+                        code("searchGithubRepos").replace("https://api.github.com", baseUrl), declaredNamesFor("searchGithubRepos")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.result();
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("fullName")).isEqualTo("spring-projects/spring-ai");
+        assertThat(items.getFirst().get("fullName")).isEqualTo("spring-projects/spring-ai");
     }
 
     @Test
@@ -376,21 +385,21 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult result = executor.execute(
                 new JsExecutionParams(
                         Map.of("owner", "spring-projects", "repo", "spring-ai", "perPage", 10L),
-                        code("listGithubRepoContributors").replace("https://api.github.com", baseUrl)),
+                        code("listGithubRepoContributors").replace("https://api.github.com", baseUrl), declaredNamesFor("listGithubRepoContributors")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> contribs = (List<Map<String, Object>>) result.result();
         assertThat(contribs).hasSize(2);
-        assertThat(contribs.get(0).get("login")).isEqualTo("alice");
-        assertThat(((Number) contribs.get(0).get("contributions")).intValue()).isEqualTo(150);
+        assertThat(contribs.getFirst().get("login")).isEqualTo("alice");
+        assertThat(((Number) contribs.getFirst().get("contributions")).intValue()).isEqualTo(150);
     }
 
     @Test
     void getCryptoPriceReturnsMap() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("ids", "bitcoin,ethereum", "currencies", "usd,krw"),
-                        code("getCryptoPrice").replace("https://api.coingecko.com", baseUrl)),
+                        code("getCryptoPrice").replace("https://api.coingecko.com", baseUrl), declaredNamesFor("getCryptoPrice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -404,7 +413,7 @@ class JsToolNetworkExamplesTest {
     void convertCurrencyReturnsRateAndResult() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("from", "USD", "to", "KRW", "amount", 100.0),
-                        code("convertCurrency").replace("https://api.exchangerate.host", baseUrl)),
+                        code("convertCurrency").replace("https://api.exchangerate.host", baseUrl), declaredNamesFor("convertCurrency")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -418,21 +427,21 @@ class JsToolNetworkExamplesTest {
     void getUpbitTickerNormalises() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("markets", "KRW-BTC,KRW-ETH"),
-                        code("getUpbitTicker").replace("https://api.upbit.com", baseUrl)),
+                        code("getUpbitTicker").replace("https://api.upbit.com", baseUrl), declaredNamesFor("getUpbitTicker")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> tickers = (List<Map<String, Object>>) r.result();
         assertThat(tickers).hasSize(2);
-        assertThat(tickers.get(0).get("market")).isEqualTo("KRW-BTC");
-        assertThat(((Number) tickers.get(0).get("tradePrice")).longValue()).isEqualTo(85_000_000L);
+        assertThat(tickers.getFirst().get("market")).isEqualTo("KRW-BTC");
+        assertThat(((Number) tickers.getFirst().get("tradePrice")).longValue()).isEqualTo(85_000_000L);
     }
 
     @Test
     void getBithumbTickerSurfacesError() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("symbol", "BTC"),
-                        code("getBithumbTicker").replace("https://api.bithumb.com", baseUrl)),
+                        code("getBithumbTicker").replace("https://api.bithumb.com", baseUrl), declaredNamesFor("getBithumbTicker")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -447,19 +456,19 @@ class JsToolNetworkExamplesTest {
         args.put("level", "");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getUpbitOrderbook").replace("https://api.upbit.com", baseUrl)),
+                        code("getUpbitOrderbook").replace("https://api.upbit.com", baseUrl), declaredNamesFor("getUpbitOrderbook")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> books = (List<Map<String, Object>>) r.result();
         assertThat(books).hasSize(1);
-        Map<String, Object> book = books.get(0);
+        Map<String, Object> book = books.getFirst();
         assertThat(book.get("market")).isEqualTo("KRW-BTC");
         assertThat(((Number) book.get("totalAskSize")).doubleValue()).isEqualTo(1.5);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> units = (List<Map<String, Object>>) book.get("units");
         assertThat(units).hasSize(2);
-        assertThat(((Number) units.get(0).get("askPrice")).longValue()).isEqualTo(85_100_000L);
+        assertThat(((Number) units.getFirst().get("askPrice")).longValue()).isEqualTo(85_100_000L);
     }
 
     @Test
@@ -470,13 +479,13 @@ class JsToolNetworkExamplesTest {
         args.put("count", "5");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getUpbitCandles").replace("https://api.upbit.com", baseUrl)),
+                        code("getUpbitCandles").replace("https://api.upbit.com", baseUrl), declaredNamesFor("getUpbitCandles")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> candles = (List<Map<String, Object>>) r.result();
         assertThat(candles).hasSize(2);
-        Map<String, Object> first = candles.get(0);
+        Map<String, Object> first = candles.getFirst();
         assertThat(first.get("market")).isEqualTo("KRW-BTC");
         assertThat(((Number) first.get("openingPrice")).longValue()).isEqualTo(84_000_000L);
         assertThat(((Number) first.get("highPrice")).longValue()).isEqualTo(86_000_000L);
@@ -491,20 +500,20 @@ class JsToolNetworkExamplesTest {
         args.put("count", "3");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getUpbitCandles").replace("https://api.upbit.com", baseUrl)),
+                        code("getUpbitCandles").replace("https://api.upbit.com", baseUrl), declaredNamesFor("getUpbitCandles")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> candles = (List<Map<String, Object>>) r.result();
         assertThat(candles).hasSize(2);
-        assertThat(candles.get(0).get("market")).isEqualTo("KRW-BTC");
+        assertThat(candles.getFirst().get("market")).isEqualTo("KRW-BTC");
     }
 
     @Test
     void listUpbitMarketsFiltersByQuote() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("quote", "KRW"),
-                        code("listUpbitMarkets").replace("https://api.upbit.com", baseUrl)),
+                        code("listUpbitMarkets").replace("https://api.upbit.com", baseUrl), declaredNamesFor("listUpbitMarkets")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -519,7 +528,7 @@ class JsToolNetworkExamplesTest {
     void listUpbitMarketsWithoutFilterReturnsAll() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("quote", ""),
-                        code("listUpbitMarkets").replace("https://api.upbit.com", baseUrl)),
+                        code("listUpbitMarkets").replace("https://api.upbit.com", baseUrl), declaredNamesFor("listUpbitMarkets")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -537,7 +546,7 @@ class JsToolNetworkExamplesTest {
         args.put("naverClientSecret", "fake-secret");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchNaver").replace("https://openapi.naver.com", baseUrl)),
+                        code("searchNaver").replace("https://openapi.naver.com", baseUrl), declaredNamesFor("searchNaver")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -546,8 +555,8 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("title")).isEqualTo("스프링 AI 입문");
-        assertThat(items.get(0).get("description")).isEqualTo("Spring AI 첫 글");
+        assertThat(items.getFirst().get("title")).isEqualTo("스프링 AI 입문");
+        assertThat(items.getFirst().get("description")).isEqualTo("Spring AI 첫 글");
     }
 
     @Test
@@ -562,7 +571,7 @@ class JsToolNetworkExamplesTest {
         args.put("kakaoRestApiKey", "fake-kakao-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKakaoLocal").replace("https://dapi.kakao.com", baseUrl)),
+                        code("searchKakaoLocal").replace("https://dapi.kakao.com", baseUrl), declaredNamesFor("searchKakaoLocal")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -570,9 +579,9 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> places = (List<Map<String, Object>>) m.get("places");
         assertThat(places).hasSize(2);
-        assertThat(places.get(0).get("name")).isEqualTo("스타벅스 강남역점");
-        assertThat(((Number) places.get(0).get("latitude")).doubleValue()).isEqualTo(37.4979);
-        assertThat(((Number) places.get(0).get("longitude")).doubleValue()).isEqualTo(127.0276);
+        assertThat(places.getFirst().get("name")).isEqualTo("스타벅스 강남역점");
+        assertThat(((Number) places.getFirst().get("latitude")).doubleValue()).isEqualTo(37.4979);
+        assertThat(((Number) places.getFirst().get("longitude")).doubleValue()).isEqualTo(127.0276);
     }
 
     @Test
@@ -583,7 +592,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrAirKey", "fake-datagokr-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getAirKoreaPm").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getAirKoreaPm").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getAirKoreaPm")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -592,9 +601,9 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> stations = (List<Map<String, Object>>) m.get("stations");
         assertThat(stations).hasSize(3);
-        assertThat(((Number) stations.get(0).get("pm10")).intValue()).isEqualTo(35);
-        assertThat(((Number) stations.get(0).get("pm25")).intValue()).isEqualTo(18);
-        assertThat(stations.get(0).get("khaiGrade")).isEqualTo("2");
+        assertThat(((Number) stations.getFirst().get("pm10")).intValue()).isEqualTo(35);
+        assertThat(((Number) stations.getFirst().get("pm25")).intValue()).isEqualTo(18);
+        assertThat(stations.getFirst().get("khaiGrade")).isEqualTo("2");
         assertThat(stations.get(1).get("pm10")).isNull();
     }
 
@@ -609,7 +618,7 @@ class JsToolNetworkExamplesTest {
         args.put("naverClientSecret", "BAD");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchNaver").replace("https://openapi.naver.com", baseUrl)),
+                        code("searchNaver").replace("https://openapi.naver.com", baseUrl), declaredNamesFor("searchNaver")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -629,7 +638,7 @@ class JsToolNetworkExamplesTest {
         args.put("naverClientSecret", "${NAVER_CLIENT_SECRET}");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchNaver").replace("https://openapi.naver.com", baseUrl)),
+                        code("searchNaver").replace("https://openapi.naver.com", baseUrl), declaredNamesFor("searchNaver")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).isFalse();
         assertThat(r.error()).contains("naverClientId env var not set");
@@ -647,7 +656,7 @@ class JsToolNetworkExamplesTest {
         args.put("kakaoRestApiKey", "BAD");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKakaoLocal").replace("https://dapi.kakao.com", baseUrl)),
+                        code("searchKakaoLocal").replace("https://dapi.kakao.com", baseUrl), declaredNamesFor("searchKakaoLocal")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -664,7 +673,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrAirKey", "BAD");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getAirKoreaPm").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getAirKoreaPm").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getAirKoreaPm")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -685,7 +694,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrTourKey", "fake-tour-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl)),
+                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("searchKoreaTour")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -694,10 +703,10 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("title")).isEqualTo("경복궁");
-        assertThat(items.get(0).get("contentTypeId")).isEqualTo("12");
-        assertThat(((Number) items.get(0).get("mapX")).doubleValue()).isEqualTo(126.977);
-        assertThat(((Number) items.get(0).get("mapY")).doubleValue()).isEqualTo(37.5796);
+        assertThat(items.getFirst().get("title")).isEqualTo("경복궁");
+        assertThat(items.getFirst().get("contentTypeId")).isEqualTo("12");
+        assertThat(((Number) items.getFirst().get("mapX")).doubleValue()).isEqualTo(126.977);
+        assertThat(((Number) items.getFirst().get("mapY")).doubleValue()).isEqualTo(37.5796);
     }
 
     @Test
@@ -712,7 +721,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrTourKey", "fake-tour-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl)),
+                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("searchKoreaTour")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -731,7 +740,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrTourKey", "BAD");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl)),
+                        code("searchKoreaTour").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("searchKoreaTour")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -751,7 +760,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
                         code("searchSeoulCulturalEvents").replace(
-                                "http://openapi.seoul.go.kr:8088", baseUrl)),
+                                "http://openapi.seoul.go.kr:8088", baseUrl), declaredNamesFor("searchSeoulCulturalEvents")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -759,11 +768,11 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> events = (List<Map<String, Object>>) m.get("events");
         assertThat(events).hasSize(2);
-        assertThat(events.get(0).get("title")).isEqualTo("서울 봄꽃 페스티벌");
-        assertThat(events.get(0).get("gu")).isEqualTo("중구");
-        assertThat(events.get(0).get("isFree")).isEqualTo(true);
-        assertThat(((Number) events.get(0).get("latitude")).doubleValue()).isEqualTo(37.5663);
-        assertThat(((Number) events.get(0).get("longitude")).doubleValue()).isEqualTo(127.0091);
+        assertThat(events.getFirst().get("title")).isEqualTo("서울 봄꽃 페스티벌");
+        assertThat(events.getFirst().get("gu")).isEqualTo("중구");
+        assertThat(events.getFirst().get("isFree")).isEqualTo(true);
+        assertThat(((Number) events.getFirst().get("latitude")).doubleValue()).isEqualTo(37.5663);
+        assertThat(((Number) events.getFirst().get("longitude")).doubleValue()).isEqualTo(127.0091);
     }
 
     @Test
@@ -778,7 +787,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
                         code("searchSeoulCulturalEvents").replace(
-                                "http://openapi.seoul.go.kr:8088", baseUrl)),
+                                "http://openapi.seoul.go.kr:8088", baseUrl), declaredNamesFor("searchSeoulCulturalEvents")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -800,7 +809,7 @@ class JsToolNetworkExamplesTest {
         args.put("kamisCertKey", "fake-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKamisAgriPrice").replace("http://www.kamis.or.kr", baseUrl)),
+                        code("getKamisAgriPrice").replace("http://www.kamis.or.kr", baseUrl), declaredNamesFor("getKamisAgriPrice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -809,8 +818,8 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) m.get("rows");
         assertThat(rows).hasSize(2);
-        assertThat(rows.get(0).get("itemName")).isEqualTo("사과");
-        assertThat(((Number) rows.get(0).get("price")).intValue()).isEqualTo(30000);
+        assertThat(rows.getFirst().get("itemName")).isEqualTo("사과");
+        assertThat(((Number) rows.getFirst().get("price")).intValue()).isEqualTo(30000);
     }
 
     @Test
@@ -823,7 +832,7 @@ class JsToolNetworkExamplesTest {
         args.put("koficApiKey", "fake-kofic-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKoficBoxOffice").replace("http://www.kobis.or.kr", baseUrl)),
+                        code("getKoficBoxOffice").replace("http://www.kobis.or.kr", baseUrl), declaredNamesFor("getKoficBoxOffice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -832,10 +841,10 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> movies = (List<Map<String, Object>>) m.get("movies");
         assertThat(movies).hasSize(2);
-        assertThat(((Number) movies.get(0).get("rank")).intValue()).isEqualTo(1);
-        assertThat(movies.get(0).get("title")).isEqualTo("범죄도시 5");
-        assertThat(((Number) movies.get(0).get("salesAmount")).longValue()).isEqualTo(1_000_000_000L);
-        assertThat(movies.get(0).get("isNew")).isEqualTo(false);
+        assertThat(((Number) movies.getFirst().get("rank")).intValue()).isEqualTo(1);
+        assertThat(movies.getFirst().get("title")).isEqualTo("범죄도시 5");
+        assertThat(((Number) movies.getFirst().get("salesAmount")).longValue()).isEqualTo(1_000_000_000L);
+        assertThat(movies.getFirst().get("isNew")).isEqualTo(false);
         assertThat(movies.get(1).get("isNew")).isEqualTo(true);
     }
 
@@ -849,7 +858,7 @@ class JsToolNetworkExamplesTest {
         args.put("koficApiKey", "BAD");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKoficBoxOffice").replace("http://www.kobis.or.kr", baseUrl)),
+                        code("getKoficBoxOffice").replace("http://www.kobis.or.kr", baseUrl), declaredNamesFor("getKoficBoxOffice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -871,7 +880,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrStockKey", "fake-stock-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKrxStockPrice").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getKrxStockPrice").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getKrxStockPrice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -879,11 +888,11 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(1);
-        assertThat(items.get(0).get("name")).isEqualTo("삼성전자");
-        assertThat(items.get(0).get("shortCode")).isEqualTo("005930");
-        assertThat(((Number) items.get(0).get("close")).intValue()).isEqualTo(70000);
-        assertThat(((Number) items.get(0).get("changePct")).doubleValue()).isEqualTo(0.72);
-        assertThat(items.get(0).get("market")).isEqualTo("KOSPI");
+        assertThat(items.getFirst().get("name")).isEqualTo("삼성전자");
+        assertThat(items.getFirst().get("shortCode")).isEqualTo("005930");
+        assertThat(((Number) items.getFirst().get("close")).intValue()).isEqualTo(70000);
+        assertThat(((Number) items.getFirst().get("changePct")).doubleValue()).isEqualTo(0.72);
+        assertThat(items.getFirst().get("market")).isEqualTo("KOSPI");
     }
 
     @Test
@@ -898,7 +907,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKmaKey", "fake-kma-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKmaShortTermForecast").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getKmaShortTermForecast").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getKmaShortTermForecast")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -910,7 +919,7 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> forecasts = (List<Map<String, Object>>) m.get("forecasts");
         assertThat(forecasts).hasSize(2);
-        Map<String, Object> first = forecasts.get(0);
+        Map<String, Object> first = forecasts.getFirst();
         assertThat(first.get("fcstDate")).isEqualTo("20260513");
         assertThat(first.get("fcstTime")).isEqualTo("0600");
         assertThat(((Number) first.get("temp")).intValue()).isEqualTo(18);
@@ -931,7 +940,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKmaKey", "fake-kma-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKmaShortTermForecast").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getKmaShortTermForecast").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getKmaShortTermForecast")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -951,7 +960,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrAptKey", "fake-apt-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getApartmentTradePrice").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getApartmentTradePrice").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getApartmentTradePrice")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -960,10 +969,10 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("aptName")).isEqualTo("래미안 강남");
-        assertThat(((Number) items.get(0).get("dealAmount")).intValue()).isEqualTo(200_000);
-        assertThat(((Number) items.get(0).get("excluUseAr")).doubleValue()).isEqualTo(84.97);
-        assertThat(((Number) items.get(0).get("floor")).intValue()).isEqualTo(12);
+        assertThat(items.getFirst().get("aptName")).isEqualTo("래미안 강남");
+        assertThat(((Number) items.getFirst().get("dealAmount")).intValue()).isEqualTo(200_000);
+        assertThat(((Number) items.getFirst().get("excluUseAr")).doubleValue()).isEqualTo(84.97);
+        assertThat(((Number) items.getFirst().get("floor")).intValue()).isEqualTo(12);
     }
 
     @Test
@@ -977,7 +986,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrDrugKey", "fake-drug-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKoreaDrugInfo").replace("http://apis.data.go.kr", baseUrl)),
+                        code("searchKoreaDrugInfo").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("searchKoreaDrugInfo")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).isFalse();
         assertThat(r.error()).contains("at least one of");
@@ -994,15 +1003,15 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrDrugKey", "fake-drug-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKoreaDrugInfo").replace("http://apis.data.go.kr", baseUrl)),
+                        code("searchKoreaDrugInfo").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("searchKoreaDrugInfo")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(1);
-        assertThat(items.get(0).get("itemName").toString()).contains("타이레놀");
-        assertThat(items.get(0).get("entpName")).isEqualTo("한국얀센");
+        assertThat(items.getFirst().get("itemName").toString()).contains("타이레놀");
+        assertThat(items.getFirst().get("entpName")).isEqualTo("한국얀센");
     }
 
     @Test
@@ -1016,15 +1025,15 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrDisasterKey", "fake-disaster-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getKoreaEmergencyAlerts").replace("http://apis.data.go.kr", baseUrl)),
+                        code("getKoreaEmergencyAlerts").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("getKoreaEmergencyAlerts")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("message").toString()).contains("호우");
-        assertThat(items.get(0).get("location")).isEqualTo("서울특별시");
+        assertThat(items.getFirst().get("message").toString()).contains("호우");
+        assertThat(items.getFirst().get("location")).isEqualTo("서울특별시");
     }
 
     @Test
@@ -1039,7 +1048,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKey", "fake-generic-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl)),
+                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("callDataGoKrOpenApi")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1048,7 +1057,7 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) m.get("items");
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).get("locatadd_nm")).isEqualTo("서울특별시");
+        assertThat(items.getFirst().get("locatadd_nm")).isEqualTo("서울특별시");
     }
 
     @Test
@@ -1059,7 +1068,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKey", "fake-generic-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl)),
+                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("callDataGoKrOpenApi")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1076,7 +1085,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKey", "fake-generic-key");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl)),
+                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("callDataGoKrOpenApi")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).isFalse();
         assertThat(r.error()).contains("relative");
@@ -1090,7 +1099,7 @@ class JsToolNetworkExamplesTest {
         args.put("dataGoKrKey", "${DATA_GO_KR_KEY}");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl)),
+                        code("callDataGoKrOpenApi").replace("http://apis.data.go.kr", baseUrl), declaredNamesFor("callDataGoKrOpenApi")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).isFalse();
         assertThat(r.error()).contains("dataGoKrKey env var not set");
@@ -1105,7 +1114,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
                         code("searchKBeautyProducts").replace(
-                                "https://world.openbeautyfacts.org", baseUrl)),
+                                "https://world.openbeautyfacts.org", baseUrl), declaredNamesFor("searchKBeautyProducts")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1114,7 +1123,7 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> products = (List<Map<String, Object>>) m.get("products");
         assertThat(products).hasSize(2);
-        Map<String, Object> first = products.get(0);
+        Map<String, Object> first = products.getFirst();
         assertThat(first.get("productName")).isEqualTo("Advanced Snail 96 Mucin Power Essence");
         assertThat(first.get("brands")).isEqualTo("COSRX");
         @SuppressWarnings("unchecked")
@@ -1135,7 +1144,7 @@ class JsToolNetworkExamplesTest {
         args.put("limit", "5");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("searchKpopOnItunes").replace("https://itunes.apple.com", baseUrl)),
+                        code("searchKpopOnItunes").replace("https://itunes.apple.com", baseUrl), declaredNamesFor("searchKpopOnItunes")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1145,10 +1154,10 @@ class JsToolNetworkExamplesTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> results = (List<Map<String, Object>>) m.get("results");
         assertThat(results).hasSize(2);
-        assertThat(results.get(0).get("artistName")).isEqualTo("NewJeans");
-        assertThat(results.get(0).get("trackName")).isEqualTo("Super Shy");
-        assertThat(results.get(0).get("primaryGenre")).isEqualTo("K-Pop");
-        assertThat(results.get(0).get("previewUrl").toString()).contains("itunes.apple.com/preview");
+        assertThat(results.getFirst().get("artistName")).isEqualTo("NewJeans");
+        assertThat(results.getFirst().get("trackName")).isEqualTo("Super Shy");
+        assertThat(results.getFirst().get("primaryGenre")).isEqualTo("K-Pop");
+        assertThat(results.getFirst().get("previewUrl").toString()).contains("itunes.apple.com/preview");
     }
 
     @Test
@@ -1158,7 +1167,7 @@ class JsToolNetworkExamplesTest {
         args.put("count", "5");
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(args,
-                        code("getBithumbOrderbook").replace("https://api.bithumb.com", baseUrl)),
+                        code("getBithumbOrderbook").replace("https://api.bithumb.com", baseUrl), declaredNamesFor("getBithumbOrderbook")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1170,15 +1179,15 @@ class JsToolNetworkExamplesTest {
         List<Map<String, Object>> asks = (List<Map<String, Object>>) m.get("asks");
         assertThat(bids).hasSize(2);
         assertThat(asks).hasSize(2);
-        assertThat(((Number) bids.get(0).get("price")).longValue()).isEqualTo(85_000_000L);
-        assertThat(((Number) asks.get(0).get("price")).longValue()).isEqualTo(85_100_000L);
+        assertThat(((Number) bids.getFirst().get("price")).longValue()).isEqualTo(85_000_000L);
+        assertThat(((Number) asks.getFirst().get("price")).longValue()).isEqualTo(85_100_000L);
     }
 
     @Test
     void getIpInfoExpandsFields() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("ip", "8.8.8.8"),
-                        code("getIpInfo").replace("https://ipapi.co", baseUrl)),
+                        code("getIpInfo").replace("https://ipapi.co", baseUrl), declaredNamesFor("getIpInfo")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1191,15 +1200,15 @@ class JsToolNetworkExamplesTest {
     void getCountryInfoProjectsToCompactFields() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("name", "korea"),
-                        code("getCountryInfo").replace("https://restcountries.com", baseUrl)),
+                        code("getCountryInfo").replace("https://restcountries.com", baseUrl), declaredNamesFor("getCountryInfo")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) r.result();
         assertThat(rows).hasSize(1);
-        assertThat(rows.get(0).get("name")).isEqualTo("South Korea");
+        assertThat(rows.getFirst().get("name")).isEqualTo("South Korea");
         @SuppressWarnings("unchecked")
-        List<String> langs = (List<String>) rows.get(0).get("languages");
+        List<String> langs = (List<String>) rows.getFirst().get("languages");
         assertThat(langs).contains("Korean");
     }
 
@@ -1207,15 +1216,15 @@ class JsToolNetworkExamplesTest {
     void searchArxivParsesAtomFeed() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("query", "retrieval augmented generation", "max", 5L, "sortBy", "relevance"),
-                        code("searchArxiv").replace("http://export.arxiv.org", baseUrl)),
+                        code("searchArxiv").replace("http://export.arxiv.org", baseUrl), declaredNamesFor("searchArxiv")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> entries = (List<Map<String, Object>>) r.result();
         assertThat(entries).hasSize(2);
-        assertThat(entries.get(0).get("title")).isEqualTo("Paper One");
+        assertThat(entries.getFirst().get("title")).isEqualTo("Paper One");
         @SuppressWarnings("unchecked")
-        List<String> authors = (List<String>) entries.get(0).get("authors");
+        List<String> authors = (List<String>) entries.getFirst().get("authors");
         assertThat(authors).contains("Alice", "Bob");
     }
 
@@ -1223,14 +1232,14 @@ class JsToolNetworkExamplesTest {
     void getPublicHolidaysReturnsKoreanHolidays() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("year", 2026L, "countryCode", "KR"),
-                        code("getPublicHolidays").replace("https://date.nager.at", baseUrl)),
+                        code("getPublicHolidays").replace("https://date.nager.at", baseUrl), declaredNamesFor("getPublicHolidays")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> holidays = (List<Map<String, Object>>) r.result();
         assertThat(holidays).hasSize(2);
-        assertThat(holidays.get(0).get("date")).isEqualTo("2026-01-01");
-        assertThat(holidays.get(0).get("localName")).isEqualTo("새해 첫날");
+        assertThat(holidays.getFirst().get("date")).isEqualTo("2026-01-01");
+        assertThat(holidays.getFirst().get("localName")).isEqualTo("새해 첫날");
     }
 
     @Test
@@ -1239,14 +1248,14 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("subreddit", "programming", "query", "spring ai",
                                "limit", 5L, "sort", "relevance"),
-                        code("searchReddit").replace("https://www.reddit.com", baseUrl)),
+                        code("searchReddit").replace("https://www.reddit.com", baseUrl), declaredNamesFor("searchReddit")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> posts = (List<Map<String, Object>>) r.result();
         assertThat(posts).hasSize(2);
-        assertThat(posts.get(0).get("title")).isEqualTo("Spring AI thread");
-        assertThat(posts.get(0).get("permalink").toString()).contains("/r/programming/");
+        assertThat(posts.getFirst().get("title")).isEqualTo("Spring AI thread");
+        assertThat(posts.getFirst().get("permalink").toString()).contains("/r/programming/");
     }
 
     @Test
@@ -1254,7 +1263,7 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(
                         Map.of("latitude", 37.5665, "longitude", 126.978, "days", 3L, "timezone", "Asia/Seoul"),
-                        code("getOpenMeteoForecast").replace("https://api.open-meteo.com", baseUrl)),
+                        code("getOpenMeteoForecast").replace("https://api.open-meteo.com", baseUrl), declaredNamesFor("getOpenMeteoForecast")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1275,14 +1284,14 @@ class JsToolNetworkExamplesTest {
     void geocodeAddressProjectsLatLon() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("address", "Seoul, South Korea", "limit", 3L),
-                        code("geocodeAddress").replace("https://nominatim.openstreetmap.org", baseUrl)),
+                        code("geocodeAddress").replace("https://nominatim.openstreetmap.org", baseUrl), declaredNamesFor("geocodeAddress")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) r.result();
         assertThat(rows).hasSize(1);
-        assertThat(((Number) rows.get(0).get("latitude")).doubleValue()).isEqualTo(37.5665);
-        assertThat(rows.get(0).get("country")).isEqualTo("South Korea");
+        assertThat(((Number) rows.getFirst().get("latitude")).doubleValue()).isEqualTo(37.5665);
+        assertThat(rows.getFirst().get("country")).isEqualTo("South Korea");
     }
 
     @Test
@@ -1291,7 +1300,7 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("latitude", 37.5665, "longitude", 126.978,
                                "date", "2026-05-13", "timezone", "Asia/Seoul"),
-                        code("getSunriseSunset").replace("https://api.sunrise-sunset.org", baseUrl)),
+                        code("getSunriseSunset").replace("https://api.sunrise-sunset.org", baseUrl), declaredNamesFor("getSunriseSunset")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1304,14 +1313,14 @@ class JsToolNetworkExamplesTest {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(
                         Map.of("minMagnitude", 4.5, "lookbackHours", 24L, "limit", 20L),
-                        code("getRecentEarthquakes").replace("https://earthquake.usgs.gov", baseUrl)),
+                        code("getRecentEarthquakes").replace("https://earthquake.usgs.gov", baseUrl), declaredNamesFor("getRecentEarthquakes")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> evs = (List<Map<String, Object>>) r.result();
         assertThat(evs).hasSize(2);
-        assertThat(((Number) evs.get(0).get("magnitude")).doubleValue()).isEqualTo(5.2);
-        assertThat(evs.get(0).get("place")).isEqualTo("near somewhere");
+        assertThat(((Number) evs.getFirst().get("magnitude")).doubleValue()).isEqualTo(5.2);
+        assertThat(evs.getFirst().get("place")).isEqualTo("near somewhere");
     }
 
     @Test
@@ -1320,7 +1329,7 @@ class JsToolNetworkExamplesTest {
                 new JsExecutionParams(
                         Map.of("owner", "nope", "repo", "missing"),
                         code("getGithubRepo").replace("https://api.github.com",
-                                baseUrl)),
+                                baseUrl), declaredNamesFor("getGithubRepo")),
                 allowlist("127.0.0.1"));
         assertThat(result.isOk()).as("%s", result.error()).isTrue();
         Map<?, ?> r = (Map<?, ?>) result.result();

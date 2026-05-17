@@ -46,18 +46,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DefaultToolCatalogSmokeTest {
 
-    private static final Pattern ENV_PLACEHOLDER = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]+)\\}");
+    private static final Pattern ENV_PLACEHOLDER = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]+)}");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static List<Map<String, Object>> allSpecs;
-    private static JsToolExecutor executor;
+    private static final List<Map<String, Object>> allSpecs = new ArrayList<>();
+    private static final JsToolExecutor executor;
 
     @TempDir
     Path workspace;
 
     static {
         try {
-            allSpecs = new ArrayList<>();
             for (String fname : List.of("/default-tool-specs.json",
                     "/default-tool-specs-builtin.json",
                     "/default-tool-specs-builtin-fs.json",
@@ -99,7 +98,7 @@ class DefaultToolCatalogSmokeTest {
     Stream<DynamicTest> envKeyedToolsFailGracefullyWithoutKey() {
         return allSpecs.stream()
                 .filter(this::isEnvKeyed)
-                .map(spec -> DynamicTest.dynamicTest((String) spec.get("name") + " (no env)", () -> {
+                .map(spec -> DynamicTest.dynamicTest(spec.get("name") + " (no env)", () -> {
                     Set<String> envVars = envVarsFor(spec);
                     boolean anySet = envVars.stream().anyMatch(v -> System.getenv(v) != null);
                     Assumptions.assumeFalse(anySet, "env var present; skipping graceful-failure check");
@@ -118,7 +117,7 @@ class DefaultToolCatalogSmokeTest {
         boolean enabled = "true".equalsIgnoreCase(System.getenv("RUN_NETWORK_SMOKE"));
         return allSpecs.stream()
                 .filter(this::isNetworkNoKey)
-                .map(spec -> DynamicTest.dynamicTest((String) spec.get("name") + " (network)", () -> {
+                .map(spec -> DynamicTest.dynamicTest(spec.get("name") + " (network)", () -> {
                     Assumptions.assumeTrue(enabled, "RUN_NETWORK_SMOKE=true not set; skipping live network test");
                     JsExecutionResult result = runFromTestValues(spec, permissiveNetworkPolicy(spec));
                     assertThat(result.isOk())
@@ -172,24 +171,30 @@ class DefaultToolCatalogSmokeTest {
 
     private JsExecutionResult runFromTestValues(Map<String, Object> spec, EffectivePolicy policy) {
         Map<String, Object> mergeParams = new LinkedHashMap<>();
+        LinkedHashSet<String> declaredNames = new LinkedHashSet<>();
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> params = (List<Map<String, Object>>) spec.getOrDefault("params", List.of());
         for (Map<String, Object> p : params) {
+            String name = (String) p.get("name");
+            if (name != null && !name.isBlank()) declaredNames.add(name);
             String testValue = (String) p.get("testValue");
             String type = (String) p.get("type");
-            mergeParams.put((String) p.get("name"), convertTestValue(testValue, type));
+            mergeParams.put(name, convertTestValue(testValue, type));
         }
         Object sv = spec.get("staticVariables");
         if (sv instanceof List<?> list) {
             for (Object item : list) {
                 if (!(item instanceof Map<?, ?> map)) continue;
                 for (Map.Entry<?, ?> e : map.entrySet()) {
-                    mergeParams.put((String) e.getKey(), e.getValue());
+                    String key = (String) e.getKey();
+                    if (key != null && !key.isBlank()) declaredNames.add(key);
+                    mergeParams.put(key, e.getValue());
                 }
             }
         }
         Path fsBase = isFsBackedTool(spec) ? workspace : null;
-        return executor.execute(new JsExecutionParams(mergeParams, (String) spec.get("code")), policy, fsBase);
+        return executor.execute(
+                new JsExecutionParams(mergeParams, (String) spec.get("code"), declaredNames), policy, fsBase);
     }
 
     private boolean isFsBackedTool(Map<String, Object> spec) {

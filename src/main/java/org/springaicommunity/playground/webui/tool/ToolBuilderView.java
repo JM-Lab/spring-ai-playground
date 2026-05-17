@@ -72,9 +72,9 @@ public class ToolBuilderView extends VerticalLayout {
     private final ComboBox<String> categoryField;
     private final MultiSelectComboBox<String> tagsField;
     private final JavascriptToolPlaygroundView javascriptToolPlaygroundView;
-    private Button saveDraftButton;
-    private Button publishButton;
-    private Button updateButton;
+    private final Button saveDraftButton;
+    private final Button publishButton;
+    private final Button updateButton;
 
     public ToolBuilderView(ToolSpec toolSpec, PropertyChangeSupport toolChangeSupport, ToolSpecService toolSpecService,
             ToolCategoryCatalog categoryCatalog, SpringAiPlaygroundOptions options,
@@ -178,8 +178,9 @@ public class ToolBuilderView extends VerticalLayout {
         parametersSection.setWidthFull();
 
         this.javascriptToolPlaygroundView = new JavascriptToolPlaygroundView(objectMapper, toolSpecService, options,
-                postureCalculator, () -> getCurrentToolParamsAsOpt().orElseGet(List::of),
-                () -> this.toolNameField.getValue());
+                postureCalculator, this::getCurrentToolParamsAsOpt,
+                this::getCurrentToolParamNames,
+                this.toolNameField::getValue);
         this.javascriptToolPlaygroundView.setHeightFull();
 
         VerticalLayout scrollArea = new VerticalLayout(topRow, toolDescriptionField,
@@ -413,6 +414,15 @@ public class ToolBuilderView extends VerticalLayout {
             if (spec != null) result.add(spec);
         }
         return result;
+    }
+
+    public List<String> getCurrentToolParamNames() {
+        List<String> names = new ArrayList<>();
+        for (ToolParameterForm form : paramForms) {
+            String name = form.getName();
+            if (name != null && !name.isBlank()) names.add(name);
+        }
+        return names;
     }
 
     public Optional<List<ToolParamSpec>> getCurrentToolParamsAsOpt() {

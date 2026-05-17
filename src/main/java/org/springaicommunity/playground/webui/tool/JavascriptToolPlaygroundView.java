@@ -51,6 +51,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @JavaScript("./prettier-standalone.js")
@@ -71,6 +72,9 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                   proseWrap: "never"
                 };
                 """);
+        applyJshintWorkerGlobals();
+        this.ace.getElement().addEventListener("focusin",
+                e -> applyJshintWorkerGlobals());
     }
 
     private final FlexLayout staticVariableContainer;
@@ -84,17 +88,20 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
     private final Button formatButton;
     private final ObjectMapper objectMapper;
     private final ToolSpecService toolSpecService;
-    private final Supplier<List<ToolParamSpec>> currentToolParamsSupplier;
+    private final Supplier<Optional<List<ToolParamSpec>>> currentToolParamsSupplier;
+    private final Supplier<List<String>> currentToolParamNamesSupplier;
     private final Supplier<String> currentToolNameSupplier;
     private final SandboxCapabilitiesView sandboxView;
 
     public JavascriptToolPlaygroundView(ObjectMapper objectMapper, ToolSpecService toolSpecService,
             SpringAiPlaygroundOptions options, SandboxPostureCalculator postureCalculator,
-            Supplier<List<ToolParamSpec>> currentToolParamsSupplier,
+            Supplier<Optional<List<ToolParamSpec>>> currentToolParamsSupplier,
+            Supplier<List<String>> currentToolParamNamesSupplier,
             Supplier<String> currentToolNameSupplier) {
         this.objectMapper = objectMapper;
         this.toolSpecService = toolSpecService;
         this.currentToolParamsSupplier = currentToolParamsSupplier;
+        this.currentToolParamNamesSupplier = currentToolParamNamesSupplier;
         this.currentToolNameSupplier = currentToolNameSupplier;
         this.staticVariableForms = new ArrayList<>();
         this.sandboxView = new SandboxCapabilitiesView(options, postureCalculator);
@@ -291,7 +298,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         PendingJavaScriptResult result = ace.getElement().executeJs("""
                 return (async () => {
                     try {
-                        const formatted = await prettier.format($0, {
+                        return await prettier.format($0, {
                             parser: "babel",
                             plugins: prettierPlugins,
                             semi: true,
@@ -301,7 +308,6 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                             tabWidth: 2,
                             bracketSpacing: true
                         });
-                        return formatted;
                     } catch (err) {
                         return "ERROR: " + err.message;
                     }
@@ -352,8 +358,19 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         long start = System.currentTimeMillis();
 
         try {
+            Optional<List<ToolParamSpec>> specsOpt = this.currentToolParamsSupplier.get();
+            if (specsOpt.isEmpty()) {
+                return false;
+            }
             LinkedHashMap<String, Object> toolParams = new LinkedHashMap<>();
-            for (ToolParamSpec spec : this.currentToolParamsSupplier.get()) {
+            List<String> declaredNames = new ArrayList<>();
+            for (ToolParamSpec spec : specsOpt.get()) {
+                if (spec.name() != null && !spec.name().isBlank()) {
+                    declaredNames.add(spec.name());
+                }
+                if (spec.testValue() == null || spec.testValue().isBlank()) {
+                    continue;
+                }
                 toolParams.put(spec.name(), convertValueForType(spec.testValue(), spec.type()));
             }
             String resolvedName = this.currentToolNameSupplier.get();
@@ -362,7 +379,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             }
             JsExecutionResult jsExecutionResult =
                     toolSpecService.executeTool(resolvedName, getStaticVariables(), getCurrentJsCode(),
-                            toolParams, currentSandboxOverrides());
+                            toolParams, currentSandboxOverrides(), declaredNames);
             VaadinUtils.getUi(this).access(() -> {
                 long end = System.currentTimeMillis();
                 consoleTextArea.setValue(buildResultString(jsExecutionResult));
@@ -424,6 +441,92 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
             addDefaultStaticVariableForm();
         }
         this.ace.setValue(code);
+        applyJshintWorkerGlobals();
+    }
+
+    static final List<String> SANDBOX_RUNTIME_GLOBALS = List.of(
+            "Java", "safety", "fetch", "crypto", "console",
+            "URL", "URLSearchParams", "atob", "btoa",
+            "TextEncoder", "TextDecoder");
+
+    static Map<String, Boolean> buildLintGlobals(List<String> paramNames,
+            List<Map.Entry<String, String>> staticVariables) {
+        Map<String, Boolean> globals = new LinkedHashMap<>();
+        for (String globalName : SANDBOX_RUNTIME_GLOBALS) {
+            globals.put(globalName, false);
+        }
+        if (paramNames != null) {
+            for (String name : paramNames) {
+                if (name != null && !name.isBlank()) {
+                    globals.put(name, false);
+                }
+            }
+        }
+        if (staticVariables != null) {
+            for (Map.Entry<String, String> staticVar : staticVariables) {
+                if (staticVar != null && staticVar.getKey() != null && !staticVar.getKey().isBlank()) {
+                    globals.put(staticVar.getKey(), false);
+                }
+            }
+        }
+        return globals;
+    }
+
+    private void applyJshintWorkerGlobals() {
+        Map<String, Boolean> globals = buildLintGlobals(
+                this.currentToolParamNamesSupplier.get(), getStaticVariables());
+        String globalsJson;
+        try {
+            globalsJson = this.objectMapper.writeValueAsString(globals);
+        } catch (JsonProcessingException ex) {
+            return;
+        }
+        this.ace.getElement().executeJs(
+                """
+                const globals = JSON.parse($0);
+                const installAnnotationFilter = (session) => {
+                    if (session.__sandboxAnnotationFilter) return;
+                    session.__sandboxAnnotationFilter = true;
+                    const originalSetAnnotations = session.setAnnotations.bind(session);
+                    session.setAnnotations = (annotations) => {
+                        const dropRows = new Set();
+                        const lineCount = session.getLength();
+                        for (let row = 0; row < lineCount; row++) {
+                            const line = session.getLine(row) || '';
+                            // ES2021 numeric separator (e.g. 60_000) — bundled JSHint can't parse it
+                            // and cascades errors onto both preceding (statement boundary) and
+                            // following lines until it resyncs.
+                            if (/\\d_\\d/.test(line)) {
+                                for (let offset = -3; offset <= 6; offset++) dropRows.add(row + offset);
+                            }
+                            // Top-level await — our runtime wraps each tool body in an async
+                            // function, but the bundled JSHint sees it as a parse error.
+                            if (/^(const|let|var)\\s+\\S+\\s*=\\s*await\\s|^await\\s/.test(line)) {
+                                dropRows.add(row);
+                                dropRows.add(row + 1);
+                            }
+                        }
+                        originalSetAnnotations((annotations || []).filter(annotation => !dropRows.has(annotation.row)));
+                    };
+                };
+                const apply = () => {
+                    const editor = this.editor;
+                    if (!editor) return false;
+                    const session = editor.getSession();
+                    const worker = session && session.$worker;
+                    if (!worker) return false;
+                    worker.send('changeOptions', [{ globals: globals }]);
+                    installAnnotationFilter(session);
+                    return true;
+                };
+                if (!apply()) {
+                    let attempts = 0;
+                    const interval = setInterval(() => {
+                        if (apply() || ++attempts > 50) clearInterval(interval);
+                    }, 100);
+                }
+                """,
+                globalsJson);
     }
 
     public void applySandboxOverrides(ToolSpec.SandboxOverrides overrides) {
