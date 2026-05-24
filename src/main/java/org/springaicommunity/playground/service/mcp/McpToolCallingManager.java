@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
@@ -38,8 +39,10 @@ public class McpToolCallingManager implements ToolCallingManager {
     public static final String MCP_TOOL_EXECUTION_COMPLETED_MESSAGE = "MCP tool execution completed.";
     private final ToolCallingManager toolCallingManager;
 
-    public McpToolCallingManager() {
-        this.toolCallingManager = ToolCallingManager.builder().build();
+    public McpToolCallingManager(ObservationRegistry observationRegistry) {
+        this.toolCallingManager = ToolCallingManager.builder()
+                .observationRegistry(observationRegistry)
+                .build();
     }
 
     @Override

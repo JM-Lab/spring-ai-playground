@@ -1,0 +1,1644 @@
+[
+  {
+    "toolId": "130a8372-bc43-5e15-9c29-4cbfb9209ae3",
+    "name": "getGithubRepo",
+    "description": "Fetches public metadata for a GitHub repository (no authentication needed; subject to GitHub's 60 requests/hour anonymous rate limit).\n\nReturns: { fullName, description, stars, forks, openIssues, language, license, defaultBranch, lastPush, topics, homepage, htmlUrl }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "GitHub user or org login (e.g. 'spring-projects')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repository name (e.g. 'spring-ai')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      }
+    ],
+    "code": "/**\n * Fetches public metadata for a GitHub repository.\n *\n * No authentication needed; GitHub allows 60 requests per hour from\n * an anonymous client (rate-limit headers are returned in the response).\n *\n * On 404, returns { found: false, owner, repo } instead of throwing.\n */\n\nconst url = 'https://api.github.com/repos/'\n  + encodeURIComponent(owner) + '/' + encodeURIComponent(repo);\n\nconst resp = await fetch(url, {\n  headers: {\n    'Accept': 'application/vnd.github+json',\n    'User-Agent': 'spring-ai-playground',\n  },\n  maxLength: 1_000_000,\n});\n\nif (resp.status === 404) return { found: false, owner, repo };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst data = resp.json();\nreturn {\n  fullName:      data.full_name,\n  description:   data.description,\n  stars:         data.stargazers_count,\n  forks:         data.forks_count,\n  openIssues:    data.open_issues_count,\n  language:      data.language,\n  license:       data.license && data.license.spdx_id,\n  defaultBranch: data.default_branch,\n  lastPush:      data.pushed_at,\n  topics:        data.topics || [],\n  homepage:      data.homepage,\n  htmlUrl:       data.html_url,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "52ff12b1-bc45-5827-b076-352516cf53a9",
+    "name": "searchWikipedia",
+    "description": "Looks up a Wikipedia page summary by title. No authentication required. Uses the public REST API at en.wikipedia.org/api/rest_v1/page/summary.\n\nReturns: { title, description, extract (plain-text summary), thumbnail, pageUrl }. If the title is not found, returns { found: false, title }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "title",
+        "description": "Article title (case-insensitive, spaces ok)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Spring Framework"
+      },
+      {
+        "name": "lang",
+        "description": "Language code (e.g. 'en', 'ko', default 'en')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "en"
+      }
+    ],
+    "code": "/**\n * Looks up a Wikipedia article summary by title.\n *\n * Uses the public REST API:  https://{lang}.wikipedia.org/api/rest_v1/page/summary/{title}\n * No auth, generous rate limits, JSON response.\n *\n * `lang` is the wiki subdomain — 'en', 'ko', 'ja', etc. Defaults to 'en'.\n */\n\nif (title == null || title === '') throw new Error('title required');\nconst language = (lang && lang !== '') ? lang : 'en';\n\nconst url = 'https://' + language + '.wikipedia.org/api/rest_v1/page/summary/'\n  + encodeURIComponent(String(title).replace(/ /g, '_'));\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 1_000_000,\n});\n\nif (resp.status === 404) return { found: false, title };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst data = resp.json();\nreturn {\n  title:       data.title,\n  description: data.description,\n  extract:     data.extract,\n  thumbnail:   data.thumbnail && data.thumbnail.source,\n  pageUrl:     data.content_urls && data.content_urls.desktop && data.content_urls.desktop.page,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "en.wikipedia.org",
+        "ko.wikipedia.org",
+        "ja.wikipedia.org",
+        "es.wikipedia.org",
+        "de.wikipedia.org",
+        "fr.wikipedia.org",
+        "zh.wikipedia.org"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    }
+  },
+  {
+    "toolId": "5b16e1fd-e917-58dc-a64d-f82ca521a631",
+    "name": "searchHackerNews",
+    "description": "Searches Hacker News stories via the public Algolia HN Search API (no auth needed).\n\nReturns up to `hits` results, each as: { id, title, url, points, author, commentCount, createdAt, hnLink }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search query string",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring ai"
+      },
+      {
+        "name": "hits",
+        "description": "Max results to return (1-20, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      },
+      {
+        "name": "tag",
+        "description": "HN tag filter: story | comment | poll | etc (optional)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "story"
+      }
+    ],
+    "code": "/**\n * Searches Hacker News via the Algolia HN Search API.\n *\n * Endpoint:  https://hn.algolia.com/api/v1/search?query=...&hitsPerPage=...&tags=...\n *\n * Available tags: story, comment, poll, pollopt, show_hn, ask_hn, front_page.\n * No authentication, public rate limit.\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n = (Number.isInteger(hits) && hits > 0 && hits <= 20) ? hits : 5;\n\nconst params = new URLSearchParams();\nparams.set('query', String(query));\nparams.set('hitsPerPage', String(n));\nif (tag && tag !== '') params.set('tags', String(tag));\n\nconst resp = await fetch('https://hn.algolia.com/api/v1/search?' + params.toString(), {\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst data = resp.json();\nreturn (data.hits || []).map(h => ({\n  id:           h.objectID,\n  title:        h.title || h.story_title,\n  url:          h.url || h.story_url,\n  points:       h.points,\n  author:       h.author,\n  commentCount: h.num_comments,\n  createdAt:    h.created_at,\n  hnLink:       'https://news.ycombinator.com/item?id=' + h.objectID,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "hn.algolia.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "cd0ad7d7-0937-5bca-9296-7cf8a091278a",
+    "name": "searchStackOverflow",
+    "description": "Searches Stack Overflow questions via the public Stack Exchange API (anonymous, capped at 300 requests / IP / day).\n\nReturns up to `pageSize` results sorted by `sort` (relevance | activity | votes | creation), each as: { id, title, score, answerCount, isAnswered, tags, link, createdAt, owner }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search text (intitle)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring ai mcp"
+      },
+      {
+        "name": "pageSize",
+        "description": "Max results (1-30, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      },
+      {
+        "name": "sort",
+        "description": "relevance | activity | votes | creation",
+        "required": false,
+        "type": "STRING",
+        "testValue": "relevance"
+      },
+      {
+        "name": "tags",
+        "description": "Semicolon-separated tag filter (e.g. 'java;spring')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "spring;java"
+      }
+    ],
+    "code": "/**\n * Searches Stack Overflow questions via the Stack Exchange API.\n *\n * Endpoint: https://api.stackexchange.com/2.3/search/advanced\n *\n * Anonymous quota: 300 requests / IP / day. Returns paginated results\n * (this tool returns the first page only — adjust `pageSize` up to 30).\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n = (Number.isInteger(pageSize) && pageSize > 0 && pageSize <= 30) ? pageSize : 5;\nconst orderBy = (sort === 'activity' || sort === 'votes' || sort === 'creation') ? sort : 'relevance';\n\nconst params = new URLSearchParams();\nparams.set('order', 'desc');\nparams.set('sort', orderBy);\nparams.set('q', String(query));\nparams.set('site', 'stackoverflow');\nparams.set('pagesize', String(n));\nif (tags && tags !== '') params.set('tagged', String(tags));\n\nconst resp = await fetch('https://api.stackexchange.com/2.3/search/advanced?' + params.toString(), {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst data = resp.json();\nreturn (data.items || []).map(q => ({\n  id:          q.question_id,\n  title:       q.title,\n  score:       q.score,\n  answerCount: q.answer_count,\n  isAnswered:  q.is_answered,\n  tags:        q.tags || [],\n  link:        q.link,\n  createdAt:   q.creation_date,\n  owner:       q.owner && q.owner.display_name,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.stackexchange.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "cf6f6045-721f-585c-ae1b-1dded45c8c5a",
+    "name": "getGithubUser",
+    "description": "Fetches public profile information for a GitHub user or organisation (no auth — 60 req/h anonymous).\n\nReturns: { login, type, name, company, blog, location, bio, publicRepos, publicGists, followers, following, createdAt, htmlUrl, avatarUrl }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "login",
+        "description": "GitHub user or org login",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      }
+    ],
+    "code": "/**\n * Fetches GitHub public user / organisation profile.\n * Endpoint: GET https://api.github.com/users/{login}\n */\n\nif (login == null || login === '') throw new Error('login required');\nconst resp = await fetch('https://api.github.com/users/' + encodeURIComponent(login), {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 1_000_000,\n});\nif (resp.status === 404) return { found: false, login };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nreturn {\n  login:       d.login,\n  type:        d.type,\n  name:        d.name,\n  company:     d.company,\n  blog:        d.blog,\n  location:    d.location,\n  bio:         d.bio,\n  publicRepos: d.public_repos,\n  publicGists: d.public_gists,\n  followers:   d.followers,\n  following:   d.following,\n  createdAt:   d.created_at,\n  htmlUrl:     d.html_url,\n  avatarUrl:   d.avatar_url,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "f2e5ea59-fae8-5708-89a7-68a49a525c3f",
+    "name": "listGithubRepoIssues",
+    "description": "Lists issues on a public GitHub repository (no auth). Excludes pull requests by default. Anonymous quota 60 req/h.\n\nReturns up to `perPage` issues, each as: { number, title, state, author, labels, commentCount, createdAt, updatedAt, htmlUrl }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "Repo owner",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repo name",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      },
+      {
+        "name": "state",
+        "description": "open | closed | all",
+        "required": false,
+        "type": "STRING",
+        "testValue": "open"
+      },
+      {
+        "name": "perPage",
+        "description": "Max issues per page (1-100, default 10)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "10"
+      },
+      {
+        "name": "page",
+        "description": "Page number (1-based, default 1)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "1"
+      }
+    ],
+    "code": "/**\n * Lists issues on a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/issues\n *\n * Pull requests are filtered out client-side (the API includes them in /issues\n * by default and they're indistinguishable except for the `pull_request` key).\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nconst n  = (Number.isInteger(perPage) && perPage > 0 && perPage <= 100) ? perPage : 10;\nconst pg = (Number.isInteger(page) && page > 0) ? page : 1;\nconst st = (state === 'closed' || state === 'all') ? state : 'open';\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/issues?state=' + st + '&per_page=' + n + '&page=' + pg;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst issues = resp.json();\nreturn (issues || []).filter(i => !i.pull_request).map(i => ({\n  number:       i.number,\n  title:        i.title,\n  state:        i.state,\n  author:       i.user && i.user.login,\n  labels:       (i.labels || []).map(l => typeof l === 'string' ? l : l.name),\n  commentCount: i.comments,\n  createdAt:    i.created_at,\n  updatedAt:    i.updated_at,\n  htmlUrl:      i.html_url,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "e0eb0ea0-0963-50f3-9543-6e484a118128",
+    "name": "listGithubRepoReleases",
+    "description": "Lists releases on a public GitHub repository (no auth).\n\nReturns: [{ tag, name, draft, prerelease, publishedAt, htmlUrl, body }].",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "Repo owner",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repo name",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      },
+      {
+        "name": "perPage",
+        "description": "Max releases (1-30, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * Lists releases on a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nconst n = (Number.isInteger(perPage) && perPage > 0 && perPage <= 30) ? perPage : 5;\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases?per_page=' + n;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(r => ({\n  tag:         r.tag_name,\n  name:        r.name,\n  draft:       r.draft,\n  prerelease:  r.prerelease,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        r.body,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "0c0ece4e-4b0e-5fd9-93bb-876a200bf14d",
+    "name": "getGithubLatestRelease",
+    "description": "Fetches the latest non-draft, non-prerelease release of a public GitHub repository (no auth).\n\nReturns: { tag, name, publishedAt, htmlUrl, body, assets: [{ name, downloadUrl, size }] }. 404 → { found: false, owner, repo }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "Repo owner",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repo name",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      }
+    ],
+    "code": "/**\n * Fetches the latest stable release of a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases/latest\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases/latest';\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 2_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst r = resp.json();\nreturn {\n  tag:         r.tag_name,\n  name:        r.name,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        r.body,\n  assets:      (r.assets || []).map(a => ({\n    name: a.name, downloadUrl: a.browser_download_url, size: a.size,\n  })),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "c4e34ded-8d90-5123-b8c9-c9458bb30f56",
+    "name": "getGithubFileContent",
+    "description": "Fetches the raw text content of a file from a public GitHub repository (no auth).\n\nFor directories this returns a listing instead: [{ name, type, path }]. Files over ~1 MB are not supported by this endpoint and return success=false.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "Repo owner",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repo name",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      },
+      {
+        "name": "path",
+        "description": "Path inside the repo (e.g. 'README.adoc')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "README.adoc"
+      },
+      {
+        "name": "ref",
+        "description": "Branch / tag / commit SHA (default: repo's default branch)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "main"
+      }
+    ],
+    "code": "/**\n * Fetches a file (or directory listing) from a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}\n *\n * File response: base64-encoded content + sha + size. We decode to UTF-8 text.\n * Directory response: array of entries; we return a slimmed listing.\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nif (path  == null || path  === '') throw new Error('path required');\n\nconst refQs = (ref && ref !== '') ? ('?ref=' + encodeURIComponent(ref)) : '';\nconst segments = String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/contents/' + segments + refQs;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo, path };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nif (Array.isArray(data)) {\n  // Directory listing\n  return data.map(e => ({ name: e.name, type: e.type, path: e.path, size: e.size }));\n}\n// File — decode base64 content. GitHub wraps lines every 60 chars; strip whitespace first.\nif (data.encoding !== 'base64' || data.type !== 'file') {\n  return { found: true, type: data.type, name: data.name, path: data.path, size: data.size,\n           note: 'unsupported content; use a smaller file or different endpoint' };\n}\nconst b64 = String(data.content || '').replace(/\\s+/g, '');\nconst bin = atob(b64);\nconst bytes = new Uint8Array(bin.length);\nfor (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);\nconst text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);\nreturn { name: data.name, path: data.path, size: data.size, sha: data.sha,\n         encoding: 'utf-8', content: text };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "252c24bf-3884-56e1-8391-a29c4c4a3aed",
+    "name": "searchGithubRepos",
+    "description": "Searches public GitHub repositories by query (no auth — anonymous limit 10 requests/minute).\n\nReturns up to `perPage` results: [{ fullName, description, stars, forks, language, htmlUrl, updatedAt }].",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "GitHub search query (e.g. 'spring-ai language:java')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai language:java"
+      },
+      {
+        "name": "sort",
+        "description": "stars | forks | updated | best-match (default)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "stars"
+      },
+      {
+        "name": "perPage",
+        "description": "Max results (1-30, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      }
+    ],
+    "code": "/**\n * Searches public GitHub repositories.\n * Endpoint: GET https://api.github.com/search/repositories?q=...&sort=...&per_page=...\n *\n * Anonymous rate limit: 10 requests / minute / IP.\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n = (Number.isInteger(perPage) && perPage > 0 && perPage <= 30) ? perPage : 5;\nconst sortValid = (sort === 'stars' || sort === 'forks' || sort === 'updated');\nconst sortQs = sortValid ? ('&sort=' + sort + '&order=desc') : '';\n\nconst url = 'https://api.github.com/search/repositories?q=' + encodeURIComponent(query)\n  + '&per_page=' + n + sortQs;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nreturn (data.items || []).map(r => ({\n  fullName:    r.full_name,\n  description: r.description,\n  stars:       r.stargazers_count,\n  forks:       r.forks_count,\n  language:    r.language,\n  htmlUrl:     r.html_url,\n  updatedAt:   r.updated_at,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "8790d512-54a8-5d82-b65f-1522375727e3",
+    "name": "listGithubRepoContributors",
+    "description": "Lists top contributors to a public GitHub repository (no auth).\n\nReturns: [{ login, contributions, htmlUrl, avatarUrl }] sorted by commit count desc.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "owner",
+        "description": "Repo owner",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-projects"
+      },
+      {
+        "name": "repo",
+        "description": "Repo name",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring-ai"
+      },
+      {
+        "name": "perPage",
+        "description": "Max contributors (1-100, default 10)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "10"
+      }
+    ],
+    "code": "/**\n * Lists top contributors to a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/contributors\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nconst n = (Number.isInteger(perPage) && perPage > 0 && perPage <= 100) ? perPage : 10;\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/contributors?per_page=' + n;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 2_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(c => ({\n  login:         c.login,\n  contributions: c.contributions,\n  htmlUrl:       c.html_url,\n  avatarUrl:     c.avatar_url,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "github"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.github.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "d7cc3fe4-c612-58ce-b6c6-b58cd5d092b7",
+    "name": "getCryptoPrice",
+    "description": "Fetches current crypto prices from CoinGecko's public Simple Price API (no auth, generous rate limit). Pass coin ids like 'bitcoin,ethereum' and currency ids like 'usd,krw'.\n\nReturns: { <coinId>: { <currency>: price, ... }, ... }",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "ids",
+        "description": "Comma-separated CoinGecko coin ids",
+        "required": true,
+        "type": "STRING",
+        "testValue": "bitcoin,ethereum"
+      },
+      {
+        "name": "currencies",
+        "description": "Comma-separated target currencies (e.g. usd, krw)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "usd,krw"
+      }
+    ],
+    "code": "/**\n * CoinGecko public Simple Price endpoint.\n *\n * GET https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies={currencies}\n *\n * No authentication required for the public tier (~10-30 req/min/IP).\n * Returns a flat map: {bitcoin:{usd:62000, krw:84000000}, ethereum:{usd:...}}.\n */\n\nif (ids == null || ids === '') throw new Error('ids required');\nconst vs = (currencies && currencies !== '') ? currencies : 'usd';\n\nconst url = 'https://api.coingecko.com/api/v3/simple/price'\n  + '?ids=' + encodeURIComponent(ids)\n  + '&vs_currencies=' + encodeURIComponent(vs);\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 500_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn resp.json();\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.coingecko.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "9638020b-f480-5b2c-b6a0-be3cddb40c34",
+    "name": "convertCurrency",
+    "description": "Converts between fiat currencies using exchangerate.host (no key, no rate limit listed).\n\nReturns: { from, to, amount, rate, result, date }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "from",
+        "description": "Source currency code (ISO 4217, e.g. USD)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "USD"
+      },
+      {
+        "name": "to",
+        "description": "Target currency code (ISO 4217, e.g. KRW)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "KRW"
+      },
+      {
+        "name": "amount",
+        "description": "Amount in the source currency (default 1)",
+        "required": false,
+        "type": "NUMBER",
+        "testValue": "100"
+      }
+    ],
+    "code": "/**\n * Currency conversion via exchangerate.host public API.\n *\n * GET https://api.exchangerate.host/convert?from=USD&to=KRW&amount=100\n *\n * Returns the canonical ECB-derived rate plus the converted amount.\n */\n\nif (from == null || from === '') throw new Error('from required');\nif (to   == null || to   === '') throw new Error('to required');\nconst amt = (amount == null || amount === '') ? 1 : Number(amount);\nif (!Number.isFinite(amt)) throw new Error('amount must be a finite number');\n\nconst url = 'https://api.exchangerate.host/convert'\n  + '?from=' + encodeURIComponent(from)\n  + '&to='   + encodeURIComponent(to)\n  + '&amount=' + amt;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 200_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nreturn {\n  from:   d.query && d.query.from,\n  to:     d.query && d.query.to,\n  amount: d.query && d.query.amount,\n  rate:   d.info && d.info.rate,\n  result: d.result,\n  date:   d.date,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "finance"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.exchangerate.host"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "4194b1e1-dc12-5e10-9891-dba04374659e",
+    "name": "getIpInfo",
+    "description": "Returns geolocation and ASN info for an IP address (or the caller's IP if `ip` is omitted) via ipapi.co (no auth, 1000 req/day).\n\nReturns: { ip, city, region, country, countryName, latitude, longitude, timezone, asn, org, isp }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "ip",
+        "description": "IPv4 / IPv6 address (omit for caller's own IP)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "8.8.8.8"
+      }
+    ],
+    "code": "/**\n * IP geolocation lookup via ipapi.co (1000 free req/day, no key).\n *\n * GET https://ipapi.co/{ip}/json/\n *\n * If `ip` is omitted, ipapi resolves the caller's IP — useful for sanity-checking\n * what the playground's outbound IP looks like to the rest of the internet.\n */\n\nconst path = (ip && ip !== '') ? (encodeURIComponent(ip) + '/json/') : 'json/';\nconst resp = await fetch('https://ipapi.co/' + path, {\n  headers: { 'Accept': 'application/json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 500_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nreturn {\n  ip:          d.ip,\n  city:        d.city,\n  region:      d.region,\n  country:     d.country_code,\n  countryName: d.country_name,\n  latitude:    d.latitude,\n  longitude:   d.longitude,\n  timezone:    d.timezone,\n  asn:         d.asn,\n  org:         d.org,\n  isp:         d.org,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "ipapi.co"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "83185f35-fc28-5ed0-a4e2-eadaa250ff13",
+    "name": "getCountryInfo",
+    "description": "Fetches country information from restcountries.com (no auth) by partial or full name.\n\nReturns an array of matches, each: { name, officialName, capital, region, subregion, population, area, languages, currencies, callingCode, flagEmoji, latlng }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "name",
+        "description": "Country name (partial match — e.g. 'korea', 'germany')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "korea"
+      }
+    ],
+    "code": "/**\n * Country metadata from restcountries.com (no key).\n *\n * GET https://restcountries.com/v3.1/name/{name}\n *\n * Partial matches are supported (e.g. \"korea\" returns both Koreas).\n * The API returns extremely chatty objects — we project to the most useful fields.\n */\n\nif (name == null || name === '') throw new Error('name required');\nconst resp = await fetch('https://restcountries.com/v3.1/name/' + encodeURIComponent(name), {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 5_000_000,\n});\nif (resp.status === 404) return [];\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nreturn (resp.json() || []).map(c => ({\n  name:         c.name && c.name.common,\n  officialName: c.name && c.name.official,\n  capital:      c.capital,\n  region:       c.region,\n  subregion:    c.subregion,\n  population:   c.population,\n  area:         c.area,\n  languages:    c.languages ? Object.values(c.languages) : [],\n  currencies:   c.currencies ? Object.keys(c.currencies) : [],\n  callingCode:  (c.idd && c.idd.root)\n                  ? c.idd.root + ((c.idd.suffixes && c.idd.suffixes[0]) || '')\n                  : null,\n  flagEmoji:    c.flag,\n  latlng:       c.latlng,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "restcountries.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "ec9fdae3-56f8-506b-bfa6-4611ec62a433",
+    "name": "searchArxiv",
+    "description": "Searches arXiv preprints via the public Atom-feed API (no auth). Results are parsed from XML.\n\nReturns up to `max` entries, each: { id, title, summary, authors, published, updated, primaryCategory, pdfUrl, abstractUrl }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search query (arXiv search_query syntax, e.g. 'all:transformer')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "all:retrieval augmented generation"
+      },
+      {
+        "name": "max",
+        "description": "Max results (1-50, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      },
+      {
+        "name": "sortBy",
+        "description": "relevance | lastUpdatedDate | submittedDate",
+        "required": false,
+        "type": "STRING",
+        "testValue": "relevance"
+      }
+    ],
+    "code": "/**\n * arXiv search via the public Atom-feed API.\n *\n * GET http://export.arxiv.org/api/query?search_query={query}&max_results={n}\n *\n * The response is XML (Atom). We parse it via safety.parser.xml and project\n * each <entry> to a compact object.\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n  = (Number.isInteger(max) && max > 0 && max <= 50) ? max : 5;\nconst so = (sortBy === 'lastUpdatedDate' || sortBy === 'submittedDate') ? sortBy : 'relevance';\n\nconst url = 'http://export.arxiv.org/api/query'\n  + '?search_query=' + encodeURIComponent(query)\n  + '&max_results=' + n\n  + '&sortBy=' + so + '&sortOrder=descending';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/atom+xml' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst root = safety.parser.xml(resp.text());\n\n// `root.children` is a list of {tag, attrs, text, children}. We pick <entry> nodes.\nfunction pickChild(node, tag) {\n  for (const c of node.children || []) if (c.tag === tag) return c;\n  return null;\n}\nfunction pickAllChildren(node, tag) {\n  const out = [];\n  for (const c of node.children || []) if (c.tag === tag) out.push(c);\n  return out;\n}\n\nconst entries = pickAllChildren(root, 'entry');\nreturn entries.map(e => {\n  const idNode      = pickChild(e, 'id');\n  const titleNode   = pickChild(e, 'title');\n  const summaryNode = pickChild(e, 'summary');\n  const pubNode     = pickChild(e, 'published');\n  const updNode     = pickChild(e, 'updated');\n  const catNode     = pickChild(e, 'primary_category') || pickChild(e, 'category');\n  const links       = pickAllChildren(e, 'link');\n  const authors     = pickAllChildren(e, 'author').map(a => {\n    const n = pickChild(a, 'name'); return n ? n.text : null;\n  }).filter(Boolean);\n  let pdfUrl = null, abs = null;\n  for (const l of links) {\n    const attrs = l.attrs || {};\n    if (attrs.title === 'pdf') pdfUrl = attrs.href;\n    if (attrs.rel === 'alternate') abs = attrs.href;\n  }\n  return {\n    id:              idNode && idNode.text,\n    title:           titleNode && titleNode.text.replace(/\\s+/g, ' ').trim(),\n    summary:         summaryNode && summaryNode.text.replace(/\\s+/g, ' ').trim(),\n    authors,\n    published:       pubNode && pubNode.text,\n    updated:         updNode && updNode.text,\n    primaryCategory: catNode && catNode.attrs && catNode.attrs.term,\n    pdfUrl,\n    abstractUrl:     abs,\n  };\n});\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "export.arxiv.org"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1",
+          "safety.parser/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "891bea75-a991-5441-ad25-d7e3f850741e",
+    "name": "getPublicHolidays",
+    "description": "Returns public holidays for a given country and year via Nager.Date (no auth).\n\nReturns: [{ date, localName, name, fixed, global, types }]. Country codes are 2-letter ISO 3166-1 alpha-2 (KR / US / JP / GB / DE / FR / IT / ES / CN / ...).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "year",
+        "description": "Calendar year (e.g. 2026)",
+        "required": true,
+        "type": "INTEGER",
+        "testValue": "2026"
+      },
+      {
+        "name": "countryCode",
+        "description": "2-letter ISO country code (default 'KR')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "KR"
+      }
+    ],
+    "code": "/**\n * Public holidays via Nager.Date (no auth, free).\n *\n * GET https://date.nager.at/api/v3/PublicHolidays/{year}/{countryCode}\n *\n * Supports 100+ countries. ISO 3166-1 alpha-2 country codes.\n */\n\nif (year == null) throw new Error('year required');\nconst y = Number(year);\nif (!Number.isInteger(y) || y < 1900 || y > 2100) throw new Error('year out of range');\nconst cc = (countryCode && countryCode !== '') ? String(countryCode).toUpperCase() : 'KR';\n\nconst url = 'https://date.nager.at/api/v3/PublicHolidays/' + y + '/' + encodeURIComponent(cc);\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 1_000_000,\n});\nif (resp.status === 404) return [];\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(h => ({\n  date:      h.date,\n  localName: h.localName,\n  name:      h.name,\n  fixed:     h.fixed,\n  global:    h.global,\n  types:     h.types || [],\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "date.nager.at"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "314b5c66-3146-5ceb-b678-6e9d21b0fe66",
+    "name": "searchReddit",
+    "description": "Searches a public subreddit via Reddit's JSON API (no auth, but rate-limited and User-Agent required).\n\nReturns up to `limit` posts: [{ title, author, score, numComments, createdUtc, subreddit, permalink, url, selftext }]. Subreddit can be 'all' for site-wide search.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "subreddit",
+        "description": "Subreddit name (without /r/, or 'all')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "programming"
+      },
+      {
+        "name": "query",
+        "description": "Search query string",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring ai"
+      },
+      {
+        "name": "limit",
+        "description": "Max posts (1-25, default 5)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "5"
+      },
+      {
+        "name": "sort",
+        "description": "relevance | hot | top | new | comments",
+        "required": false,
+        "type": "STRING",
+        "testValue": "relevance"
+      }
+    ],
+    "code": "/**\n * Reddit JSON search endpoint.\n *\n * GET https://www.reddit.com/r/{subreddit}/search.json?q=...&restrict_sr=1&limit=...\n *\n * No authentication needed for read access. Reddit BANS empty / generic User-Agent\n * strings — we pass a descriptive one. Rate limit: ~60 req/min/IP.\n */\n\nif (subreddit == null || subreddit === '') throw new Error('subreddit required');\nif (query == null || query === '') throw new Error('query required');\nconst n = (Number.isInteger(limit) && limit > 0 && limit <= 25) ? limit : 5;\nconst sortValid = (sort === 'hot' || sort === 'top' || sort === 'new' || sort === 'comments');\nconst s = sortValid ? sort : 'relevance';\n\nconst sub = String(subreddit).replace(/^r\\//, '');\nconst restrict = (sub.toLowerCase() === 'all') ? '' : '&restrict_sr=1';\nconst url = 'https://www.reddit.com/r/' + encodeURIComponent(sub) + '/search.json'\n  + '?q=' + encodeURIComponent(query)\n  + restrict\n  + '&limit=' + n + '&sort=' + s;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json',\n             'User-Agent': 'spring-ai-playground/0.2 (by /u/local-tool)' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nconst children = (data.data && data.data.children) || [];\nreturn children.map(c => {\n  const d = c.data || {};\n  return {\n    title:       d.title,\n    author:      d.author,\n    score:       d.score,\n    numComments: d.num_comments,\n    createdUtc:  d.created_utc,\n    subreddit:   d.subreddit,\n    permalink:   'https://www.reddit.com' + d.permalink,\n    url:         d.url,\n    selftext:    d.selftext,\n  };\n});\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "www.reddit.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "e72ae92b-a553-5a20-bdf5-9178fd3bdfdb",
+    "name": "getOpenMeteoForecast",
+    "description": "Fetches a multi-day weather forecast from Open-Meteo (no auth, 10k req/day for non-commercial). Open-Meteo serves official ECMWF/GFS/ICON model output — far richer than wttr.in but requires lat/lon (use `geocodeAddress` first if you only have a city name).\n\nReturns: { latitude, longitude, timezone, daily: { time, temperatureMax, temperatureMin, precipitationSum, windSpeedMax }, hourly: { time[24], temperature[24], precipitationProbability[24] } } (first 24 h trimmed).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "latitude",
+        "description": "Latitude (e.g. 37.5665 for Seoul)",
+        "required": true,
+        "type": "NUMBER",
+        "testValue": "37.5665"
+      },
+      {
+        "name": "longitude",
+        "description": "Longitude (e.g. 126.9780 for Seoul)",
+        "required": true,
+        "type": "NUMBER",
+        "testValue": "126.978"
+      },
+      {
+        "name": "days",
+        "description": "Forecast days (1-16, default 3)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "3"
+      },
+      {
+        "name": "timezone",
+        "description": "IANA tz (default 'auto')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Asia/Seoul"
+      }
+    ],
+    "code": "/**\n * Open-Meteo multi-day forecast.\n *\n * GET https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&forecast_days=..\n *     &daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max\n *     &hourly=temperature_2m,precipitation_probability\n *     &timezone=...\n *\n * Lat/lon ranges: latitude ∈ [-90, 90], longitude ∈ [-180, 180].\n * The hourly arrays are trimmed to the first 24 h to keep payloads small.\n */\n\nif (latitude == null)  throw new Error('latitude required');\nif (longitude == null) throw new Error('longitude required');\nconst lat = Number(latitude), lon = Number(longitude);\nif (!Number.isFinite(lat) || lat < -90 || lat > 90)   throw new Error('latitude out of range');\nif (!Number.isFinite(lon) || lon < -180 || lon > 180) throw new Error('longitude out of range');\nconst d  = (Number.isInteger(days) && days > 0 && days <= 16) ? days : 3;\nconst tz = (timezone && timezone !== '') ? timezone : 'auto';\n\nconst url = 'https://api.open-meteo.com/v1/forecast'\n  + '?latitude=' + lat + '&longitude=' + lon\n  + '&forecast_days=' + d + '&timezone=' + encodeURIComponent(tz)\n  + '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max'\n  + '&hourly=temperature_2m,precipitation_probability';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst j = resp.json();\n\nconst daily  = j.daily  || {};\nconst hourly = j.hourly || {};\nfunction trim(arr) { return Array.isArray(arr) ? arr.slice(0, 24) : []; }\n\nreturn {\n  latitude:  j.latitude,\n  longitude: j.longitude,\n  timezone:  j.timezone,\n  daily: {\n    time:             daily.time,\n    temperatureMax:   daily.temperature_2m_max,\n    temperatureMin:   daily.temperature_2m_min,\n    precipitationSum: daily.precipitation_sum,\n    windSpeedMax:     daily.wind_speed_10m_max,\n  },\n  hourly: {\n    time:                     trim(hourly.time),\n    temperature:              trim(hourly.temperature_2m),\n    precipitationProbability: trim(hourly.precipitation_probability),\n  },\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "weather"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.open-meteo.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "0ee59084-ba30-5d32-9599-696082121379",
+    "name": "geocodeAddress",
+    "description": "Forward-geocodes a free-form address to coordinates via OpenStreetMap Nominatim (no key). Nominatim's usage policy requires a descriptive User-Agent and at most 1 req/s — we set both.\n\nReturns up to `limit` matches: [{ displayName, latitude, longitude, country, city, type, importance }].",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "address",
+        "description": "Address / place text (e.g. 'Seoul, South Korea' or 'Eiffel Tower, Paris')",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Seoul, South Korea"
+      },
+      {
+        "name": "limit",
+        "description": "Max matches (1-10, default 3)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "3"
+      }
+    ],
+    "code": "/**\n * Forward geocoding via OpenStreetMap Nominatim.\n *\n * GET https://nominatim.openstreetmap.org/search?q={address}&format=json&limit={n}&addressdetails=1\n *\n * Honour OSM's policy: descriptive User-Agent, polite cadence (1 req/s).\n */\n\nif (address == null || address === '') throw new Error('address required');\nconst n = (Number.isInteger(limit) && limit > 0 && limit <= 10) ? limit : 3;\n\nconst url = 'https://nominatim.openstreetmap.org/search'\n  + '?q=' + encodeURIComponent(address)\n  + '&format=json&limit=' + n + '&addressdetails=1';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json',\n             'User-Agent': 'spring-ai-playground/0.2 (contact: github.com/spring-projects/spring-ai-community)' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(r => ({\n  displayName: r.display_name,\n  latitude:    r.lat ? Number(r.lat) : null,\n  longitude:   r.lon ? Number(r.lon) : null,\n  country:     r.address && r.address.country,\n  city:        r.address && (r.address.city || r.address.town || r.address.village),\n  type:        r.type,\n  importance:  r.importance,\n}));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "nominatim.openstreetmap.org"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "2c1abce9-da23-50a4-a7aa-6cb18c54ec68",
+    "name": "getSunriseSunset",
+    "description": "Returns sunrise / sunset / twilight times for a given lat-lon and date via sunrise-sunset.org (no auth).\n\nReturns: { sunrise, sunset, solarNoon, dayLength, civilTwilightBegin, civilTwilightEnd } as ISO strings in the requested timezone.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "latitude",
+        "description": "Latitude in decimal degrees",
+        "required": true,
+        "type": "NUMBER",
+        "testValue": "37.5665"
+      },
+      {
+        "name": "longitude",
+        "description": "Longitude in decimal degrees",
+        "required": true,
+        "type": "NUMBER",
+        "testValue": "126.978"
+      },
+      {
+        "name": "date",
+        "description": "ISO date (YYYY-MM-DD), defaults to today",
+        "required": false,
+        "type": "STRING",
+        "testValue": "2026-05-13"
+      },
+      {
+        "name": "timezone",
+        "description": "IANA tz for the response (default 'UTC')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Asia/Seoul"
+      }
+    ],
+    "code": "/**\n * Sunrise / sunset times for a given location and date.\n *\n * GET https://api.sunrise-sunset.org/json?lat=..&lng=..&date=..&formatted=0\n *\n * Returns ISO timestamps (formatted=0 prevents the API from returning local\n * strings). We convert them into the requested IANA timezone.\n */\n\nif (latitude == null || longitude == null) throw new Error('latitude/longitude required');\nconst lat = Number(latitude), lon = Number(longitude);\nif (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('latitude/longitude must be numeric');\nconst d  = (date && date !== '') ? date : 'today';\nconst tz = (timezone && timezone !== '') ? timezone : 'UTC';\n\nconst url = 'https://api.sunrise-sunset.org/json'\n  + '?lat=' + lat + '&lng=' + lon\n  + '&date=' + encodeURIComponent(d)\n  + '&formatted=0';\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 200_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst j = resp.json();\nif (j.status !== 'OK') return { success: false, status: j.status };\n\nfunction inTz(iso) {\n  if (!iso) return null;\n  const dt = new Date(iso);\n  const fmt = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hour12: false,\n  });\n  const parts = {};\n  for (const p of fmt.formatToParts(dt)) parts[p.type] = p.value;\n  return parts.year + '-' + parts.month + '-' + parts.day\n       + 'T' + (parts.hour === '24' ? '00' : parts.hour) + ':' + parts.minute + ':' + parts.second;\n}\n\nconst r = j.results || {};\nreturn {\n  sunrise:             inTz(r.sunrise),\n  sunset:              inTz(r.sunset),\n  solarNoon:           inTz(r.solar_noon),\n  dayLength:           r.day_length,\n  civilTwilightBegin:  inTz(r.civil_twilight_begin),\n  civilTwilightEnd:    inTz(r.civil_twilight_end),\n  timezone:            tz,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.sunrise-sunset.org"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "6059f968-88db-55da-b49d-dc6d74029ddd",
+    "name": "getRecentEarthquakes",
+    "description": "Fetches recent earthquakes from the USGS public catalog (no auth).\n\nReturns up to `limit` events: [{ time, place, magnitude, type, latitude, longitude, depthKm, url, tsunami }] filtered by minimum magnitude and the past `lookbackHours` hours.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "minMagnitude",
+        "description": "Minimum magnitude (default 4.5)",
+        "required": false,
+        "type": "NUMBER",
+        "testValue": "4.5"
+      },
+      {
+        "name": "lookbackHours",
+        "description": "Hours to look back (1-720, default 24)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "24"
+      },
+      {
+        "name": "limit",
+        "description": "Max events (1-100, default 20)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "20"
+      }
+    ],
+    "code": "/**\n * USGS Earthquake API (FDSN web service).\n *\n * GET https://earthquake.usgs.gov/fdsnws/event/1/query?\n *     format=geojson&starttime=...&minmagnitude=...&limit=...\n *\n * `time` field is epoch millis — we convert to ISO. Depth is in km already.\n */\n\nconst mm  = (minMagnitude  == null || minMagnitude  === '') ? 4.5 : Number(minMagnitude);\nconst lh  = (Number.isInteger(lookbackHours) && lookbackHours > 0 && lookbackHours <= 720) ? lookbackHours : 24;\nconst lim = (Number.isInteger(limit) && limit > 0 && limit <= 100) ? limit : 20;\nif (!Number.isFinite(mm)) throw new Error('minMagnitude must be numeric');\n\nconst start = new Date(Date.now() - lh * 3_600_000).toISOString();\nconst url = 'https://earthquake.usgs.gov/fdsnws/event/1/query'\n  + '?format=geojson&starttime=' + encodeURIComponent(start)\n  + '&minmagnitude=' + mm\n  + '&limit=' + lim\n  + '&orderby=time';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\n\nreturn (data.features || []).map(f => {\n  const p = f.properties || {};\n  const g = f.geometry && f.geometry.coordinates;\n  return {\n    time:      p.time ? new Date(p.time).toISOString() : null,\n    place:     p.place,\n    magnitude: p.mag,\n    type:      p.magType,\n    latitude:  g && g[1],\n    longitude: g && g[0],\n    depthKm:   g && g[2],\n    url:       p.url,\n    tsunami:   p.tsunami === 1,\n  };\n});\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "geo"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "earthquake.usgs.gov"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.http/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "WEB"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "allowlist",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  }
+]

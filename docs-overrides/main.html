@@ -16,6 +16,100 @@
       };
     })();
   </script>
+  <style>
+    /* Suppress the 0.25s grid-template-rows animation Material applies to
+       .md-nav while we apply pre-paint defaults / user-saved collapse state.
+       Without this guard, the depth-1 sections animate open on every leaf
+       navigation — visible as a sidebar scrollbar flicker. The body class is
+       removed after first paint settles so user-triggered toggles still
+       animate normally. */
+    html:not(.md-nav-anim-ready) .md-sidebar--primary .md-nav,
+    html:not(.md-nav-anim-ready) .md-sidebar--primary .md-nav * {
+      transition: none !important;
+    }
+  </style>
+  <script>
+    // Sidebar nav defaults — applied via MutationObserver during HTML parse so
+    // the toggle state is set BEFORE the browser paints. Without this, depth-1
+    // sections render collapsed (Material's default), then our post-DOM script
+    // expands them — visible as a sidebar "flash/reset" on every leaf-page nav.
+    // Full nav UX logic (persist, section-header click intercept, active-path
+    // force-expand) still runs from assets/javascripts/nav-default-expand.js
+    // after DOMContentLoaded; this inline block only handles the pre-paint
+    // initial state. See nav-default-expand.js for the storage key contract.
+    (function () {
+      var STORAGE_KEY = 'sap-nav-toggle-state';
+      var saved = {};
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) saved = JSON.parse(raw);
+      } catch (e) { /* private mode or quota — ignore */ }
+
+      function isDepth1Nested(input) {
+        var item = input.parentElement;
+        if (!item || !item.classList || !item.classList.contains('md-nav__item--nested')) return false;
+        var ul = item.parentElement;
+        if (!ul || !ul.classList || !ul.classList.contains('md-nav__list')) return false;
+        var nav = ul.parentElement;
+        if (!nav || nav.tagName !== 'NAV') return false;
+        if (nav.getAttribute('data-md-level') !== '1') return false;
+        // Only the primary sidebar's per-tab nav (not the header tabs nav).
+        var sidebar = nav.closest('.md-sidebar--primary');
+        return !!sidebar;
+      }
+
+      function applyInitial(input) {
+        if (!input.id) return;
+        if (Object.prototype.hasOwnProperty.call(saved, input.id)) {
+          input.checked = !!saved[input.id];
+          return;
+        }
+        if (isDepth1Nested(input)) input.checked = true;
+      }
+
+      var observer = new MutationObserver(function (mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var added = mutations[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var node = added[j];
+            if (node.nodeType !== 1) continue;
+            if (node.matches && node.matches('input.md-nav__toggle')) {
+              applyInitial(node);
+            } else if (node.querySelectorAll) {
+              node.querySelectorAll('input.md-nav__toggle').forEach(applyInitial);
+            }
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      function finalize() {
+        observer.disconnect();
+        // Re-enable the .md-nav transition once layout has settled. Two rAFs
+        // — the first ensures the current frame's painted state is committed,
+        // the second runs after the browser's next paint, so the class swap
+        // happens between paints and never animates the just-set initial state.
+        // setTimeout fallback covers browsers/tabs that throttle rAF (preview
+        // panes, background tabs) so the page never gets stuck without anim.
+        var armed = false;
+        function arm() {
+          if (armed) return;
+          armed = true;
+          document.documentElement.classList.add('md-nav-anim-ready');
+        }
+        requestAnimationFrame(function () {
+          requestAnimationFrame(arm);
+        });
+        setTimeout(arm, 200);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', finalize);
+      } else {
+        finalize();
+      }
+    })();
+  </script>
   {% set ga_measurement_id = "G-52TGT1G9B3" %}
   {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
   {% set ga_page_title = "Doc - " ~ page.title if page and page.title else "Doc - " ~ config.site_name %}

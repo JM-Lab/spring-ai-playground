@@ -152,15 +152,30 @@
   cursor: pointer;
 }
 
-/* Wide tables (feature comparison, model matrices) horizontally scroll
-   instead of overflowing the column on narrow viewports. */
+/* Tables default to wrapping their cell content within the content column.
+   Horizontal scrolling is a fallback for content that genuinely cannot wrap
+   (very long unbroken tokens — URLs, hashes, single-word identifiers); we do
+   NOT force the table to its widest layout. The scroll-cue gradient further
+   down stays invisible when no overflow exists (local-attachment cover masks
+   the scroll-attachment shadow), so wrapping tables show no false affordance. */
 .md-typeset .md-typeset__table {
   overflow-x: auto;
 }
 
 .md-typeset table:not([class]) {
   display: table;
-  min-width: max-content;
+  width: 100%;
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.md-typeset table:not([class]) code {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Mobile: reduce h3 / h4 padding so the long Getting Started page does not
@@ -677,6 +692,24 @@ body.dl-confirm-open {
   z-index: 1;
   color: var(--tint, var(--md-default-fg-color));
 }
+/* Official brand icons (simpleicons CDN) — used by MCP catalog cards and any
+ * default-tool card whose vendor has a brand slug. Sized to match the Material
+ * emoji icons above so the row of cards stays visually uniform. */
+.tcg-art img.tcg-favicon {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  /* Tint the single-colour SVG with --tint when the card has a vendor tint;
+   * fall back to the page foreground colour otherwise. */
+  filter: var(--tcg-favicon-filter, none);
+}
+[data-md-color-scheme="slate"] .tcg-art img.tcg-favicon {
+  /* In dark mode, invert the simpleicons (black-on-transparent) glyph so it
+   * stays readable on a dark background. */
+  filter: invert(1) opacity(0.92);
+}
 .tcg-art > p,
 .tcg-stats__line > p {
   margin: 0;
@@ -1058,4 +1091,149 @@ body.dl-confirm-open {
        overflow horizontally. Clamp to parent width on phones. */
     max-width: 100%;
   }
+
+  /* Wide tables on architecture / getting-started / safety-architecture stay
+     readable on phones: tighten cell padding + font so more content fits
+     inside the overflow-x wrapper before the user has to scroll sideways. */
+  .md-typeset table:not([class]) {
+    font-size: 0.78em;
+  }
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 0.5em 0.7em;
+  }
+  .md-typeset table:not([class]) code {
+    font-size: 0.92em;
+    word-break: break-word;
+  }
+}
+
+/* Scroll-cue gradient on the right edge of any wide table so it's visually
+   obvious that the table itself scrolls horizontally (rather than the page).
+   Fades out when the scroll has actually reached the right edge — relies on
+   background-attachment: local on the table container. */
+.md-typeset .md-typeset__table,
+.md-typeset > .md-typeset__scrollwrap {
+  background:
+    linear-gradient(to right, var(--md-default-bg-color) 30%, color-mix(in srgb, var(--md-default-bg-color) 0%, transparent)) 0 0/24px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--md-default-bg-color) 0%, transparent), var(--md-default-bg-color) 70%) 100% 0/24px 100% no-repeat local,
+    radial-gradient(ellipse 60% 60% at 0% 50%, rgba(0,0,0,0.10), transparent) 0 0/16px 100% no-repeat scroll,
+    radial-gradient(ellipse 60% 60% at 100% 50%, rgba(0,0,0,0.10), transparent) 100% 0/16px 100% no-repeat scroll;
+}
+[data-md-color-scheme="slate"] .md-typeset .md-typeset__table,
+[data-md-color-scheme="slate"] .md-typeset > .md-typeset__scrollwrap {
+  background:
+    linear-gradient(to right, var(--md-default-bg-color) 30%, color-mix(in srgb, var(--md-default-bg-color) 0%, transparent)) 0 0/24px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--md-default-bg-color) 0%, transparent), var(--md-default-bg-color) 70%) 100% 0/24px 100% no-repeat local,
+    radial-gradient(ellipse 60% 60% at 0% 50%, rgba(255,255,255,0.10), transparent) 0 0/16px 100% no-repeat scroll,
+    radial-gradient(ellipse 60% 60% at 100% 50%, rgba(255,255,255,0.10), transparent) 100% 0/16px 100% no-repeat scroll;
+}
+
+/* ===== Home spotlight grid =====
+   Compact chip-shaped cards used on the home page to surface representative
+   Default Tools and MCP Catalog entries without bloating the page. Reuses
+   .tcg-stretched-link and risk colours; visual footprint is a single row per
+   card so 6+6 entries fit in a single short scroll. */
+.tcg-grid--home {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.55em;
+  margin: 0.6em 0 1em;
+}
+.tcg-card--home {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  padding: 0.55em 0.75em;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 3px solid var(--tint, var(--md-default-fg-color--lighter));
+  border-radius: 8px;
+  font-size: 0.88em;
+  line-height: 1.25;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.tcg-card--home:hover {
+  border-color: var(--md-accent-fg-color);
+  border-left-color: var(--tint, var(--md-accent-fg-color));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.tcg-card--home .tcg-home-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tcg-card--home .tcg-home-icon img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+[data-md-color-scheme="slate"] .tcg-card--home .tcg-home-icon img {
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+.tcg-card--home .tcg-home-icon .twemoji,
+.tcg-card--home .tcg-home-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.tcg-card--home .tcg-home-name {
+  font-weight: 600;
+  color: var(--md-default-fg-color);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tcg-card--home .tcg-home-pill {
+  display: inline-block;
+  padding: 0.05em 0.42em;
+  font-size: 0.74em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 4px;
+  background: var(--risk-bg, var(--md-code-bg-color));
+  color: var(--risk-fg, var(--md-default-fg-color--light));
+  flex-shrink: 0;
+}
+.tcg-card--home .tcg-home-oauth {
+  font-size: 0.95em;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+/* Python-Markdown wraps multiline `<div markdown>` content in a single <p>.
+   Unwrap that paragraph from the flex layout so the chip's direct children
+   line up correctly inside .tcg-card--home. */
+.tcg-card--home > p {
+  display: contents;
+}
+/* mkdocs-material glightbox plugin auto-wraps every <img> in an anchor.
+   In a 20×20 favicon chip that anchor would (a) cover the stretched-link's
+   click target and (b) flash a lightbox cursor on hover. Disable the wrapper
+   entirely so the stretched-link is the only thing that responds to clicks. */
+.tcg-card--home a.glightbox {
+  pointer-events: none;
+  position: static;
+  display: inline;
+  cursor: inherit;
+}
+.tcg-card--home a.glightbox img {
+  pointer-events: none;
+  margin: 0;
+  border: 0;
+  border-radius: 3px;
+}
+.home-spotlight-cta {
+  font-size: 0.88em;
+  margin: 0.1em 0 1.4em;
+  color: var(--md-default-fg-color--light);
+}
+.home-spotlight-cta a {
+  font-weight: 600;
 }

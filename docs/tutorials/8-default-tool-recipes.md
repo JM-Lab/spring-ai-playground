@@ -1,4 +1,4 @@
-Description: Tutorial 8 — five default-tool recipes composed inside a single JS action, published as new MCP-exposed custom tools.
+description: Tutorial 8 — five default-tool recipes composed inside a single JS action, published as new MCP-exposed custom tools.
 
 # Tutorial 8 — Default Tool Recipes
 
@@ -17,7 +17,7 @@ The pattern (every recipe follows it):
 4. Adjust the test value so Local Pass exercises the new logic.
 5. **Test & Publish**. The new tool joins the built-in MCP server the same moment Local Pass succeeds — Agentic Chat sees it on the next turn.
 
-The cross-platform property carries through — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`), so the same JS runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio.md#cross-platform-by-design).
+The cross-platform property carries through — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`), so the same JS runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
 
 ---
 
@@ -296,4 +296,5 @@ For each recipe:
 
 - **Two-layer composition** — call a tool you just made from another new tool. Example: a `multiRepoDigest` that loops over `[{ owner, repo }, ...]`, calls `releaseRadar` per row, and rolls the summaries into a single Slack post.
 - **Move from JS chain to model chain** — re-implement Recipe 3 as a Tutorial-7-style agent loop. Use `geocodeAddress` and `getOpenMeteoForecast` directly from the preset and let the model decide. Compare the trace: one MCP tool call vs two.
-- **Stress the cross-platform property** — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`). The same JS works on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio.md#cross-platform-by-design).
+- **Stress the cross-platform property** — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`). The same JS works on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
+

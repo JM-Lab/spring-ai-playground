@@ -1,0 +1,900 @@
+[
+  {
+    "toolId": "0b9a1062-58ba-5d60-8f11-ae5fede644f2",
+    "name": "timezoneConvert",
+    "description": "Converts a moment in time between IANA time zones. Returns the same instant rendered in the target zone (ISO with offset).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "ISO date/time text",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T10:30:00Z"
+      },
+      {
+        "name": "toTimeZone",
+        "description": "Target IANA time zone",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Asia/Seoul"
+      }
+    ],
+    "code": "/**\n * Renders the same instant in a different IANA time zone, with offset.\n *\n * Output is ISO-8601 with explicit ±HH:MM offset (NOT 'Z'), so the\n * time zone is unambiguous in the rendered string.\n *\n * Pure ES2024 — Intl.DateTimeFormat for components + manual offset calc.\n */\n\nif (text == null || text === '') throw new Error('text required');\nif (toTimeZone == null || toTimeZone === '') throw new Error('toTimeZone required');\nconst d = new Date(String(text));\nif (isNaN(d.getTime())) throw new Error('invalid date: ' + text);\n\nconst fmt = new Intl.DateTimeFormat('en-CA', {\n  timeZone: toTimeZone,\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit',\n  hour12: false,\n  fractionalSecondDigits: 3,\n});\n\nconst parts = {};\nfor (const p of fmt.formatToParts(d)) parts[p.type] = p.value;\n\nconst hh = parts.hour === '24' ? '00' : parts.hour;\n// Reconstruct the wall-clock instant in target zone, treat it as UTC,\n// then derive the offset from the real UTC moment.\nconst wallUtc = Date.UTC(\n  Number(parts.year), Number(parts.month) - 1, Number(parts.day),\n  Number(hh), Number(parts.minute), Number(parts.second));\nconst offsetMin = Math.round((wallUtc - d.getTime()) / 60_000);\n\nconst sign = offsetMin >= 0 ? '+' : '-';\nconst aoh = Math.abs(offsetMin);\nconst oh = String(Math.floor(aoh / 60)).padStart(2, '0');\nconst om = String(aoh % 60).padStart(2, '0');\nconst frac = parts.fractionalSecond || '000';\n\nreturn parts.year + '-' + parts.month + '-' + parts.day\n     + 'T' + hh + ':' + parts.minute + ':' + parts.second + '.' + frac\n     + sign + oh + ':' + om;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "1eb78e35-a1b2-5515-8238-0b174c26b049",
+    "name": "dateDiff",
+    "description": "Computes b - a in the requested unit (days|hours|minutes|seconds|milliseconds). Returns a number which may be fractional.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "a",
+        "description": "Start ISO date/time",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T00:00:00Z"
+      },
+      {
+        "name": "b",
+        "description": "End ISO date/time",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-20T12:00:00Z"
+      },
+      {
+        "name": "unit",
+        "description": "Unit of the result (default 'milliseconds')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "days"
+      }
+    ],
+    "code": "/**\n * Computes `b - a` in the requested unit. Result is a (possibly fractional)\n * number — e.g. 5.5 days, 36.0 hours, 0.25 seconds.\n *\n * `unit` accepts: days / hours / minutes / seconds / milliseconds.\n *\n * Pure ES2024 — Date.getTime() based; not calendar-aware (use dateMath for\n * month/year-level arithmetic).\n */\n\nif (a == null || b == null) throw new Error('a and b required');\nconst ta = new Date(String(a)).getTime();\nconst tb = new Date(String(b)).getTime();\nif (isNaN(ta) || isNaN(tb)) throw new Error('invalid date');\n\nconst diff = tb - ta;\nswitch (String(unit || 'milliseconds').toLowerCase()) {\n  case 'day':    case 'days':    return diff / 86_400_000;\n  case 'hour':   case 'hours':   return diff / 3_600_000;\n  case 'minute': case 'minutes': return diff / 60_000;\n  case 'second': case 'seconds': return diff / 1_000;\n  case 'millisecond': case 'milliseconds': case 'ms': return diff;\n  default: throw new Error('unsupported unit: ' + unit);\n}\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "20cb1384-73e8-5736-93e1-83aea001576a",
+    "name": "urlEncode",
+    "description": "Percent-encodes a string for use in a URL component. Equivalent to encodeURIComponent.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to URL-encode",
+        "required": true,
+        "type": "STRING",
+        "testValue": "hello world & foo=bar"
+      }
+    ],
+    "code": "/**\n * Percent-encodes a string for safe use inside a URL component.\n *\n * Encodes every character that is not in the RFC 3986 \"unreserved\" set\n * (ALPHA / DIGIT / -._~). Spaces become %20 (NOT '+'); '&', '=', '?', '#'\n * and other reserved characters are all encoded.\n *\n * Pure ES2024 — uses the standard encodeURIComponent only.\n */\n\nif (text == null) throw new Error('text required');\nreturn encodeURIComponent(String(text));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "TEXT",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "TEXT"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "187f6d41-e9bc-5ffe-abef-75485d5dae05",
+    "name": "dateMath",
+    "description": "Adds (or subtracts) a duration to a date and returns the resulting ISO timestamp. Unit: years|months|weeks|days|hours|minutes|seconds|milliseconds.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "ISO date/time text",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T00:00:00Z"
+      },
+      {
+        "name": "amount",
+        "description": "Amount to add (negative to subtract)",
+        "required": true,
+        "type": "INTEGER",
+        "testValue": "7"
+      },
+      {
+        "name": "unit",
+        "description": "Duration unit",
+        "required": true,
+        "type": "STRING",
+        "testValue": "days"
+      }
+    ],
+    "code": "/**\n * Adds (or subtracts) a duration to an ISO date.\n *\n * `unit` accepts: years / months / weeks / days / hours / minutes /\n *                  seconds / milliseconds (both singular and plural).\n * Negative `amount` performs subtraction.\n *\n * Pure ES2024 — uses Date UTC setters so DST never bites.\n */\n\nif (text == null || text === '') throw new Error('text required');\nconst d = new Date(String(text));\nif (isNaN(d.getTime())) throw new Error('invalid date: ' + text);\n\nconst n = Number(amount);\nif (!Number.isFinite(n)) throw new Error('amount must be a finite number');\n\nswitch (String(unit || '').toLowerCase()) {\n  case 'year':   case 'years':        d.setUTCFullYear(d.getUTCFullYear() + n); break;\n  case 'month':  case 'months':       d.setUTCMonth(d.getUTCMonth() + n); break;\n  case 'week':   case 'weeks':        d.setUTCDate(d.getUTCDate() + n * 7); break;\n  case 'day':    case 'days':         d.setUTCDate(d.getUTCDate() + n); break;\n  case 'hour':   case 'hours':        d.setUTCHours(d.getUTCHours() + n); break;\n  case 'minute': case 'minutes':      d.setUTCMinutes(d.getUTCMinutes() + n); break;\n  case 'second': case 'seconds':      d.setUTCSeconds(d.getUTCSeconds() + n); break;\n  case 'millisecond': case 'milliseconds': case 'ms':\n    d.setUTCMilliseconds(d.getUTCMilliseconds() + n); break;\n  default: throw new Error('unsupported unit: ' + unit);\n}\nreturn d.toISOString();\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "fcacd3c8-0047-5b4f-a91d-5b8096ae8d04",
+    "name": "parseDate",
+    "description": "Parses a date/time string (ISO 8601 or RFC 2822) and returns its components plus epochMillis.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Date/time text",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T10:30:00Z"
+      },
+      {
+        "name": "timeZone",
+        "description": "IANA time zone to interpret the components in (default UTC)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "UTC"
+      }
+    ],
+    "code": "/**\n * Parses a date/time string and returns its individual components in the\n * requested IANA time zone (default UTC), plus the canonical ISO timestamp\n * and epoch millis.\n *\n * Return shape:\n *   { iso, epochMillis, year, month, day, hour, minute, second,\n *     weekday, timeZone }\n *\n * Pure ES2024 — uses Date + Intl.DateTimeFormat.formatToParts.\n */\n\nif (text == null || text === '') throw new Error('text required');\nconst d = new Date(String(text));\nif (isNaN(d.getTime())) throw new Error('invalid date: ' + text);\n\nconst tz = timeZone || 'UTC';\nconst fmt = new Intl.DateTimeFormat('en-CA', {\n  timeZone: tz,\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit',\n  hour12: false,\n  weekday: 'short',\n});\n\nconst parts = {};\nfor (const part of fmt.formatToParts(d)) parts[part.type] = part.value;\n\nreturn {\n  iso: d.toISOString(),\n  epochMillis: d.getTime(),\n  year: Number(parts.year),\n  month: Number(parts.month),\n  day: Number(parts.day),\n  // Some engines emit '24' for midnight; normalise to '0' for sanity.\n  hour: Number(parts.hour === '24' ? '0' : parts.hour),\n  minute: Number(parts.minute),\n  second: Number(parts.second),\n  weekday: parts.weekday,\n  timeZone: tz,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "238d7efb-12b0-5a1a-a287-bcccef43eb8b",
+    "name": "cronNext",
+    "description": "Computes the next datetime matching a standard 5-field cron expression (minute hour day month weekday). Supports * , - / and ? (treated as *). Returns ISO timestamp in UTC.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "expression",
+        "description": "Cron expression (5 fields)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "0 9 * * 1-5"
+      },
+      {
+        "name": "from",
+        "description": "Starting ISO datetime (default: now)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "2026-01-15T12:00:00Z"
+      },
+      {
+        "name": "count",
+        "description": "Number of next occurrences to return (default 1, max 100)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "3"
+      }
+    ],
+    "code": "/**\n * Computes the next N occurrences matching a 5-field cron expression.\n *\n * Field layout:  minute  hour  day-of-month  month  day-of-week\n * Supports `*`, `?`, comma lists (`1,3,5`), ranges (`1-5`) and step\n * suffixes (`* / 15`, `1-23/2`).\n *\n * All times are computed in UTC and returned as ISO timestamps.\n *\n * Pure ES2024 — Date + Set, no external scheduler library.\n */\n\nif (expression == null || expression === '') throw new Error('expression required');\nconst fields = String(expression).trim().split(/\\s+/);\nif (fields.length !== 5) throw new Error('expected 5 cron fields, got ' + fields.length);\n\nconst ranges = [[0, 59], [0, 23], [1, 31], [1, 12], [0, 6]];\n\nfunction parseField(spec, [min, max]) {\n  // '*' / '?' → full range\n  if (spec === '*' || spec === '?') {\n    const out = new Set();\n    for (let i = min; i <= max; i++) out.add(i);\n    return out;\n  }\n  const out = new Set();\n  for (const part of spec.split(',')) {\n    const stepIdx = part.indexOf('/');\n    const step = stepIdx >= 0 ? parseInt(part.slice(stepIdx + 1), 10) : 1;\n    const range = stepIdx >= 0 ? part.slice(0, stepIdx) : part;\n    let from, to;\n    if (range === '*')          { from = min; to = max; }\n    else if (range.includes('-')) { const [aa, bb] = range.split('-').map(s => parseInt(s, 10)); from = aa; to = bb; }\n    else                          { const v = parseInt(range, 10); from = v; to = v; }\n    for (let i = from; i <= to; i += step) out.add(i);\n  }\n  return out;\n}\n\nconst sets = fields.map((f, i) => parseField(f, ranges[i]));\n\nconst start = (from && from !== '') ? new Date(String(from)) : new Date();\nif (isNaN(start.getTime())) throw new Error('invalid from: ' + from);\nconst want = count == null ? 1 : Number(count);\nif (!Number.isInteger(want) || want < 1 || want > 100) throw new Error('count must be 1..100');\n\nconst results = [];\nconst d = new Date(start.getTime());\nd.setUTCSeconds(0, 0);\nd.setUTCMinutes(d.getUTCMinutes() + 1);\n\nconst limit = 366 * 24 * 60; // walk up to one year forward\nlet steps = 0;\nwhile (results.length < want && steps < limit) {\n  steps++;\n  if (sets[0].has(d.getUTCMinutes())\n   && sets[1].has(d.getUTCHours())\n   && sets[2].has(d.getUTCDate())\n   && sets[3].has(d.getUTCMonth() + 1)\n   && sets[4].has(d.getUTCDay())) {\n    results.push(d.toISOString());\n  }\n  d.setUTCMinutes(d.getUTCMinutes() + 1);\n}\nif (results.length === 0) throw new Error('no occurrence found within one year');\nreturn results;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "d40fe777-7b75-54a2-8b97-48f84e47ad2e",
+    "name": "diffText",
+    "description": "Returns a line-by-line diff between two texts. Each entry is {op, line} where op is one of '=' (unchanged), '-' (only in a), '+' (only in b).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "a",
+        "description": "First text (the 'before' side)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "alpha\nbeta\ngamma"
+      },
+      {
+        "name": "b",
+        "description": "Second text (the 'after' side)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "alpha\nbeta-2\ngamma\ndelta"
+      }
+    ],
+    "code": "/**\n * Line-by-line diff between two texts via longest-common-subsequence.\n *\n * Returns an ordered list of { op, line } entries where `op` is:\n *   '='  unchanged line (present in both)\n *   '-'  line only present in `a` (deletion)\n *   '+'  line only present in `b` (insertion)\n *\n * Cost is O(n*m) which is fine for typical configs / smallish files.\n * Pure ES2024.\n */\n\nconst A = (a == null ? '' : String(a)).split('\\n');\nconst B = (b == null ? '' : String(b)).split('\\n');\nconst n = A.length, m = B.length;\n\n// 1) Build LCS length table.\nconst lcs = Array.from({length: n + 1}, () => new Int32Array(m + 1));\nfor (let i = 0; i < n; i++) {\n  for (let j = 0; j < m; j++) {\n    lcs[i+1][j+1] = A[i] === B[j]\n      ? lcs[i][j] + 1\n      : Math.max(lcs[i+1][j], lcs[i][j+1]);\n  }\n}\n\n// 2) Walk the table backwards to recover the edit script.\nconst out = [];\nlet i = n, j = m;\nwhile (i > 0 && j > 0) {\n  if (A[i-1] === B[j-1])              { out.push({ op: '=', line: A[i-1] }); i--; j--; }\n  else if (lcs[i-1][j] >= lcs[i][j-1]) { out.push({ op: '-', line: A[i-1] }); i--; }\n  else                                  { out.push({ op: '+', line: B[j-1] }); j--; }\n}\nwhile (i > 0) { out.push({ op: '-', line: A[i-1] }); i--; }\nwhile (j > 0) { out.push({ op: '+', line: B[j-1] }); j--; }\nreturn out.reverse();\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "TEXT",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "TEXT"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "497143cb-fb68-52b5-a14c-bcd0c7fc91a7",
+    "name": "sortLines",
+    "description": "Sorts lines of text alphabetically. Supports reverse and case-insensitive options.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Multi-line text to sort",
+        "required": true,
+        "type": "STRING",
+        "testValue": "banana\napple\ncherry\nApple"
+      },
+      {
+        "name": "reverse",
+        "description": "Sort descending",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "false"
+      },
+      {
+        "name": "caseInsensitive",
+        "description": "Compare case-insensitively",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "true"
+      }
+    ],
+    "code": "/**\n * Sorts text by line.\n *\n * - `reverse=true`        — descending order.\n * - `caseInsensitive=true` — compare with String.localeCompare ignoring case.\n *\n * Pure ES2024.\n */\n\nif (text == null) return '';\nconst lines = String(text).split(/\\r?\\n/);\n\nconst cmp = caseInsensitive\n  ? (x, y) => x.toLowerCase().localeCompare(y.toLowerCase())\n  : (x, y) => (x < y ? -1 : x > y ? 1 : 0);\nlines.sort(cmp);\nif (reverse) lines.reverse();\n\nreturn lines.join('\\n');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "TEXT",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "TEXT"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "6b7d8e51-a910-5389-92ff-7a74f588e43c",
+    "name": "piiDetect",
+    "description": "Scans text for personally identifiable information patterns (email, US SSN, US phone, credit card, IPv4). Returns an array of {type, masked, index}.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to scan",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Contact alice@example.com or call 555-867-5309. SSN 123-45-6789, card 4111 1111 1111 1111."
+      }
+    ],
+    "code": "/**\n * Scans text for common PII patterns and returns each finding with its\n * masked value + character offset.\n *\n * Detected:\n *   email           (RFC-shaped, very permissive)\n *   us-phone        ((+1)? AAA-PPP-NNNN with delimiters)\n *   us-ssn          (AAA-GG-SSSS, valid area/group/serial blocks)\n *   ipv4            (0-255.0-255.0-255.0-255)\n *   credit-card     (13-19 digits + Luhn checksum)\n *\n * Each finding's value is masked so the raw PII never leaves the tool.\n * Pure ES2024.\n */\n\nif (text == null || text === '') return [];\nconst s = String(text);\n\nfunction luhn(num) {\n  // Standard mod-10 check used by all major card brands.\n  let sum = 0, even = false;\n  for (let i = num.length - 1; i >= 0; i--) {\n    let d = num.charCodeAt(i) - 48;\n    if (d < 0 || d > 9) return false;\n    if (even) { d *= 2; if (d > 9) d -= 9; }\n    sum += d; even = !even;\n  }\n  return sum > 0 && sum % 10 === 0;\n}\n\nconst mask = v => v.length <= 6\n  ? '*'.repeat(v.length)\n  : v.slice(0, 2) + '*'.repeat(v.length - 4) + v.slice(-2);\n\nconst patterns = [\n  { type: 'email',     re: /\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b/g },\n  { type: 'us-phone',  re: /\\b(?:\\+?1[-. ]?)?\\(?[2-9]\\d{2}\\)?[-. ]?\\d{3}[-. ]?\\d{4}\\b/g },\n  { type: 'us-ssn',    re: /\\b(?!000|666|9\\d{2})\\d{3}[- ](?!00)\\d{2}[- ](?!0000)\\d{4}\\b/g },\n  { type: 'ipv4',      re: /\\b(?:25[0-5]|2[0-4]\\d|1?\\d{1,2})(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d{1,2})){3}\\b/g },\n];\n\nconst out = [];\nfor (const { type, re } of patterns) {\n  for (const m of s.matchAll(re)) {\n    out.push({ type, masked: mask(m[0]), index: m.index });\n  }\n}\n\n// Credit card detection — extract digit groups then validate Luhn.\nconst ccRe = /\\b(?:\\d[ -]?){13,19}\\b/g;\nfor (const m of s.matchAll(ccRe)) {\n  const digits = m[0].replace(/[ -]/g, '');\n  if (digits.length >= 13 && digits.length <= 19 && luhn(digits)) {\n    out.push({ type: 'credit-card', masked: mask(digits), index: m.index });\n  }\n}\n\nout.sort((x, y) => x.index - y.index);\nreturn out;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "SECURITY",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "SECURITY"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "a6fb27fe-f9d4-5a83-bbe5-70ac988b4971",
+    "name": "regexExtract",
+    "description": "Returns all regex matches in the input. With the 'g' flag every match is returned; without it the first match (with capture groups) is returned.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to search",
+        "required": true,
+        "type": "STRING",
+        "testValue": "order #1234 and #5678 placed"
+      },
+      {
+        "name": "pattern",
+        "description": "JavaScript-flavoured regex pattern",
+        "required": true,
+        "type": "STRING",
+        "testValue": "#(\\d+)"
+      },
+      {
+        "name": "flags",
+        "description": "Regex flags (e.g. 'g', 'i', 'gi')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "g"
+      }
+    ],
+    "code": "/**\n * Returns every match of a JavaScript regex against the input text.\n *\n * - With the `g` flag, every match is returned (matchAll semantics).\n * - Without `g`, the first match (and its capture groups) is returned.\n *\n * Each result item is:  { match, groups: [...], index }\n *\n * Pure ES2024 — uses RegExp, matchAll, match.\n */\n\nif (text == null) return [];\nif (pattern == null || pattern === '') throw new Error('pattern required');\n\nconst flagsStr = (typeof flags === 'string') ? flags : '';\nconst re = new RegExp(pattern, flagsStr);\n\nif (re.global) {\n  // Global flag: collect every match.\n  const out = [];\n  for (const m of String(text).matchAll(re)) {\n    out.push({ match: m[0], groups: Array.from(m).slice(1), index: m.index });\n  }\n  return out;\n}\n\n// Non-global: return at most one match (with its groups).\nconst m = String(text).match(re);\nif (!m) return [];\nreturn [{ match: m[0], groups: Array.from(m).slice(1), index: m.index }];\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "TEXT",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "TEXT"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "0985e2e4-c10a-5387-b30b-cc951e7fd8fc",
+    "name": "formatDate",
+    "description": "Formats a date (ISO string or epoch ms) using a pattern with tokens yyyy/MM/dd HH:mm:ss SSS. Time zone aware.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "ISO date/time text",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T10:30:45.123Z"
+      },
+      {
+        "name": "pattern",
+        "description": "Format pattern (e.g. 'yyyy-MM-dd HH:mm:ss')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "yyyy-MM-dd HH:mm:ss"
+      },
+      {
+        "name": "timeZone",
+        "description": "IANA time zone (default UTC)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Asia/Seoul"
+      }
+    ],
+    "code": "/**\n * Formats an ISO date/time string with a token pattern in the given zone.\n *\n * Supported tokens:  yyyy MM dd HH mm ss SSS\n * Anything else in the pattern is passed through literally.\n *\n * Pure ES2024 — uses Intl.DateTimeFormat.formatToParts.\n */\n\nif (text == null || text === '') throw new Error('text required');\nconst d = new Date(String(text));\nif (isNaN(d.getTime())) throw new Error('invalid date: ' + text);\n\nconst tz = timeZone || 'UTC';\nconst pat = pattern || 'yyyy-MM-dd HH:mm:ss';\n\nconst fmt = new Intl.DateTimeFormat('en-CA', {\n  timeZone: tz,\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit',\n  hour12: false,\n  fractionalSecondDigits: 3,\n});\n\nconst parts = {};\nfor (const part of fmt.formatToParts(d)) parts[part.type] = part.value;\n\nconst map = {\n  'yyyy': parts.year,\n  'MM':   parts.month,\n  'dd':   parts.day,\n  'HH':   parts.hour === '24' ? '00' : parts.hour,\n  'mm':   parts.minute,\n  'ss':   parts.second,\n  'SSS':  parts.fractionalSecond || '000',\n};\nreturn pat.replace(/yyyy|SSS|MM|dd|HH|mm|ss/g, t => map[t] || t);\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATETIME",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATETIME"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "6254eef9-f44f-5eac-bb82-eabb712be0f2",
+    "name": "stats",
+    "description": "Returns summary statistics (count, sum, min, max, mean, median, stddev) for an array of numbers.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "numbers",
+        "description": "Array of numbers",
+        "required": true,
+        "type": "ARRAY",
+        "testValue": "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+      }
+    ],
+    "code": "/**\n * Summary statistics for a numeric array.\n *\n * Returns: { count, sum, min, max, mean, median, stddev }.\n * Empty array → null for every aggregate except count/sum (both 0).\n *\n * Pure ES2024.\n */\n\nif (numbers == null) throw new Error('numbers required');\n\n// Coerce + validate each element.\nconst xs = [];\nfor (const v of numbers) {\n  const n = Number(v);\n  if (!Number.isFinite(n)) throw new Error('non-numeric value: ' + v);\n  xs.push(n);\n}\nif (xs.length === 0) {\n  return { count: 0, sum: 0, min: null, max: null, mean: null, median: null, stddev: null };\n}\n\nconst sum = xs.reduce((a, b) => a + b, 0);\nconst mean = sum / xs.length;\nconst sorted = xs.slice().sort((a, b) => a - b);\nconst mid = Math.floor(sorted.length / 2);\nconst median = sorted.length % 2\n  ? sorted[mid]\n  : (sorted[mid - 1] + sorted[mid]) / 2;\n// Population variance (divide by N, not N-1).\nconst variance = xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length;\n\nreturn {\n  count: xs.length,\n  sum,\n  min: sorted[0],\n  max: sorted[sorted.length - 1],\n  mean,\n  median,\n  stddev: Math.sqrt(variance),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "MATH",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "MATH"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "112de16c-8a01-5e45-8e64-c09ad8691023",
+    "name": "secretPatternDetect",
+    "description": "Scans text for well-known secret patterns (AWS keys, GitHub tokens, Slack tokens, OpenAI keys, Stripe keys, private keys). Returns an array of {type, masked, index}.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to scan",
+        "required": true,
+        "type": "STRING",
+        "testValue": "key=AKIAIOSFODNN7EXAMPLE token=ghp_1234567890abcdefghijklmnopqrstuv1234"
+      }
+    ],
+    "code": "/**\n * Scans text for high-confidence secret patterns and returns each finding\n * with its masked value + character offset.\n *\n * Detected formats:\n *   AWS access key id          (AKIA…)\n *   GitHub PAT / OAuth / app   (ghp_, gho_, ghu_, ghs_, ghr_)\n *   Slack token                (xox[abprs]-…)\n *   OpenAI API key             (sk-…)\n *   Stripe key                 (sk_/pk_/rk_test|live_…)\n *   PEM private key block      (-----BEGIN … PRIVATE KEY-----)\n *   JWT compact form           (eyJ…eyJ….…)\n *\n * Each finding is masked to `XXXX****XXXX` form so the secret never leaks\n * into the result. Pure ES2024.\n */\n\nif (text == null || text === '') return [];\nconst s = String(text);\n\nconst patterns = [\n  { type: 'aws-access-key-id', re: /\\bAKIA[0-9A-Z]{16}\\b/g },\n  { type: 'github-token',      re: /\\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\\b/g },\n  { type: 'slack-token',       re: /\\bxox[abprs]-[A-Za-z0-9-]{10,}\\b/g },\n  { type: 'openai-api-key',    re: /\\bsk-(proj-)?[A-Za-z0-9_-]{20,}\\b/g },\n  { type: 'stripe-key',        re: /\\b(sk|pk|rk)_(test|live)_[A-Za-z0-9]{16,}\\b/g },\n  { type: 'private-key-block', re: /-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g },\n  { type: 'jwt',               re: /\\beyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\b/g },\n];\n\nconst mask = v => v.length <= 8\n  ? '*'.repeat(v.length)\n  : v.slice(0, 4) + '*'.repeat(v.length - 8) + v.slice(-4);\n\nconst out = [];\nfor (const { type, re } of patterns) {\n  for (const m of s.matchAll(re)) {\n    out.push({ type, masked: mask(m[0]), index: m.index });\n  }\n}\nout.sort((x, y) => x.index - y.index);\nreturn out;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "SECURITY",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "SECURITY"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "ad6ff066-98a1-5dda-a526-28265de8d7dc",
+    "name": "regexReplace",
+    "description": "Replaces regex matches in the input with the given replacement string. Supports $1, $2 group back-references.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "text",
+        "description": "Text to transform",
+        "required": true,
+        "type": "STRING",
+        "testValue": "hello world"
+      },
+      {
+        "name": "pattern",
+        "description": "JavaScript-flavoured regex pattern",
+        "required": true,
+        "type": "STRING",
+        "testValue": "(\\w+) (\\w+)"
+      },
+      {
+        "name": "replacement",
+        "description": "Replacement string (supports $1, $2, ...)",
+        "required": true,
+        "type": "STRING",
+        "testValue": "$2 $1"
+      },
+      {
+        "name": "flags",
+        "description": "Regex flags (e.g. 'g', 'i', 'gi')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "g"
+      }
+    ],
+    "code": "/**\n * Regex-replaces text using a JavaScript-flavoured pattern.\n *\n * Replacement string supports the usual back-references: $1, $2, $&, $`, $'.\n * Add the `g` flag to replace every match; otherwise only the first match\n * is replaced.\n *\n * Pure ES2024 — uses RegExp + String.replace.\n */\n\nif (text == null) return '';\nif (pattern == null || pattern === '') throw new Error('pattern required');\n\nconst flagsStr = (typeof flags === 'string') ? flags : '';\nconst re = new RegExp(pattern, flagsStr);\nreturn String(text).replace(re, replacement == null ? '' : String(replacement));\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "TEXT",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "TEXT"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "6dea1efa-8a21-5522-ac08-4ede8fd9ff84",
+    "name": "evalExpression",
+    "description": "Evaluates a safe arithmetic/logical expression (no eval, no host access). Supports + - * / % ** parens, &&, ||, !, ==, !=, <, <=, >, >=, and numeric/string/boolean literals plus variables from the variables object.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "expression",
+        "description": "Expression to evaluate",
+        "required": true,
+        "type": "STRING",
+        "testValue": "(a + b) * 2 - c / 4"
+      },
+      {
+        "name": "variables",
+        "description": "Map of variable bindings",
+        "required": false,
+        "type": "OBJECT",
+        "testValue": "{\"a\":10,\"b\":5,\"c\":8}"
+      }
+    ],
+    "code": "/**\n * Safe arithmetic / logical expression evaluator.\n *\n * Supports:  + - * / % **   ( )   !\n *            && || ! ==  != < <= > >=\n *            number / string literals, true / false / null\n *            variables resolved from the `variables` parameter.\n *\n * Does NOT call `eval`, `new Function`, or any host class — the parser is\n * hand-written so untrusted expressions cannot break out of the sandbox.\n *\n * Pure ES2024.\n */\n\nif (expression == null || expression === '') throw new Error('expression required');\n\n// Copy polyglot foreign map into a plain JS object once.\nconst rawVars = variables || {};\nconst vars = {};\nfor (const k of Object.keys(rawVars)) vars[k] = rawVars[k];\n\nconst src = String(expression);\nlet i = 0;\n\nfunction peek() { return src[i]; }\nfunction next() { return src[i++]; }\nfunction skipWs() { while (i < src.length && /\\s/.test(src[i])) i++; }\n\nfunction readNumber() {\n  let s = '';\n  while (i < src.length && /[0-9.]/.test(src[i])) s += next();\n  if (i < src.length && (src[i] === 'e' || src[i] === 'E')) {\n    s += next();\n    if (src[i] === '+' || src[i] === '-') s += next();\n    while (i < src.length && /[0-9]/.test(src[i])) s += next();\n  }\n  const n = parseFloat(s);\n  if (!Number.isFinite(n)) throw new Error('bad number: ' + s);\n  return n;\n}\n\nfunction readString(q) {\n  next(); let s = '';\n  while (i < src.length && src[i] !== q) {\n    if (src[i] === '\\\\' && i + 1 < src.length) { i++; s += src[i++]; continue; }\n    s += next();\n  }\n  if (src[i] !== q) throw new Error('unterminated string');\n  next();\n  return s;\n}\n\nfunction readIdent() {\n  let s = '';\n  while (i < src.length && /[A-Za-z0-9_$]/.test(src[i])) s += next();\n  return s;\n}\n\nfunction parseValue() {\n  skipWs();\n  const c = peek();\n  if (c === '(') { next(); const v = parseExpr(); skipWs(); if (next() !== ')') throw new Error('missing )'); return v; }\n  if (c === '!') { next(); return !parseValue(); }\n  if (c === '-') { next(); return -parseValue(); }\n  if (c === '+') { next(); return +parseValue(); }\n  if (c === '\"' || c === \"'\") return readString(c);\n  if (/[0-9.]/.test(c)) return readNumber();\n  if (/[A-Za-z_$]/.test(c)) {\n    const id = readIdent();\n    if (id === 'true')  return true;\n    if (id === 'false') return false;\n    if (id === 'null')  return null;\n    if (!(id in vars)) throw new Error('undefined variable: ' + id);\n    return vars[id];\n  }\n  throw new Error('unexpected: ' + c);\n}\n\n// Operator precedence climbing — Pow > Mul/Div > Add/Sub > Cmp > Eq > And > Or.\nfunction parsePow() { let a = parseValue(); skipWs();\n  if (src[i] === '*' && src[i+1] === '*') { i += 2; return a ** parsePow(); }\n  return a;\n}\nfunction parseMul() { let a = parsePow();\n  while (true) {\n    skipWs();\n    const c = peek();\n    if      (c === '*' && src[i+1] !== '*') { next(); a = a * parsePow(); }\n    else if (c === '/')                      { next(); a = a / parsePow(); }\n    else if (c === '%')                      { next(); a = a % parsePow(); }\n    else break;\n  }\n  return a;\n}\nfunction parseAdd() { let a = parseMul();\n  while (true) {\n    skipWs();\n    const c = peek();\n    if      (c === '+') { next(); a = a + parseMul(); }\n    else if (c === '-') { next(); a = a - parseMul(); }\n    else break;\n  }\n  return a;\n}\nfunction parseCmp() { let a = parseAdd(); skipWs();\n  if (src[i] === '<' && src[i+1] === '=') { i += 2; return a <= parseAdd(); }\n  if (src[i] === '>' && src[i+1] === '=') { i += 2; return a >= parseAdd(); }\n  if (src[i] === '<')                       { next(); return a < parseAdd(); }\n  if (src[i] === '>')                       { next(); return a > parseAdd(); }\n  return a;\n}\nfunction parseEq() { let a = parseCmp(); skipWs();\n  while (src[i] === '=' && src[i+1] === '=') { i += 2; if (src[i] === '=') i++; a = (a == parseCmp()); skipWs(); }\n  while (src[i] === '!' && src[i+1] === '=') { i += 2; if (src[i] === '=') i++; a = (a != parseCmp()); skipWs(); }\n  return a;\n}\nfunction parseAnd() { let a = parseEq();  skipWs(); while (src[i] === '&' && src[i+1] === '&') { i += 2; a = a && parseEq();  skipWs(); } return a; }\nfunction parseOr () { let a = parseAnd(); skipWs(); while (src[i] === '|' && src[i+1] === '|') { i += 2; a = a || parseAnd(); skipWs(); } return a; }\nfunction parseExpr() { return parseOr(); }\n\nconst result = parseExpr();\nskipWs();\nif (i < src.length) throw new Error('unexpected trailing input at ' + i);\nreturn result;\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "MATH",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "MATH"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    }
+  },
+  {
+    "toolId": "65192b49-d16c-579e-8a83-b51447a3b4b1",
+    "name": "formatCsv",
+    "description": "Serialises an array of rows into CSV text. Rows may be arrays (use header param) or objects (keys become the header). RFC 4180 quoting.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "rows",
+        "description": "Array of row objects/arrays",
+        "required": true,
+        "type": "ARRAY",
+        "testValue": "[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}]"
+      },
+      {
+        "name": "header",
+        "description": "Optional explicit column order",
+        "required": false,
+        "type": "ARRAY",
+        "testValue": "[]"
+      },
+      {
+        "name": "delimiter",
+        "description": "Field delimiter (default ',')",
+        "required": false,
+        "type": "STRING",
+        "testValue": ","
+      }
+    ],
+    "code": "/**\n * Serialises an array of rows into RFC 4180 CSV.\n *\n * Rows can be either:\n *   - objects  →  the first row's keys (or the explicit `header` array)\n *                  define the column order.\n *   - arrays   →  rows are written as-is; pass `header` to add a header row.\n *\n * Cells that contain the delimiter, a double-quote, CR or LF are wrapped in\n * `\"…\"` and embedded quotes are doubled per RFC 4180.\n *\n * Pure ES2024.\n */\n\nif (rows == null) throw new Error('rows required');\n\n// Polyglot foreign collections aren't iterable through `[...rows]` directly,\n// so collect via for-of (which works for both JS arrays and Java Lists).\nconst rowArr = [];\nfor (const r of rows) rowArr.push(r);\n\nconst headerArr = [];\nif (header != null) for (const h of header) headerArr.push(String(h));\n\nconst delim = (typeof delimiter === 'string' && delimiter.length > 0) ? delimiter[0] : ',';\n\nfunction quote(v) {\n  if (v == null) return '';\n  const s = String(v);\n  if (s.includes(delim) || s.includes('\"') || s.includes('\\n') || s.includes('\\r')) {\n    return '\"' + s.replace(/\"/g, '\"\"') + '\"';\n  }\n  return s;\n}\n\nfunction isArrayLike(v) {\n  return v != null && typeof v !== 'string'\n      && typeof v[Symbol.iterator] === 'function';\n}\n\n// Decide on column order: explicit header > union of object keys > none.\nlet cols = headerArr.length > 0 ? headerArr : null;\nif (!cols && rowArr.length > 0 && !isArrayLike(rowArr[0])) {\n  const seen = new Set();\n  cols = [];\n  for (const r of rowArr) {\n    for (const k of Object.keys(r)) {\n      if (!seen.has(k)) { seen.add(k); cols.push(k); }\n    }\n  }\n}\n\nconst out = [];\nif (cols) out.push(cols.map(quote).join(delim));\nfor (const r of rowArr) {\n  if (isArrayLike(r)) {\n    const cells = [];\n    for (const c of r) cells.push(quote(c));\n    out.push(cells.join(delim));\n  } else if (cols) {\n    out.push(cols.map(k => quote(r[k])).join(delim));\n  } else {\n    out.push(quote(r));\n  }\n}\nreturn out.join('\\n');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "DATA",
+    "tags": [
+      "util"
+    ],
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "DATA"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": false,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  }
+]

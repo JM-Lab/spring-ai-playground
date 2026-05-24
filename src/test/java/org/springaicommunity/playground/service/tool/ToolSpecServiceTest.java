@@ -19,6 +19,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.common.KeyValue;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.tool.ToolSpec.SandboxOverrides;
@@ -50,6 +53,9 @@ class ToolSpecServiceTest {
 
     @Autowired
     ToolSpecService toolSpecService;
+
+    @Autowired
+    ObservationRegistry observationRegistry;
 
     @MockitoBean
     McpServerInfoService mcpServerInfoService;
@@ -401,5 +407,41 @@ class ToolSpecServiceTest {
     void maskSecretsHandlesEmptyOrNullMap() {
         assertThat(ToolSpecService.maskSecrets(null, Set.of())).isEmpty();
         assertThat(ToolSpecService.maskSecrets(Map.of(), Set.of("k"))).isEmpty();
+    }
+
+    @Test
+    void executeToolAugmentsCurrentObservationWithSandboxAttributes() {
+        Observation parent = Observation.start("test.parent", observationRegistry);
+        try (Observation.Scope scope = parent.openScope()) {
+            JsExecutionResult result = toolSpecService.executeTool(
+                    "augmentationProbe", List.<Map.Entry<String, String>>of(),
+                    "return 42;", Map.of());
+            assertThat(result.isOk()).isTrue();
+        } finally {
+            parent.stop();
+        }
+
+        Map<String, String> lowCard = new LinkedHashMap<>();
+        for (KeyValue kv : parent.getContext().getLowCardinalityKeyValues()) {
+            lowCard.put(kv.getKey(), kv.getValue());
+        }
+        Map<String, String> highCard = new LinkedHashMap<>();
+        for (KeyValue kv : parent.getContext().getHighCardinalityKeyValues()) {
+            highCard.put(kv.getKey(), kv.getValue());
+        }
+        assertThat(lowCard).containsKey("sandbox.level");
+        assertThat(lowCard.get("sandbox.level")).matches("L\\d");
+        assertThat(highCard).containsKey("sandbox.caps")
+                .containsKey("sandbox.fs.base")
+                .containsKey("sandbox.hosts.count")
+                .containsKey("sandbox.cid");
+    }
+
+    @Test
+    void executeToolWithoutActiveObservationDoesNotThrow() {
+        JsExecutionResult result = toolSpecService.executeTool(
+                "noObsTool", List.<Map.Entry<String, String>>of(),
+                "return 1;", Map.of());
+        assertThat(result.isOk()).isTrue();
     }
 }

@@ -56,11 +56,11 @@ class JsToolBuiltinsTest {
     static void loadSpecs() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         specs = new java.util.ArrayList<>();
-        for (String fname : List.of("/default-tool-specs.json",
-                "/default-tool-specs-builtin.json",
-                "/default-tool-specs-builtin-helpers.json",
-                "/default-tool-specs-network.json",
-                "/default-tool-specs-kr.json")) {
+        for (String fname : List.of("/tool/default-tool-specs.json",
+                "/tool/default-tool-specs-builtin.json",
+                "/tool/default-tool-specs-builtin-helpers.json",
+                "/tool/default-tool-specs-network.json",
+                "/tool/default-tool-specs-kr.json")) {
             try (InputStream in = JsToolBuiltinsTest.class.getResourceAsStream(fname)) {
                 if (in == null) continue;
                 List<Map<String, Object>> batch = mapper.readValue(in,

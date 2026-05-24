@@ -36,7 +36,7 @@ public class ToolCategoryCatalog {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CategoryDef(String id, String displayName, int order, String icon, String description) {}
 
-    static final String CATEGORIES_RESOURCE = "default-tool-categories.json";
+    static final String CATEGORIES_RESOURCE = "tool/default-tool-categories.json";
     static final String FALLBACK_ID = "CUSTOM";
 
     private final List<CategoryDef> orderedCategories;

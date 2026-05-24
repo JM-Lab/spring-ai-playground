@@ -3,6 +3,43 @@ vaadin:
 server:
   port: ${SERVER_PORT:8282}
   shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${SPRING_AI_PLAYGROUND_ACTUATOR_INCLUDE:health,info,metrics,prometheus,beans}
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    # Longer expiry + percentile-histogram so dashboard MAX/p95 don't decay every step.
+    distribution:
+      percentiles-histogram:
+        gen_ai.client.operation: true
+        spring.ai.chat.client: true
+        spring.ai.tool: true
+        db.vector.client.operation: true
+      maximum-expected-value:
+        gen_ai.client.operation: 5m
+        spring.ai.chat.client: 5m
+        spring.ai.tool: 1m
+        db.vector.client.operation: 30s
+      expiry:
+        gen_ai.client.operation: 30m
+        spring.ai.chat.client: 30m
+        spring.ai.tool: 30m
+        db.vector.client.operation: 30m
+  observations:
+    annotations:
+      enabled: true
+  tracing:
+    sampling:
+      probability: ${SPRING_AI_PLAYGROUND_TRACE_SAMPLE:1.0}
+  # OTLP export is opt-in: set MANAGEMENT_OTLP_TRACING_ENDPOINT=https://... to enable.
+  # Leaving the yaml block absent keeps Spring Boot from instantiating the exporter
+  # with an empty endpoint (which fails validation).
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
@@ -26,8 +63,28 @@ spring:
       audio:
         speech: none
         transcription: none
+    chat:
+      observations:
+        log-prompt: ${SPRING_AI_OBSERVE_LOG_PROMPT:false}
+        log-completion: ${SPRING_AI_OBSERVE_LOG_COMPLETION:false}
+        include-error-logging: true
+      client:
+        observations:
+          log-prompt: ${SPRING_AI_CLIENT_OBSERVE_LOG_PROMPT:false}
+          log-completion: ${SPRING_AI_CLIENT_OBSERVE_LOG_COMPLETION:false}
+    tools:
+      observations:
+        include-content: ${SPRING_AI_TOOLS_OBSERVE_INCLUDE_CONTENT:false}
+    vectorstore:
+      observations:
+        log-query-response: ${SPRING_AI_VECTORSTORE_OBSERVE_LOG:false}
     playground:
-      default-tool-location: "classpath*:default-tool-specs*.json"
+      default-tool-location: "classpath*:tool/default-tool-specs*.json"
+      observability:
+        ring-buffer-capacity: ${OBS_RING_CAPACITY:2000}
+        retain-days: ${OBS_RETAIN_DAYS:30}
+        persist: ${OBS_PERSIST:true}
+        max-spans-per-trace: ${OBS_MAX_SPANS:200}
       tool-studio:
         timeout-seconds: 30
         fs:
@@ -98,6 +155,7 @@ spring:
         models:
           - qwen3.5:2b
           - qwen3.5:9b
+          - qwen3.6:35b
           - gemma4:e4b
           - gpt-oss:20b
           - deepseek-r1:8b
@@ -116,7 +174,7 @@ spring:
         options:
           model: gpt-5.4-mini
           stream-options:
-            include-usage: false
+            include-usage: true
       embedding:
         options:
           model: text-embedding-3-small

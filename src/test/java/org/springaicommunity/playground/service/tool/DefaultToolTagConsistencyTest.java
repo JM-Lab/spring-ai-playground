@@ -29,12 +29,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DefaultToolTagConsistencyTest {
 
     private static final List<String> SHIPPED_FILES = List.of(
-            "/default-tool-specs.json",
-            "/default-tool-specs-builtin.json",
-            "/default-tool-specs-builtin-helpers.json",
-            "/default-tool-specs-builtin-fs.json",
-            "/default-tool-specs-network.json",
-            "/default-tool-specs-kr.json");
+            "/tool/default-tool-specs.json",
+            "/tool/default-tool-specs-builtin.json",
+            "/tool/default-tool-specs-builtin-helpers.json",
+            "/tool/default-tool-specs-builtin-fs.json",
+            "/tool/default-tool-specs-network.json",
+            "/tool/default-tool-specs-kr.json");
 
     private static final Set<String> TAG_VOCAB = Set.of(
             "korea", "example", "util", "pipeline",

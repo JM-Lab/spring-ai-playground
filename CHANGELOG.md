@@ -9,9 +9,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Local speech-to-text mic in Agentic Chat — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
-- Developer-facing **Observability dashboards** — Micrometer-backed collector with MDC + scheduled samplers, ring-buffer + time-series data store with disk mirror and pricing inputs, ECharts dashboard shell with sidebar nav, and per-area surfaces (Overview, Tokens & Cost, Models, Tools, MCP, Vector, System, Logs, Traces).
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
-- **Vendor-official remote MCP server catalog** — curated list of remote MCP servers grouped by category in a sidebar, with env-gated activation so only entries whose required env vars are set become enabled.
+
+## [0.2.0-M7]
+
+### Added
+
+- **Developer-facing Observability dashboards** — Micrometer-backed `ObservabilityCollector` consumes `ChatClientObservation`, `gen_ai.client.operation`, MCP tool callbacks, sandbox metrics, and JVM samplers with MDC propagation (`conv`, `msg`, `traceId`, `spanId`); aggregates into an in-memory ring buffer (2,000 traces, configurable via `spring.ai.playground.observability.*`) plus dated disk persistence with 30-day retention (`~/spring-ai-playground/observability/<YYYY-MM-DD>/<traceId>.json`); surfaces 12 dashboard tabs via Vaadin sidebar — Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces — backed by `BucketedTimeSeries` + `BoundedRingBuffer` and ECharts panels. Recent activity table drills into Trace Detail Dialog (timeline, spans with raw attributes, raw JSON) and Conversation Thread Dialog (USER/ASSISTANT messages with KPIs). Deep-link via `/observability?tab=<slug>&trace=<traceId>` and the "Continue in chat" button lands the conversation back in Agentic Chat. `ObservationRegistry` wired into `ToolCallingManager` and `SimpleVectorStore` so tool / vector spans appear alongside chat client spans.
+- **Vendor-official remote MCP server catalog (49 entries)** — curated list of remote MCP servers (`Gmail`, `Outlook-Mail`, `Notion`, `Slack`, `Microsoft-Teams`, `GitHub`, `Linear`, `Atlassian`, `Tavily`, `Exa`, `Firecrawl`, `Sentry`, `Asana`, `HubSpot`, `Mixpanel`, `Figma`, `Canva`, `Webflow`, ...) grouped into Productivity / CRM / Design / DEV / Search / Utility / Example categories in a left-side filter sidebar. Each entry pre-fills the connection JSON with `${ENV_VAR}` placeholders (e.g. `${GITHUB_PERSONAL_ACCESS_TOKEN}`, `${MS_TENANT_ID}`) and surfaces its preview / community / free-tier tags. Activation gates on env-var presence so disabled servers can't be turned on without setup.
+- **OS-split stdio MCP catalog** — `default-mcp-specs-stdio-{mac,windows,linux}.json` (8 entries each) loaded per-platform, with `[macOS]` / `[Windows]` / `[Linux]` prefix in description. Tag suggestions derive dynamically from existing entries so new connections auto-complete from the live catalog. Tier 1 (built-in) + Tier 2 (catalog) = 57 inactive entries plus the built-in `spring-ai-playground-tool-mcp` connection (58 total visible on the MCP page).
+- **MCP secret masking + tool call logging** — `SecretMasking.mask()` extracts `${ENV_VAR}` references from connection templates, resolves their values via `EnvVarResolver`, and redacts any value ≥ 4 characters from `mcp.tool.crash` error logs (replaced with `***`). `LoggingMcpToolCallback` wraps every MCP tool callback with `mcp.tool.start` / `mcp.tool.done` / `mcp.tool.crash` log lines carrying an 8-character correlation id (`cid`), server name, tool name, duration ms, and `via=chat` channel marker — feeds the Observability MCP / Tools tabs.
+- **Electron launch hardening** — `fs.existsSync` validation of the bundled JRE path (`process.resourcesPath/jre-bundle/bin/java[.exe]`) with explicit fatal-error message pointing to the `electron/scripts/prepare-resources.mjs` step. Telemetry env (`SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED`) propagated from the Electron main process into the spawned Java via `buildSpawnArguments` (entire `process.env` merged into `spawn` env) and into the splash / config editor / Ollama manager / server splash windows via `?telemetry=0` query string. `launchReadinessState` machine (`idle → starting → ready / failed / timedOut`) feeds the splash with stage messages.
+
+### Changed
+
+- **Shared sidebar widgets extracted** — `SidebarSection`, `SidebarItem`, and `PageSidebar` factored out as reusable components (`refactor(ui)`). Tool Studio, MCP Server, Vector Database, Agentic Chat, and the Observability dashboards now share the same look and interaction (bolded active item, group headers, count chips). The MCP Inspector header also picks up the status indicator + active counter.
+- **Tool resources regrouped under `tool/`** — bundled tool catalog JSON files (`default-tool-specs*.json`), categories, presets, and workspace-samples moved into `src/main/resources/tool/` (`refactor(resources)`). The wildcard pattern (`classpath*:tool/default-tool-specs*.json`) at `default-tool-location` continues to load all six bundles.
+- **MCP startup spawn deduplicated and Inspector polished** — removed the duplicate MCP client startup spawn and consolidated the sidebar / Inspector header into a single entry point (`fix(mcp)`).
+
+### Fixed
+
+- **Tool Studio empty optional testValue no longer breaks Test Run** — an optional parameter with an empty `testValue` used to throw at Test Run time; the regression is fixed alongside JSHint editor cleanup and KR locale tidy (`fix(tool-studio)`).
+- **Persistence boot NPE** — added a `shouldLoadFile(Path)` hook on `PersistenceServiceInterface` so the default `loads()` path skips `.tmp`, `.tmp.json`, and `.deprecated` files plus foreign JSON files (e.g. `default-tools-preference.json`). `ToolSpecPersistenceService.shouldLoadFile` further narrows to exactly `toolSpecsMcpSetting`. Closes the boot-time NPE from bad deserialization (`fix(persistence)`).
+- **Catalog seed test alignment** — `McpCatalogServiceTest.tierSplitMatchesCatalogSeed` updated to tier2 size `30 to 39` and the new `MS_TENANT_ID` placeholder reflecting the catalog expansion (`fix(mcp)`).
+- **Style polish** — `@Test` methods unified to camelCase, FQN dropped in `PersistenceService`, sidebar active items rendered bold (`fix(style)`).
+
+### Documentation
+
+- **Observability feature pages** — new `docs/features/observability/` directory: `overview.md`, `ai-usage/{index, tokens-cost, ai-models}.md`, `ai-stack/{index, tool-studio, mcp-servers, mcp-inspector, vector-database, agentic-chat}.md`, and `runtime/{index, host, web-application, logs, traces}.md` (14 pages). Each page covers KPI / chart descriptions, full-page screenshots, and drill-down scenarios.
+- **Default MCP Catalog feature pages** — `docs/features/default-mcp-catalog/` split per category (`business.md`, `data-cloud.md`, `dev.md`, `examples.md`, `productivity.md`, `search.md`, `index.md`).
+- **MCP Inspector feature page** — new `docs/features/mcp-server/inspector.md` covering all 8 inspector tabs (Tools / Resources / Prompts / Ping / Notifications / Roots / Sampling / Elicitation) with screenshots.
+- **Safe Tool Specification reference** — `docs/safe-tool-specification.md` plus `docs/safe-tool-spec.schema.json` (JSON Schema for tool spec authoring).
+- **Tutorial 9: MCP-Everything walkthrough** — end-to-end from `@modelcontextprotocol/server-everything` activation through every Inspector tab.
+- **Tool Studio docs promoted** — `docs/features/tool-studio.md` is now `docs/features/tool-studio/index.md` (directory layout).
+- **Observability architecture overview** — `docs/observability-architecture.md` walks the collector → ring buffer → time series → dashboard flow.
+- **Mobile nav polish** — pre-paint flicker guard CSS in `docs-overrides/main.html`, depth-1 auto-expand via `docs/assets/javascripts/nav-default-expand.js`, and `navigation.instant` + `navigation.instant.progress` features enabled in `mkdocs.yml`.
+
+### Build / Tooling
+
+- **Spring AI checkstyle baseline adopted** — `maven-checkstyle-plugin 3.6.0` + `checkstyle 10.21.0` + `spring-javaformat-checkstyle 0.0.47` plugin block added to `pom.xml`, bound to the `verify` phase with `failOnViolation=true`. `src/checkstyle/checkstyle.xml` mirrors the Spring AI baseline with project-specific deltas (4-space indent kept; `JavadocPackage`, `SpringLambdaCheck`, `NeedBracesCheck`, `InnerTypeLastCheck` removed; `RightCurlyCheck option=same`; `WhitespaceAround` empty-* options relaxed; `AvoidStaticImport` excludes extended with internal helpers). The license header regex is inlined as a `header` property so the same config works in IntelliJ Checkstyle without extra path setup. `src/checkstyle/checkstyle-suppressions.xml` excludes 131 M6 baseline files, the OllamaChatModel upstream patch, and 5 files introduced by commits already pushed to `origin/main` — incremental adoption: only new and modified files participate in the scan.
+- **CI verify** — `.github/workflows/ci.yml` `maven-goals` flipped from `clean compile -B` to `clean verify -B` (skip-tests unchanged), so checkstyle runs on every push and PR.
+- **Spring AI bumped to 1.1.6** — `chore: bump to 0.2.0-M7 with spring-ai 1.1.6`.
 
 ## [0.2.0-M6]
 

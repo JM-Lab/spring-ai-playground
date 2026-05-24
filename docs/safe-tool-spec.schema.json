@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spring-ai-community.github.io/spring-ai-playground/safe-tool-spec.schema.json",
+  "title": "Safe Tool Specification 1.0",
+  "description": "JSON Schema for a Safe Tool Spec document. See https://spring-ai-community.github.io/spring-ai-playground/safe-tool-specification/ for the full normative text.",
+  "type": "object",
+  "required": ["name", "code", "codeType"],
+  "additionalProperties": true,
+  "properties": {
+    "toolId": {
+      "type": "string",
+      "description": "Stable identifier — UUID v5 derived from `name` against a fixed namespace is the reference scheme."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "MCP tool name. Slug-like (alphanumeric + - + _) recommended; consumers MUST NOT reject non-empty strings on slug grounds alone."
+    },
+    "description": {
+      "type": "string",
+      "description": "Model-visible tool description. Drives tool selection."
+    },
+    "category": {
+      "type": "string",
+      "description": "UI grouping. The bundled catalog uses WEB / FILE / CRYPTO / DATETIME / TEXT / ENCODING / DATA / SECURITY / MATH / NETWORK / SYSTEM / UTILS / OTHER; private specs MAY introduce new categories."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 2,
+      "description": "Cohort labels (max 2). Bundled vocab: korea, example, util, pipeline, github, search, finance, weather, geo."
+    },
+    "params": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolParamSpec" },
+      "description": "JSON-Schema-typed input parameters, ordered."
+    },
+    "staticVariables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": { "type": "string" }
+      },
+      "description": "Ordered single-entry objects; values MAY embed ${ENV_VAR} placeholders (regex \\$\\{([A-Z][A-Z0-9_]*)})."
+    },
+    "code": {
+      "type": "string",
+      "description": "JavaScript action body executed in a sandboxed GraalVM Polyglot Context."
+    },
+    "codeType": {
+      "type": "string",
+      "enum": ["Javascript"],
+      "description": "Code language. Only `Javascript` is accepted in v1."
+    },
+    "sandboxOverrides": { "$ref": "#/$defs/SandboxOverrides" },
+    "toolSafety":       { "$ref": "#/$defs/ToolSafety" },
+    "draft": {
+      "type": "boolean",
+      "default": false,
+      "description": "True until the spec earns a Local Pass; drafts MUST NOT be exposed via MCP."
+    },
+    "createTimestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "First-write timestamp, epoch milliseconds."
+    },
+    "updateTimestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Last-write timestamp, epoch milliseconds."
+    }
+  },
+
+  "$defs": {
+
+    "ToolParamSpec": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "minLength": 1, "description": "Argument name in the model's tool call payload." },
+        "description": { "type": "string", "description": "Model-visible argument hint." },
+        "required":    { "type": "boolean", "description": "If true, runtime refuses execution without this argument." },
+        "type":        { "$ref": "#/$defs/JsonSchemaType" },
+        "testValue":   { "type": "string", "description": "Sample value the Local Pass runs with. REQUIRED when `required` is true." }
+      },
+      "if":   { "properties": { "required": { "const": true } } },
+      "then": { "required": ["name", "type", "required", "testValue"] }
+    },
+
+    "JsonSchemaType": {
+      "type": "string",
+      "enum": ["STRING", "INTEGER", "NUMBER", "BOOLEAN", "OBJECT", "ARRAY"],
+      "description": "Uppercase on the wire in the spec document; lowered to JSON Schema's spelling when emitted to a model."
+    },
+
+    "SandboxOverrides": {
+      "type": "object",
+      "description": "Author-stated intent. Missing or null fields mean baseline; explicit values override.",
+      "additionalProperties": false,
+      "properties": {
+        "addAllowClasses":    { "type": "array", "items": { "type": "string" } },
+        "removeAllowClasses": { "type": "array", "items": { "type": "string" } },
+        "addDenyClasses":     { "type": "array", "items": { "type": "string" } },
+        "removeDenyClasses":  { "type": "array", "items": { "type": "string" } },
+        "networkMode": {
+          "type":  ["string", "null"],
+          "enum":  ["blocked", "allowlist", "strict", "open", null],
+          "description": "Resolved at posture-computation time. Null inherits baseline."
+        },
+        "hostsAllow": {
+          "type":  "array",
+          "items": { "type": "string" },
+          "description": "Egress allow list when networkMode is `allowlist`. `[\"*\"]` is the wildcard sentinel (treated as L4)."
+        },
+        "fileRead":   { "type": ["boolean", "null"], "description": "Tri-state: null inherits, true allows, false explicitly blocks." },
+        "fileWrite":  { "type": ["boolean", "null"], "description": "Tri-state: null inherits, true allows, false explicitly blocks." },
+        "fsBasePath": { "type": ["string",  "null"], "description": "Override the default safety.fs/v1 base path. Null inherits." }
+      }
+    },
+
+    "ToolSafety": {
+      "type": "object",
+      "description": "Resolver-produced posture snapshot. Recorded into the audit log on every invocation.",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Spec-schema version this block was written against, e.g. \"1.0\"."
+        },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id":           { "type": "string" },
+            "minVersion":   { "type": "string" },
+            "ecmaVersion":  { "type": "string" },
+            "javaInterop":  { "type": "boolean" },
+            "helpers": {
+              "type":  "array",
+              "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*/v[0-9]+(#[a-z0-9-]+)?$" },
+              "description": "Versioned helper identifiers. Two shapes are accepted: namespaced (e.g. \"safety.fs/v1\", \"safety.http/v1\", \"safety.parser/v1\") and anchor-suffixed (e.g. \"tool-safety-helpers/v1#crypto\", \"tool-safety-helpers/v1#encoding\", \"tool-safety-helpers/v1#parser\")."
+            },
+            "console":      { "type": "boolean" }
+          }
+        },
+        "category": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "source": { "type": "string", "description": "\"builtin\" / \"user\" / custom origin." },
+            "id":     { "type": "string" }
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "network": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "mode":  { "type": "string", "enum": ["blocked", "allowlist", "strict", "open"] },
+                "hosts": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "fileRead":  { "type": "boolean" },
+            "fileWrite": { "type": "boolean" }
+          }
+        }
+      }
+    }
+
+  }
+}

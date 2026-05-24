@@ -22,9 +22,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationListener;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -72,6 +74,21 @@ class McpServerInfoPersistenceServiceTest {
         assertThat(loadedInfo.createTimestamp()).isEqualTo(currentTimeMillis);
         assertThat(loadedInfo.updateTimestamp()).isEqualTo(currentTimeMillis);
         assertThat(loadedInfo.connectionAsJson()).isEqualTo("{\"url\":\"http://localhost:8080\"}");
+    }
+
+    @Test
+    void doesNotAutoStartMcpClientsAtStartup() {
+        // Regression: this service used to listen for WebServerInitializedEvent and
+        // call McpClientService.startMcpClient on every saved connection, which
+        // raced McpServerInfoService.onApplicationReady doing the same thing —
+        // the second client replaced the first mid-initialize and the spawned
+        // STDIO process exited with code 1. Keep auto-start in exactly one place.
+        assertThat(ApplicationListener.class.isAssignableFrom(McpServerInfoPersistenceService.class)).isFalse();
+
+        Constructor<?>[] ctors = McpServerInfoPersistenceService.class.getDeclaredConstructors();
+        assertThat(ctors).hasSize(1);
+        Class<?>[] params = ctors[0].getParameterTypes();
+        assertThat(params).noneMatch(p -> p.getSimpleName().equals("McpClientService"));
     }
 
     @Test

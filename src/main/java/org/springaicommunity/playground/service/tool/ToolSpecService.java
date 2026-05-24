@@ -18,6 +18,8 @@ package org.springaicommunity.playground.service.tool;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -81,6 +83,7 @@ public class ToolSpecService {
     private final JsSandbox sandboxBaseline;
     private final EffectivePolicyResolver policyResolver;
     private final SandboxPostureCalculator postureCalculator;
+    private final ObservationRegistry observationRegistry;
     private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private ToolMcpServerSetting toolMcpServerSetting;
@@ -89,7 +92,8 @@ public class ToolSpecService {
             ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService,
             ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider,
             SpringAiPlaygroundOptions playgroundOptions, EffectivePolicyResolver policyResolver,
-            SandboxPostureCalculator postureCalculator)
+            SandboxPostureCalculator postureCalculator,
+            ObservationRegistry observationRegistry)
             throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
@@ -100,6 +104,7 @@ public class ToolSpecService {
         this.sandboxBaseline = playgroundOptions.toolStudio().jsSandbox();
         this.policyResolver = policyResolver;
         this.postureCalculator = postureCalculator;
+        this.observationRegistry = observationRegistry;
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
                 this.sandboxBaseline, playgroundOptions.toolStudio().fs());
     }
@@ -316,6 +321,21 @@ public class ToolSpecService {
         logger.info("tool.exec.start cid={} tool={} level={} caps={} hosts={} fsBase={} params={}",
                 cid, toolName, level, caps, hosts,
                 overrideBase == null ? "-" : overrideBase, safeParams);
+
+        // Augment the in-flight Spring AI `spring.ai.tool` observation (if any)
+        // with sandbox attributes so the Observability dashboards can plot the
+        // sandbox tier of each call. Skipped when this runs outside a chat
+        // tool callback (e.g. Tool Studio Test Run) — no current observation,
+        // no observation orphan to clean up.
+        Observation current = observationRegistry.getCurrentObservation();
+        if (current != null) {
+            current.lowCardinalityKeyValue("sandbox.level", level);
+            current.highCardinalityKeyValue("sandbox.caps", caps);
+            current.highCardinalityKeyValue("sandbox.fs.base",
+                    overrideBase == null ? "" : overrideBase.toString());
+            current.highCardinalityKeyValue("sandbox.hosts.count", String.valueOf(hosts.size()));
+            current.highCardinalityKeyValue("sandbox.cid", cid);
+        }
 
         long startNs = System.nanoTime();
         JsExecutionResult jsExecutionResult;

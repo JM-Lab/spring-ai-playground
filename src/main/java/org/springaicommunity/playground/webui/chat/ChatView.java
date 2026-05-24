@@ -18,6 +18,10 @@ package org.springaicommunity.playground.webui.chat;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
@@ -35,6 +39,7 @@ import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
 import java.beans.PropertyChangeSupport;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -46,7 +51,7 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 @CssImport("./playground/chat-styles.css")
 @PageTitle("Agentic Chat")
 @Route(value = "agentic-chat", layout = SpringAiPlaygroundAppLayout.class)
-public class ChatView extends ContentWorkspaceView {
+public class ChatView extends ContentWorkspaceView implements BeforeEnterObserver {
 
     public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";
     public static final String CHAT_HISTORY_SELECT_EVENT = "CHAT_HISTORY_SELECT_EVENT";
@@ -131,5 +136,30 @@ public class ChatView extends ContentWorkspaceView {
             setHeaderLabel(label);
             setContent(this.chatContentView);
         });
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        List<String> convParam = event.getLocation().getQueryParameters().getParameters().get("conv");
+        if (convParam == null || convParam.isEmpty()) return;
+        String convId = convParam.getFirst();
+        if (convId == null || convId.isBlank()) return;
+        ChatHistory existing = this.chatHistoryService.getChatHistory(convId);
+        if (existing != null) {
+            changeChatContent(existing);
+        } else {
+            // Conversation found in trace data but no longer in active chat memory (cleared / restart
+            // before persistence load / different process). Surface the situation instead of silently
+            // dropping into a fresh chat.
+            Notification n = Notification.show(
+                    "Conversation " + shortenId(convId) + " is not in active chat history — starting a fresh chat.",
+                    6000, Notification.Position.TOP_CENTER);
+            n.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+        }
+    }
+
+    private static String shortenId(String s) {
+        if (s == null) return "";
+        return s.length() <= 14 ? s : s.substring(0, 14);
     }
 }

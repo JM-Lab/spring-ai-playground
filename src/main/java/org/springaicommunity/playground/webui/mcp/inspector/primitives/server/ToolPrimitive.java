@@ -75,9 +75,42 @@ public class ToolPrimitive extends Div {
         }
 
         Div desc = PrimitiveCardLayout.description(tool.description());
-        if (desc != null) add(desc);
+        boolean hasParams = !tool.propertySchemas().isEmpty();
 
-        if (!tool.propertySchemas().isEmpty()) {
+        if (desc != null && hasParams) {
+            HorizontalLayout twoCol = new HorizontalLayout();
+            twoCol.setWidthFull();
+            twoCol.setSpacing(true);
+            twoCol.setPadding(false);
+            twoCol.getStyle().set("align-items", "flex-start").set("flex-wrap", "wrap");
+
+            Div leftCol = new Div(desc);
+            leftCol.getStyle()
+                    .set("flex", "1 1 280px")
+                    .set("min-width", "0");
+
+            Div rightCol = new Div();
+            rightCol.getStyle()
+                    .set("flex", "1 1 280px")
+                    .set("min-width", "0");
+            rightCol.add(InspectorHelpers.simpleSectionLabel("Parameters"));
+            VerticalLayout argsLayout = new VerticalLayout();
+            argsLayout.setPadding(false);
+            argsLayout.setSpacing(false);
+            argsLayout.getStyle().set("gap", "0.6em");
+            tool.propertySchemas().forEach((key, schema) -> {
+                AbstractField<?, ?> field =
+                        InspectorHelpers.buildArgField(key, schema, tool.required().contains(key));
+                fields.put(key, field);
+                argsLayout.add(field);
+            });
+            rightCol.add(argsLayout);
+
+            twoCol.add(leftCol, rightCol);
+            add(twoCol);
+        } else if (desc != null) {
+            add(desc);
+        } else if (hasParams) {
             add(InspectorHelpers.simpleSectionLabel("Parameters"));
             VerticalLayout argsLayout = new VerticalLayout();
             argsLayout.setPadding(false);

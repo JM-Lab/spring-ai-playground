@@ -1,4 +1,4 @@
-Description: Tutorial 2 — connect an external MCP server (Streamable HTTP / STDIO / SSE / OAuth 2.1) and validate the schema in the Inspector before relying on it from chat.
+description: Tutorial 2 — connect an external MCP server (Streamable HTTP / STDIO / SSE / OAuth 2.1) and validate the schema in the Inspector before relying on it from chat.
 
 # Tutorial 2 — Connect an External MCP Server
 
@@ -7,11 +7,14 @@ Description: Tutorial 2 — connect an external MCP server (Streamable HTTP / ST
 !!! abstract "Goal"
     Add an external MCP server connection (Streamable HTTP, STDIO, or SSE), wire up authentication if the server requires it, validate the schema in the Inspector, and run a tool through it directly — *before* relying on it from chat.
 
+!!! tip "Shortcut — use the built-in catalog"
+    For 57 of the most common external surfaces (Gmail, Outlook, Notion, Slack, GitHub, Linear, Atlassian, Stripe, BigQuery, MCP Everything, …) the playground ships a preset catalog. Look in the sidebar's **Inactive MCP** section, click the entry you want, and the configuration form pre-fills with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders — you fill in only your key/tenant and click **Save & Connect**. The rest of this tutorial covers the **manual path** for anything *not* in the catalog. See the [MCP Catalog directory](../features/default-mcp-catalog/index.md) for the full per-category listing.
+
 ## Steps
 
-1. Open **MCP Server** and click the `+` icon next to **MCP Server Connections** to start a new connection.
+1. Open **MCP Server** and click the **Add Custom Server** header button (top right of the screen) to start a new manual connection.
 2. Pick the transport type. **Streamable HTTP** is the modern default; STDIO is for proxy-style local processes (Claude Desktop's `mcp-remote`); SSE is the legacy HTTP+SSE shape.
-3. Fill in the connection name and the JSON config for your transport.
+3. Fill in the connection name, category, optional tags, and the JSON config for your transport.
 
 ![New MCP connection form with status sidebar, transport, JSON config, headers, and connect buttons](../assets/images/tutorials/tutorial-2-connection-form.png)
 *① the sidebar shows a colored status dot per connection (green OK · gray offline · red error). ② transport — Streamable HTTP is the modern default; STDIO and SSE are also supported. ③ JSON connection config (URL + endpoint, or stdio command + args). ④ **Headers** section, with a `${ENV_VAR}` substitution hint — values like `${MY_API_KEY}` resolve from the OS environment at connect time. ⑤ **Save & Connect** registers the connection; **Test Connection** spins up a transient client to validate the config without touching the live one.*
@@ -64,4 +67,3 @@ The eight tabs split into **server primitives** the server exposes (Tools, Resou
     - Cursor's MCP server entry
     - Awesome MCP Servers list — a directory of community servers
 
-→ Next: [Tutorial 3 — Index a Document for RAG](3-index-document.md)

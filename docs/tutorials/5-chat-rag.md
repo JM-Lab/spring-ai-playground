@@ -1,4 +1,4 @@
-Description: Tutorial 5 — RAG without tools. Use an indexed document as grounded context in a chat answer, with per-message retrieval traces from the Vector Database.
+description: Tutorial 5 — RAG without tools. Use an indexed document as grounded context in a chat answer, with per-message retrieval traces from the Vector Database.
 
 # Tutorial 5 — Chat With RAG
 
@@ -28,4 +28,3 @@ Description: Tutorial 5 — RAG without tools. Use an indexed document as ground
 !!! warning "RAG only as good as your chunks"
     A great chat model can't recover from poorly chunked content. If your document has tables or code blocks, look at the chunked output in Vector Database before relying on it in chat — the splitter may have cut at unhelpful boundaries.
 
-→ Next: [Tutorial 6 — Tools and RAG Together](6-tools-and-rag.md)

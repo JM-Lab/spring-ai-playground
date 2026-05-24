@@ -5,11 +5,20 @@ description: Spring AI Playground architecture — runtime layers, feature modul
 
 Spring AI Playground is a **tool-first Spring Boot application** with several UI surfaces layered on top of a shared runtime. The primary packaged experience is a cross-platform desktop app; Docker and source execution are supported as alternative runtimes.
 
-This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood. The sandbox-specific architecture — defense-in-depth model, policy resolution, threat-to-layer mapping, and known limitations — has its own page at [AI Agent Tool Safety Architecture](safety-architecture.md).
+This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood.
+
+This is one of four architecture documents that complement each other:
+
+- **Application Architecture** (this page) — runtime layers, feature modules, data flows, extension points
+- **[Safe Tool Specification 1.0](safe-tool-specification.md)** — normative JSON spec for tool authoring (fields, JSON Schema, resolution algorithm, lifecycle)
+- **[AI Agent Tool Safety Architecture](safety-architecture.md)** — defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
+- **[AI Agent Observability Architecture](observability-architecture.md)** — the visibility layer that captures every action the agent took and surfaces it through twelve dashboards
 
 ## Design Goals
 
-Most playground-style apps stop at prompt entry and response display. Spring AI Playground deliberately goes further:
+**Spring AI Playground is a Safe Local Execution Layer for AI Agent Tools.** A tool a model can invoke is just code running on someone's machine — so the whole system is shaped to make that code declare what it touches *before* it touches anything. A tool is a structured spec; the spec runs in a Java-level sandbox on the author's own host; the sandbox earns the tool a Local Pass against the author's own test values; only then does the tool reach the built-in MCP server where any client (including the model) can call it. **No pass, no run** is the product, not a slogan.
+
+That framing drives every other choice on this page:
 
 - **Tools are executable, not descriptive.** Tool definitions run in a sandbox and can be tested before they are published.
 - **MCP is a first-class runtime boundary.** Built-in and external tools are consumed through the same Model Context Protocol surface.
@@ -41,9 +50,11 @@ Hand-written **Vaadin 24** views under `src/main/java/org/springaicommunity/play
 |---|---|---|
 | `webui/home` | `HomeView` | Landing page with product surfaces |
 | `webui/tool` | `ToolStudioView` | JavaScript tool authoring and test runner |
-| `webui/mcp` | `McpServerView` | Inspector for built-in and external MCP servers |
+| `webui/mcp` | `McpServerView`, `McpServerConnectionView`, `McpServerConfigView` | Sidebar (Built-in / Active / Inactive catalog), connection form, Inspector for built-in and external MCP servers |
 | `webui/vectorstore` | `VectorStoreView` | Document upload, chunk inspection, search |
 | `webui/chat` | `ChatView` | Agentic Chat with tools and RAG |
+| `webui/observability` | `ObservabilityView` | Twelve dashboards (Overview · Tokens & Cost · AI Models · Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Host · Web Application · Logs · Traces) + Trace Detail / Conversation Thread / Model Pricing Manager dialogs |
+| `webui/common/sidebar` | `SidebarFilterBar`, `CategoryGroupDetails`, `SidebarItemLayout` | Shared widgets used by both the MCP Server sidebar and the Tool Studio tool list — search + Categories MultiSelect + Tags MultiSelect, collapsible per-category groups, status dot · name · pills row |
 
 Streaming responses (chat, tool execution traces) are pushed to the browser over Vaadin's WebSocket push.
 
@@ -58,8 +69,12 @@ Under `src/main/java/org/springaicommunity/playground/service/`. One service per
 | `service/tool/runtime` | `JsToolExecutor`, `JsRuntimeGlobals`, `SafeHttpFetch`, `SafeFs`, `JsHelperException` | GraalVM sandbox, `fetch` SSRF guard, `safety.fs`, `safety.parser.*` |
 | `service/tool/policy` | `EffectivePolicyResolver`, `SandboxPostureCalculator` | Per-tool capability overrides + risk-level (L0–L5) calculation |
 | `service/mcp` | `McpServerInfoService`, `McpToolCallingManager` | Built-in MCP server metadata, tool-call eventing |
+| `service/mcp/catalog` | `McpCatalogService`, `McpCategoryService`, `McpTagSuggestionService` | 57-entry preset catalog (49 remote + 8 stdio per OS) — loaded from `default-mcp-specs.json` and `default-mcp-specs-stdio-{mac,linux,windows}.json`, plus the 14-row `default-mcp-categories.json` taxonomy (13 catalog-facing categories + `CUSTOM` reserved for user-added entries), plus dynamic tag suggestions for the Config form |
 | `service/mcp/client` | `McpClientService`, `Mcp*PropertiesService` | External MCP clients across STDIO / HTTP / SSE |
+| `service/util` | `SecretMasking`, `EnvVarResolver` | Resolve `${ENV_VAR}` placeholders against the OS env; sweep connection-error notifications + per-call logs to replace any resolved secret value with `***` |
 | `service/vectorstore` | `VectorStoreService`, `VectorStoreDocumentService` | Tika ingestion, chunking, embedding, search |
+| `observability` | `ObservabilityCollector`, `ObservabilityRingBuffer`, `ObservabilityTimeSeries`, `ObservabilityPersistenceService`, `ConversationAggregator`, `ConversationMessageExtractor`, `SystemMetricsCollector`, `McpToolObservationFilter`, `TraceRecord` / `SpanRecord` | Micrometer `ObservationHandler` pipeline that captures every `gen_ai.*`, `spring.ai.tool`, and `db.vector.client.operation` span into per-turn `TraceRecord`s; ring buffer + on-demand time series + opt-in JSONL persistence; live `Sinks.Many` for the Traces tab |
+| `observability/pricing` | `ModelPricingService`, `CurrencyService`, `ModelPricing` | Per-model rate lookup (`pricing.json`), USD-pegged display currencies (`currency.json`); cost computation `BigDecimal` HALF_UP 6-decimal at read time |
 
 Persistence is pluggable via `PersistenceServiceInterface` and coordinated by `SpringAiPlaygroundPersistenceManager` on startup / shutdown. The default writes JSON files under the user home directory.
 
@@ -93,6 +108,7 @@ flowchart LR
     EXT[External MCP Servers]
     VDB[Vector Database]
     CHAT[Agentic Chat]
+    OBS[Observability]
 
     TS -- "publishes tools" --> BUILTIN
     MCPV -. "inspects · tests" .-> BUILTIN
@@ -100,14 +116,19 @@ flowchart LR
     BUILTIN -- "exposes tools" --> CHAT
     EXT -- "exposes tools" --> CHAT
     VDB -- "retrieves grounded context" --> CHAT
+    CHAT -. "spans" .-> OBS
+    BUILTIN -. "spans" .-> OBS
+    EXT -. "spans" .-> OBS
+    VDB -. "spans" .-> OBS
 ```
 
-The four main surfaces are **connected parts of one workflow**, not isolated demos:
+The five main surfaces are **connected parts of one workflow**, not isolated demos:
 
 - **Tool Studio** creates and publishes tools into the **Built-in MCP Server**.
 - **MCP Server** is the validation boundary — register, inspect, and test external MCP connections before trusting them; the Built-in MCP Server is included there by default.
 - **Vector Database** prepares indexed knowledge for retrieval.
 - **Agentic Chat** composes tools (from the Built-in MCP Server or External MCP Servers) and retrieved documents into one conversational runtime.
+- **Observability** is the read-only visibility layer — every other surface emits `gen_ai.*` / `spring.ai.tool` / `db.vector.client.operation` spans into the `ObservabilityCollector`, which assembles per-turn `TraceRecord`s and exposes them through twelve dashboards. See [AI Agent Observability Architecture](observability-architecture.md) for the pipeline.
 
 ## Key Data Flows
 
@@ -133,7 +154,7 @@ flowchart TB
     MCPSRV --> MCPEP
 ```
 
-Sandbox policy is configurable under `spring.ai.playground.tool-studio.js-sandbox`. The defaults are deny-first: raw network I/O, file I/O, native access, and thread creation are all blocked at the Java level. A `deny-classes` list (System, Runtime, Process, Class, reflect, invoke, Thread, ClassLoader, ServiceLoader, spi) is evaluated before any allow-class match, so deny always wins. The allow-classes are limited to pure-compute packages (`java.lang/math/time/util/text.*`). Tools talk to the outside world through built-in helpers — `fetch` (four-layer SSRF guard, `strict` egress), `safety.fs` (rooted at `tool-studio.fs.base-path`), and `safety.parser.{html,yaml,csv,xml}` — and a tool that genuinely needs more opens specific capabilities through per-tool overrides on its `SandboxOverrides` block (`addAllowClasses`, `hostsAllow`, `networkMode`, `fileRead`/`fileWrite`, `fsBasePath`), which raise its visible risk level (L0–L5) computed by `SandboxPostureCalculator`. See [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities) for the full override shape, egress mode behavior, and risk-level rules.
+Sandbox policy is configurable under `spring.ai.playground.tool-studio.js-sandbox`. The defaults are deny-first: raw network I/O, file I/O, native access, and thread creation are all blocked at the Java level. A `deny-classes` list (System, Runtime, Process, Class, reflect, invoke, Thread, ClassLoader, ServiceLoader, spi) is evaluated before any allow-class match, so deny always wins. The allow-classes are limited to pure-compute packages (`java.lang/math/time/util/text.*`). Tools talk to the outside world through built-in helpers — `fetch` (four-layer SSRF guard, `strict` egress), `safety.fs` (rooted at `tool-studio.fs.base-path`), and `safety.parser.{html,yaml,csv,xml}` — and a tool that genuinely needs more opens specific capabilities through per-tool overrides on its `SandboxOverrides` block (`addAllowClasses`, `hostsAllow`, `networkMode`, `fileRead`/`fileWrite`, `fsBasePath`), which raise its visible risk level (L0–L5) computed by `SandboxPostureCalculator`. See [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities) for the full override shape, egress mode behavior, and risk-level rules.
 
 Publishing has two states. A new or unverified tool is a **Draft** — it lives in Tool Studio and is **not** registered with the built-in MCP server. A Local Pass (a successful test run with the declared test values) flips the `McpToolDefinition` exposure flag and `ToolActivationCalculator` registers the callback with `McpSyncServer`. Which Local-Passed tools ship to MCP on boot is decided by `DefaultToolPresetCatalog` + `DefaultToolsPreferenceResolver` (configurable through Tool Studio's Tool MCP Server Setting drawer, the launcher's Default MCP Tools card, or a CLI override).
 
@@ -297,20 +318,42 @@ sequenceDiagram
 
 Retrieved documents, every tool call, every tool result, and any reasoning trace are all surfaced in the UI — the agent's path from question to answer is explicit rather than hidden.
 
+## Safe Tool Spec
+
+The **Safe Tool Specification** is the on-disk contract that makes the "Safe Local Execution Layer" claim concrete. Every tool — bundled in the playground's catalog (`src/main/resources/tool/default-tool-specs-*.json`) or authored in Tool Studio (saved under `~/spring-ai-playground/tool/save/`) — serializes into one JSON document with three coupled concerns: identity the model sees, code the runtime executes, and safety posture the sandbox will enforce. The name distinguishes it from generic tool specs (MCP's `tools/list` schema, OpenAI function calling) that describe an interface but say nothing about *what is safe to let an agent run.*
+
+The spec maps directly onto the four parts of the product positioning:
+
+- **Safe** — the spec carries a `sandboxOverrides` block (author intent) that `SandboxPostureCalculator` resolves into an enforced `toolSafety` block. No tool reaches the MCP server until those two are reconciled and the spec earns its Local Pass.
+- **Local** — specs persist to the author's own host (`~/spring-ai-playground/tool/save/`); the bundled catalog ships the same JSON shape pre-filled. Nothing about a spec leaves the machine unless an MCP client over the loopback asks for it.
+- **Execution Layer** — the spec carries the JS action body and the input shape the runtime invokes. `draft: true` means the spec has not yet earned a Local Pass and is not exposed; flipping that flag is what publishes the tool.
+- **for AI Agent Tools** — `name`, `description`, and `params` are *model-visible* (they drive tool selection and argument typing through MCP); `staticVariables` is server-side config the model never sees, sourced from `${ENV_VAR}` placeholders.
+
+### Author intent → enforced posture
+
+A safe tool spec carries two safety-related blocks that look similar but serve opposite directions:
+
+- **`sandboxOverrides`** — what the *author* declared they need (broader network mode, FS access, additional class-allowlist entries). This is the editable surface in Tool Studio's Sandbox & Capabilities pane. Missing or null fields mean "baseline" — no override.
+- **`toolSafety`** — what the *runtime* will actually enforce. `SandboxPostureCalculator` reads `sandboxOverrides` plus the baseline policy and produces a resolved snapshot. The Risk Level badge (L0–L5) the UI shows is computed from this block, and the audit log records this block on every invocation.
+
+The split exists so that (1) the editable intent and the enforced posture cannot drift, (2) verifying a foreign spec's safety properties only needs reading `toolSafety`, and (3) the audit log captures what was *actually enforced*, not what the author *asked for*.
+
+For the full document grammar — every field, JSON Schema, resolution algorithm, network mode behavioral table, Risk Level computation, versioning policy, validation error model, and canonical examples — see [**Safe Tool Specification 1.0**](safe-tool-specification.md). For the resolver internals and threat-to-layer mapping, see [AI Agent Tool Safety Architecture](safety-architecture.md). For the Tool Studio UI form that writes this JSON, see [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities).
+
 ## Sandbox Safety
 
 Tool Studio is the only part of the system that runs user-authored code. The implementation models safety as three independent layers — an always-on Java-level sandbox, a per-tool override surface with a visible risk badge, and a transport-level security layer in front of the MCP endpoint.
 
 For the system-level reference (three-layer diagram, policy resolution, per-execution enforcement, threat-to-layer mapping, known limitations, and the next-pass HITL design), see → [**AI Agent Tool Safety Architecture**](safety-architecture.md).
 
-For the user-facing surface (override fields, Risk Level rules, SSRF four-layer steps), see → [Tool Studio → Safety](features/tool-studio.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities).
+For the user-facing surface (override fields, Risk Level rules, SSRF four-layer steps), see → [Tool Studio → Safety](features/tool-studio/index.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities).
 
 ## Configuration and Profiles
 
 | Location | Purpose |
 |---|---|
 | `src/main/resources/application.yaml` | Base defaults, profile declarations |
-| `src/main/resources/default-tool-specs.json` | Built-in tools shipped with the app |
+| `src/main/resources/tool/default-tool-specs*.json` | Built-in tools shipped with the app (split by bundle: `default-tool-specs.json`, `-builtin.json`, `-builtin-helpers.json`, `-builtin-fs.json`, `-network.json`, `-kr.json`) |
 | `electron/resources/default-application.yaml` | Desktop launcher's default config template |
 | `electron/launcher-config.js` | Provider starter templates (Ollama, OpenAI, OpenAI-compatible) |
 
@@ -345,6 +388,6 @@ The five-layer model is deliberate. Each capability has a dedicated runtime area
 ## Further Reading
 
 - [Overview](index.md) — product positioning, quick start path, and documentation map
-- [Getting Started](getting-started.md) — install, configure, and run the app
+- [Getting Started](getting-started/index.md) — install, configure, and run the app
 - [Features](features/index.md) — what each product area does and how to use it
 - [Tutorials](tutorials/index.md) — end-to-end walkthroughs that exercise these flows

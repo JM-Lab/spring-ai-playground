@@ -105,7 +105,8 @@ public abstract class WorkspaceSidebar extends VerticalLayout {
                 .set("white-space", "nowrap")
                 .set("overflow", "hidden")
                 .set("text-overflow", "ellipsis")
-                .set("flex-grow", "1");
+                .set("flex-grow", "1")
+                .set("min-width", "0");
         return span;
     }
 }

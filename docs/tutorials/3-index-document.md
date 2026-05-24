@@ -1,4 +1,4 @@
-Description: Tutorial 3 — upload a document, watch the ETL pipeline (extract → chunk → embed → store), and verify retrieval with a similarity search.
+description: Tutorial 3 — upload a document, watch the ETL pipeline (extract → chunk → embed → store), and verify retrieval with a similarity search.
 
 # Tutorial 3 — Index a Document for RAG
 
@@ -31,4 +31,3 @@ Description: Tutorial 3 — upload a document, watch the ETL pipeline (extract �
 !!! warning "Don't change the embedding model after indexing"
     The vector store stores raw vectors. Switching from `qwen3-embedding:0.6b` to a different model leaves the old vectors in place but indexed in a different space. Re-import or rebuild before trusting retrieval again.
 
-→ Next: [Tutorial 4 — Chat With Tools](4-chat-tools.md)

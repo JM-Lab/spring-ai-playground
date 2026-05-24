@@ -1,104 +1,10 @@
-Description: Default Tools — 86 ready-to-call JavaScript tools across 5 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
+description: Default Tools — 86 ready-to-call JavaScript tools across 5 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
 
 # Default Tools
 
 Spring AI Playground ships with **86 default tools** spread across five JSON source bundles. They are ready to call the moment a model provider is connected — you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own tools.
 
-The MCP server does not expose all of them by default — a **preset** decides the starting subset, and per-tool include / exclude rules layer on top. That preference lives in `<home>/spring-ai-playground/tool/save/default-tools-preference.json` and is editable from two surfaces (the desktop launcher's Default MCP Tools card, and Tool Studio's Tool MCP Server Setting drawer — full breakdown in [Tool Studio → Where preset choices live](../tool-studio.md#where-preset-choices-live)).
-
-## Two ways to use these tools
-
-### Expose and call
-
-The simplest mode — pick a preset (or layer rules on top) and the built-in MCP server publishes that subset. The same tool inventory ends up reachable, but the two transports the server can run with serve different audiences:
-
-- **Streamable HTTP** at `http://localhost:8282/mcp` — **always on**. The in-app **MCP Inspector** (MCP Server tab) and the in-app **Agentic Chat** use this transport exclusively, and so do external Streamable HTTP MCP clients (**Claude Code**, **Cursor**, **Claude Desktop** via `mcp-remote`).
-- **STDIO** — **opt-in**, only useful when an external MCP client wants to host the process itself. Launch with the `mcp-stdio` Spring profile (Docker `-e SPRING_PROFILES_INCLUDE=mcp-stdio`, or `java -jar` with the same env var); the client then **spawns the playground as its child process** and talks JSON-RPC over its stdin/stdout. The server's lifetime is tied to that client process — when the client exits, the server exits with it. This is how Claude Desktop / Claude Code can host the built-in server with no HTTP at all. The in-app surfaces are unaffected — they keep talking Streamable HTTP whether or not the STDIO profile is layered in.
-
-Before exposing to an external client, the in-app **MCP Inspector** is the practical place to verify each tool's contract — run the tool, look at its schema, prompts, and resources, all isolated from chat.
-
-No JS authoring is required for any of this mode — pick a preset, expose, call.
-
-- → [Tool Studio: Key Tool Studio Capabilities](../tool-studio.md#key-tool-studio-capabilities) — Tool MCP Server Setting drawer overview
-- → [Tool Studio: Connect to the Built-in MCP Server](../tool-studio.md#connect-to-the-built-in-mcp-server) — wiring external clients over Streamable HTTP
-- → [Getting Started: distribution channels and MCP transports](../../getting-started.md#how-distribution-channels-map-to-mcp-transports) — Docker container and fat-JAR launchers for STDIO mode
-- → [MCP Server: MCP Inspector](../mcp-server.md#mcp-inspector) — exercise tools, resources, prompts before exposing externally
-- → [Agentic Chat](../agentic-chat.md) — call them from a model conversation
-
-### Author and compose
-
-The deeper mode — each default tool's JS source is a working reference for the cross-bridged helpers (`fetch`, `safety.fs.*`, `safety.parser.*`, `crypto.subtle`, `console.log`). Open one in Tool Studio, use **Copy to New Tool** to fork it, tweak the action, hit **Test & Publish**. The moment Local Pass succeeds, your tweaked tool joins the same built-in MCP server — Agentic Chat and external clients see it without a restart.
-
-- → [Tool Studio: Built-in JavaScript Helpers](../tool-studio.md#built-in-javascript-helpers) — the full helper surface
-- → [Tool Studio: Local Pass — Test Before Publish](../tool-studio.md#local-pass-test-before-publish) — the publish gate
-- → [Tutorial 1: Author a Tool](../../tutorials/1-author-tool.md) — first walkthrough
-
-## End-to-end flow
-
-```text
-[ Default tool · Custom tool ]
-            │
-            ▼
-   [ Author in Tool Studio ]
-            │
-            ▼
-   [ Local Pass test  ✅ ] ──── No pass, no run — the gate
-            │
-            ▼
-   [ Built-in MCP server ]
-            │
-            ├── Streamable HTTP  ·  http://localhost:8282/mcp
-            │   server runs independently; clients connect by URL
-            │       │
-            │       ├──▶  [ MCP Inspector ]  (in-app — verify the contract)
-            │       ├──▶  [ Agentic Chat ]   (in-app)
-            │       └──▶  External HTTP clients — Claude Code · Cursor ·
-            │             Claude Desktop (via mcp-remote) · any Streamable HTTP MCP client
-            │
-            └── STDIO  ·  process stdin/stdout JSON-RPC
-                client spawns the playground as its child process;
-                its lifetime is tied to the client — when the client exits, the server exits with it
-                (opt-in: mcp-stdio profile — Docker -e SPRING_PROFILES_INCLUDE=mcp-stdio,
-                 or java -jar with the same env var)
-                     │
-                     └──▶  External STDIO clients — Claude Desktop · Claude Code
-                           configured to spawn the process · any other STDIO MCP client
-```
-
-The two transports differ in **who owns the server's lifetime**: in Streamable HTTP mode the playground is a long-running daemon and clients come and go by URL; in STDIO mode the MCP client launches the playground as a child process and the server dies with the client. The in-app Inspector and Agentic Chat always reach the server over Streamable HTTP — STDIO is purely for external clients that want to host the process themselves. The same flow applies whether you expose a default tool unchanged or compose new tools from default-tool patterns, and the Inspector is where you exercise each tool against its schema before pointing an external client at it.
-
-## Why these are different from other MCP tools
-
-Most MCP server implementations ship one **native binary per OS** (Python wheels, Node binaries, Go / Rust executables) and require the user to install a platform-matching build, often plus a toolchain (Python, Node, Cargo) to author new tools.
-
-Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact — distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher — runs identically on macOS, Windows, and Linux. All 86 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
-
-Full mechanics — including how every cross-bridged helper rides on JVM stdlib so `/` vs `\`, TLS, parsers, and crypto behave identically across OSes — in [Tool Studio → Cross-platform by design](../tool-studio.md#cross-platform-by-design).
-
-## Composition recipes
-
-The reference pages list what's available; composition recipes show how to chain them into a useful new tool. Three walk-throughs are in [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md):
-
-- **Filesystem pipeline** — `listDir` → `grepFile` → `sliceFile` → `writeTextFile`, ending in a custom tool that summarises a chunked log directory.
-- **GitHub release → AI summary** — `getGithubLatestRelease` → `openaiResponseGenerator`, ending in a tool that posts release-notes digests.
-- **City name → hourly forecast** — `geocodeAddress` → `getOpenMeteoForecast`, ending in a tool that answers "is it raining tomorrow in *city*?" without hard-coded coordinates.
-
-## Environment variables — short list
-
-Some default tools depend on environment-backed secrets and stay inert until those are set. The full per-tool breakdown lives on each reference page; the most common are:
-
-| Env var | Used by | Why |
-|---|---|---|
-| `OPENAI_API_KEY` | `openaiResponseGenerator` | OpenAI Responses API |
-| `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | `googlePseSearch` | Google Programmable Search Engine |
-| `SLACK_WEBHOOK_URL` | `sendSlackMessage` | Incoming Webhook |
-| `TOOL_STUDIO_FS_BASE` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}`) |
-| Various Korean provider keys | KR network tools — Naver, Kakao, KMA, data.go.kr | Provider-specific (per-page) |
-
-Secrets are masked from `console.log` output by substring replacement when the full resolved value appears, and they are not committed to the tool spec — they resolve at runtime from the JVM environment.
-
-→ [Tool Studio: Key Tool Studio Capabilities](../tool-studio.md#key-tool-studio-capabilities) — Static Variables, secret masking, and how env-backed values reach the JS action.
-
+The MCP server does not expose all of them by default — a **preset** decides the starting subset, and per-tool include / exclude rules layer on top. That preference lives in `<home>/spring-ai-playground/tool/save/default-tools-preference.json` and is editable from two surfaces (the desktop launcher's Default MCP Tools card, and Tool Studio's Tool MCP Server Setting drawer — full breakdown in [Tool Studio → Where preset choices live](../tool-studio/index.md#where-preset-choices-live)).
 
 ## Browse all 86 tools { #browse-all-tools }
 
@@ -1418,4 +1324,99 @@ MOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (K
 
 </div>
 </div>
+
+
+
+## Two ways to use these tools
+
+### Expose and call
+
+The simplest mode — pick a preset (or layer rules on top) and the built-in MCP server publishes that subset. The same tool inventory ends up reachable, but the two transports the server can run with serve different audiences:
+
+- **Streamable HTTP** at `http://localhost:8282/mcp` — **always on**. The in-app **MCP Inspector** (MCP Server tab) and the in-app **Agentic Chat** use this transport exclusively, and so do external Streamable HTTP MCP clients (**Claude Code**, **Cursor**, **Claude Desktop** via `mcp-remote`).
+- **STDIO** — **opt-in**, only useful when an external MCP client wants to host the process itself. Launch with the `mcp-stdio` Spring profile (Docker `-e SPRING_PROFILES_INCLUDE=mcp-stdio`, or `java -jar` with the same env var); the client then **spawns the playground as its child process** and talks JSON-RPC over its stdin/stdout. The server's lifetime is tied to that client process — when the client exits, the server exits with it. This is how Claude Desktop / Claude Code can host the built-in server with no HTTP at all. The in-app surfaces are unaffected — they keep talking Streamable HTTP whether or not the STDIO profile is layered in.
+
+Before exposing to an external client, the in-app **MCP Inspector** is the practical place to verify each tool's contract — run the tool, look at its schema, prompts, and resources, all isolated from chat.
+
+No JS authoring is required for any of this mode — pick a preset, expose, call.
+
+- → [Tool Studio: Key Tool Studio Capabilities](../tool-studio/index.md#key-tool-studio-capabilities) — Tool MCP Server Setting drawer overview
+- → [Tool Studio: Connect to the Built-in MCP Server](../tool-studio/index.md#connect-to-the-built-in-mcp-server) — wiring external clients over Streamable HTTP
+- → [Alternative Runtimes: distribution channels and MCP transports](../../getting-started/alternative-runtimes.md#how-distribution-channels-map-to-mcp-transports) — Docker container and fat-JAR launchers for STDIO mode
+- → [MCP Server: MCP Inspector](../mcp-server/index.md#mcp-inspector) — exercise tools, resources, prompts before exposing externally
+- → [Agentic Chat](../agentic-chat.md) — call them from a model conversation
+
+### Author and compose
+
+The deeper mode — each default tool's JS source is a working reference for the cross-bridged helpers (`fetch`, `safety.fs.*`, `safety.parser.*`, `crypto.subtle`, `console.log`). Open one in Tool Studio, use **Copy to New Tool** to fork it, tweak the action, hit **Test & Publish**. The moment Local Pass succeeds, your tweaked tool joins the same built-in MCP server — Agentic Chat and external clients see it without a restart.
+
+- → [Tool Studio: Built-in JavaScript Helpers](../tool-studio/index.md#built-in-javascript-helpers) — the full helper surface
+- → [Tool Studio: Local Pass — Test Before Publish](../tool-studio/index.md#local-pass-test-before-publish) — the publish gate
+- → [Tutorial 1: Author a Tool](../../tutorials/1-author-tool.md) — first walkthrough
+
+## End-to-end flow
+
+```text
+[ Default tool · Custom tool ]
+            │
+            ▼
+   [ Author in Tool Studio ]
+            │
+            ▼
+   [ Local Pass test  ✅ ] ──── No pass, no run — the gate
+            │
+            ▼
+   [ Built-in MCP server ]
+            │
+            ├── Streamable HTTP  ·  http://localhost:8282/mcp
+            │   server runs independently; clients connect by URL
+            │       │
+            │       ├──▶  [ MCP Inspector ]  (in-app — verify the contract)
+            │       ├──▶  [ Agentic Chat ]   (in-app)
+            │       └──▶  External HTTP clients — Claude Code · Cursor ·
+            │             Claude Desktop (via mcp-remote) · any Streamable HTTP MCP client
+            │
+            └── STDIO  ·  process stdin/stdout JSON-RPC
+                client spawns the playground as its child process;
+                its lifetime is tied to the client — when the client exits, the server exits with it
+                (opt-in: mcp-stdio profile — Docker -e SPRING_PROFILES_INCLUDE=mcp-stdio,
+                 or java -jar with the same env var)
+                     │
+                     └──▶  External STDIO clients — Claude Desktop · Claude Code
+                           configured to spawn the process · any other STDIO MCP client
+```
+
+The two transports differ in **who owns the server's lifetime**: in Streamable HTTP mode the playground is a long-running daemon and clients come and go by URL; in STDIO mode the MCP client launches the playground as a child process and the server dies with the client. The in-app Inspector and Agentic Chat always reach the server over Streamable HTTP — STDIO is purely for external clients that want to host the process themselves. The same flow applies whether you expose a default tool unchanged or compose new tools from default-tool patterns, and the Inspector is where you exercise each tool against its schema before pointing an external client at it.
+
+## Why these are different from other MCP tools
+
+Most MCP server implementations ship one **native binary per OS** (Python wheels, Node binaries, Go / Rust executables) and require the user to install a platform-matching build, often plus a toolchain (Python, Node, Cargo) to author new tools.
+
+Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact — distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher — runs identically on macOS, Windows, and Linux. All 86 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
+
+Full mechanics — including how every cross-bridged helper rides on JVM stdlib so `/` vs `\`, TLS, parsers, and crypto behave identically across OSes — in [Tool Studio → Cross-platform by design](../tool-studio/index.md#cross-platform-by-design).
+
+## Composition recipes
+
+The reference pages list what's available; composition recipes show how to chain them into a useful new tool. Three walk-throughs are in [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md):
+
+- **Filesystem pipeline** — `listDir` → `grepFile` → `sliceFile` → `writeTextFile`, ending in a custom tool that summarises a chunked log directory.
+- **GitHub release → AI summary** — `getGithubLatestRelease` → `openaiResponseGenerator`, ending in a tool that posts release-notes digests.
+- **City name → hourly forecast** — `geocodeAddress` → `getOpenMeteoForecast`, ending in a tool that answers "is it raining tomorrow in *city*?" without hard-coded coordinates.
+
+## Environment variables — short list
+
+Some default tools depend on environment-backed secrets and stay inert until those are set. The full per-tool breakdown lives on each reference page; the most common are:
+
+| Env var | Used by | Why |
+|---|---|---|
+| `OPENAI_API_KEY` | `openaiResponseGenerator` | OpenAI Responses API |
+| `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | `googlePseSearch` | Google Programmable Search Engine |
+| `SLACK_WEBHOOK_URL` | `sendSlackMessage` | Incoming Webhook |
+| `TOOL_STUDIO_FS_BASE` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`) |
+| Various Korean provider keys | KR network tools — Naver, Kakao, KMA, data.go.kr | Provider-specific (per-page) |
+
+Secrets are masked from `console.log` output by substring replacement when the full resolved value appears, and they are not committed to the tool spec — they resolve at runtime from the JVM environment.
+
+→ [Tool Studio: Key Tool Studio Capabilities](../tool-studio/index.md#key-tool-studio-capabilities) — Static Variables, secret masking, and how env-backed values reach the JS action.
 

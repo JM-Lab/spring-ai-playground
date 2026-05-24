@@ -22,6 +22,7 @@ import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.component.page.TargetElement;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -41,6 +42,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import reactor.core.publisher.Hooks;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -52,9 +55,11 @@ import java.util.function.Predicate;
 @JavaScript("./playground/pwa-installer.js")
 @SpringBootApplication
 @ConfigurationPropertiesScan
+@EnableScheduling
 public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
+        Hooks.enableAutomaticContextPropagation();
         SpringApplication.run(SpringAiPlaygroundApplication.class, args);
     }
 
@@ -122,8 +127,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Bean
     @ConditionalOnMissingBean(VectorStore.class)
-    public SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel) {
-        return SimpleVectorStore.builder(embeddingModel).build();
+    public SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel,
+            ObservationRegistry observationRegistry) {
+        return SimpleVectorStore.builder(embeddingModel)
+                .observationRegistry(observationRegistry)
+                .build();
     }
 
     @Bean

@@ -1,5 +1,5 @@
 title: Safe Local Execution Layer for AI Agent Tools
-description: Cross-platform desktop app for building, testing, and publishing MCP tools — Tool Studio, defense-in-depth sandbox, Risk Level (L0–L5), Agentic Chat, and RAG.
+description: Cross-platform desktop app for building, testing, and publishing MCP tools — Tool Studio, defense-in-depth sandbox, Risk Level (L0–L5), Agentic Chat, RAG, and built-in observability dashboards.
 
 # Spring AI Playground
 
@@ -11,6 +11,8 @@ Spring AI Playground is a cross-platform desktop app for building, testing, vali
 
 Every tool you build earns a **Local Pass** — a local test-run with sample arguments. Only tools that pass are added live to the built-in MCP server and become callable from Agentic Chat. Nothing you author reaches an agent until you have seen it work on your own machine.
 
+Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** — twelve panels (Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces) backed by a ring buffer with dated disk persistence. Drill from any row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — the tools you let an agent call are also the tools you can audit in detail afterwards.
+
 The desktop app is the recommended default experience, but Docker and local source execution are still supported when you want a server-style deployment or a development workflow.
 
 Unlike many playgrounds that stop at prompt testing, this project connects AI conversations to real actions while making the tools it manages inside the app safer and easier to inspect before reuse:
@@ -18,10 +20,12 @@ Unlike many playgrounds that stop at prompt testing, this project connects AI co
 - build JavaScript tools directly in the app
 - earn a **Local Pass** by test-running each tool against sample arguments you define
 - **add tools live to the built-in MCP server** the moment each passes — no restart, no redeploy
-- start immediately with **86 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services — searchable + filterable on the [Default Tools directory](features/default-tools/index.md#browse-all-tools), and grouped across 5 reference pages: [Examples](features/default-tools/examples.md) (7) · [Utilities](features/default-tools/utilities.md) (26) · [Filesystem](features/default-tools/filesystem.md) (10) · [Global](features/default-tools/global.md) (22) · [Korea](features/default-tools/korea.md) (21)
+- start immediately with **86 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services — [see the spotlight section below](#what-used-to-take-an-afternoon-already-wired-in) for the categorised browse
+- connect external surfaces in one click with **57 preset MCP server connections** (Gmail · Outlook · Notion · Slack · GitHub · Linear · Atlassian · Stripe · Figma · BigQuery · Cloudflare · Tavily · MCP Everything · …) — same spotlight section below covers the full per-category browse
 - validate retrieval pipelines against your own documents
 - run agentic chat that combines tool use and grounded context (e.g. *"Get today's weather and send it to Slack"*)
 - run every tool through a **defense-in-depth GraalVM sandbox** with a deny-first class allowlist, SSRF-guarded `fetch`, rooted `safety.fs`, statement + wall-clock limits, and a visible per-tool **Risk Level** (L0–L5) — see [AI Agent Tool Safety Architecture](safety-architecture.md)
+- **see every chat, tool call, vector query, and MCP invocation** in the twelve built-in [Observability dashboards](features/observability/index.md) — drill into span timelines, jump back to the source conversation, watch token cost and latency live, deep-link from a trace into Agentic Chat
 
 <div style="text-align: center;">
   <b>Agentic Chat Demo</b><br/>
@@ -283,7 +287,7 @@ Pick the asset that matches your platform.
 })();
 </script>
 
-Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases). Need [verification info](getting-started.md#verify-your-download)?
+Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases). Need [verification info](getting-started/index.md#verify-your-download)?
 
 ### 2. Install and Launch
 
@@ -319,7 +323,7 @@ If you install the app, you can run Spring AI Playground immediately without set
 >
 > Separate Gatekeeper- or SmartScreen-style reputation warnings are uncommon. When installing the `.deb` or `.rpm` package, you usually only need to complete the normal package-install confirmation steps.
 >
-> For more detailed platform guidance and first-launch configuration screens, see [Getting Started](getting-started.md).
+> For more detailed platform guidance and first-launch configuration screens, see [Getting Started](getting-started/index.md).
 
 <div style="text-align: center;">
   <b>First-Launch Configuration Screen</b><br/>
@@ -349,7 +353,7 @@ The desktop build is intended to be the easiest way to get started without setti
 
 ### 4. Optional: Use Docker Instead
 
-By default the container behaves like the desktop / source app — Vaadin web UI on `http://localhost:8282` and a `streamable-http` MCP server in the same process. To use it as a stdio MCP server for Claude Desktop and other MCP clients instead, add `-e SPRING_PROFILES_INCLUDE=mcp-stdio` (see the [Docker section in Getting Started](getting-started.md#docker)).
+By default the container behaves like the desktop / source app — Vaadin web UI on `http://localhost:8282` and a `streamable-http` MCP server in the same process. To use it as a stdio MCP server for Claude Desktop and other MCP clients instead, add `-e SPRING_PROFILES_INCLUDE=mcp-stdio` (see the [Docker section in Alternative Runtimes](getting-started/alternative-runtimes.md#docker)).
 
 ```bash
 docker run -d -p 8282:8282 --name spring-ai-playground \
@@ -361,13 +365,120 @@ docker run -d -p 8282:8282 --name spring-ai-playground \
 
 Then open `http://localhost:8282`.
 
+## :material-flash: What used to take an afternoon — already wired in
+
+Installing an external MCP server normally means cloning a repo, installing the right runtime, registering an OAuth app, exporting tokens, and restarting your host. We did that 57 times so you don't have to. The 86 default tools ship in the same box. Every tool carries a visible **Risk Level (L0–L5)** — the sandbox, Local Pass, `${ENV_VAR}` substitution, and SecretMasking handle the rest.
+
+### Built-in tools — call from chat the moment you launch
+
+<div class="tcg-grid--home" markdown>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/examples/#getWeather" aria-label="Open getWeather"></a>
+<span class="tcg-home-icon">:material-weather-partly-cloudy:</span>
+<span class="tcg-home-name">getWeather</span>
+<span class="tcg-home-pill risk-l0">L0</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/global/#searchWikipedia" aria-label="Open searchWikipedia"></a>
+<span class="tcg-home-icon">:material-book-search-outline:</span>
+<span class="tcg-home-name">searchWikipedia</span>
+<span class="tcg-home-pill risk-l0">L0</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/examples/#extractPageContent" aria-label="Open extractPageContent"></a>
+<span class="tcg-home-icon">:material-text-box-search-outline:</span>
+<span class="tcg-home-name">extractPageContent</span>
+<span class="tcg-home-pill risk-l0">L0</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/examples/#getCurrentTime" aria-label="Open getCurrentTime"></a>
+<span class="tcg-home-icon">:material-clock-outline:</span>
+<span class="tcg-home-name">getCurrentTime</span>
+<span class="tcg-home-pill risk-l0">L0</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/utilities/#hash" aria-label="Open hash"></a>
+<span class="tcg-home-icon">:material-shield-key-outline:</span>
+<span class="tcg-home-name">hash (SHA-256)</span>
+<span class="tcg-home-pill risk-l0">L0</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-tools/filesystem/#writeTextFile" aria-label="Open writeTextFile"></a>
+<span class="tcg-home-icon">:material-file-edit-outline:</span>
+<span class="tcg-home-name">writeTextFile</span>
+<span class="tcg-home-pill risk-l4">L4</span>
+</div>
+
+</div>
+
+<p class="home-spotlight-cta">→ <a href="features/default-tools/index.md">Browse all 86 default tools</a> across Examples (7) · Utilities (26) · Filesystem (10) · Global (22) · Korea (21).</p>
+
+### External MCP — one click in the sidebar, fill `${ENV_VAR}`, done
+
+<div class="tcg-grid--home" markdown>
+
+<div class="tcg-card--home t-google" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/productivity/#Gmail" aria-label="Open Gmail"></a>
+<span class="tcg-home-icon">![Gmail](https://cdn.simpleicons.org/gmail){ width="20" }</span>
+<span class="tcg-home-name">Gmail</span>
+<span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
+</div>
+
+<div class="tcg-card--home t-slack" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/productivity/#Slack" aria-label="Open Slack"></a>
+<span class="tcg-home-icon">![Slack](https://cdn.simpleicons.org/slack){ width="20" }</span>
+<span class="tcg-home-name">Slack</span>
+<span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
+</div>
+
+<div class="tcg-card--home t-github" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/dev/#GitHub" aria-label="Open GitHub"></a>
+<span class="tcg-home-icon">![GitHub](https://cdn.simpleicons.org/github){ width="20" }</span>
+<span class="tcg-home-name">GitHub</span>
+<span class="tcg-home-oauth" title="OAuth 2.1 / PAT">🔐</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/productivity/#Notion" aria-label="Open Notion"></a>
+<span class="tcg-home-icon">![Notion](https://cdn.simpleicons.org/notion){ width="20" }</span>
+<span class="tcg-home-name">Notion</span>
+<span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
+</div>
+
+<div class="tcg-card--home t-google" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/data-cloud/#BigQuery" aria-label="Open BigQuery"></a>
+<span class="tcg-home-icon">![BigQuery](https://cdn.simpleicons.org/googlebigquery){ width="20" }</span>
+<span class="tcg-home-name">BigQuery</span>
+<span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
+</div>
+
+<div class="tcg-card--home" markdown>
+<a class="tcg-stretched-link" href="features/default-mcp-catalog/business/#Stripe" aria-label="Open Stripe"></a>
+<span class="tcg-home-icon">![Stripe](https://cdn.simpleicons.org/stripe){ width="20" }</span>
+<span class="tcg-home-name">Stripe</span>
+<span class="tcg-home-pill risk-l4">L4</span>
+<span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
+</div>
+
+</div>
+
+<p class="home-spotlight-cta">→ <a href="features/default-mcp-catalog/index.md">Browse all 57 preset MCP connections</a> across Productivity & Communication (8) · Dev & Project Management (12) · Data & Cloud (17) · Business (12) · Search (6) · Examples (2). New to this surface? Walk through <a href="tutorials/9-mcp-everything.md">Tutorial 9 — MCP Everything: All 8 Primitives in One Walkthrough</a>.</p>
+
 ## :material-view-grid-outline: What You Can Do
 
-- [:material-robot-outline: AI Models](getting-started.md#model-configuration): switch between Ollama, OpenAI, and OpenAI-compatible runtime paths.
-- [:material-tools: Tool Studio](features/tool-studio.md): build low-code tools in JavaScript and expose them instantly through MCP.
-- [:material-connection: MCP Server](features/mcp-server.md): inspect external MCP servers and consume built-in MCP tools.
+- [:material-robot-outline: AI Models](getting-started/index.md#model-configuration): switch between Ollama, OpenAI, and OpenAI-compatible runtime paths.
+- [:material-tools: Tool Studio](features/tool-studio/index.md): build low-code tools in JavaScript and expose them instantly through MCP.
+- [:material-connection: MCP Server](features/mcp-server/index.md): inspect external MCP servers and consume built-in MCP tools.
+- [:material-server-network: Default MCP Catalog](features/default-mcp-catalog/index.md): 49 preset external MCP server connections (Gmail, Notion, Slack, GitHub, Tavily, ...) gated on `${ENV_VAR}` placeholders.
 - [:material-database-search: RAG](features/vector-database.md): upload content, chunk it, embed it, index it, and validate retrieval quality.
 - [:material-chat-processing: Agentic Chat](features/agentic-chat.md): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow.
+- [:material-chart-line: Observability](features/observability/index.md): twelve in-app dashboards covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail.
 
 ## :material-lightbulb-on-outline: Why This Project Exists
 
@@ -393,8 +504,9 @@ It is intentionally opinionated and scope-limited in its current stage. The goal
 
 ## Further Reading
 
-- [Getting Started](getting-started.md): install the desktop app, configure models, and understand alternative runtimes
+- [Getting Started](getting-started/index.md): install the desktop app, configure models, and understand alternative runtimes
 - [Application Architecture](architecture.md): runtime layers, data flows, and extension points
 - [AI Agent Tool Safety Architecture](safety-architecture.md): defense-in-depth sandbox model, policy resolution, threat model, and Risk Level reference
+- [AI Agent Observability Architecture](observability-architecture.md): trace pipeline, storage tiers, configuration, and external export paths behind the twelve dashboards
 - [Features](features/index.md): the main product areas and what they do
 - [Tutorials](tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat

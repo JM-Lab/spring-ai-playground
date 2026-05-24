@@ -56,7 +56,9 @@ class DefaultToolSpecMcpExposureTest {
     @AfterEach
     void cleanup() {
         for (String id : registeredIds) {
-            try { toolSpecService.deleteToolSpec(id); } catch (Exception ignore) {}
+            try {
+                toolSpecService.deleteToolSpec(id);
+            } catch (Exception ignore) {}
         }
         registeredIds.clear();
     }
@@ -66,12 +68,12 @@ class DefaultToolSpecMcpExposureTest {
         Set<String> shippedNames = new HashSet<>();
         ObjectMapper mapper = new ObjectMapper();
         for (String fname : List.of(
-                "/default-tool-specs.json",
-                "/default-tool-specs-builtin.json",
-                "/default-tool-specs-builtin-helpers.json",
-                "/default-tool-specs-builtin-fs.json",
-                "/default-tool-specs-network.json",
-                "/default-tool-specs-kr.json")) {
+                "/tool/default-tool-specs.json",
+                "/tool/default-tool-specs-builtin.json",
+                "/tool/default-tool-specs-builtin-helpers.json",
+                "/tool/default-tool-specs-builtin-fs.json",
+                "/tool/default-tool-specs-network.json",
+                "/tool/default-tool-specs-kr.json")) {
             try (InputStream in = DefaultToolSpecMcpExposureTest.class.getResourceAsStream(fname)) {
                 if (in == null) continue;
                 List<ToolSpec> batch = mapper.readValue(in,
@@ -102,7 +104,7 @@ class DefaultToolSpecMcpExposureTest {
 
     @Test
     void resolvedLocationStringMatchesGlob() {
-        assertThat(resolvedLocation).isEqualTo("classpath*:default-tool-specs*.json");
+        assertThat(resolvedLocation).isEqualTo("classpath*:tool/default-tool-specs*.json");
     }
 
     @Test
@@ -125,12 +127,12 @@ class DefaultToolSpecMcpExposureTest {
     @Test
     void globLoaderPicksUpEverySpecFile() throws Exception {
         Map<String, Integer> expectedCounts = Map.of(
-                "/default-tool-specs.json",                 7,
-                "/default-tool-specs-builtin.json",         16,
-                "/default-tool-specs-builtin-helpers.json", 10,
-                "/default-tool-specs-builtin-fs.json",      10,
-                "/default-tool-specs-network.json",         22,
-                "/default-tool-specs-kr.json",              21
+                "/tool/default-tool-specs.json",                 7,
+                "/tool/default-tool-specs-builtin.json",         16,
+                "/tool/default-tool-specs-builtin-helpers.json", 10,
+                "/tool/default-tool-specs-builtin-fs.json",      10,
+                "/tool/default-tool-specs-network.json",         22,
+                "/tool/default-tool-specs-kr.json",              21
         );
         int expectedTotal = expectedCounts.values().stream().mapToInt(Integer::intValue).sum();
 
@@ -159,12 +161,12 @@ class DefaultToolSpecMcpExposureTest {
         Set<String> out = new HashSet<>();
         ObjectMapper mapper = new ObjectMapper();
         for (String fname : List.of(
-                "/default-tool-specs.json",
-                "/default-tool-specs-builtin.json",
-                "/default-tool-specs-builtin-helpers.json",
-                "/default-tool-specs-builtin-fs.json",
-                "/default-tool-specs-network.json",
-                "/default-tool-specs-kr.json")) {
+                "/tool/default-tool-specs.json",
+                "/tool/default-tool-specs-builtin.json",
+                "/tool/default-tool-specs-builtin-helpers.json",
+                "/tool/default-tool-specs-builtin-fs.json",
+                "/tool/default-tool-specs-network.json",
+                "/tool/default-tool-specs-kr.json")) {
             try (InputStream in = DefaultToolSpecMcpExposureTest.class.getResourceAsStream(fname)) {
                 List<ToolSpec> batch = mapper.readValue(in,
                         mapper.getTypeFactory().constructCollectionType(List.class, ToolSpec.class));

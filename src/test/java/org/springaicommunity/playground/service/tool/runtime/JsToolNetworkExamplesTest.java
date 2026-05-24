@@ -112,9 +112,9 @@ class JsToolNetworkExamplesTest {
 
         ObjectMapper mapper = new ObjectMapper();
         specs = new ArrayList<>();
-        for (String fname : List.of("/default-tool-specs.json",
-                "/default-tool-specs-network.json",
-                "/default-tool-specs-kr.json")) {
+        for (String fname : List.of("/tool/default-tool-specs.json",
+                "/tool/default-tool-specs-network.json",
+                "/tool/default-tool-specs-kr.json")) {
             try (InputStream in = JsToolNetworkExamplesTest.class.getResourceAsStream(fname)) {
                 if (in == null) continue;
                 specs.addAll(mapper.readValue(in, new TypeReference<List<Map<String, Object>>>() {}));
@@ -1682,12 +1682,18 @@ class JsToolNetworkExamplesTest {
         StringBuilder hourlyTemps = new StringBuilder("[");
         StringBuilder hourlyProbs = new StringBuilder("[");
         for (int i = 0; i < 48; i++) {
-            if (i > 0) { hourlyTimes.append(','); hourlyTemps.append(','); hourlyProbs.append(','); }
+            if (i > 0) {
+                hourlyTimes.append(',');
+                hourlyTemps.append(',');
+                hourlyProbs.append(',');
+            }
             hourlyTimes.append("\"2026-05-13T").append(String.format("%02d", i % 24)).append(":00\"");
             hourlyTemps.append(20 + (i % 10));
             hourlyProbs.append(i % 100);
         }
-        hourlyTimes.append(']'); hourlyTemps.append(']'); hourlyProbs.append(']');
+        hourlyTimes.append(']');
+        hourlyTemps.append(']');
+        hourlyProbs.append(']');
 
         String body = "{\"latitude\":37.5665,\"longitude\":126.978,\"timezone\":\"Asia/Seoul\"," +
                 "\"daily\":{" +

@@ -30,7 +30,7 @@ class ToolSpecCategoryDeserializationTest {
     @Test
     void staticVariablesShapeFromBundledJsonForSlackTool() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        try (InputStream in = getClass().getResourceAsStream("/default-tool-specs.json")) {
+        try (InputStream in = getClass().getResourceAsStream("/tool/default-tool-specs.json")) {
             List<ToolSpec> specs = mapper.readValue(in,
                     mapper.getTypeFactory().constructCollectionType(List.class, ToolSpec.class));
             ToolSpec slack = specs.stream().filter(s -> "sendSlackMessage".equals(s.name())).findFirst().orElseThrow();

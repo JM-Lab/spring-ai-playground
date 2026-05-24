@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.SharedDataReader;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogEntry;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
 import org.springaicommunity.playground.service.mcp.client.HttpConnectionParametersWithExtras;
 import org.springaicommunity.playground.service.mcp.client.McpClientPropertiesService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
@@ -41,6 +43,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +56,7 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     private final ObjectMapper objectMapper;
     private final Map<McpTransportType, Map<String, McpServerInfo>> typeMcpServerInfosMap;
     private final McpClientService mcpClientService;
+    private final McpCatalogService mcpCatalogService;
     private final ObjectProvider<McpServerInfoPersistenceService> mcpServerInfoPersistenceServiceProvider;
     private final McpClientRegistrationRepository mcpClientRegistrationRepository;
     private final String defaultMcpServerName;
@@ -61,12 +66,13 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     private McpServerInfo defaultMcpServerInfo;
 
     public McpServerInfoService(ObjectMapper objectMapper, McpClientPropertiesService<?>[] mcpClientPropertiesServices,
-            McpClientService mcpClientService,
+            McpClientService mcpClientService, McpCatalogService mcpCatalogService,
             ObjectProvider<McpServerInfoPersistenceService> mcpServerInfoPersistenceServiceProvider,
             McpClientRegistrationRepository mcpClientRegistrationRepository,
             @Value("${server.port:8282}") int serverPort, McpServerProperties mcpServerProperties) {
         this.objectMapper = objectMapper;
         this.mcpClientService = mcpClientService;
+        this.mcpCatalogService = mcpCatalogService;
         this.mcpServerInfoPersistenceServiceProvider = mcpServerInfoPersistenceServiceProvider;
         this.mcpClientRegistrationRepository = mcpClientRegistrationRepository;
         this.defaultMcpServerName = mcpServerProperties.getName();
@@ -100,6 +106,19 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     public void onApplicationReady(ApplicationReadyEvent event) {
         this.applicationReady = true;
         updateDefaultMcpTool();
+        autoStartConfiguredMcpClients();
+    }
+
+    private void autoStartConfiguredMcpClients() {
+        this.typeMcpServerInfosMap.values().forEach(byName -> byName.values().forEach(info -> {
+            if (info.equals(this.defaultMcpServerInfo)) return;
+            try {
+                this.mcpClientService.startMcpClient(info);
+            } catch (RuntimeException e) {
+                logger.warn("Failed to auto-start configured MCP client: serverName={}, error={}",
+                        info.serverName(), e.getMessage());
+            }
+        }));
     }
 
     public McpServerInfo getDefaultMcpServerInfo() {
@@ -115,8 +134,14 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     private McpServerInfo buildMcpServerInfo(McpTransportType transportType, String serverName, Object connection) {
         try {
             long timestamp = System.currentTimeMillis();
-            return new McpServerInfo(transportType, serverName, "[Default Connection] " + serverName,
-                    timestamp, timestamp, transformAsJson(connection));
+            Optional<McpCatalogEntry> entry = this.mcpCatalogService.findByServerName(serverName);
+            String description = entry.map(McpCatalogEntry::description)
+                    .filter(d -> d != null && !d.isBlank())
+                    .orElse("[Default Connection] " + serverName);
+            String category = entry.map(McpCatalogEntry::category).orElse(McpServerInfo.DEFAULT_CATEGORY);
+            Set<String> tags = entry.<Set<String>>map(McpCatalogEntry::tags).orElseGet(Set::of);
+            return new McpServerInfo(transportType, serverName, description,
+                    timestamp, timestamp, transformAsJson(connection), category, tags);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(
                     "Failed to serialize default MCP server connection for " + serverName, e);

@@ -1,0 +1,305 @@
+[
+  {
+    "toolId": "edfcbbb5-023f-4a6a-8452-08d0507c9735",
+    "name": "extractPageContent",
+    "description": "Fetches a web page and extracts its main readable content + outbound links. Uses the host-injected fetch (SSRF-defended in `strict` mode) and safety.parser.html for parsing.\n\nReturns JSON: { title, content (with [n] link markers), links: [{index, text, url, linkTitle}] }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "pageUrl",
+        "description": "Page URL to fetch and clean",
+        "required": true,
+        "type": "STRING",
+        "testValue": "https://spring.io/projects/spring-ai"
+      }
+    ],
+    "code": "const resp = await fetch(pageUrl, {\n  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; spring-ai-playground)' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) throw new Error('fetch failed: ' + resp.status + ' ' + resp.statusText);\nconst doc = safety.parser.html(resp.text());\n\nconst junkSelectors = [\n  'script', 'style', 'noscript', 'iframe', 'svg', 'link', 'meta',\n  'header', 'footer', 'nav', 'aside',\n  '.ad', '.ads', '.advertisement', '.banner',\n  \"[id*='ad-']\", \"[class*='ad-']\", \"[class*='banner']\",\n  '.popup', '.modal', '.sidebar', '#sidebar', '.widget',\n  '.cookie-consent', '.newsletter-signup',\n  '.social-share', '.share-buttons', '.comments', '#comments',\n  '.meta', '.author-info', '.related-posts',\n];\njunkSelectors.forEach(s => doc.select(s).remove());\n\nlet title = doc.title();\nif (!title || title.trim() === '') {\n  const h1 = doc.select('h1').first();\n  if (h1) title = h1.text();\n}\n\nlet main = doc.select('article').first() || doc.select('main').first();\nif (!main) {\n  const tryThese = ['#content', '.content', '#main-content', '.main-content',\n                    '.post-body', '.entry-content', '#article-body', '.article-body'];\n  for (const sel of tryThese) { const el = doc.select(sel).first(); if (el) { main = el; break; } }\n}\nif (!main) main = doc.body();\n\nconst links = [];\nconst linkEls = main.select('a[href]');\nlet idx = 1;\nfor (let i = 0; i < linkEls.size(); i++) {\n  const el = linkEls.get(i);\n  const url = el.attr('abs:href');\n  const text = el.text().trim();\n  const linkTitle = el.attr('title').trim();\n  if (url && (text.length > 0 || el.select('img').size() > 0 || linkTitle.length > 0)) {\n    links.push({ index: idx, text: text || '[Image Link]', url, linkTitle });\n    el.after(' [' + idx + ']');\n    idx++;\n  }\n}\n\n['p','div','br','h1','h2','h3','h4','h5','h6','li'].forEach(tag => {\n  const els = main.select(tag);\n  for (let i = 0; i < els.size(); i++) els.get(i).append('\\n');\n});\n\nreturn JSON.stringify({ title, content: main.text().trim(), links });\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1764239241031,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "example"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "strict",
+      "hostsAllow": [],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    }
+  },
+  {
+    "toolId": "42d2a91b-c356-4c9b-be33-f1e1e95d6782",
+    "name": "getCurrentTime",
+    "description": "Returns the current time in ISO 8601 format. If the user specifies a city, country, or location, the agent should first map it to an IANA time zone and supply it via the timeZone parameter. If no time zone is provided, UTC is used.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "timeZone",
+        "description": "IANA time zone identifier (e.g., Asia/Seoul)",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Asia/Seoul"
+      }
+    ],
+    "code": "/**\n * Returns the current time formatted as ISO-8601 with timezone offset.\n *\n * - If a timezone is provided, the offset format (+HH:MM / -HH:MM) is used.\n * - If no timezone is provided, UTC time with 'Z' is returned.\n *\n * JavaScript standard APIs only.\n */\n\nconst now = new Date();\n\n// Format date/time parts in target timezone\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone,\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit',\n  hour12: false,\n}).formatToParts(now);\n\nconst m = {};\nfor (const p of parts) {\n  m[p.type] = p.value;\n}\n\n// Milliseconds\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\n\n// Local time interpreted as UTC millis\nconst localAsUtc = Date.UTC(\n  m.year,\n  Number(m.month) - 1,\n  m.day,\n  m.hour,\n  m.minute,\n  m.second\n);\n\n// Actual UTC millis\nconst actualUtc = now.getTime();\n\nconst offsetMinutes = Math.round((localAsUtc - actualUtc) / 60000);\n\nconst sign = offsetMinutes >= 0 ? '+' : '-';\nconst abs = Math.abs(offsetMinutes);\nconst hh = String(Math.floor(abs / 60)).padStart(2, '0');\nconst mm = String(abs % 60).padStart(2, '0');\n\nreturn (\n  `${m.year}-${m.month}-${m.day}` +\n  `T${m.hour}:${m.minute}:${m.second}.${ms}` +\n  `${sign}${hh}:${mm}`\n);\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1765800328375,
+    "updateTimestamp": 1765800328375,
+    "category": "DATETIME",
+    "tags": [
+      "example",
+      "util"
+    ]
+  },
+  {
+    "toolId": "3eb36ae5-4bea-4452-a1c5-abb44b720f16",
+    "name": "buildGoogleCalendarCreateLink",
+    "description": "Builds a Google Calendar \"Add Event\" URL with prefilled fields.\n\nThe tool only generates a URL; the user must open it and click \"Save\" in Google Calendar.\n\nIf the user provides a rough input for date, time, or location \n(e.g., \"tomorrow 10am\", \"Seoul\", \"New York\"), the agent is expected\nto parse and convert these inputs into proper ISO-8601 date strings \nfor start/end and a valid IANA time zone identifier for timeZone \nbefore passing them to this tool.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "title",
+        "description": "Event title shown in Google Calendar.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Meeting"
+      },
+      {
+        "name": "start",
+        "description": "Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:00).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2025-12-16T10:00:00+09:00"
+      },
+      {
+        "name": "end",
+        "description": "Event end time. Must be after start. The agent should ensure proper ISO-8601 format(e.g., 2025-12-16T10:00:00+09:00).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2025-12-16T11:00:00+09:00"
+      },
+      {
+        "name": "details",
+        "description": "Optional event description or agenda.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "location",
+        "description": "Optional event location text. The agent can resolve rough location names to standard city names if needed.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "timeZone",
+        "description": "IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone before calling this tool.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "/**\n * Build a Google Calendar \"Add event\" URL (action=TEMPLATE).\n *\n * This tool ONLY generates a URL.\n * The user must open the link and click \"Save\" in Google Calendar.\n *\n * INPUT NOTES:\n * - start / end: Date object or ISO-8601 string parseable by Date()\n * - dates are encoded in UTC (Google Calendar requirement)\n * - timeZone (ctz) controls UI display, not the UTC timestamps\n *\n */\n\nfunction toDate(v) {\n  const d = v instanceof Date ? v : new Date(String(v));\n  if (isNaN(d.getTime())) {\n    throw new Error('Invalid date value: ' + v);\n  }\n  return d;\n}\n\n// Google Calendar expects UTC timestamps like: 20251216T010000Z\nfunction formatAsUtcCompact(d) {\n  return d\n    .toISOString()\n    .replace(/[-:]/g, '')\n    .replace(/\\.\\d{3}Z$/, 'Z');\n}\n\nconst s = toDate(start);\nconst e = toDate(end);\n\nif (e <= s) {\n  throw new Error('end must be after start');\n}\n\nconst base = 'https://www.google.com/calendar/render?action=TEMPLATE';\nconst params = [];\n\nparams.push('text=' + encodeURIComponent(String(title || '')));\nparams.push(\n  'dates=' +\n    encodeURIComponent(formatAsUtcCompact(s) + '/' + formatAsUtcCompact(e))\n);\n\nif (details) params.push('details=' + encodeURIComponent(String(details)));\nif (location) params.push('location=' + encodeURIComponent(String(location)));\nif (timeZone) params.push('ctz=' + encodeURIComponent(String(timeZone)));\n\nreturn base + '&' + params.join('&');\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1765801820195,
+    "updateTimestamp": 1765801820195,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "example",
+      "util"
+    ],
+    "draft": true
+  },
+  {
+    "toolId": "eb35a905-4074-4589-805b-4dfd67353fb0",
+    "name": "getWeather",
+    "description": "Free public weather lookup via wttr.in (no API key). Returns a small JSON summary: { location, tempC, humidity, windSpeed, windDirection }.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "location",
+        "description": "City / region name (e.g. 'Seoul', 'New York'). Empty = caller's IP-detected location.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Seoul"
+      }
+    ],
+    "code": "const path = encodeURIComponent((location || '').trim().replace(/ +/g, '+'));\nconst resp = await fetch('https://wttr.in/' + path + '?format=j1', { maxLength: 1_000_000 });\nif (!resp.ok) throw new Error('wttr.in returned ' + resp.status);\nconst data = resp.json();\n\nconst area = data.nearest_area && data.nearest_area[0];\nconst areaName = area && area.areaName && area.areaName[0] && area.areaName[0].value;\nconst current = data.current_condition && data.current_condition[0];\n\nreturn {\n  location: areaName || location || null,\n  tempC: current && current.temp_C ? Number(current.temp_C) : null,\n  humidity: current && current.humidity ? Number(current.humidity) : null,\n  windSpeed: current && current.windspeedKmph ? current.windspeedKmph + ' km/h' : null,\n  windDirection: current && current.winddir16Point ? current.winddir16Point : null,\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1766143959740,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "example",
+      "weather"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "wttr.in"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    }
+  },
+  {
+    "toolId": "17120ca7-cc4d-43bf-9f98-ba52f9fd002b",
+    "name": "googlePseSearch",
+    "description": "Google Programmable Search Engine query (Custom Search API). Requires `GOOGLE_API_KEY` and `GOOGLE_PSE_ID` env vars.\n\nSetup:\n 1. Create / open a project at console.cloud.google.com, enable 'Custom Search API', issue an API key.\n 2. Create a Programmable Search Engine at programmablesearchengine.google.com and copy its ID.\n 3. Export the values:  GOOGLE_API_KEY=AIza...   GOOGLE_PSE_ID=01234...",
+    "staticVariables": [
+      {
+        "googleApiKey": "${GOOGLE_API_KEY}"
+      },
+      {
+        "pseId": "${GOOGLE_PSE_ID}"
+      }
+    ],
+    "params": [
+      {
+        "name": "query",
+        "description": "Search query string",
+        "required": true,
+        "type": "STRING",
+        "testValue": "spring ai mcp"
+      },
+      {
+        "name": "resultNum",
+        "description": "Number of results to return (1-10, default 3)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "3"
+      },
+      {
+        "name": "startPage",
+        "description": "1-based offset into the result list",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "1"
+      }
+    ],
+    "code": "const url = 'https://www.googleapis.com/customsearch/v1'\n  + '?key=' + encodeURIComponent(googleApiKey)\n  + '&cx='  + encodeURIComponent(pseId)\n  + '&q='   + encodeURIComponent(query)\n  + '&start=' + (startPage || 1)\n  + '&num='   + (resultNum || 3);\nconst resp = await fetch(url, { maxLength: 5_000_000 });\nif (!resp.ok) {\n  return { success: false, status: resp.status, message: resp.text() };\n}\nreturn resp.json();\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1766143800158,
+    "updateTimestamp": 1768000000000,
+    "category": "WEB",
+    "tags": [
+      "example",
+      "search"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "www.googleapis.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "draft": true
+  },
+  {
+    "toolId": "b8329c50-5e48-44f0-8fd9-5c747f16618a",
+    "name": "openaiResponseGenerator",
+    "description": "Calls OpenAI's Responses API. Requires `OPENAI_API_KEY` env var.\n\nSetup:\n 1. Sign in at platform.openai.com and issue an API key.\n 2. Export it:  OPENAI_API_KEY=sk-...",
+    "staticVariables": [
+      {
+        "openaiApiKey": "${OPENAI_API_KEY}"
+      }
+    ],
+    "params": [
+      {
+        "name": "prompt",
+        "description": "User prompt / question",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Summarise Spring AI in one paragraph."
+      },
+      {
+        "name": "model",
+        "description": "Model id (default 'gpt-5.4-mini')",
+        "required": false,
+        "type": "STRING",
+        "testValue": "gpt-5.4-mini"
+      }
+    ],
+    "code": "const resp = await fetch('https://api.openai.com/v1/responses', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n    'Authorization': 'Bearer ' + openaiApiKey,\n  },\n  body: JSON.stringify({\n    model: model || 'gpt-5.4-mini',\n    input: prompt,\n  }),\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst data = resp.json();\nlet content = '';\nlet reasoning = '';\nfor (const item of (data.output || [])) {\n  if (item.type === 'message' && item.content) {\n    for (const c of item.content) {\n      if (c && c.type === 'output_text' && c.text != null) content += c.text;\n    }\n  }\n  if (item.type === 'reasoning' && item.summary) {\n    for (const s of item.summary) if (s && s.text != null) reasoning += s.text;\n  }\n}\nreturn { content, reasoning };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1766143600476,
+    "updateTimestamp": 1768000000000,
+    "category": "AI",
+    "tags": [
+      "example"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "api.openai.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "draft": true
+  },
+  {
+    "toolId": "f88f624e-250c-42b2-a9fe-7cfdfb7319cd",
+    "name": "sendSlackMessage",
+    "description": "Posts a text message to a Slack channel via Incoming Webhook. Requires `SLACK_WEBHOOK_URL` env var (the full https://hooks.slack.com/services/... URL).\n\nSetup:\n 1. Create a Slack app at api.slack.com/apps, enable 'Incoming Webhooks'.\n 2. Add a webhook to the target channel and copy the URL.\n 3. Export it:  SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...",
+    "staticVariables": [
+      {
+        "slackWebhookUrl": "${SLACK_WEBHOOK_URL}"
+      }
+    ],
+    "params": [
+      {
+        "name": "text",
+        "description": "Message text to post",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Hello from Spring AI Playground 👋"
+      }
+    ],
+    "code": "const resp = await fetch(slackWebhookUrl, {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ text }),\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn { status: 'ok' };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1766143392761,
+    "updateTimestamp": 1768000000000,
+    "category": "MESSAGING",
+    "tags": [
+      "example"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "allowlist",
+      "hostsAllow": [
+        "hooks.slack.com"
+      ],
+      "fileRead": null,
+      "fileWrite": null,
+      "fsBasePath": null
+    },
+    "draft": true
+  }
+]

@@ -1,4 +1,4 @@
-Description: Vector Database — RAG ingestion and retrieval-validation. Document chunking, embedding, similarity search across Spring AI vector store providers.
+description: Vector Database — RAG ingestion and retrieval-validation. Document chunking, embedding, similarity search across Spring AI vector store providers.
 
 # Vector Database
 
@@ -43,4 +43,14 @@ That is why the desktop launcher warns users about changing embedding models aft
 
 In practice, this is what turns the Vector Database page into a real RAG validation surface rather than a generic upload page. You can inspect ingestion quality, retrieval quality, and filter behavior before trusting the same data inside chat.
 
-→ Next: [Agentic Chat](agentic-chat.md) — compose tools and retrieved documents into a single chat session.
+## Where it fits
+
+Vector Database is the **preparation half** of the RAG pipeline; the **consumption half** lives in Agentic Chat (the `SpringAiPlaygroundRagAdvisor` reaches into the configured `VectorStore` whenever the user selects at least one document for the conversation — see [Application Architecture → Flow 4 — Chat advisor chain](../architecture.md#flow-4-chat-advisor-chain-memory-rag) for the per-call wiring).
+
+Hands-on RAG paths:
+
+- [Tutorial 3 — Index a Document](../tutorials/3-index-document.md) — end-to-end ingestion + retrieval validation
+- [Tutorial 5 — Chat with RAG](../tutorials/5-chat-rag.md) — consume the indexed corpus from Agentic Chat
+- [Tutorial 6 — Tools and RAG](../tutorials/6-tools-and-rag.md) — combine RAG with MCP-driven tool calls in one chat turn
+
+Embedding-model setup (Ollama / OpenAI) is configured at launch time — see [Desktop App → Recommended First-Launch Flow](../getting-started/desktop.md#9-recommended-first-launch-flow). Changing the embedding model after indexing invalidates vector dimensionality, which is why the launcher surfaces a warning.

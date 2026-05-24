@@ -34,6 +34,7 @@ import com.vaadin.flow.router.PageTitle;
 import org.springaicommunity.playground.webui.chat.ChatView;
 import org.springaicommunity.playground.webui.home.HomeView;
 import org.springaicommunity.playground.webui.mcp.McpServerView;
+import org.springaicommunity.playground.webui.observability.ObservabilityView;
 import org.springaicommunity.playground.webui.tool.ToolStudioView;
 import org.springaicommunity.playground.webui.vectorstore.VectorStoreView;
 import org.vaadin.googleanalytics.tracking.EnableGoogleAnalytics;
@@ -72,6 +73,11 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         createTab("MCP Server", VaadinIcon.TOOLBOX, McpServerView.class);
         createTab("Vector Database", VaadinIcon.SEARCH_PLUS, VectorStoreView.class);
         createTab("Agentic Chat", VaadinIcon.CHAT, ChatView.class);
+        Tab observabilityTab = createTab("Observability", VaadinIcon.DASHBOARD, ObservabilityView.class);
+        // The observability tab is a "monitoring" surface, not a "tool" — pin it
+        // to the right of the navbar with a divider so users see it as a separate
+        // class of feature.
+        observabilityTab.addClassName("observability-tab");
         this.tabs.setWidthFull();
         addToNavbar(tabs);
 
@@ -83,11 +89,12 @@ public class SpringAiPlaygroundAppLayout extends AppLayout
         });
     }
 
-    private void createTab(String label, VaadinIcon icon, Class<? extends Component> viewClass) {
+    private Tab createTab(String label, VaadinIcon icon, Class<? extends Component> viewClass) {
         Tab tab = new Tab(icon.create(), new Span(label));
         this.tabs.add(tab);
         this.tabToView.put(tab, viewClass);
         this.viewToTab.put(viewClass, tab);
+        return tab;
     }
 
     @Override

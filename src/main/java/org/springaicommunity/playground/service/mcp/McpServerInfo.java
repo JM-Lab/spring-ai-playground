@@ -17,11 +17,35 @@ package org.springaicommunity.playground.service.mcp;
 
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 public record McpServerInfo(McpTransportType mcpTransportType, String serverName,
-                            String description, long createTimestamp, long updateTimestamp, String connectionAsJson) {
-    public McpServerInfo mutate(McpTransportType mcpTransportType, String serverName, String description, long updateTimestamp,
-            String connectionAsJson) {
-        return new McpServerInfo(mcpTransportType, serverName, description, this.createTimestamp(), updateTimestamp,
-                connectionAsJson);
+                            String description, long createTimestamp, long updateTimestamp, String connectionAsJson,
+                            String category, Set<String> tags) {
+
+    public static final String DEFAULT_CATEGORY = "CUSTOM";
+
+    public McpServerInfo {
+        category = (category == null || category.isBlank()) ? DEFAULT_CATEGORY : category;
+        tags = tags == null ? Set.of() : Set.copyOf(new LinkedHashSet<>(tags));
+    }
+
+    public McpServerInfo(McpTransportType mcpTransportType, String serverName, String description,
+            long createTimestamp, long updateTimestamp, String connectionAsJson) {
+        this(mcpTransportType, serverName, description, createTimestamp, updateTimestamp, connectionAsJson,
+                DEFAULT_CATEGORY, Set.of());
+    }
+
+    public McpServerInfo mutate(McpTransportType mcpTransportType, String serverName, String description,
+            long updateTimestamp, String connectionAsJson) {
+        return new McpServerInfo(mcpTransportType, serverName, description, this.createTimestamp, updateTimestamp,
+                connectionAsJson, this.category, this.tags);
+    }
+
+    public McpServerInfo mutate(McpTransportType mcpTransportType, String serverName, String description,
+            long updateTimestamp, String connectionAsJson, String category, Set<String> tags) {
+        return new McpServerInfo(mcpTransportType, serverName, description, this.createTimestamp, updateTimestamp,
+                connectionAsJson, category, tags);
     }
 }

@@ -1,4 +1,4 @@
-Description: Tutorial 4 — trigger a built-in MCP tool from a chat turn. Watch the model decide, observe the tool call, then read the final answer.
+description: Tutorial 4 — trigger a built-in MCP tool from a chat turn. Watch the model decide, observe the tool call, then read the final answer.
 
 # Tutorial 4 — Chat With Tools
 
@@ -33,4 +33,3 @@ Description: Tutorial 4 — trigger a built-in MCP tool from a chat turn. Watch 
 !!! tip "Why this matters"
     `qwen3.5:2b` (the default) sometimes skips tool calls or returns empty tool turns. `qwen3.5:latest` is much more reliable for this. If a tool turn comes back empty, that is the signal to upgrade the model — not to rewrite the prompt.
 
-→ Next: [Tutorial 5 — Chat With RAG](5-chat-rag.md)

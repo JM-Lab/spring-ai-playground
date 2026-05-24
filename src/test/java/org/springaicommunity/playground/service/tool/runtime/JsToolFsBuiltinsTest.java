@@ -50,7 +50,7 @@ class JsToolFsBuiltinsTest {
         ObjectMapper mapper = new ObjectMapper();
         specs = new ArrayList<>();
         try (InputStream in = JsToolFsBuiltinsTest.class.getResourceAsStream(
-                "/default-tool-specs-builtin-fs.json")) {
+                "/tool/default-tool-specs-builtin-fs.json")) {
             specs.addAll(mapper.readValue(in, new TypeReference<List<Map<String, Object>>>() {}));
         }
         executor = new JsToolExecutor(30L,

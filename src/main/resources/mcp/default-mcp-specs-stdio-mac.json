@@ -1,0 +1,147 @@
+[
+  {
+    "id": "Git-macOS",
+    "displayName": "Git",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[macOS] Local Git repository operations — log, diff, status, blame, show. Read-only by default.\n\nPrereq: install uv on macOS.\n  brew install uv\n\nThe activated form is pre-filled to run:\n  uvx mcp-server-git --repository .\n\nNote: change '.' to the absolute path of the repo you want to inspect.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "uvx",
+      "args": ["mcp-server-git", "--repository", "."]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Memory-macOS",
+    "displayName": "Memory (Knowledge Graph)",
+    "category": "UTIL",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[macOS] Persistent knowledge graph for cross-session memory — entities, relations, and observations in a local JSON file.\n\nPrereq: Node.js 18+ on macOS (Homebrew, nvm, or installer).\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-memory\n\nOptional: set MEMORY_FILE_PATH in the env section to override the default storage path (any absolute file path).\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Sequential-Thinking-macOS",
+    "displayName": "Sequential Thinking",
+    "category": "UTIL",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[macOS] Structured step-by-step reasoning helper — logs intermediate thoughts to the server for review, revision, or branching.\n\nPrereq: Node.js 18+ on macOS.\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-sequential-thinking\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Puppeteer-macOS",
+    "displayName": "Puppeteer",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[macOS] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on macOS. First run downloads ~170 MB Chromium under ~/Library/Caches/Puppeteer.\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "MCP-Everything-macOS",
+    "displayName": "MCP Everything (Reference Test Server)",
+    "category": "EXAMPLE",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol",
+    "vendorOfficial": true,
+    "description": "[macOS] Official MCP reference test server exercising every protocol feature — tools, resources, prompts, sampling, completion, logging, progress, root listing.\n\nPrereq: Node.js 18+ on macOS.\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-everything\n\nDocker alternative:\n  docker run -i --rm tzolov/mcp-everything-server:v2\n\nNote: the hosted `example-server.modelcontextprotocol.io` endpoint requires OAuth and is not auto-activated.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    "trustSignals": ["vendor-official"]
+  },
+  {
+    "id": "Playwright-macOS",
+    "displayName": "Playwright",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "Microsoft",
+    "vendorOfficial": true,
+    "description": "[macOS] Microsoft's accessibility-snapshot browser automation — successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models.\n\nPrereq: Node.js 18+ on macOS (Homebrew, nvm, or installer). First run downloads ~300 MB browser binaries under ~/Library/Caches/ms-playwright.\n\nThe activated form is pre-filled to run:\n  npx -y @playwright/mcp@latest\n\nOptional flags:\n  --browser firefox|webkit          # default chromium\n  --port 8931                       # serve over HTTP instead of stdio\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/microsoft/playwright-mcp",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }],
+    "docsUrl": "https://github.com/microsoft/playwright-mcp",
+    "trustSignals": ["vendor-official"]
+  },
+  {
+    "id": "SQLite-macOS",
+    "displayName": "SQLite",
+    "category": "DATABASE",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers-archived",
+    "vendorOfficial": false,
+    "description": "[macOS] Query a local SQLite database — SELECT, schema introspection, plus INSERT/UPDATE/DELETE when permitted.\n\nPrereq: install uv on macOS.\n  brew install uv\n\nThe activated form is pre-filled to run:\n  uvx mcp-server-sqlite --db-path /absolute/path/to/your.db\n\nRequired arg:\n  --db-path <path>                  # absolute path to the .db file\n\nSecurity: writes are allowed by default — point at a copy of the DB or a read-only mount if you don't want the agent modifying production data. Reference server is archived; community forks active.\n\nDocs: https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "/absolute/path/to/your.db"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Brave-Search-macOS",
+    "displayName": "Brave Search",
+    "category": "SEARCH",
+    "tags": ["global"],
+    "tier": 2,
+    "vendor": "Brave",
+    "vendorOfficial": true,
+    "description": "[macOS] Brave Search API — web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface).\n\nPrereq: Node.js 18+ on macOS (Homebrew, nvm, or installer). Free API key (2k req/month) at https://api.search.brave.com/app/keys.\n\nThe activated form is pre-filled to run:\n  npx -y @brave/brave-search-mcp-server\n\nRequired — set BRAVE_API_KEY in the env section below (treat as a secret).\n\nDocs: https://github.com/brave/brave-search-mcp-server",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx",
+      "args": ["-y", "@brave/brave-search-mcp-server"],
+      "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}
+    }],
+    "docsUrl": "https://github.com/brave/brave-search-mcp-server",
+    "trustSignals": ["vendor-official"]
+  }
+]

@@ -1,4 +1,4 @@
-Description: Agentic Chat — one runtime combining documents, tools, models, and conversation state. RAG chains and MCP tool-driven agents in one chat surface.
+description: Agentic Chat — one runtime combining documents, tools, models, and conversation state. RAG chains and MCP tool-driven agents in one chat surface.
 
 # Agentic Chat
 
@@ -61,7 +61,7 @@ For Ollama-based flows:
 - use reasoning-capable models from [Ollama's Thinking Category](https://ollama.com/search?c=thinking)
 - validate tools in MCP Inspector before relying on them in Agentic Chat
 
-The default `playground.chat.models` list features `qwen3.5` and `gemma4` for stronger tool-oriented reasoning, with `gpt-oss` and `deepseek-r1` as alternatives. See [Picking a Model](../tutorials/index.md#picking-a-model) in the Tutorials for the tradeoffs.
+The default `playground.chat.models` list features `qwen3.5:2b` (default) plus `qwen3.5:9b` / `qwen3.6:35b` for stronger tool-oriented reasoning, with `gemma4:e4b`, `gpt-oss:20b`, and `deepseek-r1:8b` as alternatives. See [Picking a Model](../tutorials/index.md#picking-a-model) in the Tutorials for the tradeoffs.
 
 ## Agentic Chat Architecture Overview
 
@@ -80,8 +80,16 @@ This Chat experience facilitates exploration of Spring AI's workflow and agentic
 | **LLM** | Core Model | Executes chain-based workflows and performs agentic reasoning for tool usage within a unified chat runtime. | Agentic Chat | Central reasoning and response generation; supports both deterministic workflows and agentic patterns. | Chat models; tool-aware and reasoning-capable models recommended. |
 | **Retrieval (RAG)** | Chain Workflow | Deterministic retrieval and prompt augmentation using vector search over selected documents. | Vector Database | Predictable, controllable knowledge grounding; tunable retrieval parameters such as Top-K and thresholds. | Standard chat plus embedding models. |
 | **Tools (MCP)** | Agentic Execution | Dynamic tool selection and invocation via MCP, driven by LLM reasoning and tool schemas. | Tool Studio, MCP Server | Enables external actions, multi-step reasoning, and adaptive behavior. | Tool-enabled models with function calling and reasoning support. |
-| **Memory** | Shared Agentic State | Sliding window conversation memory shared across workflows and agents through `ChatMemoryAdvisor` and the underlying Spring AI chat memory support. | Spring AI chat runtime (`InMemoryChatMemory`) | Coherent multi-turn dialogue with a sliding window improves coherence, planning, and tool usage quality. | Models benefit from longer context and structured reasoning. |
+| **Memory** | Shared Agentic State | Sliding window conversation memory shared across workflows and agents through `MessageChatMemoryAdvisor` and the underlying Spring AI chat memory support. | Spring AI chat runtime (`MessageWindowChatMemory` over `InMemoryChatMemoryRepository`, last 10 messages) | Coherent multi-turn dialogue with a sliding window improves coherence, planning, and tool usage quality. | Models benefit from longer context and structured reasoning. |
 
 By leveraging these elements, Agentic Chat goes beyond basic Q&A and becomes a practical environment for building effective, modular AI applications that combine workflow predictability with agentic autonomy.
+
+## What the Chat can reach
+
+Agentic Chat is a **consumer** of three inventories curated elsewhere in the Playground. Use these references to know what's available before composing a chat session:
+
+- **[Default Tools](default-tools/index.md)** — 86 pre-loaded built-in tools (Examples · Utilities · Filesystem · Global · Korea) callable directly from chat without any external setup. Each carries a Risk Level (L0–L5) and `${ENV_VAR}` requirements per page.
+- **[Default MCP Catalog](default-mcp-catalog/index.md)** — 57 preset external MCP server connections (Gmail, Notion, GitHub, Linear, BigQuery, Stripe, …). One-click activation from the MCP Server sidebar adds them as tool sources for chat.
+- **[Vector Database](vector-database.md)** — indexed document collections that the **RAG advisor chain** retrieves from at chat time (`SpringAiPlaygroundRagAdvisor` short-circuits when no documents are selected, so retrieval is opt-in per conversation).
 
 → Try it: [Tutorials](../tutorials/index.md) — end-to-end flows that combine Tool Studio, MCP Inspector, Vector Database, and Agentic Chat.

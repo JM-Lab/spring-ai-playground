@@ -1,4 +1,4 @@
-Description: Default Tools — Examples reference. 7 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
+description: Default Tools — Examples reference. 7 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
 
 # Default Tools — Examples
 
@@ -6,7 +6,7 @@ The seven tools in `default-tool-specs.json` are the **starter examples**. They 
 
 Three of the seven need an API key or webhook URL to be useful (`googlePseSearch`, `openaiResponseGenerator`, `sendSlackMessage`). The rest work out of the box on a fresh install — `getCurrentTime` and `evalExpression` are members of every shipped preset because they have no dependency at all.
 
-All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` mode with [the SSRF four-layer guard](../tool-studio.md#ssrf-four-layer-guard) for the tools that fetch.
+All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` mode with [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) for the tools that fetch.
 
 ## The 7 examples { #the-examples }
 
@@ -515,5 +515,4 @@ Three of the seven need a credential. The launcher's **Environment Variables** c
 | `googlePseSearch` | `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | [Google Cloud Console](https://console.cloud.google.com/) for the API key, [Programmable Search Engine](https://programmablesearchengine.google.com/) for the PSE ID |
 | `sendSlackMessage` | `SLACK_WEBHOOK_URL` | [api.slack.com/apps](https://api.slack.com/apps) → Incoming Webhooks → Add to Workspace |
 
-→ [Tool Studio: Static Variables](../tool-studio.md#key-tool-studio-capabilities) — how `${ENV_VAR}` placeholders resolve at runtime.
-→ [Index](index.md) — overview of all 86 default tools and the five reference pages.
+→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) — how `${ENV_VAR}` placeholders resolve at runtime.

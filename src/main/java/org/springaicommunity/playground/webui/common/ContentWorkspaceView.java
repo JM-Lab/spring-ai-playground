@@ -89,7 +89,9 @@ public class ContentWorkspaceView extends Div {
 
     public void setSidebarSplitterPosition(double percent) {
         this.splitterPosition = percent;
-        this.splitLayout.setSplitterPosition(percent);
+        if (!this.sidebarCollapsed) {
+            this.splitLayout.setSplitterPosition(percent);
+        }
     }
 
     public Button configureSidebar(Component sidebarComponent, String entityPluralLabel) {

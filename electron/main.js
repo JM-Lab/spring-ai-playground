@@ -244,7 +244,7 @@ function getDefaultToolSpecsPaths() {
   const candidateDirs = [
     !isDev ? path.join(process.resourcesPath, 'catalog') : null,
     path.join(__dirname, 'resources', 'catalog'),
-    path.join(__dirname, '..', 'src', 'main', 'resources'),
+    path.join(__dirname, '..', 'src', 'main', 'resources', 'tool'),
   ].filter(Boolean);
   for (const dir of candidateDirs) {
     if (!fs.existsSync(dir)) continue;
@@ -264,7 +264,7 @@ function getCatalogDir() {
   const candidates = [
     !isDev ? path.join(process.resourcesPath, 'catalog') : null,
     path.join(__dirname, 'resources', 'catalog'),
-    path.join(__dirname, '..', 'src', 'main', 'resources'),
+    path.join(__dirname, '..', 'src', 'main', 'resources', 'tool'),
   ].filter(Boolean);
   return candidates.find(dir => fs.existsSync(dir)) || null;
 }
@@ -2156,6 +2156,13 @@ function startSpringServer() {
   const jrePath = isDev
     ? 'java'
     : path.join(process.resourcesPath, 'jre-bundle', 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
+
+  if (!isDev && !fs.existsSync(jrePath)) {
+    handleFatalError(
+      `Bundled JRE not found at ${jrePath}. The installer may be corrupted or the JRE bundling step (electron/scripts/prepare-resources.mjs) did not run. Reinstall the application.`
+    );
+    return;
+  }
 
   const index = readConfigIndex();
   const selectedConfigId = currentConfigId || index.activeConfigId;

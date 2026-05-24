@@ -24,6 +24,7 @@ import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -44,12 +45,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
+import reactor.util.context.Context;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -69,6 +72,8 @@ public class ChatService {
 
     public static final String CHAT_META = "chatMeta";
     public static final String RAG_FILTER_EXPRESSION = "ragFilterExpression";
+    public static final String MDC_CONVERSATION_ID = "conversationId";
+    public static final String MDC_USER_MESSAGE_ID = "userMessageId";
 
     public record ChatMeta(String model, Usage usage, List<Document> retrievedDocuments) {}
 
@@ -126,6 +131,7 @@ public class ChatService {
             Consumer<Object> ragProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer) {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         StringBuilder accumulatedText = new StringBuilder();
+        String userMessageId = UUID.randomUUID().toString();
         return getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
                 mcpToolProcessMessageConsumer, ragProcessMessageConsumer).stream().chatClientResponse().map(
                         chatClientResponse -> {
@@ -143,12 +149,24 @@ public class ChatService {
                     }
                     return false;
                 }).map(chatClientResponse -> chatClientResponse.chatResponse().getResult())
+                .contextWrite(Context.of(
+                        MDC_CONVERSATION_ID, chatHistory.conversationId(),
+                        MDC_USER_MESSAGE_ID, userMessageId))
+                .doFirst(() -> {
+                    MDC.put(MDC_CONVERSATION_ID, chatHistory.conversationId());
+                    MDC.put(MDC_USER_MESSAGE_ID, userMessageId);
+                })
                 .doFinally(signalType -> {
-                    if ((SignalType.ON_COMPLETE.equals(signalType) || SignalType.CANCEL.equals(signalType)) &&
-                            Objects.nonNull(lastChatResponse.get()))
-                        applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
-                    if (SignalType.CANCEL.equals(signalType) && accumulatedText.length() > 0)
-                        commitPartialAssistantMessage(chatHistory, accumulatedText.toString());
+                    try {
+                        if ((SignalType.ON_COMPLETE.equals(signalType) || SignalType.CANCEL.equals(signalType)) &&
+                                Objects.nonNull(lastChatResponse.get()))
+                            applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
+                        if (SignalType.CANCEL.equals(signalType) && accumulatedText.length() > 0)
+                            commitPartialAssistantMessage(chatHistory, accumulatedText.toString());
+                    } finally {
+                        MDC.remove(MDC_CONVERSATION_ID);
+                        MDC.remove(MDC_USER_MESSAGE_ID);
+                    }
                 });
     }
 
@@ -194,10 +212,18 @@ public class ChatService {
 
     public Generation callWithRaw(ChatHistory chatHistory, String prompt, String filterExpression,
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer) {
-        return applyChatResponseMetadataToLastUserMessage(chatHistory,
-                getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                        mcpToolProcessMessageConsumer, null).call()
-                        .chatClientResponse()).getResult();
+        String userMessageId = UUID.randomUUID().toString();
+        MDC.put(MDC_CONVERSATION_ID, chatHistory.conversationId());
+        MDC.put(MDC_USER_MESSAGE_ID, userMessageId);
+        try {
+            return applyChatResponseMetadataToLastUserMessage(chatHistory,
+                    getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
+                            mcpToolProcessMessageConsumer, null).call()
+                            .chatClientResponse()).getResult();
+        } finally {
+            MDC.remove(MDC_CONVERSATION_ID);
+            MDC.remove(MDC_USER_MESSAGE_ID);
+        }
     }
 
     private ChatResponse applyChatResponseMetadataToLastUserMessage(ChatHistory chatHistory,

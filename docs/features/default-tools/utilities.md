@@ -1,10 +1,10 @@
-Description: Default Tools — Utilities reference. 26 pure-compute tools — text, datetime, math, security, encoding, crypto, CSV. No network, no env vars, no filesystem.
+description: Default Tools — Utilities reference. 26 pure-compute tools — text, datetime, math, security, encoding, crypto, CSV. No network, no env vars, no filesystem.
 
 # Default Tools — Utilities
 
 The 26 tools in `default-tool-specs-builtin.json` (16) and `default-tool-specs-builtin-helpers.json` (10) cover text manipulation, date arithmetic, math, security scanners, encoding, cryptographic primitives, and CSV serialisation / parsing. They share one property — **no network, no filesystem, no env vars**. Everything runs in-memory at sandbox **L0** by default; the only outside helpers in play are `safety.parser.csv` for `formatCsv` / `parseCsv` and `crypto.subtle` for the crypto group — both still purely in-memory.
 
-Because they ride on JVM stdlib — `java.security.MessageDigest`, `javax.crypto`, JCE, the JDK regex engine — every one of these runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio.md#cross-platform-by-design) for the mechanics.
+Because they ride on JVM stdlib — `java.security.MessageDigest`, `javax.crypto`, JCE, the JDK regex engine — every one of these runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics.
 
 The 26 tools split by concern.
 
@@ -1860,5 +1860,4 @@ The 26 utilities are deliberately I/O-free, which makes them perfect for chains 
 
 **None.** All 26 utilities run with the default sandbox baseline — no network, no filesystem, no env vars. That is what makes them the safe slice of the catalog to expose to the model with zero setup.
 
-→ [Tool Studio: Built-in JavaScript Helpers](../tool-studio.md#built-in-javascript-helpers) — the underlying `crypto.subtle`, `safety.parser.csv`, regex helpers each of these tools wraps.
-→ [Index](index.md) — overview of all 86 default tools and the five reference pages.
+→ [Tool Studio: Built-in JavaScript Helpers](../tool-studio/index.md#built-in-javascript-helpers) — the underlying `crypto.subtle`, `safety.parser.csv`, regex helpers each of these tools wraps.

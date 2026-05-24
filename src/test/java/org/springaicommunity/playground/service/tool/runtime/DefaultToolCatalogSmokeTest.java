@@ -57,12 +57,12 @@ class DefaultToolCatalogSmokeTest {
 
     static {
         try {
-            for (String fname : List.of("/default-tool-specs.json",
-                    "/default-tool-specs-builtin.json",
-                    "/default-tool-specs-builtin-fs.json",
-                    "/default-tool-specs-builtin-helpers.json",
-                    "/default-tool-specs-kr.json",
-                    "/default-tool-specs-network.json")) {
+            for (String fname : List.of("/tool/default-tool-specs.json",
+                    "/tool/default-tool-specs-builtin.json",
+                    "/tool/default-tool-specs-builtin-fs.json",
+                    "/tool/default-tool-specs-builtin-helpers.json",
+                    "/tool/default-tool-specs-kr.json",
+                    "/tool/default-tool-specs-network.json")) {
                 try (InputStream in = DefaultToolCatalogSmokeTest.class.getResourceAsStream(fname)) {
                     if (in == null) continue;
                     allSpecs.addAll(MAPPER.readValue(in, new TypeReference<List<Map<String, Object>>>() {}));

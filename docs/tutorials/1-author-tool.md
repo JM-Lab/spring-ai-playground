@@ -1,4 +1,4 @@
-Description: Tutorial 1 — author a tool in Tool Studio, earn its Local Pass, and verify it shows up on the built-in MCP server.
+description: Tutorial 1 — author a tool in Tool Studio, earn its Local Pass, and verify it shows up on the built-in MCP server.
 
 # Tutorial 1 — Author and Validate a Tool
 
@@ -54,4 +54,3 @@ After the test passes, you'll see a confirmation banner. Tool name and descripti
     - Don't hardcode secrets. Use environment-backed `static variables` (`${OPENAI_API_KEY}`, `${SLACK_WEBHOOK_URL}`, …) so they're injected at launch time only.
     - Keep results compact JSON. Long free-text outputs balloon the chat token count and crowd the context window.
 
-→ Next: [Tutorial 2 — Connect an External MCP Server](2-external-mcp.md)

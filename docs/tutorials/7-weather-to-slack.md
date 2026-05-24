@@ -1,4 +1,4 @@
-Description: Tutorial 7 — chain two built-in tools (getWeather → sendSlackMessage) in a single chat turn. See the agent loop chain real actions.
+description: Tutorial 7 — chain two built-in tools (getWeather → sendSlackMessage) in a single chat turn. See the agent loop chain real actions.
 
 # Tutorial 7 — Weather to Slack — A Two-Tool Chain
 
@@ -42,3 +42,4 @@ This is the canonical *"try an agentic workflow"* task on the Home checklist. No
 
 - Replace `sendSlackMessage` with a Tool Studio tool of your own. The moment it passes its Local Pass, it's live on the built-in MCP server and the chat can use it the same way.
 - Combine this flow with a RAG document — *"summarize this policy document and post the summary to Slack"* — and you've got Tutorial 6's composition phrased as a real task.
+

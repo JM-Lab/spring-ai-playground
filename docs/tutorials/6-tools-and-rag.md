@@ -1,4 +1,4 @@
-Description: Tutorial 6 — run a single chat turn that needs both grounded knowledge and live tool execution. The full Spring AI Playground composition flow.
+description: Tutorial 6 — run a single chat turn that needs both grounded knowledge and live tool execution. The full Spring AI Playground composition flow.
 
 # Tutorial 6 — Tools and RAG Together
 
@@ -36,4 +36,3 @@ Before sending the prompt, make sure you have:
 !!! tip "Why this is the most important tutorial"
     Spring AI Playground is built around composition. Tool Studio creates capabilities, MCP Server validates them, Vector Database prepares grounded knowledge, and Agentic Chat composes all of that. This tutorial is where the architecture becomes visible from a single chat turn.
 
-→ Next: [Tutorial 7 — Weather to Slack: A Two-Tool Chain](7-weather-to-slack.md)

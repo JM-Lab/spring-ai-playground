@@ -9,6 +9,9 @@ vaadin-multi-select-list-box.custom-list-box vaadin-item {
     padding-inline-end: var(--lumo-space-s);
     padding-block: var(--lumo-space-s);
     overflow: hidden;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
 }
 
 /* MCP transport accordions: summary has no internal content offset, so use
@@ -46,4 +49,45 @@ vaadin-text-area.debug-console > textarea {
 }
 vaadin-text-area.debug-console::part(input-field) {
     background: var(--lumo-contrast-5pct);
+}
+
+/* Observability tab is a *monitoring* surface, distinct from the LLM
+ * authoring tools (Home / Tool Studio / MCP / Vector / Chat). Pin it to the
+ * right edge of the navbar tabs and add a vertical divider to make the
+ * visual category split obvious. */
+vaadin-tabs vaadin-tab.observability-tab {
+    margin-inline-start: auto !important;
+    border-inline-start: 1px solid var(--lumo-contrast-10pct);
+    padding-inline-start: var(--lumo-space-m);
+}
+
+/* Navbar overflow hardening — narrow viewports below 1200px clip tabs because
+ * the title layout consumes ~300px before tabs start, leaving Tabs to push
+ * past the viewport edge. Three-step graceful degradation:
+ *   1) ensure the navbar slot itself never scrolls horizontally (Tabs handles
+ *      its own scroller internally)
+ *   2) <1200px: drop the "Spring AI Playground" H3 wordmark, keep the logo
+ *   3) <900px: drop the tab text labels, keep icons only */
+vaadin-app-layout [slot="navbar"] {
+    max-width: 100vw;
+    overflow: hidden;
+}
+vaadin-app-layout vaadin-tabs {
+    min-width: 0;
+    flex: 1 1 0;
+}
+
+@media (max-width: 1200px) {
+    vaadin-app-layout h3 {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    vaadin-tabs vaadin-tab span {
+        display: none;
+    }
+    vaadin-tabs vaadin-tab.observability-tab {
+        padding-inline-start: var(--lumo-space-xs);
+    }
 }

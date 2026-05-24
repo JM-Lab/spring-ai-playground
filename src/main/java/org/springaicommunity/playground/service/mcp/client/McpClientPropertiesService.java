@@ -18,6 +18,7 @@ package org.springaicommunity.playground.service.mcp.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
@@ -55,11 +56,14 @@ public interface McpClientPropertiesService<P> {
                 case SSE -> {
                     HttpConnectionParametersWithExtras.Sse params = objectMapper.readValue(
                             parametersAsJson, HttpConnectionParametersWithExtras.Sse.class);
-                    requireEnv(collectHttpRefs(params.headers(), params.requiredEnv()));
+                    requireEnv(collectHttpRefs(params.url(), params.sseEndpoint(),
+                            params.headers(), params.requiredEnv()));
+                    String resolvedUrl = EnvVarResolver.substitute(params.url());
+                    String resolvedEndpoint = EnvVarResolver.substitute(params.sseEndpoint());
                     Map<String, String> resolvedHeaders = EnvVarResolver.substituteAll(params.headers());
                     HttpClientSseClientTransport.Builder builder =
-                            HttpClientSseClientTransport.builder(params.url());
-                    if (StringUtils.hasText(params.sseEndpoint())) builder.sseEndpoint(params.sseEndpoint());
+                            HttpClientSseClientTransport.builder(resolvedUrl);
+                    if (StringUtils.hasText(resolvedEndpoint)) builder.sseEndpoint(resolvedEndpoint);
                     if (!resolvedHeaders.isEmpty())
                         builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
                     McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
@@ -70,11 +74,14 @@ public interface McpClientPropertiesService<P> {
                 case STREAMABLE_HTTP -> {
                     HttpConnectionParametersWithExtras.StreamableHttp params = objectMapper.readValue(
                             parametersAsJson, HttpConnectionParametersWithExtras.StreamableHttp.class);
-                    requireEnv(collectHttpRefs(params.headers(), params.requiredEnv()));
+                    requireEnv(collectHttpRefs(params.url(), params.endpoint(),
+                            params.headers(), params.requiredEnv()));
+                    String resolvedUrl = EnvVarResolver.substitute(params.url());
+                    String resolvedEndpoint = EnvVarResolver.substitute(params.endpoint());
                     Map<String, String> resolvedHeaders = EnvVarResolver.substituteAll(params.headers());
                     HttpClientStreamableHttpTransport.Builder builder =
-                            HttpClientStreamableHttpTransport.builder(params.url());
-                    if (StringUtils.hasText(params.endpoint())) builder.endpoint(params.endpoint());
+                            HttpClientStreamableHttpTransport.builder(resolvedUrl);
+                    if (StringUtils.hasText(resolvedEndpoint)) builder.endpoint(resolvedEndpoint);
                     if (!resolvedHeaders.isEmpty())
                         builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
                     McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
@@ -83,7 +90,7 @@ public interface McpClientPropertiesService<P> {
                     yield builder.build();
                 }
                 case STDIO -> {
-                    String resolvedJson = substituteStdioEnv(objectMapper, parametersAsJson);
+                    String resolvedJson = substituteStdio(objectMapper, parametersAsJson);
                     Parameters parameters = objectMapper.readValue(resolvedJson, Parameters.class);
                     yield new StdioClientTransport(parameters.toServerParameters(),
                             new JacksonMcpJsonMapper(objectMapper));
@@ -104,9 +111,12 @@ public interface McpClientPropertiesService<P> {
         return new McpOAuth2AuthorizationCodeRequestCustomizer(manager, registrationId);
     }
 
-    private static Set<String> collectHttpRefs(Map<String, String> headers, List<String> declared) {
+    private static Set<String> collectHttpRefs(String url, String endpoint, Map<String, String> headers,
+            List<String> declared) {
         Set<String> refs = new LinkedHashSet<>();
         if (declared != null) refs.addAll(declared);
+        if (url != null) refs.addAll(EnvVarResolver.findRefs(url));
+        if (endpoint != null) refs.addAll(EnvVarResolver.findRefs(endpoint));
         if (headers != null) for (String value : headers.values()) refs.addAll(EnvVarResolver.findRefs(value));
         return refs;
     }
@@ -118,24 +128,128 @@ public interface McpClientPropertiesService<P> {
         }
     }
 
-    private static String substituteStdioEnv(ObjectMapper objectMapper, String parametersAsJson)
+    default Set<String> findMissingEnv(ObjectMapper objectMapper, String parametersAsJson) {
+        if (parametersAsJson == null || parametersAsJson.isBlank()) return Set.of();
+        try {
+            Set<String> refs = switch (getTransportType()) {
+                case SSE -> {
+                    HttpConnectionParametersWithExtras.Sse params = objectMapper.readValue(parametersAsJson,
+                            HttpConnectionParametersWithExtras.Sse.class);
+                    yield collectHttpRefs(params.url(), params.sseEndpoint(),
+                            params.headers(), params.requiredEnv());
+                }
+                case STREAMABLE_HTTP -> {
+                    HttpConnectionParametersWithExtras.StreamableHttp params = objectMapper.readValue(
+                            parametersAsJson, HttpConnectionParametersWithExtras.StreamableHttp.class);
+                    yield collectHttpRefs(params.url(), params.endpoint(),
+                            params.headers(), params.requiredEnv());
+                }
+                case STDIO -> {
+                    JsonNode root = objectMapper.readTree(parametersAsJson);
+                    Set<String> r = new LinkedHashSet<>();
+                    if (root.isObject()) {
+                        JsonNode commandNode = root.get("command");
+                        if (commandNode != null && commandNode.isTextual()) {
+                            r.addAll(EnvVarResolver.findRefs(commandNode.asText()));
+                        }
+                        JsonNode argsNode = root.get("args");
+                        if (argsNode != null && argsNode.isArray()) {
+                            for (JsonNode a : argsNode) {
+                                if (a.isTextual()) r.addAll(EnvVarResolver.findRefs(a.asText()));
+                            }
+                        }
+                        JsonNode envNode = root.get("env");
+                        if (envNode != null && envNode.isObject()) {
+                            Iterator<Map.Entry<String, JsonNode>> it = envNode.fields();
+                            while (it.hasNext()) {
+                                Map.Entry<String, JsonNode> e = it.next();
+                                if (!e.getValue().isNull()) {
+                                    r.addAll(EnvVarResolver.findRefs(e.getValue().asText("")));
+                                }
+                            }
+                        }
+                    }
+                    yield r;
+                }
+            };
+            return EnvVarResolver.missing(refs);
+        } catch (JsonProcessingException e) {
+            return Set.of();
+        }
+    }
+
+    private static String substituteStdio(ObjectMapper objectMapper, String parametersAsJson)
             throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(parametersAsJson);
         if (!root.isObject()) return parametersAsJson;
-        JsonNode envNode = root.get("env");
-        if (envNode == null || !envNode.isObject()) return parametersAsJson;
-        ObjectNode envObj = (ObjectNode) envNode;
+        ObjectNode obj = (ObjectNode) root;
+
         Set<String> refs = new LinkedHashSet<>();
-        Map<String, String> values = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> it = envObj.fields();
-        while (it.hasNext()) {
-            Map.Entry<String, JsonNode> e = it.next();
-            String v = e.getValue().isNull() ? null : e.getValue().asText(null);
-            values.put(e.getKey(), v);
-            if (v != null) refs.addAll(EnvVarResolver.findRefs(v));
+        JsonNode commandNode = obj.get("command");
+        if (commandNode != null && commandNode.isTextual()) {
+            refs.addAll(EnvVarResolver.findRefs(commandNode.asText()));
+        }
+        JsonNode argsNode = obj.get("args");
+        if (argsNode != null && argsNode.isArray()) {
+            for (JsonNode a : argsNode) {
+                if (a.isTextual()) refs.addAll(EnvVarResolver.findRefs(a.asText()));
+            }
+        }
+        JsonNode envNode = obj.get("env");
+        if (envNode != null && envNode.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> it = envNode.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> e = it.next();
+                if (!e.getValue().isNull()) refs.addAll(EnvVarResolver.findRefs(e.getValue().asText("")));
+            }
         }
         requireEnv(refs);
-        values.forEach((k, v) -> envObj.put(k, v == null ? null : EnvVarResolver.substitute(v)));
-        return objectMapper.writeValueAsString(root);
+
+        if (commandNode != null && commandNode.isTextual()) {
+            obj.put("command", EnvVarResolver.substitute(commandNode.asText()));
+        }
+        if (argsNode != null && argsNode.isArray()) {
+            ArrayNode newArgs = objectMapper.createArrayNode();
+            for (JsonNode a : argsNode) {
+                if (a.isTextual()) newArgs.add(EnvVarResolver.substitute(a.asText()));
+                else newArgs.add(a);
+            }
+            obj.set("args", newArgs);
+        }
+        if (envNode != null && envNode.isObject()) {
+            ObjectNode envObj = (ObjectNode) envNode;
+            Map<String, String> values = new LinkedHashMap<>();
+            Iterator<Map.Entry<String, JsonNode>> it = envObj.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> e = it.next();
+                values.put(e.getKey(), e.getValue().isNull() ? null : e.getValue().asText(null));
+            }
+            values.forEach((k, v) -> envObj.put(k, v == null ? null : EnvVarResolver.substitute(v)));
+        }
+        wrapWindowsScriptIfNeeded(obj, objectMapper);
+        return objectMapper.writeValueAsString(obj);
+    }
+
+    private static void wrapWindowsScriptIfNeeded(ObjectNode obj, ObjectMapper objectMapper) {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (!os.contains("windows")) return;
+        JsonNode commandNode = obj.get("command");
+        if (commandNode == null || !commandNode.isTextual()) return;
+        String command = commandNode.asText();
+        if (command == null || command.isBlank()) return;
+        if (command.endsWith(".exe") || command.contains("\\") || command.contains("/")) return;
+        String lower = command.toLowerCase();
+        if (!(lower.equals("npx") || lower.equals("uvx") || lower.equals("npm") || lower.equals("pnpm")
+                || lower.equals("yarn") || lower.equals("bunx") || lower.endsWith(".cmd")
+                || lower.endsWith(".bat") || lower.endsWith(".ps1"))) {
+            return;
+        }
+        ArrayNode wrapped = objectMapper.createArrayNode();
+        wrapped.add("/c");
+        wrapped.add(command);
+        JsonNode existing = obj.get("args");
+        if (existing != null && existing.isArray()) existing.forEach(wrapped::add);
+        obj.put("command", "cmd");
+        obj.set("args", wrapped);
     }
 }

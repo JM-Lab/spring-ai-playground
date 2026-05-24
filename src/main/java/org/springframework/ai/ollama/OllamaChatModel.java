@@ -481,7 +481,7 @@ public class OllamaChatModel implements ChatModel {
                         var function = new ToolCallFunction(toolCall.name(),
                                 JsonParser.fromJson(toolCall.arguments(), new TypeReference<>() {
                                 }));
-                        return new ToolCall(function);
+                        return new ToolCall(toolCall.id(), function);
                     }).toList();
                 }
                 return List.of(OllamaApi.Message.builder(Role.ASSISTANT)

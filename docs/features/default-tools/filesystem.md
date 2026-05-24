@@ -1,10 +1,10 @@
-Description: Default Tools — Filesystem reference. 10 safety.fs-wrapped tools — read, list, stat, grep, slice, sort, cut, find, write — all rooted at the configurable FS base.
+description: Default Tools — Filesystem reference. 10 safety.fs-wrapped tools (read · list · stat · grep · slice · sort · cut · find · write) rooted at the FS base.
 
 # Default Tools — Filesystem
 
-The 10 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools — a small shell-style filesystem pipeline covering read, list, stat, grep, slice, sort, cut, find, and write. **All paths are resolved against the per-app base path** (`TOOL_STUDIO_FS_BASE`, default `${user.home}`); any path whose `normalize()` lands outside the base is rejected before any I/O.
+The 10 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools — a small shell-style filesystem pipeline covering read, list, stat, grep, slice, sort, cut, find, and write. **All paths are resolved against the per-app base path** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/fs-tool-workspace`); any path whose `normalize()` lands outside the base is rejected before any I/O.
 
-Because they ride on `java.nio.file.Path` / `Files`, separator handling (`/` vs `\`), case folding, and symlink semantics are normalised at the JVM layer — these tools behave identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio.md#cross-platform-by-design) for the mechanics, and [Tool Studio: Filesystem mode](../tool-studio.md#filesystem-mode) for the read-only / read-write sandbox split.
+Because they ride on `java.nio.file.Path` / `Files`, separator handling (`/` vs `\`), case folding, and symlink semantics are normalised at the JVM layer — these tools behave identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics, and [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) for the read-only / read-write sandbox split.
 
 ## The 10 filesystem tools { #the-filesystem-tools }
 
@@ -34,7 +34,7 @@ All paths are resolved relative to the playground's configured filesystem base p
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path inside the FS base directory |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -78,7 +78,7 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 |---|---|---|---|
 | `dir` | `STRING` |  | Relative directory path (default '.') |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -120,7 +120,7 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path inside the FS base directory |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -163,7 +163,7 @@ Counts the lines in a UTF-8 text file. Uses safety.fs.lineCount().
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path to the file |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -204,7 +204,7 @@ Returns a slice of lines from a UTF-8 text file (head / tail / range). `start` i
 | `start` | `INTEGER` |  | First line index (0-based inclusive; negatives from end) |
 | `end` | `INTEGER` |  | End line index (0-based exclusive; negatives from end) |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -252,7 +252,7 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
 | `caseInsensitive` | `BOOLEAN` |  | Ignore case when comparing |
 | `unique` | `BOOLEAN` |  | Drop duplicate lines |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -306,7 +306,7 @@ Searches a UTF-8 text file for lines matching a JavaScript regex. Returns an arr
 | `numbered` | `BOOLEAN` |  | Prefix each result with 'N:' (1-based line number) |
 | `limit` | `INTEGER` |  | Max matches to return (0 = no limit) |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -356,7 +356,7 @@ Recursively finds files matching a glob inside a directory. Glob supports `*` an
 | `maxDepth` | `INTEGER` |  | Max recursion depth (0 = unlimited) |
 | `type` | `STRING` |  | 'file' \| 'dir' \| omit for both |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -406,7 +406,7 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 | `delimiter` | `STRING` |  | Field delimiter character or regex (default '\t' tab) |
 | `regex` | `BOOLEAN` |  | Treat `delimiter` as a regex pattern instead of literal |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}`).
+**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -502,9 +502,8 @@ One configuration value, no real secrets.
 
 | Variable | What it does | Default | Where to set |
 |---|---|---|---|
-| `TOOL_STUDIO_FS_BASE` | Per-app `safety.fs` base path — every path resolved against it; `normalize()` rejects any escape. | `${user.home}` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
+| `TOOL_STUDIO_FS_BASE` | Per-app `safety.fs` base path — every path resolved against it; `normalize()` rejects any escape. | `${user.home}/spring-ai-playground/fs-tool-workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
 
-The `File Toolkit` preset opts every read tool into `fileRead` automatically; `writeTextFile` requires `fileWrite` (L4) which you enable per-tool in the **Sandbox & Capabilities** pane — see [Tool Studio: Filesystem mode](../tool-studio.md#filesystem-mode).
+The `File Toolkit` preset opts every read tool into `fileRead` automatically; `writeTextFile` requires `fileWrite` (L4) which you enable per-tool in the **Sandbox & Capabilities** pane — see [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode).
 
-→ [Tool Studio: Filesystem mode](../tool-studio.md#filesystem-mode) — `fileRead` / `fileWrite` semantics and base-path enforcement.
-→ [Index](index.md) — overview of all 86 default tools and the five reference pages.
+→ [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) — `fileRead` / `fileWrite` semantics and base-path enforcement.

@@ -24,6 +24,9 @@ import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCategoryService;
+import org.springaicommunity.playground.service.mcp.catalog.McpTagSuggestionService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
@@ -48,19 +51,25 @@ public class McpServerView extends ContentWorkspaceView {
 
     private final McpServerInfoService mcpServerInfoService;
     private final McpClientService mcpClientService;
+    private final McpCategoryService mcpCategoryService;
+    private final McpTagSuggestionService mcpTagSuggestionService;
     private final McpServerConnectionView mcpServerConnectionView;
     private final PropertyChangeSupport mcpServerInfoChangeSupport;
     private McpContentView mcpContentView;
 
     public McpServerView(PersistentUiDataStorage persistentUiDataStorage, McpServerInfoService mcpServerInfoService,
-            McpClientService mcpClientService) {
+            McpClientService mcpClientService, McpCategoryService mcpCategoryService,
+            McpCatalogService mcpCatalogService, McpTagSuggestionService mcpTagSuggestionService) {
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
+        this.mcpCategoryService = mcpCategoryService;
+        this.mcpTagSuggestionService = mcpTagSuggestionService;
         this.mcpServerInfoChangeSupport = new PropertyChangeSupport(this);
 
         this.mcpServerConnectionView =
                 new McpServerConnectionView(persistentUiDataStorage, mcpServerInfoService,
-                        mcpClientService, mcpServerInfoChangeSupport);
+                        mcpClientService, mcpCategoryService, mcpCatalogService,
+                        mcpServerInfoChangeSupport);
 
         this.mcpServerInfoChangeSupport.addPropertyChangeListener(event -> {
             if (Objects.isNull(event.getNewValue()))
@@ -85,8 +94,9 @@ public class McpServerView extends ContentWorkspaceView {
         });
 
         configureSidebar(this.mcpServerConnectionView, "MCP Connections");
+        setSidebarSplitterPosition(20);
 
-        Button newMcpConnectionButton = styledButton("New Mcp Connection", VaadinIcon.CONNECT.create(),
+        Button newMcpConnectionButton = styledButton("Add Custom Server", VaadinIcon.CONNECT.create(),
                 event -> addNewMcpServerDetails());
         addHeaderAction(newMcpConnectionButton);
 
@@ -94,6 +104,7 @@ public class McpServerView extends ContentWorkspaceView {
 
         McpServerInfo initial = mcpServerInfoService.getDefaultMcpServerInfo();
         if (Objects.nonNull(initial)) {
+            this.mcpServerConnectionView.selectMcpConnectionContent(initial);
             selectMcpServerInfo(initial);
         } else {
             addNewMcpServerDetails();
@@ -110,6 +121,7 @@ public class McpServerView extends ContentWorkspaceView {
             return;
         this.mcpContentView =
                 new McpContentView(mcpServerInfo, this.mcpServerInfoService, this.mcpClientService,
+                        this.mcpCategoryService, this.mcpTagSuggestionService,
                         this.mcpServerInfoChangeSupport);
 
         VaadinUtils.getUi(this).access(() -> setContent(this.mcpContentView));

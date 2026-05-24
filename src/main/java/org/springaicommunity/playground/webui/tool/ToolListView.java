@@ -19,16 +19,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -43,7 +40,11 @@ import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.service.tool.ToolActivationCalculator.State;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.common.Pills;
 import org.springaicommunity.playground.webui.common.WorkspaceSidebar;
+import org.springaicommunity.playground.webui.common.sidebar.CategoryGroupDetails;
+import org.springaicommunity.playground.webui.common.sidebar.SidebarFilterBar;
+import org.springaicommunity.playground.webui.common.sidebar.SidebarItemLayout;
 
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
@@ -70,15 +71,10 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
     private final ToolSpecService toolSpecService;
     private final ToolCategoryCatalog categoryCatalog;
     private final ToolActivationCalculator activationCalculator;
-    private final TextField searchField;
-    private final MultiSelectComboBox<String> categoryFilter;
-    private final MultiSelectComboBox<String> tagFilter;
+    private final SidebarFilterBar filterBar;
     private final VerticalLayout groupContainer;
     private final List<ListBox<ToolSpec>> categoryListBoxes = new ArrayList<>();
 
-    private String searchQuery = "";
-    private Set<String> categoryFilterSelection = Set.of();
-    private Set<String> tagFilterSelection = Set.of();
     private ToolSpec selectedSpec;
     private final ToolSpecPersistenceService toolSpecPersistenceService;
     private final DefaultToolPresetCatalog defaultToolPresetCatalog;
@@ -120,43 +116,9 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
 
         addHeaderIcon(VaadinIcon.CLOSE, "Delete Selected Tool", e -> deleteTool());
 
-        this.searchField = new TextField();
-        this.searchField.setPlaceholder("Search tools…");
-        this.searchField.setClearButtonVisible(true);
-        this.searchField.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.LAZY);
-        this.searchField.setWidthFull();
-        this.searchField.addValueChangeListener(e -> {
-            this.searchQuery = e.getValue() == null ? "" : e.getValue().trim().toLowerCase(Locale.ROOT);
-            renderGroups();
-        });
-
-        this.categoryFilter = new MultiSelectComboBox<>();
-        this.categoryFilter.setPlaceholder("Category");
-        this.categoryFilter.setWidthFull();
-        this.categoryFilter.addValueChangeListener(e -> {
-            this.categoryFilterSelection = e.getValue() == null ? Set.of() : Set.copyOf(e.getValue());
-            renderGroups();
-        });
-
-        this.tagFilter = new MultiSelectComboBox<>();
-        this.tagFilter.setPlaceholder("Tag");
-        this.tagFilter.setWidthFull();
-        this.tagFilter.addValueChangeListener(e -> {
-            this.tagFilterSelection = e.getValue() == null ? Set.of() : Set.copyOf(e.getValue());
-            renderGroups();
-        });
-
-        this.searchField.getStyle().set("flex", "1 1 100%");
-        this.categoryFilter.getStyle().set("flex", "1 1 80px");
-        this.categoryFilter.setMinWidth("0");
-        this.tagFilter.getStyle().set("flex", "1 1 80px");
-        this.tagFilter.setMinWidth("0");
-        Div filtersBlock = new Div(this.searchField, this.categoryFilter, this.tagFilter);
-        filtersBlock.getStyle()
-                .set("display", "flex")
-                .set("flex-wrap", "wrap")
-                .set("gap", "var(--lumo-space-xs)")
-                .set("padding", "0 var(--lumo-space-s) var(--lumo-space-s) var(--lumo-space-s)");
+        this.filterBar = new SidebarFilterBar(new SidebarFilterBar.Config(
+                "Search tools…", "Category", "Tag", 200));
+        this.filterBar.setOnChange(this::renderGroups);
 
         this.groupContainer = new VerticalLayout();
         this.groupContainer.setPadding(false);
@@ -167,7 +129,7 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
                 .set("min-height", "0")
                 .set("gap", "0");
 
-        VerticalLayout body = new VerticalLayout(filtersBlock, this.groupContainer);
+        VerticalLayout body = new VerticalLayout(this.filterBar, this.groupContainer);
         body.setPadding(false);
         body.setSpacing(false);
         body.setSizeFull();
@@ -314,22 +276,25 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
     }
 
     private boolean matchesSearch(ToolSpec tool) {
-        if (this.searchQuery.isBlank()) return true;
+        String query = this.filterBar.getSearchQuery();
+        if (query.isEmpty()) return true;
         String name = tool.name() == null ? "" : tool.name().toLowerCase(Locale.ROOT);
         String desc = tool.description() == null ? "" : tool.description().toLowerCase(Locale.ROOT);
-        return name.contains(this.searchQuery) || desc.contains(this.searchQuery);
+        return name.contains(query) || desc.contains(query);
     }
 
     private boolean matchesCategoryFilter(ToolSpec tool) {
-        if (this.categoryFilterSelection.isEmpty()) return true;
+        Set<String> selection = this.filterBar.getCategorySelection();
+        if (selection.isEmpty()) return true;
         String resolved = this.categoryCatalog.resolveOrFallback(tool.category()).id();
-        return this.categoryFilterSelection.contains(resolved);
+        return selection.contains(resolved);
     }
 
     private boolean matchesTagFilter(ToolSpec tool) {
-        if (this.tagFilterSelection.isEmpty()) return true;
-        for (String wanted : this.tagFilterSelection) {
-            if (tool.tags().contains(wanted)) return true;  // ANY tag match passes
+        Set<String> selection = this.filterBar.getTagSelection();
+        if (selection.isEmpty()) return true;
+        for (String wanted : selection) {
+            if (tool.tags().contains(wanted)) return true;
         }
         return false;
     }
@@ -345,18 +310,12 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
         for (CategoryDef categoryDef : this.categoryCatalog.categories()) {
             if (presentCategoryIds.contains(categoryDef.id())) categoryItems.add(categoryDef.id());
         }
-        this.categoryFilter.setItems(categoryItems);
-        this.categoryFilter.setItemLabelGenerator(id -> this.categoryCatalog.resolveOrFallback(id).displayName());
-
-        this.tagFilter.setItems(observedTags);
+        this.filterBar.setCategoryItems(categoryItems,
+                id -> this.categoryCatalog.resolveOrFallback(id).displayName());
+        this.filterBar.setTagItems(new ArrayList<>(observedTags));
     }
 
     private Details buildCategoryGroup(CategoryDef categoryDef, List<ToolSpec> tools) {
-        Span header = new Span(categoryDef.displayName() + "  (" + tools.size() + ")");
-        header.getStyle()
-                .set("font-weight", "var(--lumo-font-weight-semibold)")
-                .set("font-size", "var(--lumo-font-size-s)");
-
         ListBox<ToolSpec> listBox = new ListBox<>();
         listBox.addClassName("custom-list-box");
         listBox.setWidthFull();
@@ -365,77 +324,31 @@ public class ToolListView extends WorkspaceSidebar implements BeforeEnterObserve
         listBox.addValueChangeListener(event -> notifyToolSelection(event.getOldValue(), event.getValue()));
         listBox.getStyle().set("--lumo-size-m", "var(--lumo-size-s)");
         this.categoryListBoxes.add(listBox);
-
-        Details details = new Details(header, listBox);
-        details.addClassName("workspace-sidebar-details");
-        details.setOpened(true);
-        details.setWidthFull();
-        details.getStyle()
-                .set("margin", "0")
-                .set("--vaadin-details-summary-padding", "var(--lumo-space-xs) var(--lumo-space-s)");
-        return details;
+        return CategoryGroupDetails.build(categoryDef.displayName(), tools.size(), listBox);
     }
 
     private Div renderToolItem(ToolSpec tool) {
-        Div row = new Div();
-        row.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "0.35em")
-                .set("width", "100%");
-
-        // Activation state visible without clicking the row.
-        HorizontalLayout titleRow = new HorizontalLayout();
-        titleRow.setSpacing(false);
-        titleRow.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        titleRow.getStyle().set("gap", "0.4em");
-
         State state = this.activationCalculator.calculate(tool);
-        Span dot = stateDot(state);
+        Span dot = Pills.dot(stateColor(state));
         dot.getElement().setAttribute("title", state.name());
 
         Span title = listItemText(tool.name());
         title.getElement().setAttribute("title", Objects.toString(tool.description(), ""));
 
-        titleRow.add(dot, title);
-        row.add(titleRow);
-
-        if (!tool.tags().isEmpty()) {
-            HorizontalLayout pillRow = new HorizontalLayout();
-            pillRow.setSpacing(false);
-            pillRow.getStyle().set("gap", "0.25em").set("flex-wrap", "wrap")
-                    .set("padding-inline-start", "1em");  // align under title text, not dot
-            for (String tag : tool.tags()) {
-                pillRow.add(pill(tag, "badge success pill small"));
-            }
-            row.add(pillRow);
+        List<Span> pills = new ArrayList<>();
+        for (String tag : tool.tags()) {
+            pills.add(Pills.pill(tag, "badge success pill small"));
         }
-        return row;
+        return SidebarItemLayout.twoRow(dot, title, pills, false);
     }
 
-    private static Span stateDot(State state) {
-        Span dot = new Span();
-        String color = switch (state) {
+    private static String stateColor(State state) {
+        return switch (state) {
             case ACTIVE               -> "var(--lumo-success-color)";
             case TEST_FAILED          -> "var(--lumo-error-color)";
-            case MISSING_REQUIREMENTS -> "#f0a500";  // amber — Vaadin Lumo lacks a stock 'warning' base color
+            case MISSING_REQUIREMENTS -> "#f0a500";
             case DRAFT                -> "var(--lumo-contrast-30pct)";
         };
-        dot.getStyle()
-                .set("display", "inline-block")
-                .set("width", "0.55em")
-                .set("height", "0.55em")
-                .set("border-radius", "50%")
-                .set("background", color)
-                .set("flex", "0 0 auto");
-        return dot;
-    }
-
-    private static Span pill(String text, String themeAttr) {
-        Span s = new Span(text);
-        s.getElement().setAttribute("theme", themeAttr);
-        s.getStyle()
-                .set("font-size", "0.65em")
-                .set("padding", "0 0.4em")
-                .set("line-height", "1.4");
-        return s;
     }
 
     private void notifyToolSelection(ToolSpec oldToolSpec, ToolSpec newToolSpec) {

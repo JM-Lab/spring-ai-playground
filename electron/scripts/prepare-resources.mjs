@@ -115,12 +115,13 @@ fs.mkdirSync(catalogOutputDir, { recursive: true });
 fs.copyFileSync(defaultApplicationYaml, outputDefaultYaml);
 console.log(`Copied default config: ${defaultApplicationYaml} -> ${outputDefaultYaml}`);
 
-const catalogFiles = fs.readdirSync(springResourcesDir).filter(name =>
+const springToolResourcesDir = path.join(springResourcesDir, 'tool');
+const catalogFiles = fs.readdirSync(springToolResourcesDir).filter(name =>
   /^default-tool-specs.*\.json$/.test(name)
   || name === 'default-tool-categories.json'
   || name === 'default-tool-presets.json');
 for (const name of catalogFiles) {
-  fs.copyFileSync(path.join(springResourcesDir, name), path.join(catalogOutputDir, name));
+  fs.copyFileSync(path.join(springToolResourcesDir, name), path.join(catalogOutputDir, name));
   console.log(`Mirrored catalog: ${name} -> electron/resources/catalog/${name}`);
 }
 

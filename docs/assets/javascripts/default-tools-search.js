@@ -1,9 +1,10 @@
 (function () {
   // Preset is single-select (mutually exclusive — only one preset can be
-  // active at a time). Tag and Category are multi-select (a card matches if
-  // ANY selected tag matches and ANY selected category matches — OR within
-  // each group, AND across groups + search + preset).
-  const MULTI_GROUPS = new Set(['tag', 'category']);
+  // active at a time). Tag, Category, Transport are multi-select. Within
+  // tag/category a card matches if ANY selected value matches (OR); transport
+  // is AND because each card has exactly one transport. Search is AND with
+  // every other filter; preset is exclusive.
+  const MULTI_GROUPS = new Set(['tag', 'category', 'transport']);
 
   function initDirectory(root) {
     const search = root.querySelector('.tool-directory__search');
@@ -20,6 +21,7 @@
       preset: null,            // single
       tag: new Set(),          // multi
       category: new Set(),     // multi
+      transport: new Set(),    // multi (MCP catalog only — empty on tools page)
     };
 
     function matches(row) {
@@ -56,6 +58,12 @@
         }
         if (!any) return false;
       }
+      // Transport is an independent AND — each card has exactly one transport,
+      // so any selection narrows the visible set to that subset.
+      if (filterState.transport.size > 0) {
+        const tr = (row.dataset.transport || '').toLowerCase();
+        if (!filterState.transport.has(tr)) return false;
+      }
       return true;
     }
 
@@ -63,9 +71,11 @@
       filterState.q = '';
       filterState.tag.clear();
       filterState.category.clear();
+      filterState.transport.clear();
       if (search) search.value = '';
       refreshGroup('tag');
       refreshGroup('category');
+      refreshGroup('transport');
     }
     function clearPreset() {
       if (filterState.preset !== null) {
@@ -212,9 +222,32 @@
     }
   }
 
+  // Auto-open the card matching window.location.hash when the page loads (or
+  // when the hash changes — e.g. user clicks a stretched-link from a directory
+  // page that lands on this sub-page with `#<entry-id>`). Without this, the
+  // browser only scrolls to the anchor; the detail row stays hidden and the
+  // user can't tell whether the navigation arrived.
+  function openByHash() {
+    if (!window.location.hash || window.location.hash === '#') return;
+    let id;
+    try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target || !target.classList.contains('tcg-card--clickable')) return;
+    // Skip if this card is already open (e.g. hashchange fired for the same id).
+    if (currentCard === target) return;
+    openInline(target);
+  }
+  if (!window.__tcgHashWired) {
+    window.__tcgHashWired = true;
+    window.addEventListener('hashchange', openByHash);
+  }
+
   function bootstrap() {
     document.querySelectorAll('.tool-directory').forEach(initDirectory);
     initCardDrawerTriggers();
+    // Defer one frame so anchor-scroll settles before we expand + re-scroll.
+    requestAnimationFrame(openByHash);
   }
 
   if (window.document$ && typeof window.document$.subscribe === 'function') {

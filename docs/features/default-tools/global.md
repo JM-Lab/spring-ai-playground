@@ -1,10 +1,10 @@
-Description: Default Tools — Global reference. 22 tools that call public HTTPS APIs — GitHub, Wikipedia, weather, finance, geo, search.
+description: Default Tools — Global reference. 22 tools that call public HTTPS APIs — GitHub, Wikipedia, weather, finance, geo, search.
 
 # Default Tools — Global
 
 The 22 tools in `default-tool-specs-network.json` call **public global HTTPS endpoints** — most of them anonymous, all of them outside Korea. Categories span code (GitHub), encyclopedia (Wikipedia), forum (Hacker News, Stack Overflow, Reddit), finance (CoinGecko, exchangerate.host), geo (ipapi.co, restcountries, Nominatim, sunrise-sunset, USGS), weather (Open-Meteo), and government data (Nager.Date public holidays).
 
-None of them need an API key — they live entirely off the providers' anonymous rate-limit tiers. Tool actions execute with the default sandbox `networkMode: strict`, so every fetch goes through [the SSRF four-layer guard](../tool-studio.md#ssrf-four-layer-guard) regardless of whether the destination is a literal IP or a DNS host.
+None of them need an API key — they live entirely off the providers' anonymous rate-limit tiers. Tool actions execute with the default sandbox `networkMode: strict`, so every fetch goes through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) regardless of whether the destination is a literal IP or a DNS host.
 
 The grouping below mirrors the `tags` axis you can filter by inside the Tool MCP Server Setting drawer.
 
@@ -1631,5 +1631,4 @@ All 22 run anonymously off rate-limit tiers, so they are the cheapest tools to c
 
 If you need higher quotas you can fork a tool and add a vendor key — the same `${ENV_VAR}` static-variable mechanism the [Examples](examples.md) tools use.
 
-→ [Tool Studio: SSRF four-layer guard](../tool-studio.md#ssrf-four-layer-guard) — the network policy these tools run under.
-→ [Index](index.md) — overview of all 86 default tools and the five reference pages.
+→ [Tool Studio: SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) — the network policy these tools run under.

@@ -2,7 +2,7 @@ description: End-to-end Spring AI Playground tutorials — Tool Studio authoring
 
 # Tutorials
 
-These eight tutorials walk you from creating a single tool to composing chains over the bundled default catalog. They follow the natural product workflow: build → validate → ground → compose.
+These nine tutorials walk you from creating a single tool to composing chains over the bundled default catalog, with one bonus deep-dive into the MCP protocol surface. They follow the natural product workflow: build → validate → ground → compose, plus one optional MCP-primitive walkthrough.
 
 The shipped chat default is **`qwen3.5:2b`** — fast, fine for the early tutorials. Switch to **`qwen3.5:latest`** or **`gemma4:latest`** when you reach tutorials 4–7, where tool-calling reliability matters. Embeddings use **`qwen3-embedding:0.6b`** throughout. See [Picking a model](#picking-a-model) for the tradeoffs.
 
@@ -18,6 +18,7 @@ flowchart LR
   T6["6. Tools + RAG<br/>Agentic Chat"]
   T7["7. Tool Chain<br/>Weather → Slack"]
   T8["8. Default Tool Recipes<br/>JS-action chains"]
+  T9["9. MCP Everything<br/>All 8 Primitives"]
   T1 --> T2
   T2 --> T4
   T3 --> T5
@@ -25,20 +26,23 @@ flowchart LR
   T5 --> T6
   T6 --> T7
   T7 --> T8
+  T2 -. deep dive .-> T9
   classDef build fill:#eef2ff,stroke:#3F51B5,color:#1e1b4b
   classDef validate fill:#ecfdf5,stroke:#10b981,color:#064e3b
   classDef ground fill:#fff7ed,stroke:#f59e0b,color:#7c2d12
   classDef compose fill:#fdf2f8,stroke:#e11d48,color:#831843
+  classDef bonus fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95
   class T1 build
   class T2 validate
   class T3 ground
   class T4,T5,T6,T7,T8 compose
+  class T9 bonus
 ```
 
-Tutorials 1–3 produce reusable assets (a tool, an MCP connection, an indexed document). Tutorials 4–8 compose those assets in chat (4–6) and as code-level chains over the bundled default catalog (7–8). Each tutorial is independently runnable in 3–8 minutes; the full sequence takes about 35 minutes.
+Tutorials 1–3 produce reusable assets (a tool, an MCP connection, an indexed document). Tutorials 4–8 compose those assets in chat (4–6) and as code-level chains over the bundled default catalog (7–8). Tutorial 9 is an optional **deep dive** off Tutorial 2 — activate MCP Everything from the Default MCP Catalog and exercise every Inspector primitive (Tools / Resources / Prompts / Ping / Notifications / Roots / Sampling / Elicitation) end-to-end. Each tutorial is independently runnable in 3–20 minutes; the full main sequence takes about 50 minutes, plus 12 minutes for the deep dive.
 
 !!! abstract "What you'll need"
-    - Spring AI Playground running on `http://localhost:8282`. Follow [Getting Started](../getting-started.md) first if you haven't.
+    - Spring AI Playground running on `http://localhost:8282`. Follow [Getting Started](../getting-started/index.md) first if you haven't.
     - Ollama running, with `qwen3.5:latest` and `qwen3-embedding:0.6b` pulled.
         ```bash
         ollama pull qwen3.5
@@ -104,8 +108,15 @@ Tutorials 1–3 produce reusable assets (a tool, an MCP connection, an indexed d
 
     ---
 
-    Three new tools that chain default-tool helpers inside one JS action.  
-    **12 min** · ★★★ · Tool Studio + Agentic Chat
+    Five new custom tools, each chaining default-tool helpers inside one JS action.  
+    **20 min** · ★★★ · Tool Studio + Agentic Chat
+
+-   :material-flask-outline:{ .lg .middle } **[9. MCP Everything — All 8 Primitives](9-mcp-everything.md)**
+
+    ---
+
+    Activate the Default MCP Catalog's reference test server and exercise every Inspector primitive — Tools, Resources, Prompts, Ping, Notifications, Roots, Sampling, Elicitation — in one sitting. OS-specific Node install or Docker alternative.  
+    **12 min** · ★★☆ · MCP Server (catalog + Inspector) · *deep dive*
 
 </div>
 
@@ -131,6 +142,6 @@ Tool calling and tool chaining quality depend heavily on the model. The selectab
 ## Further Reading
 
 - [Overview](../index.md): return to the main product overview and documentation map
-- [Getting Started](../getting-started.md): install the app, configure providers, and choose a runtime
+- [Getting Started](../getting-started/index.md): install the app, configure providers, and choose a runtime
 - [Architecture](../architecture.md): runtime layers, data flows, and extension points
 - [Features](../features/index.md): the main product areas and what they do

@@ -1,0 +1,147 @@
+[
+  {
+    "id": "Git-Windows",
+    "displayName": "Git",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[Windows] Local Git repository operations — log, diff, status, blame, show. Read-only by default.\n\nPrereq: install uv on Windows.\n  winget install --id=astral-sh.uv -e\n  # or: powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"\n\nThe activated form is pre-filled to run:\n  uvx mcp-server-git --repository .\n\nNote: change '.' to the absolute path (e.g. C:\\\\repos\\\\my-project).\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "uvx",
+      "args": ["mcp-server-git", "--repository", "."]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Memory-Windows",
+    "displayName": "Memory (Knowledge Graph)",
+    "category": "UTIL",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[Windows] Persistent knowledge graph for cross-session memory — entities, relations, and observations in a local JSON file.\n\nPrereq: Node.js 18+ on Windows (winget, nvm-windows, or installer). Java's ProcessBuilder needs npx.cmd on PATH.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-memory\n\nOptional: set MEMORY_FILE_PATH in the env section to override the default storage path (e.g. C:\\\\Users\\\\<you>\\\\memory.json).\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Sequential-Thinking-Windows",
+    "displayName": "Sequential Thinking",
+    "category": "UTIL",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[Windows] Structured step-by-step reasoning helper — logs intermediate thoughts to the server for review, revision, or branching.\n\nPrereq: Node.js 18+ on Windows. Java's ProcessBuilder needs npx.cmd on PATH.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-sequential-thinking\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Puppeteer-Windows",
+    "displayName": "Puppeteer",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers",
+    "vendorOfficial": false,
+    "description": "[Windows] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on Windows. First run downloads ~170 MB Chromium under %USERPROFILE%\\\\AppData\\\\Local\\\\puppeteer.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"C:\\\\\\\\Program Files\\\\\\\\Google\\\\\\\\Chrome\\\\\\\\Application\\\\\\\\chrome.exe\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "MCP-Everything-Windows",
+    "displayName": "MCP Everything (Reference Test Server)",
+    "category": "EXAMPLE",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol",
+    "vendorOfficial": true,
+    "description": "[Windows] Official MCP reference test server exercising every protocol feature — tools, resources, prompts, sampling, completion, logging, progress, root listing.\n\nPrereq: Node.js 18+ on Windows. Java's ProcessBuilder needs npx.cmd on PATH.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-everything\n\nDocker alternative:\n  docker run -i --rm tzolov/mcp-everything-server:v2\n\nNote: the hosted `example-server.modelcontextprotocol.io` endpoint requires OAuth and is not auto-activated.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    "trustSignals": ["vendor-official"]
+  },
+  {
+    "id": "Playwright-Windows",
+    "displayName": "Playwright",
+    "category": "DEV",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "Microsoft",
+    "vendorOfficial": true,
+    "description": "[Windows] Microsoft's accessibility-snapshot browser automation — successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models.\n\nPrereq: Node.js 18+ on Windows (winget, nvm-windows, or installer). First run downloads ~300 MB browser binaries under %USERPROFILE%\\\\AppData\\\\Local\\\\ms-playwright. Java's ProcessBuilder needs npx.cmd on PATH.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @playwright/mcp@latest\n\nOptional flags:\n  --browser firefox|webkit          # default chromium\n  --port 8931                       # serve over HTTP instead of stdio\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/microsoft/playwright-mcp",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }],
+    "docsUrl": "https://github.com/microsoft/playwright-mcp",
+    "trustSignals": ["vendor-official"]
+  },
+  {
+    "id": "SQLite-Windows",
+    "displayName": "SQLite",
+    "category": "DATABASE",
+    "tags": ["global", "community"],
+    "tier": 2,
+    "vendor": "modelcontextprotocol/servers-archived",
+    "vendorOfficial": false,
+    "description": "[Windows] Query a local SQLite database — SELECT, schema introspection, plus INSERT/UPDATE/DELETE when permitted.\n\nPrereq: install uv on Windows.\n  winget install --id=astral-sh.uv -e\n  # or: powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"\n\nThe activated form is pre-filled to run:\n  uvx mcp-server-sqlite --db-path C:\\\\path\\\\to\\\\your.db\n\nRequired arg:\n  --db-path <path>                  # absolute path to the .db file (e.g. C:\\\\data\\\\sample.db)\n\nSecurity: writes are allowed by default — point at a copy of the DB or a read-only mount if you don't want the agent modifying production data. Reference server is archived; community forks active.\n\nDocs: https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "C:\\\\path\\\\to\\\\your.db"]
+    }],
+    "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "trustSignals": ["community"]
+  },
+  {
+    "id": "Brave-Search-Windows",
+    "displayName": "Brave Search",
+    "category": "SEARCH",
+    "tags": ["global"],
+    "tier": 2,
+    "vendor": "Brave",
+    "vendorOfficial": true,
+    "description": "[Windows] Brave Search API — web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface).\n\nPrereq: Node.js 18+ on Windows (winget, nvm-windows, or installer). Java's ProcessBuilder needs npx.cmd on PATH. Free API key (2k req/month) at https://api.search.brave.com/app/keys.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @brave/brave-search-mcp-server\n\nRequired — set BRAVE_API_KEY in the env section below (treat as a secret).\n\nDocs: https://github.com/brave/brave-search-mcp-server",
+    "stability": "GA",
+    "transports": [{
+      "type": "STDIO",
+      "urlTemplate": "npx.cmd",
+      "args": ["-y", "@brave/brave-search-mcp-server"],
+      "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}
+    }],
+    "docsUrl": "https://github.com/brave/brave-search-mcp-server",
+    "trustSignals": ["vendor-official"]
+  }
+]

@@ -27,6 +27,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCategoryService;
+import org.springaicommunity.playground.service.mcp.catalog.McpTagSuggestionService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 
 import java.beans.PropertyChangeSupport;
@@ -39,7 +41,8 @@ public class McpContentView extends VerticalLayout {
     private final McpServerInfo mcpServerInfo;
 
     public McpContentView(McpServerInfo mcpServerInfo, McpServerInfoService mcpServerInfoService,
-            McpClientService mcpClientService, PropertyChangeSupport mcpServerInfoChangeSupport) {
+            McpClientService mcpClientService, McpCategoryService mcpCategoryService,
+            McpTagSuggestionService mcpTagSuggestionService, PropertyChangeSupport mcpServerInfoChangeSupport) {
         this.mcpServerInfo = mcpServerInfo;
 
         setSizeFull();
@@ -48,7 +51,7 @@ public class McpContentView extends VerticalLayout {
         getStyle().set("overflow", "auto");
 
         McpServerConfigView mcpServerConfigView = new McpServerConfigView(mcpServerInfo, mcpServerInfoService,
-                mcpClientService, mcpServerInfoChangeSupport);
+                mcpClientService, mcpCategoryService, mcpTagSuggestionService, mcpServerInfoChangeSupport);
         mcpServerConfigView.setWidthFull();
         add(mcpServerConfigView);
 

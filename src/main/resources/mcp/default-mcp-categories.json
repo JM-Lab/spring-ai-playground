@@ -1,0 +1,16 @@
+[
+  { "id": "EXAMPLE",       "displayName": "Example",            "order": 5,   "icon": "flask",          "description": "Reference / test MCP servers (no real data)" },
+  { "id": "PRODUCTIVITY",  "displayName": "Productivity",       "order": 10,  "icon": "envelope-open",  "description": "Email, calendar, notes" },
+  { "id": "STORAGE",       "displayName": "Storage",            "order": 20,  "icon": "folder-open",    "description": "Cloud file storage" },
+  { "id": "COMMUNICATION", "displayName": "Communication",      "order": 30,  "icon": "comments",       "description": "Chat and messaging" },
+  { "id": "PROJECT_MGMT",  "displayName": "Project Management", "order": 40,  "icon": "tasks",          "description": "Issue trackers and PM tools" },
+  { "id": "DEV",           "displayName": "Dev",                "order": 50,  "icon": "code",           "description": "Code hosting, docs, error tracking" },
+  { "id": "SEARCH",        "displayName": "Search",             "order": 60,  "icon": "search",         "description": "Web search and content retrieval" },
+  { "id": "CLOUD",         "displayName": "Cloud",              "order": 70,  "icon": "cloud",          "description": "Hosting platforms and infra" },
+  { "id": "DATABASE",      "displayName": "Database",           "order": 80,  "icon": "database",       "description": "Managed databases" },
+  { "id": "FINANCE",       "displayName": "Finance",            "order": 90,  "icon": "dollar",         "description": "Payments and billing" },
+  { "id": "CRM",           "displayName": "CRM",                "order": 100, "icon": "users",          "description": "Customer relationship and analytics" },
+  { "id": "DESIGN",        "displayName": "Design",             "order": 110, "icon": "palette",        "description": "Creative and design tools" },
+  { "id": "UTIL",          "displayName": "Utility",            "order": 120, "icon": "wrench",         "description": "Maps, time, miscellaneous" },
+  { "id": "CUSTOM",        "displayName": "Custom",             "order": 999, "icon": "plus",           "description": "User-added without catalog match" }
+]

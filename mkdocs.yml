@@ -1,6 +1,7 @@
 site_name: Spring AI Playground
 site_description: Cross-platform desktop app and safe local execution layer for AI agent tools with Tool Studio, MCP, Agentic Chat, RAG, and No pass, no run validation.
 site_url: https://spring-ai-community.github.io/spring-ai-playground/
+site_author: Spring AI Community
 repo_url: https://github.com/spring-ai-community/spring-ai-playground
 edit_uri: edit/main/docs/
 copyright: Copyright &copy; 2025 Spring AI Community · <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>
@@ -49,11 +50,13 @@ theme:
         icon: material/weather-night
         name: Switch to light mode
   features:
+    - navigation.instant
+    - navigation.instant.progress
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.expand
     - navigation.indexes
     - navigation.top
+    - navigation.footer
     - toc.follow
     - search.highlight
     - content.code.copy
@@ -62,23 +65,59 @@ theme:
 
 nav:
   - Home: index.md
-  - "Getting Started": getting-started.md
+  - "Getting Started":
+      - getting-started/index.md
+      - "Desktop App": getting-started/desktop.md
+      - "Alternative Runtimes": getting-started/alternative-runtimes.md
   - "Architecture":
       - "Application": architecture.md
+      - "Safe Tool Specification": safe-tool-specification.md
       - "AI Agent Tool Safety": safety-architecture.md
+      - "AI Agent Observability": observability-architecture.md
   - "Features":
       - features/index.md
-      - "Tool Studio": features/tool-studio.md
-      - "MCP Server": features/mcp-server.md
+      - "Tool Studio":
+          - features/tool-studio/index.md
+          - "Default Tools":
+              - features/default-tools/index.md
+              - "Examples": features/default-tools/examples.md
+              - "Utilities": features/default-tools/utilities.md
+              - "Filesystem": features/default-tools/filesystem.md
+              - "Global": features/default-tools/global.md
+              - "Korea": features/default-tools/korea.md
+      - "MCP Server":
+          - features/mcp-server/index.md
+          - "MCP Inspector": features/mcp-server/inspector.md
+          - "Default MCP Catalog":
+              - features/default-mcp-catalog/index.md
+              - "Productivity & Communication": features/default-mcp-catalog/productivity.md
+              - "Dev & Project Management": features/default-mcp-catalog/dev.md
+              - "Data & Cloud": features/default-mcp-catalog/data-cloud.md
+              - "Business": features/default-mcp-catalog/business.md
+              - "Search": features/default-mcp-catalog/search.md
+              - "Examples": features/default-mcp-catalog/examples.md
       - "Vector Database": features/vector-database.md
       - "Agentic Chat": features/agentic-chat.md
-      - "Default Tools":
-          - features/default-tools/index.md
-          - "Examples": features/default-tools/examples.md
-          - "Utilities": features/default-tools/utilities.md
-          - "Filesystem": features/default-tools/filesystem.md
-          - "Global": features/default-tools/global.md
-          - "Korea": features/default-tools/korea.md
+      - "Observability":
+          - features/observability/index.md
+          - "Overview": features/observability/overview.md
+          - "AI Usage":
+              - features/observability/ai-usage/index.md
+              - "Tokens & Cost": features/observability/ai-usage/tokens-cost.md
+              - "AI Models": features/observability/ai-usage/ai-models.md
+          - "AI Stack":
+              - features/observability/ai-stack/index.md
+              - "Tool Studio": features/observability/ai-stack/tool-studio.md
+              - "MCP Servers": features/observability/ai-stack/mcp-servers.md
+              - "MCP Inspector": features/observability/ai-stack/mcp-inspector.md
+              - "Vector Database": features/observability/ai-stack/vector-database.md
+              - "Agentic Chat": features/observability/ai-stack/agentic-chat.md
+          - "Runtime":
+              - features/observability/runtime/index.md
+              - "Host": features/observability/runtime/host.md
+              - "Web Application": features/observability/runtime/web-application.md
+              - "Logs": features/observability/runtime/logs.md
+              - "Traces": features/observability/runtime/traces.md
   - "Tutorials":
       - tutorials/index.md
       - "1. Author a Tool": tutorials/1-author-tool.md
@@ -89,6 +128,7 @@ nav:
       - "6. Tools and RAG": tutorials/6-tools-and-rag.md
       - "7. Weather to Slack": tutorials/7-weather-to-slack.md
       - "8. Default Tool Recipes": tutorials/8-default-tool-recipes.md
+      - "9. MCP Everything Walkthrough": tutorials/9-mcp-everything.md
   # Changelog is published in the repo as CHANGELOG.md (and rendered at
   # /changelog/ when reached by URL via the docs/changelog.md include).
   # Intentionally omitted from main nav to avoid duplicating GitHub-hosted
@@ -100,6 +140,7 @@ docs_dir: docs
 exclude_docs: |
   /assets/images/README.md
   /requirements.txt
+  /getting-started.md
 
 extra_css:
   - assets/stylesheets/extra.css
@@ -109,6 +150,8 @@ extra_javascript:
   - assets/javascripts/mermaid-pan-zoom.js
   - assets/javascripts/card-stretched-link.js
   - assets/javascripts/default-tools-search.js
+  - assets/javascripts/nav-default-expand.js
+  - assets/javascripts/verify-version-resolve.js
 
 markdown_extensions:
   - meta

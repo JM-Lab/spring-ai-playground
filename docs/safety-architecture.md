@@ -5,7 +5,14 @@ description: Defense-in-depth sandbox for AI agent tools — three-layer model, 
 
 Spring AI Playground is a Spring Boot application that executes user-authored JavaScript inside its own JVM. Tool Studio's value proposition — author, test, and publish a tool without restart on the same machine that runs the model — puts tool code on the critical path: any tool you author becomes reachable to MCP clients (and ultimately to an agent) as soon as it earns a **Local Pass**.
 
-This page is the system-level reference for how the sandbox is shaped. For the user-facing surface (the override fields, the Sandbox & Capabilities pane, the Risk Level badge), see [Tool Studio → Safety](features/tool-studio.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities). For the rest of the system (runtime layers, feature modules, data flows), see [Application Architecture](architecture.md).
+This page is the system-level reference for how the sandbox is shaped. For the user-facing surface (the override fields, the Sandbox & Capabilities pane, the Risk Level badge), see [Tool Studio → Safety](features/tool-studio/index.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities).
+
+This is one of four architecture documents that complement each other:
+
+- [Application Architecture](architecture.md) — runtime layers, feature modules, data flows, extension points
+- [Safe Tool Specification 1.0](safe-tool-specification.md) — normative JSON spec for tool authoring (the document the sandbox enforces)
+- **AI Agent Tool Safety Architecture** (this page) — defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
+- [AI Agent Observability Architecture](observability-architecture.md) — the visibility layer that makes the sandbox's prevention auditable
 
 ## Scope and naming
 
@@ -58,7 +65,7 @@ What each layer controls, in detail:
 | **1** | Resource limits | `max-statements: 500000` via GraalVM `ResourceLimits` + wall-clock timeout via `Future.cancel(true)` on a virtual-thread executor. |
 | **1** | Helpers gateway | `fetch` (SSRF four-layer guard in `strict` by default), `safety.fs` (rooted at base path with `normalize()` escape check), `safety.parser.{html,xml,csv,yaml}`. These are the only network and filesystem paths from JS. |
 | **1** | Output masking | `console.log` substring-masks env-backed static-variable values before they reach the debug pane or chat tool-call trace. The mask applies to **all** env-vars surfaced by the secret store below — values exported from the OS-encrypted secret store are still treated as secrets at the log boundary. |
-| **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` — encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Getting Started → Use Environment Variables for Keys and Secrets](getting-started.md#7-use-environment-variables-for-keys-and-secrets). |
+| **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` — encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Desktop App → Use Environment Variables for Keys and Secrets](getting-started/desktop.md#7-use-environment-variables-for-keys-and-secrets). |
 | **2** | `SandboxOverrides` | Per-tool widening: `networkMode`, `hostsAllow`, `fileRead`/`fileWrite`, `addAllow/DenyClasses`, `fsBasePath`. |
 | **2** | Posture calculator | `SandboxPostureCalculator.compute()` — pure function from overrides to `RiskLevel`. |
 | **2** | Risk badge | L0 baseline · L3 narrow widening · L4 broad widening · L5 critical class re-enabled. |
@@ -76,7 +83,7 @@ Sandbox layers fail to threats that JS itself can produce — runaway resource u
 | **1. Authoring** | **Local Pass** | Author clicks **Test & Publish** in Tool Studio | "Did my tool produce the right result against my declared inputs?" — the publish gate *is* the act of testing. Fail → return to edit |
 | **1. Authoring** | **Risk badge review** | Author widens a dimension in the **Sandbox & Capabilities** pane | "Is the resulting L3 / L4 / L5 badge justified for what this tool actually needs?" — the elevation is visible *before* publish |
 | **2. Exposure curation** | **Tool MCP Server Setting** | Operator opens the drawer in Tool Studio (or the Default MCP Tools card in the launcher) | "Which subset of the bundled catalog do I want the built-in MCP server to expose?" — preset + include/exclude rules |
-| **3. Inspector test** | **Direct Run from MCP Inspector** | Tester clicks the **Run** play button on a tool card in [MCP Server → Inspector](features/mcp-server.md) | "Does the actual MCP-routed call (not just the local sandbox path) return what I expect?" — the result and full schema are visible before any chat exposure |
+| **3. Inspector test** | **Direct Run from MCP Inspector** | Tester clicks the **Run** play button on a tool card in [MCP Server → Inspector](features/mcp-server/index.md) | "Does the actual MCP-routed call (not just the local sandbox path) return what I expect?" — the result and full schema are visible before any chat exposure |
 | **4. Runtime** | **Tool / RAG selection in Chat** | User picks MCP servers + documents for the conversation in [Agentic Chat](features/agentic-chat.md) | "Which tools and which retrieval surface should this conversation reach?" — per-conversation scope |
 | **4. Runtime** | **Result + trace review** | Agentic Chat surfaces each tool call, arguments, result, and reasoning trace inline | "Did the model pick the right tool with the right arguments? Was the answer grounded?" — every tool call is inspectable in the chat output |
 | **4. Runtime** | **Per-call confirmation** *(shipping next)* | Server-side wrapper for tools declaring `humanInTheLoop`; chat-side override for `AUTO_APPROVE` tools above the Risk Level threshold | "Approve, reject, or modify this call before the model proceeds." Implements `ToolManifest.HumanInTheLoop` via the MCP `elicitation/create` protocol — see the **MCP elicitation HITL** sub-section below |
@@ -220,7 +227,7 @@ Each gate is configured by `EffectivePolicy` and lives outside the JS context. D
 - **fetch install + SSRF guard** — `JsRuntimeGlobals.installFetch`. Skips installation entirely when egress is `blocked`; otherwise the SSRF four-layer guard runs in `strict`.
 - **safety.fs path resolve** — `SafeFs.resolveAndValidate`. Every helper call resolves and `normalize()`-escape-checks against the base path.
 - **console mask** — `installConsoleLog` + `maskKnownSecrets`. Env-backed static variables substring-masked.
-- **safety.parser** — XML is XXE-hardened; XML/CSV return plain proxy trees; YAML and HTML have caveats documented at [Tool Studio → Built-in Helpers](features/tool-studio.md#built-in-javascript-helpers).
+- **safety.parser** — XML is XXE-hardened; XML/CSV return plain proxy trees; YAML and HTML have caveats documented at [Tool Studio → Built-in Helpers](features/tool-studio/index.md#built-in-javascript-helpers).
 - **Future.cancel(true) on timeout** — host-side kill on the virtual-thread executor. Interrupts propagate into the Polyglot Context.
 
 Three enforcement points are worth calling out:
@@ -228,6 +235,77 @@ Three enforcement points are worth calling out:
 - **`Future.cancel(true)` on a virtual-thread executor** — the wall-clock timeout is a host-side kill, not a JS-side promise rejection. A tool that infinite-loops without yielding statements still terminates within the timeout because the thread interrupt propagates through GraalVM's context. Virtual threads matter because hung tools cannot pin platform threads.
 - **`installFetch()` short-circuit at `blocked`** — when a tool's `SandboxOverrides.networkMode` is `blocked`, `JsRuntimeGlobals.installFetch` does not bind `fetch` at all. Calling `fetch(...)` from JS throws `ReferenceError`. This is stricter than `strict` mode (which installs `fetch` and enforces the SSRF guard).
 - **`isClassAllowed` runs deny-first** — even when an override adds a class via `addAllowClasses`, the deny list is checked first. A tool author cannot re-enable `java.lang.Runtime` by adding it to allow; the resolver rejects conflicting allow/deny entries at policy build time.
+
+## Secret masking { #secret-masking }
+
+This section is the reference-runtime wiring for the masking contract declared in [safe-tool-specification → § 7.4 Secret masking pipeline](safe-tool-specification.md#74-secret-masking-pipeline). Two surfaces share the same `SecretMasking` filter: the JS-side `console.log` mask inside Layer 1, and the MCP-transport-side connection/error/per-call mask.
+
+```mermaid
+flowchart TB
+    SV["staticVariables[]<br/>(template values)"]
+    OS["OS env / JVM properties"]
+    R["EnvVarResolver.substitute"]
+    M["SecretMasking.collectFromTemplate<br/>→ Set&lt;String&gt; of resolved values"]
+
+    subgraph EGRESS["Masked text egress points"]
+        direction TB
+        E1["MCP tool-call log<br/>(LoggingMcpToolCallback)"]
+        E2["MCP client error / event log<br/>(McpClientService — startMcpClient + testConnection)"]
+        E3["Tool Studio UI<br/>connection JSON display<br/>(McpServerConfigView)"]
+        E4["Audit log entries"]
+        E5["console.log from tool code<br/>(JsToolExecutor.installConsoleLog)"]
+    end
+
+    SV --> R
+    OS --> R
+    R --> M
+    M -.mask.-> E1
+    M -.mask.-> E2
+    M -.mask.-> E3
+    M -.mask.-> E4
+    M -.mask.-> E5
+```
+
+The reference implementation lives in `org.springaicommunity.playground.service.util.SecretMasking`:
+
+| Method | Behavior |
+|---|---|
+| `collectFromTemplate(String template) → Set<String>` | Walks every `${NAME}` reference, resolves each via `EnvVarResolver.lookup`, collects values whose length is ≥ `MIN_MASK_LENGTH` (= 4) into an immutable `Set<String>`. |
+| `mask(String text, Set<String> secrets) → String` | Iterates `secrets` and `String.replace`s each match with `***` in `text`. Plain substring substitution — prefixes / suffixes around the secret survive; only the secret itself is redacted. |
+
+The `MIN_MASK_LENGTH = 4` floor prevents the mask from accidentally redacting `""`, `"a"`, or other near-empty resolutions that would otherwise blanket-replace innocuous substrings.
+
+Reference-runtime call sites (each is a MUST for conformant implementations per § 7.4):
+
+| Surface | Reference call site |
+|---|---|
+| Every published MCP tool-call log line | `LoggingMcpToolCallback` |
+| MCP client startup exception | `McpClientService.startMcpClient` |
+| MCP **Test Connection** transient failure | `McpClientService.testConnection` |
+| Tool Studio UI rendering of an MCP connection's JSON | `McpServerConfigView` |
+| `console.log` from inside the tool's JavaScript `code` | `JsToolExecutor.installConsoleLog` (via `maskKnownSecrets`) |
+
+What this layer does *not* cover:
+
+- The MCP server payload itself. If a server's tool *response* contains a credential, that text reaches chat unchanged — at that point it's tool output, not a connection-level message. Use `console.log` masking inside the tool wrapper if you need to redact tool-response content.
+- Encrypted OAuth tokens. They live on a separate surface keyed on a host-bound passphrase — see [Encrypted OAuth token storage](#encrypted-oauth-token-storage) below.
+
+Cross-references: [MCP Server → `${ENV_VAR}` substitution](features/mcp-server/index.md#custom-http-headers-and-env_var-substitution) for the placeholder syntax; [Default MCP Catalog → Environment variables](features/default-mcp-catalog/index.md#environment-variables-short-list) for the catalog-context summary.
+
+## Encrypted OAuth token storage
+
+A separate surface from the env-backed static-variable secrets above: when an MCP server connection uses OAuth 2.1, the resulting tokens are persisted to disk encrypted, keyed on a host- and user-bound passphrase.
+
+| Concern | Reference runtime |
+|---|---|
+| **Token path** | `~/spring-ai-playground/mcp/oauth-tokens/` (one file per authorized client), written by `EncryptedFileOAuth2AuthorizedClientRepository`. |
+| **Encryption** | AES via Spring Security's `Encryptors.text(passphrase, salt)` (`OAuthTokenEncryptor`). |
+| **Passphrase** | `hostname + ":" + user.home`, derived at process start. Never persisted to disk. |
+| **Salt** | `~/spring-ai-playground/.security/oauth.salt`, generated by `KeyGenerators.string()` on first use and `chmod 0600` on POSIX platforms. |
+
+The host-bound passphrase is what gives the tokens their geographic lock: copying the token directory to a different host or a different user account makes the same playground build unable to decrypt them — a backup restore requires both `mcp/oauth-tokens/` and `.security/oauth.salt`. This is intentional. Disk-copy alone is not sufficient to recover plaintext tokens.
+
+OAuth tokens are independent of the `SecretMasking` pipeline above: tokens never appear in connection JSON in plaintext, so there is nothing to mask at egress for them — the encrypted on-disk file is the only artifact, and the in-memory plaintext is short-lived inside Spring Security's `OAuth2AuthorizedClient`.
 
 ## Component view
 
@@ -310,7 +388,7 @@ There is no separate "Safety Level" knob — the Risk Level *is* the safety indi
 | **L4** | Broader access. Review before publish. | `networkMode: allowlist` with `*`, `networkMode: open`, `fileWrite: true`, file-read class added, reflection class added, ≥3 deny removals. | **Review before publish.** Justify the breadth. |
 | **L5** | Effectively unsandboxed. | `System` / `Runtime` / `Process` / `ProcessBuilder` re-enabled, OR file-write classes added directly. | **Trusted authors only.** Process spawn or raw write means the tool has the same authority as the JVM itself. |
 
-The full bullet-by-bullet rule set (which signal pushes the badge to which level) is in [Tool Studio → Risk Level Reference](features/tool-studio.md#risk-level-reference).
+The full bullet-by-bullet rule set (which signal pushes the badge to which level) is in [Tool Studio → Risk Level Reference](features/tool-studio/index.md#risk-level-reference).
 
 The Local Pass gate runs against the tool's *effective* policy, so a tool that exceeds its own declared capabilities fails its test before publish. This matters because the badge is not enforcement — the policy is. The badge advertises what the policy implies.
 
@@ -355,7 +433,7 @@ Today `java.lang.*` in `allow-classes` matches `java.lang.reflect.Method` becaus
 
 The YAML helper uses SnakeYAML's regular `Constructor` rather than `SafeConstructor`. Global tags such as `!!class.name` cause class instantiation during `load`. The output gets coerced through `jsonToProxy` before reaching JS, so user code never sees the resulting host object directly, but the instantiation has already happened in the JVM.
 
-**Mitigation today**: documented in [Tool Studio → Built-in Helpers](features/tool-studio.md#built-in-javascript-helpers). Treat YAML input as trusted-source-only.
+**Mitigation today**: documented in [Tool Studio → Built-in Helpers](features/tool-studio/index.md#built-in-javascript-helpers). Treat YAML input as trusted-source-only.
 
 ### `safety.parser.html` returns host `Document`
 
@@ -373,15 +451,15 @@ The HTML helper uses jsoup and returns the raw `org.jsoup.nodes.Document` host o
 
 Authoritative configuration lives in two places:
 
-- **Baseline policy**: `src/main/resources/application.yaml` under `spring.ai.playground.tool-studio.js-sandbox`. See [Tool Studio → JavaScript Runtime](features/tool-studio.md#javascript-runtime) for the keys and defaults.
-- **Per-tool overrides**: the `sandboxOverrides` block of each `ToolSpec` (in `default-tool-specs*.json` for bundled tools, or in user-authored tools saved through Tool Studio). See [Tool Studio → SandboxOverrides JSON shape](features/tool-studio.md#sandboxoverrides-json-shape).
+- **Baseline policy**: `src/main/resources/application.yaml` under `spring.ai.playground.tool-studio.js-sandbox`. See [Tool Studio → JavaScript Runtime](features/tool-studio/index.md#javascript-runtime) for the keys and defaults.
+- **Per-tool overrides**: the `sandboxOverrides` block of each `ToolSpec` (in `default-tool-specs*.json` for bundled tools, or in user-authored tools saved through Tool Studio). See [Tool Studio → SandboxOverrides JSON shape](features/tool-studio/index.md#sandboxoverrides-json-shape).
 
 Operational reference for the wider system runtime — UI surfaces, service layer, MCP transport, advisor chain — is on the [Application Architecture](architecture.md) page.
 
 ## Further reading
 
 - [Application Architecture](architecture.md) — runtime layers, feature modules, data flows
-- [Tool Studio → Safety](features/tool-studio.md#safety) — the user-facing three-layer summary, in context
-- [Tool Studio → Sandbox & Capabilities](features/tool-studio.md#sandbox-capabilities) — `SandboxOverrides` JSON shape, egress modes, SSRF four-layer steps, Risk Level rules
+- [Tool Studio → Safety](features/tool-studio/index.md#safety) — the user-facing three-layer summary, in context
+- [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities) — `SandboxOverrides` JSON shape, egress modes, SSRF four-layer steps, Risk Level rules
 - [GraalVM Security Guide](https://www.graalvm.org/latest/security-guide/sandboxing/) — Polyglot sandbox policies, `HostAccess`, `IOAccess`, `ResourceLimits`
 - [Spring AI MCP Security](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-security.html) — Layer 3 configuration

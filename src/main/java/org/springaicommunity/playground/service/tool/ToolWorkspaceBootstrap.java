@@ -33,7 +33,7 @@ import java.nio.file.Paths;
 public class ToolWorkspaceBootstrap {
 
     private static final Logger log = LoggerFactory.getLogger(ToolWorkspaceBootstrap.class);
-    private static final String SAMPLE_RESOURCES_PATTERN = "classpath*:tool-workspace-samples/*";
+    private static final String SAMPLE_RESOURCES_PATTERN = "classpath*:tool/workspace-samples/*";
 
     private final SpringAiPlaygroundOptions options;
     private final PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();

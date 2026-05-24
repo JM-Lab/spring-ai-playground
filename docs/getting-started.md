@@ -1,4 +1,4 @@
-Description: Install Spring AI Playground via desktop launcher, Docker, or source — configure Ollama / OpenAI, manage secrets, curate default MCP tools.
+description: Install Spring AI Playground via desktop launcher, Docker, or source — configure Ollama / OpenAI, manage secrets, curate default MCP tools.
 
 # Getting Started
 
@@ -121,7 +121,7 @@ Clicking **Advanced curation → Show** expands an Include / Exclude pair that m
 ![Default MCP Tools card with Advanced curation expanded — two columns (Include / Exclude) with By tag chips, By category chips, and a By name picker on each side](assets/images/launcher/launcher-default-tools-card-expanded.png)
 *The same card with `Advanced curation` expanded — Include (`+`) on the left adds tools matching any rule; Exclude (`−`) on the right removes them. Rules layer in this order: name-add → tag-add → category-add → name-remove → tag-remove → category-remove.*
 
-For the full preset contents, the CLI override, and the migration note from the prior `defaultToolOverrides.json`, see [Tool Studio → Pre-built Example Tools](features/tool-studio.md#pre-built-example-tools).
+For the full preset contents, the CLI override, and the migration note from the prior `defaultToolOverrides.json`, see [Tool Studio → Pre-built Example Tools](features/tool-studio/index.md#pre-built-example-tools).
 
 ## Desktop Configuration Walkthrough
 
@@ -235,7 +235,7 @@ This section is currently shown for the `Ollama` config type. Even if an `OpenAI
 
     - `OPENAI_API_KEY`
     - `GOOGLE_API_KEY`
-    - `PSE_ID`
+    - `GOOGLE_PSE_ID`
     - `SLACK_WEBHOOK_URL`
     - custom variables added with `Add Environment Variable`
 
@@ -259,7 +259,7 @@ This section is currently shown for the `Ollama` config type. Even if an `OpenAI
 
     This is why the env-var pathway is the recommended place for `OPENAI_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_API_KEY`, and any other tool-side secret — the value reaches `Tool Studio` and the bundled tools through `System.getenv()` rather than through a config file checked into git.
 
-    **The resolved value is also masked from `console.log` output** in Tool Studio's Debug Console and in Agentic Chat's tool-call trace — any tool that references the env var as a static variable (or builds a string containing its resolved value) sees the secret substring replaced before the line surfaces in the UI. See [Tool Studio → Built-in JavaScript Helpers — `console.log`](features/tool-studio.md#built-in-javascript-helpers) for the masking rule details (anchored full-string env-refs are auto-collected; substring-concatenated values are masked best-effort).
+    **The resolved value is also masked from `console.log` output** in Tool Studio's Debug Console and in Agentic Chat's tool-call trace — any tool that references the env var as a static variable (or builds a string containing its resolved value) sees the secret substring replaced before the line surfaces in the UI. See [Tool Studio → Built-in JavaScript Helpers — `console.log`](features/tool-studio/index.md#built-in-javascript-helpers) for the masking rule details (anchored full-string env-refs are auto-collected; substring-concatenated values are masked best-effort).
 
     For the current desktop behavior:
 
@@ -389,6 +389,10 @@ http://localhost:8282/mcp
 
 That endpoint is central to Tool Studio, MCP Inspector, and Agentic Chat with tools.
 
+## External MCP Catalog
+
+Beyond the built-in server, the app ships a **preset catalog of 57 MCP server connections** that appear in the MCP Server sidebar's **Inactive MCP** section — clicking an entry pre-fills the configuration form with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders, so the easiest first external connection is a one-click activation. The catalog spans mail / calendar / chat / project trackers / code hosting / search / cloud / databases / payments / CRM / design plus two reference test servers (`MCP Everything`, `DeepWiki`). See the [MCP Catalog directory](features/default-mcp-catalog/index.md) for the per-category browse and [MCP Server → Catalog & Sidebar Filtering](features/mcp-server/index.md#catalog-sidebar-filtering) for the sidebar mechanics.
+
 ## Verify Your Download
 
 Each release ships with two integrity guarantees. Verifying is optional, but recommended for production use.
@@ -400,13 +404,13 @@ Every installer has a matching `.sha256` file in the release assets. Compare the
 macOS / Linux:
 
 ```bash
-shasum -a 256 -c spring-ai-playground-0.2.0-M6-mac-arm64.dmg.sha256
+shasum -a 256 -c spring-ai-playground-0.2.0-M7-mac-arm64.dmg.sha256
 ```
 
 Windows (PowerShell):
 
 ```powershell
-Get-FileHash spring-ai-playground-0.2.0-M6-win-x64.exe -Algorithm SHA256
+Get-FileHash spring-ai-playground-0.2.0-M7-win-x64.exe -Algorithm SHA256
 # then compare the value with the one inside the .sha256 file
 ```
 
@@ -415,7 +419,7 @@ Get-FileHash spring-ai-playground-0.2.0-M6-win-x64.exe -Algorithm SHA256
 Every installer is signed at build time by the official GitHub Actions release workflow using a short-lived Sigstore key, and the attestation is recorded in the public transparency log. The [GitHub CLI](https://cli.github.com/) can verify the file came from this repo's release workflow:
 
 ```bash
-gh attestation verify spring-ai-playground-0.2.0-M6-mac-arm64.dmg \
+gh attestation verify spring-ai-playground-0.2.0-M7-mac-arm64.dmg \
   --owner spring-ai-community
 ```
 
@@ -535,7 +539,7 @@ The `-v spring-ai-playground:/root` named volume keeps authored tools, saved too
 
 Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel — the web UI runs in the same process either way; the port mapping just exposes it. Pick a different host port (e.g. `-p 9000:8282`) if 8282 is in use.
 
-The container ships with the gateway and authoring UI on. The **Starter 5** preset has no required credentials and works out of the box; other presets and individual catalog tools stay dormant until you supply the matching environment variables. Pass them with `-e NAME=value` flags on the same `docker run` line — the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PSE_ID`, `SLACK_WEBHOOK_URL`, …) are listed in [Use Environment Variables for Keys and Secrets](#7-use-environment-variables-for-keys-and-secrets). The File Toolkit preset additionally honors `TOOL_STUDIO_FS_BASE` to set the base path for `safety.fs`; if unset it defaults to the container's `$HOME` (typically `/root`).
+The container ships with the gateway and authoring UI on. The **Starter 5** preset has no required credentials and works out of the box; other presets and individual catalog tools stay dormant until you supply the matching environment variables. Pass them with `-e NAME=value` flags on the same `docker run` line — the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_PSE_ID`, `SLACK_WEBHOOK_URL`, …) are listed in [Use Environment Variables for Keys and Secrets](#7-use-environment-variables-for-keys-and-secrets). The File Toolkit preset additionally honors `TOOL_STUDIO_FS_BASE` to set the base path for `safety.fs`; if unset it defaults to `$HOME/spring-ai-playground/fs-tool-workspace` inside the container (typically `/root/spring-ai-playground/fs-tool-workspace`).
 
 The `mcp-stdio` profile silences the CONSOLE log appender so stdout stays a clean JSON-RPC channel; rolling-file logs at `~/spring-ai-playground/logs/` are unaffected.
 
@@ -582,7 +586,7 @@ For Claude Desktop, point `claude_desktop_config.json` at the absolute JAR path:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/spring-ai-playground-0.2.0-M6.jar",
+        "/absolute/path/to/spring-ai-playground-0.2.0-M7.jar",
         "--spring.profiles.include=mcp-stdio"
       ]
     }
@@ -636,9 +640,9 @@ The default profile is `ollama`, and the default setup uses Ollama for both chat
 
 The current default model choices are:
 
-- chat model: `qwen3.5`
+- chat model: `qwen3.5:2b`
 - embedding model: `qwen3-embedding:0.6b`
-- selectable chat models: `qwen3.5`, `qwen3.5:2b`, `gemma4`, `gpt-oss`, `deepseek-r1`
+- selectable chat models: `qwen3.5:2b`, `qwen3.5:9b`, `qwen3.6:35b`, `gemma4:e4b`, `gpt-oss:20b`, `deepseek-r1:8b`
 
 Important notes:
 

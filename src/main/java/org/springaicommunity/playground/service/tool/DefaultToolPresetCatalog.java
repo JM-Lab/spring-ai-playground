@@ -36,7 +36,7 @@ public class DefaultToolPresetCatalog {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultToolPresetCatalog.class);
-    private static final String RESOURCE_PATH = "default-tool-presets.json";
+    private static final String RESOURCE_PATH = "tool/default-tool-presets.json";
 
     private final List<Preset> presets;
 

@@ -1,4 +1,4 @@
-Description: Default Tools — Korea reference. 21 Korea-locale tools — Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain.
+description: Default Tools — Korea reference. 21 Korea-locale tools — Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain.
 
 # Default Tools — Korea
 
@@ -6,7 +6,7 @@ The 21 tools in `default-tool-specs-kr.json` are **Korea-locale services** — c
 
 Most return **Korean text in their response payloads** — names, addresses, codenames — so a chat agent calling them should be locale-aware. Eight are no-key (Upbit endpoints, Bithumb endpoints, iTunes K-pop, Open Beauty Facts), the other thirteen need provider-issued keys. Provider keys live in the tool's static variables as `${ENV_VAR}` placeholders that resolve at runtime from the JVM environment — they are not committed to the spec.
 
-Like the global network tools, every fetch runs through [the SSRF four-layer guard](../tool-studio.md#ssrf-four-layer-guard) in the default strict egress mode.
+Like the global network tools, every fetch runs through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) in the default strict egress mode.
 
 ## Browse the 21 services { #browse-the-services }
 
@@ -2082,5 +2082,4 @@ Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts — se
 
 The launcher's **Environment Variables** card is the recommended place to set the whole keychain at once. Each `${ENV_VAR}` placeholder on the tool's static variables resolves at runtime from the JVM environment; the resolved string is masked from `console.log` whenever it appears in the trace.
 
-→ [Tool Studio: Static Variables](../tool-studio.md#key-tool-studio-capabilities) — how the masking works.
-→ [Index](index.md) — overview of all 86 default tools and the five reference pages.
+→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) — how the masking works.

@@ -1,0 +1,15 @@
+[
+  { "id": "TEXT",         "displayName": "Text & Strings",  "order": 10,  "icon": "font",            "description": "String manipulation: regex, sort, diff, escape, encode" },
+  { "id": "DATA",         "displayName": "Data Formats",    "order": 20,  "icon": "table",           "description": "Structured data parse / serialize (CSV, JSON, YAML, ...)" },
+  { "id": "DATETIME",     "displayName": "Date & Time",     "order": 30,  "icon": "clock",           "description": "Parse, format, arithmetic, timezone, cron" },
+  { "id": "MATH",         "displayName": "Math & Compute",  "order": 40,  "icon": "calc",            "description": "Statistics, expression evaluation, numeric operations" },
+  { "id": "ENCODING",     "displayName": "Encoding",        "order": 50,  "icon": "exchange",        "description": "Binary <-> text encoding (base64, hex, ...)" },
+  { "id": "CRYPTO",       "displayName": "Crypto & Random", "order": 60,  "icon": "key",             "description": "Hash, HMAC, CSPRNG, UUID, JWT — deterministic crypto and randomness" },
+  { "id": "SECURITY",     "displayName": "Security",        "order": 70,  "icon": "shield",          "description": "Secret detection, PII scanning, integrity checks" },
+  { "id": "FILE",         "displayName": "Files",           "order": 75,  "icon": "folder-open",     "description": "Filesystem read tools (grep, find, slice, sort) inside the configured base path" },
+  { "id": "WEB",          "displayName": "Web",             "order": 80,  "icon": "globe",           "description": "External content retrieval (fetch, search, scrape)" },
+  { "id": "PRODUCTIVITY", "displayName": "Productivity",    "order": 90,  "icon": "envelope-open",   "description": "Email, calendar, notes, task managers" },
+  { "id": "MESSAGING",    "displayName": "Messaging",       "order": 100, "icon": "comments",        "description": "Chat / messaging / notifications" },
+  { "id": "AI",           "displayName": "AI APIs",         "order": 110, "icon": "magic",           "description": "LLM and ML provider integrations" },
+  { "id": "CUSTOM",       "displayName": "Custom",          "order": 999, "icon": "plus",            "description": "User-defined tools without catalog match" }
+]
