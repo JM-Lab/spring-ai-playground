@@ -260,9 +260,9 @@ If you have a contribution that fits the current scope (bug report, doc fix, usa
 
 ## Anonymous Usage Telemetry
 
-The official build sends anonymous usage data (page views, app surface, device/browser
-info) to the maintainer's Google Tag Manager / Google Analytics account so the most-used
-features can be prioritized. IPs are anonymized by Google. The same opt-out switch applies
+The official build sends anonymous usage data (page views, feature interaction events,
+device/browser info) to the maintainer's Google Tag Manager / Google Analytics account so
+the most-used features can be prioritized. IPs are anonymized by Google. The same opt-out switch applies
 to both the web app and every desktop launcher window (splash, server-splash, config
 editor, Ollama manager):
 

@@ -510,3 +510,10 @@ It is intentionally opinionated and scope-limited in its current stage. The goal
 - [AI Agent Observability Architecture](observability-architecture.md): trace pipeline, storage tiers, configuration, and external export paths behind the twelve dashboards
 - [Features](features/index.md): the main product areas and what they do
 - [Tutorials](tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat
+
+## Analytics
+
+This site uses Google Analytics to collect anonymous usage data — page views,
+interaction events, and device/browser metadata — for product analysis.
+
+To opt out, use your browser's tracker-blocking extension or Do Not Track setting.

@@ -110,24 +110,30 @@
       }
     })();
   </script>
-  {% set ga_measurement_id = "G-52TGT1G9B3" %}
+  {% set ga_measurement_id = "GT-TWMPFGKJ" %}
   {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
   {% set ga_page_title = "Doc - " ~ page.title if page and page.title else "Doc - " ~ config.site_name %}
   {% set page_description = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = config.site_url ~ page.url if page and page.url else config.site_url %}
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('set', 'user_properties', {
-      app_surface: 'docs'
-    });
-    gtag('config', '{{ ga_measurement_id }}', {
-      app_name: 'spring-ai-playground-docs',
-      app_surface: 'docs',
-      page_title: '{{ ga_page_title | e }}'
-    });
+    // GA loads only on the prod docs domain — silently skips localhost, 127.0.0.1, PR previews, forks.
+    (function () {
+      if (window.location.hostname !== 'spring-ai-community.github.io') return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}';
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('set', 'user_properties', { app_surface: 'docs' });
+      gtag('config', '{{ ga_measurement_id }}', {
+        app_name: 'spring-ai-playground-docs',
+        app_surface: 'docs',
+        page_title: '{{ ga_page_title | e }}'
+      });
+    })();
   </script>
   {# Open Graph and Twitter Card meta — kept here as a fallback when the
      mkdocs-material `social` plugin is not active (e.g. local dev without

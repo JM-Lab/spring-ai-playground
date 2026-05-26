@@ -4,7 +4,7 @@ site_url: https://spring-ai-community.github.io/spring-ai-playground/
 site_author: Spring AI Community
 repo_url: https://github.com/spring-ai-community/spring-ai-playground
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; 2025 Spring AI Community · <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>
+copyright: Copyright &copy; 2025 Spring AI Community · <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> · <a href="/spring-ai-playground/#analytics">Analytics</a>
 
 extra:
   generator: false
@@ -25,6 +25,8 @@ plugins:
       zoomable: true
       draggable: true
       auto_caption: false
+      skip_classes:
+        - tcg-favicon
   - social:
       cards_layout_options:
         background_color: "#3F51B5"

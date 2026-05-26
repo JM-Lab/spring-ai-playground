@@ -219,33 +219,84 @@ Kakao aggregator hub — KakaoTalk send-to-self, Talk Calendar, KakaoMap, Gift, 
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; Kakao · T1 vendor</div>
-<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;OAuth 2.1</div>
+<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;Bearer (OTT-derived)</div>
 </div>
-<div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
+<div class="tcg-cta">Click for transport · auth · setup · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
 **Vendor** — Kakao (vendor-official (Tier 1))
 
-**Transport** — Streamable HTTP
+**Transport** — Streamable HTTP at `https://playmcp.kakao.com/mcp`
 
-**URL** — `https://playmcp.kakao.com/mcp`
+**Auth** — `Authorization: Bearer ${KAKAO_PLAYMCP_TOKEN}` header. PlayMCP does not support standard OAuth 2.1 Authorization Code (`redirect_uri` is not registered and the public DCR endpoint is IP-allowlisted), so the OAuth form is not used. Issue a One-Time Token (OTT), exchange it for an access token, export the access token as `KAKAO_PLAYMCP_TOKEN`, then activate. Access tokens are valid for 12 hours; refresh tokens for 90 days.
 
-**Auth** — OAuth 2.1
+**Required env** — `KAKAO_PLAYMCP_TOKEN` &nbsp; **Stability** — GA · **Tier** — Tier 1 &nbsp; **Tags** — korea · aggregator
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 1
+#### Setup (one-time, ~3 minutes)
 
-**Required env** — —
+**1. Issue an OTT.** Open [https://playmcp.kakao.com/toolbox](https://playmcp.kakao.com/toolbox), sign in with Kakao, find the **OpenClaw** integration and click **Connect**. PlayMCP issues a 64-character hex OTT, valid for ~10 minutes. Copy it.
 
-**Tags** — korea · aggregator
+**2. Exchange the OTT for access + refresh tokens and print them.** The playground manages the env values itself — copy the two printed lines into its **Environment Variables** card (desktop launcher or `Edit Config`) before launching, then start / restart the app.
+
+macOS · Linux · WSL · Git Bash — only `curl` and `sed`:
+
+```bash
+export OTT="paste-the-64-hex-OTT-here"
+
+RESP=$(curl -sS -X POST 'https://playmcp.kakao.com/api/v1/auths/otts:exchange' \
+  -H 'Content-Type: application/json' \
+  -d "{\"tokenValue\":\"$OTT\"}")
+
+echo "KAKAO_PLAYMCP_TOKEN=$(printf '%s'   "$RESP" | sed -nE 's/.*"accessToken":\{[^}]*"tokenValue":"([^"]+)".*/\1/p')"
+echo "KAKAO_PLAYMCP_REFRESH=$(printf '%s' "$RESP" | sed -nE 's/.*"refreshToken":\{[^}]*"tokenValue":"([^"]+)".*/\1/p')"
+```
+
+Windows PowerShell — uses the built-in `Invoke-RestMethod` + `ConvertFrom-Json`:
+
+```powershell
+$OTT = "paste-the-64-hex-OTT-here"
+
+$resp = Invoke-RestMethod -Method Post `
+  -Uri 'https://playmcp.kakao.com/api/v1/auths/otts:exchange' `
+  -ContentType 'application/json' `
+  -Body "{`"tokenValue`":`"$OTT`"}"
+
+Write-Host "KAKAO_PLAYMCP_TOKEN=$($resp.accessToken.tokenValue)"
+Write-Host "KAKAO_PLAYMCP_REFRESH=$($resp.refreshToken.tokenValue)"
+```
+
+**3. Paste the two `KAKAO_PLAYMCP_*` lines into the playground's Environment Variables**, then start (or restart) the playground.
+
+**4. Activate the catalog entry.** MCP Server page → **Inactive MCP → Productivity → Kakao PlayMCP** → click. The form pre-fills with Transport `Streamable HTTP`, URL `https://playmcp.kakao.com/mcp`, and `Authorization: Bearer ${KAKAO_PLAYMCP_TOKEN}` in Headers. Click **Save & Connect** — the dot turns green and the Inspector shows `kakaotalk_send_to_self`, `talk_calendar_*`, `kakaomap_*`, `gift_*`, `melon_*`, plus 200+ third-party relays.
+
+#### Refresh ritual (every 12 hours)
+
+The access token expires in 12 hours. Run the refresh-token grant below, then **handle the two printed `KAKAO_PLAYMCP_*` lines exactly as in step 2** — paste into the playground's Environment Variables, restart, click **Save & Connect**.
+
+```bash
+RESP=$(curl -sS -X POST 'https://playauth.kakao.com/playmcp/oauth2/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=refresh_token' \
+  -d "refresh_token=$KAKAO_PLAYMCP_REFRESH" \
+  -d 'client_id=HElMUWdVoroTsrXxezeTSemg8gXzzCKWARb5MJux8gY')
+
+echo "KAKAO_PLAYMCP_TOKEN=$(printf '%s'   "$RESP" | sed -nE 's/.*"access_token":"([^"]+)".*/\1/p')"
+echo "KAKAO_PLAYMCP_REFRESH=$(printf '%s' "$RESP" | sed -nE 's/.*"refresh_token":"([^"]+)".*/\1/p')"
+```
+
+The grant endpoint returns snake_case `access_token` / `refresh_token` at the top level (different from the OTT exchange shape), so the regex differs — that's the only change from step 2.
+
+#### Refresh ritual (every 90 days)
+
+The refresh token expires after 90 days. When that happens, the 12-hour grant returns an error — start over from step 1 (issue a new OTT, exchange it, paste into Environment Variables).
 
 **Description**
 
 Kakao aggregator hub — KakaoTalk send-to-self, Talk Calendar, KakaoMap, Gift, Melon, plus 200+ third-party MCPs. KR-focused.
 
-Docs: https://playmcp.kakao.com/
+**Docs**
 
-**Docs** — [https://playmcp.kakao.com/](https://playmcp.kakao.com/)
+- PlayMCP product — [https://playmcp.kakao.com/](https://playmcp.kakao.com/)
 
 </div>
 </div>
@@ -352,7 +403,7 @@ Every entry on this page uses OAuth 2.1 Authorization Code. Two also need an OS 
 | Outlook Mail | `https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0` | `MS_TENANT_ID` |
 | Outlook Calendar | `https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0` | `MS_TENANT_ID` |
 | Notion | Notion-hosted OAuth 2.1 + PKCE | — |
-| Kakao PlayMCP | Kakao OAuth (KR domain) | — |
+| Kakao PlayMCP | Bearer header (OTT-derived access token), 12 h refresh ritual — [setup](#Kakao-PlayMCP) | `KAKAO_PLAYMCP_TOKEN` |
 | Slack | Slack-hosted OAuth | — |
 | Microsoft Teams | `https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0` | `MS_TENANT_ID` |
 
