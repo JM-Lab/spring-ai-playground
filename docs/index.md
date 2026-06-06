@@ -1,5 +1,5 @@
 title: Safe Local Execution Layer for AI Agent Tools
-description: Cross-platform desktop app for building, testing, and publishing MCP tools — Tool Studio, defense-in-depth sandbox, Risk Level (L0–L5), Agentic Chat, RAG, and built-in observability dashboards.
+description: Cross-platform desktop app for building, testing, and publishing MCP tools - Tool Studio, defense-in-depth sandbox, Risk Level (L0-L5), Agentic Chat, RAG, and built-in observability dashboards.
 
 # Spring AI Playground
 
@@ -9,9 +9,9 @@ Spring AI Playground is a cross-platform desktop app for building, testing, vali
 
 > **No pass, no run.**
 
-Every tool you build earns a **Local Pass** — a local test-run with sample arguments. Only tools that pass are added live to the built-in MCP server and become callable from Agentic Chat. Nothing you author reaches an agent until you have seen it work on your own machine.
+Every tool you build earns a **Local Pass** - a local test-run with sample arguments. Only tools that pass are added live to the built-in MCP server and become callable from Agentic Chat. Nothing you author reaches an agent until you have seen it work on your own machine.
 
-Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** — twelve panels (Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces) backed by a ring buffer with dated disk persistence. Drill from any row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — the tools you let an agent call are also the tools you can audit in detail afterwards.
+Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** - twelve panels (Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces) backed by a ring buffer with dated disk persistence. Drill from any row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat - the tools you let an agent call are also the tools you can audit in detail afterwards.
 
 The desktop app is the recommended default experience, but Docker and local source execution are still supported when you want a server-style deployment or a development workflow.
 
@@ -19,23 +19,24 @@ Unlike many playgrounds that stop at prompt testing, this project connects AI co
 
 - build JavaScript tools directly in the app
 - earn a **Local Pass** by test-running each tool against sample arguments you define
-- **add tools live to the built-in MCP server** the moment each passes — no restart, no redeploy
-- start immediately with **86 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services — [see the spotlight section below](#what-used-to-take-an-afternoon-already-wired-in) for the categorised browse
-- connect external surfaces in one click with **57 preset MCP server connections** (Gmail · Outlook · Notion · Slack · GitHub · Linear · Atlassian · Stripe · Figma · BigQuery · Cloudflare · Tavily · MCP Everything · …) — same spotlight section below covers the full per-category browse
+- **add tools live to the built-in MCP server** the moment each passes - no restart, no redeploy
+- start immediately with **86 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services - [see the spotlight section below](#what-used-to-take-an-afternoon-already-wired-in) for the categorised browse
+- connect external surfaces in one click with **57 preset MCP server connections** (Gmail · Outlook · Notion · Slack · GitHub · Linear · Atlassian · Stripe · Figma · BigQuery · Cloudflare · Tavily · MCP Everything · ...) - same spotlight section below covers the full per-category browse
 - validate retrieval pipelines against your own documents
 - run agentic chat that combines tool use and grounded context (e.g. *"Get today's weather and send it to Slack"*)
-- run every tool through a **defense-in-depth GraalVM sandbox** with a deny-first class allowlist, SSRF-guarded `fetch`, rooted `safety.fs`, statement + wall-clock limits, and a visible per-tool **Risk Level** (L0–L5) — see [AI Agent Tool Safety Architecture](safety-architecture.md)
-- **see every chat, tool call, vector query, and MCP invocation** in the twelve built-in [Observability dashboards](features/observability/index.md) — drill into span timelines, jump back to the source conversation, watch token cost and latency live, deep-link from a trace into Agentic Chat
+- run every tool through a **defense-in-depth GraalVM sandbox** with a deny-first class allowlist, SSRF-guarded `fetch`, rooted `safety.fs`, statement + wall-clock limits, and a visible per-tool **Risk Level** (L0-L5) - with a parallel **risk score** scoring every external MCP server you connect (and a description poisoning scan on tools you re-expose) - see [AI Agent Tool Safety Architecture](safety-architecture.md)
+- **see every chat, tool call, vector query, and MCP invocation** in the twelve built-in [Observability dashboards](features/observability/index.md) - drill into span timelines, jump back to the source conversation, watch token cost and latency live, deep-link from a trace into Agentic Chat
 
 <div style="text-align: center;">
-  <b>Agentic Chat Demo</b><br/>
-  Tool-enabled agentic AI built with Spring AI and MCP
+  <b>Spring AI Playground - Demo</b><br/>
+  Connect an MCP server · compose a safe proxy · human-in-the-loop approval · full observability
 </div>
 
 <div style="text-align: center;">
-  <a href="assets/images/agentic-chat-demo.gif">
-    <img src="assets/images/agentic-chat-demo.gif" width="800" alt="Spring AI Playground Agentic Chat Demo"/>
-  </a>
+  <video src="assets/images/spring-ai-playground-demo.mp4" width="820" autoplay loop muted playsinline controls
+         poster="assets/images/spring-ai-playground-demo-poster.png">
+    <a href="assets/images/spring-ai-playground-demo.mp4">Watch the demo</a>
+  </video>
 </div>
 
 ## :material-rocket-launch: Quick Start
@@ -162,7 +163,7 @@ Pick the asset that matches your platform.
       confirmFilename.hidden = false;
       confirmFilename.textContent = button.dataset.resolved || '';
     }
-    confirmSize.textContent = (!isUnresolved && button.dataset.size) ? button.dataset.size : '—';
+    confirmSize.textContent = (!isUnresolved && button.dataset.size) ? button.dataset.size : '-';
     confirmGo.href = button.href;
     if (confirmGoLabel) {
       confirmGoLabel.textContent = isUnresolved ? 'Open Releases page' : 'Download';
@@ -301,10 +302,10 @@ If you install the app, you can run Spring AI Playground immediately without set
 >
 > Gatekeeper may block the install flow in two places:
 >
-> - When you open the downloaded DMG, macOS may show a warning such as “cannot be opened because the developer cannot be verified.” If you trust the release source, go to **System Settings > Privacy & Security** and click **Open Anyway**.
+> - When you open the downloaded DMG, macOS may show a warning such as "cannot be opened because the developer cannot be verified." If you trust the release source, go to **System Settings > Privacy & Security** and click **Open Anyway**.
 > - After copying the app into **Applications**, macOS may block the first app launch again. If that happens, open the app once, then return to **System Settings > Privacy & Security** and click **Open Anyway**.
 >
-> If the app still doesn’t open because it remains quarantined, and you trust the app, one practical workaround is:
+> If the app still doesn't open because it remains quarantined, and you trust the app, one practical workaround is:
 >
 > ```bash
 > xattr -dr com.apple.quarantine "/Applications/Spring AI Playground.app"
@@ -314,7 +315,7 @@ If you install the app, you can run Spring AI Playground immediately without set
 >
 > The most common warning appears when you run the downloaded installer (`.exe`).
 >
-> If Microsoft Defender SmartScreen shows a warning such as “Windows protected your PC” or says the app is unrecognized:
+> If Microsoft Defender SmartScreen shows a warning such as "Windows protected your PC" or says the app is unrecognized:
 >
 > - Click **More info**
 > - Then click **Run anyway**
@@ -327,12 +328,12 @@ If you install the app, you can run Spring AI Playground immediately without set
 
 <div style="text-align: center;">
   <b>First-Launch Configuration Screen</b><br/>
-  Desktop launcher overview — config editor, Default MCP Tools curation, JVM &amp; environment cards on one screen
+  Desktop launcher overview - config editor, Default MCP Tools curation, JVM &amp; environment cards on one screen
 </div>
 
 <div style="text-align: center;">
   <a href="assets/images/launcher-openai.png">
-    <img src="assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen — Spring AI Playground Config + Ollama startup + Default MCP Tools + Environment Variables + JVM Settings"/>
+    <img src="assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen - Spring AI Playground Config + Ollama startup + Default MCP Tools + Environment Variables + JVM Settings"/>
   </a>
 </div>
 
@@ -353,7 +354,7 @@ The desktop build is intended to be the easiest way to get started without setti
 
 ### 4. Optional: Use Docker Instead
 
-By default the container behaves like the desktop / source app — Vaadin web UI on `http://localhost:8282` and a `streamable-http` MCP server in the same process. To use it as a stdio MCP server for Claude Desktop and other MCP clients instead, add `-e SPRING_PROFILES_INCLUDE=mcp-stdio` (see the [Docker section in Alternative Runtimes](getting-started/alternative-runtimes.md#docker)).
+By default the container behaves like the desktop / source app - Vaadin web UI on `http://localhost:8282` and a `streamable-http` MCP server in the same process. To use it as a stdio MCP server for Claude Desktop and other MCP clients instead, add `-e SPRING_PROFILES_INCLUDE=mcp-stdio` (see the [Docker section in Alternative Runtimes](getting-started/alternative-runtimes.md#docker)).
 
 ```bash
 docker run -d -p 8282:8282 --name spring-ai-playground \
@@ -365,11 +366,11 @@ docker run -d -p 8282:8282 --name spring-ai-playground \
 
 Then open `http://localhost:8282`.
 
-## :material-flash: What used to take an afternoon — already wired in
+## :material-flash: What used to take an afternoon - already wired in
 
-Installing an external MCP server normally means cloning a repo, installing the right runtime, registering an OAuth app, exporting tokens, and restarting your host. We did that 57 times so you don't have to. The 86 default tools ship in the same box. Every tool carries a visible **Risk Level (L0–L5)** — the sandbox, Local Pass, `${ENV_VAR}` substitution, and SecretMasking handle the rest.
+Installing an external MCP server normally means cloning a repo, installing the right runtime, registering an OAuth app, exporting tokens, and restarting your host. We did that 57 times so you don't have to. The 86 default tools ship in the same box. Every tool carries a visible **Risk Level (L0-L5)** - the sandbox, Local Pass, `${ENV_VAR}` substitution, and SecretMasking handle the rest.
 
-### Built-in tools — call from chat the moment you launch
+### Built-in tools - call from chat the moment you launch
 
 <div class="tcg-grid--home" markdown>
 
@@ -377,21 +378,21 @@ Installing an external MCP server normally means cloning a repo, installing the 
 <a class="tcg-stretched-link" href="features/default-tools/examples/#getWeather" aria-label="Open getWeather"></a>
 <span class="tcg-home-icon">:material-weather-partly-cloudy:</span>
 <span class="tcg-home-name">getWeather</span>
-<span class="tcg-home-pill risk-l0">L0</span>
+<span class="tcg-home-pill risk-l3">L3</span>
 </div>
 
 <div class="tcg-card--home" markdown>
 <a class="tcg-stretched-link" href="features/default-tools/global/#searchWikipedia" aria-label="Open searchWikipedia"></a>
 <span class="tcg-home-icon">:material-book-search-outline:</span>
 <span class="tcg-home-name">searchWikipedia</span>
-<span class="tcg-home-pill risk-l0">L0</span>
+<span class="tcg-home-pill risk-l3">L3</span>
 </div>
 
 <div class="tcg-card--home" markdown>
 <a class="tcg-stretched-link" href="features/default-tools/examples/#extractPageContent" aria-label="Open extractPageContent"></a>
 <span class="tcg-home-icon">:material-text-box-search-outline:</span>
 <span class="tcg-home-name">extractPageContent</span>
-<span class="tcg-home-pill risk-l0">L0</span>
+<span class="tcg-home-pill risk-l3">L3</span>
 </div>
 
 <div class="tcg-card--home" markdown>
@@ -419,7 +420,7 @@ Installing an external MCP server normally means cloning a repo, installing the 
 
 <p class="home-spotlight-cta">→ <a href="features/default-tools/index.md">Browse all 86 default tools</a> across Examples (7) · Utilities (26) · Filesystem (10) · Global (22) · Korea (21).</p>
 
-### External MCP — one click in the sidebar, fill `${ENV_VAR}`, done
+### External MCP - one click in the sidebar, fill `${ENV_VAR}`, done
 
 <div class="tcg-grid--home" markdown>
 
@@ -432,7 +433,7 @@ Installing an external MCP server normally means cloning a repo, installing the 
 
 <div class="tcg-card--home t-slack" markdown>
 <a class="tcg-stretched-link" href="features/default-mcp-catalog/productivity/#Slack" aria-label="Open Slack"></a>
-<span class="tcg-home-icon">![Slack](https://cdn.simpleicons.org/slack){ width="20" }</span>
+<span class="tcg-home-icon">:material-slack:</span>
 <span class="tcg-home-name">Slack</span>
 <span class="tcg-home-oauth" title="OAuth 2.1">🔐</span>
 </div>
@@ -468,14 +469,14 @@ Installing an external MCP server normally means cloning a repo, installing the 
 
 </div>
 
-<p class="home-spotlight-cta">→ <a href="features/default-mcp-catalog/index.md">Browse all 57 preset MCP connections</a> across Productivity & Communication (8) · Dev & Project Management (12) · Data & Cloud (17) · Business (12) · Search (6) · Examples (2). New to this surface? Walk through <a href="tutorials/9-mcp-everything.md">Tutorial 9 — MCP Everything: All 8 Primitives in One Walkthrough</a>.</p>
+<p class="home-spotlight-cta">→ <a href="features/default-mcp-catalog/index.md">Browse all 57 preset MCP connections</a> across Productivity & Communication (8) · Dev & Project Management (12) · Data & Cloud (17) · Business (12) · Search (6) · Examples (2). New to this surface? Walk through <a href="tutorials/9-mcp-everything.md">Tutorial 9 - MCP Everything: All 8 Primitives in One Walkthrough</a>.</p>
 
 ## :material-view-grid-outline: What You Can Do
 
 - [:material-robot-outline: AI Models](getting-started/index.md#model-configuration): switch between Ollama, OpenAI, and OpenAI-compatible runtime paths.
 - [:material-tools: Tool Studio](features/tool-studio/index.md): build low-code tools in JavaScript and expose them instantly through MCP.
-- [:material-connection: MCP Server](features/mcp-server/index.md): inspect external MCP servers and consume built-in MCP tools.
-- [:material-server-network: Default MCP Catalog](features/default-mcp-catalog/index.md): 49 preset external MCP server connections (Gmail, Notion, Slack, GitHub, Tavily, ...) gated on `${ENV_VAR}` placeholders.
+- [:material-connection: MCP Server](features/mcp-server/index.md): inspect external MCP servers, read a live **risk score** (L0-L5) before connecting, and **proxy** their tools onto the built-in server - compose multiple servers into one surface - each gated by per-tool human-in-the-loop.
+- [:material-server-network: Default MCP Servers](features/default-mcp-catalog/index.md): 57 preset external MCP server connections (Gmail, Notion, Slack, GitHub, Tavily, ...) gated on `${ENV_VAR}` placeholders.
 - [:material-database-search: RAG](features/vector-database.md): upload content, chunk it, embed it, index it, and validate retrieval quality.
 - [:material-chat-processing: Agentic Chat](features/agentic-chat.md): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow.
 - [:material-chart-line: Observability](features/observability/index.md): twelve in-app dashboards covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail.
@@ -513,7 +514,7 @@ It is intentionally opinionated and scope-limited in its current stage. The goal
 
 ## Analytics
 
-This site uses Google Analytics to collect anonymous usage data — page views,
-interaction events, and device/browser metadata — for product analysis.
+This site uses Google Analytics to collect anonymous usage data - page views,
+interaction events, and device/browser metadata - for product analysis.
 
 To opt out, use your browser's tracker-blocking extension or Do Not Track setting.

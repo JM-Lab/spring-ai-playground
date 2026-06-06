@@ -96,7 +96,7 @@ class DefaultToolSpecMcpExposureTest {
                 .containsAll(shippedNames);
     }
 
-    @Value("${spring.ai.playground.default-tool-location:}")
+    @Value("${spring.ai.playground.tool-studio.spec-location:}")
     String resolvedLocation;
 
     @Autowired

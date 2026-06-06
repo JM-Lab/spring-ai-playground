@@ -1,12 +1,13 @@
-description: Default Tools — Examples reference. 7 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
+title: Default Tool Examples
+description: Default Tools - Examples reference. 7 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
 
-# Default Tools — Examples
+# Default Tools - Examples
 
-The seven tools in `default-tool-specs.json` are the **starter examples**. They span the surfaces a beginner is likely to want first — fetch a web page, get the current time, build a calendar link, look up weather, search the web, call an LLM, send a Slack message — and double as ready-to-copy templates for the helper API you will use in your own tools.
+The seven tools in `default-tool-specs.json` are the **starter examples**. They span the surfaces a beginner is likely to want first - fetch a web page, get the current time, build a calendar link, look up weather, search the web, call an LLM, send a Slack message - and double as ready-to-copy templates for the helper API you will use in your own tools.
 
-Three of the seven need an API key or webhook URL to be useful (`googlePseSearch`, `openaiResponseGenerator`, `sendSlackMessage`). The rest work out of the box on a fresh install — `getCurrentTime` and `evalExpression` are members of every shipped preset because they have no dependency at all.
+Three of the seven need an API key or webhook URL to be useful (`googlePseSearch`, `openaiResponseGenerator`, `sendSlackMessage`). The rest work out of the box on a fresh install - `getCurrentTime` and `evalExpression` are members of every shipped preset because they have no dependency at all.
 
-All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` mode with [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) for the tools that fetch.
+All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` or host-`allowlist` mode with [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) for the tools that fetch.
 
 ## The 7 examples { #the-examples }
 
@@ -15,13 +16,13 @@ All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no file
 <div class="tcg-card tcg-card--clickable" id="extractPageContent" data-tool-id="extractPageContent" data-tool-title="extractPageContent" markdown>
 <div class="tcg-name"><span class="tcg-name__text">extractPageContent</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-language-html5:</div>
-<div class="tcg-type">web · example <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · example <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches a web page and extracts its main readable content + outbound links. Uses the host-injected fetch (SSRF-defended in `strict` mode) and safety.parser.html for parsing.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `pageUrl`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -36,7 +37,7 @@ Returns JSON: { title, content (with [n] link markers), links: [{index, text, ur
 |---|---|---|---|
 | `pageUrl` | `STRING` | ✓ | Page URL to fetch and clean |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `strict` egress - `fetch` to any host (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -110,7 +111,7 @@ Returns the current time in ISO 8601 format. If the user specifies a city, count
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `timeZone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -121,7 +122,7 @@ Returns the current time in ISO 8601 format. If the user specifies a city, count
 |---|---|---|---|
 | `timeZone` | `STRING` |  | IANA time zone identifier (e.g., Asia/Seoul) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -197,7 +198,7 @@ Builds a Google Calendar "Add Event" URL with prefilled fields.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `start` · `end` · `details` · `location` · `timeZone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -217,13 +218,13 @@ before passing them to this tool.
 | Param | Type | Req | Description |
 |---|---|---|---|
 | `title` | `STRING` | ✓ | Event title shown in Google Calendar. |
-| `start` | `STRING` | ✓ | Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:… |
+| `start` | `STRING` | ✓ | Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:... |
 | `end` | `STRING` | ✓ | Event end time. Must be after start. The agent should ensure proper ISO-8601 format(e.g., 2025-12-16T10:00:00+09:00). |
 | `details` | `STRING` |  | Optional event description or agenda. |
 | `location` | `STRING` |  | Optional event location text. The agent can resolve rough location names to standard city names if needed. |
-| `timeZone` | `STRING` |  | IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone b… |
+| `timeZone` | `STRING` |  | IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone b... |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -287,13 +288,13 @@ return base + '&' + params.join('&');
 <div class="tcg-card tcg-card--clickable" id="getWeather" data-tool-id="getWeather" data-tool-title="getWeather" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getWeather</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-weather-partly-cloudy:</div>
-<div class="tcg-type">web · example · weather <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · example · weather <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Free public weather lookup via wttr.in (no API key). Returns a small JSON summary: { location, tempC, humidity, windSpeed, windDirection }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `location`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -304,7 +305,7 @@ Free public weather lookup via wttr.in (no API key). Returns a small JSON summar
 |---|---|---|---|
 | `location` | `STRING` |  | City / region name (e.g. 'Seoul', 'New York'). Empty = caller's IP-detected location. |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `wttr.in` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -334,7 +335,7 @@ return {
 <div class="tcg-card t-google tcg-card--clickable" id="googlePseSearch" data-tool-id="googlePseSearch" data-tool-title="googlePseSearch" markdown>
 <div class="tcg-name"><span class="tcg-name__text">googlePseSearch</span> <span class="cost">🔑 × 2</span></div>
 <div class="tcg-art" markdown>:simple-google:</div>
-<div class="tcg-type">web · example · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · example · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Google Programmable Search Engine query (Custom Search API). Requires `GOOGLE_API_KEY` and `GOOGLE_PSE_ID` env vars.
 </div>
@@ -360,7 +361,7 @@ Setup:
 | `resultNum` | `INTEGER` |  | Number of results to return (1-10, default 3) |
 | `startPage` | `INTEGER` |  | 1-based offset into the result list |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.googleapis.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -385,7 +386,7 @@ return resp.json();
 <div class="tcg-card t-openai tcg-card--clickable" id="openaiResponseGenerator" data-tool-id="openaiResponseGenerator" data-tool-title="openaiResponseGenerator" markdown>
 <div class="tcg-name"><span class="tcg-name__text">openaiResponseGenerator</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-creation:</div>
-<div class="tcg-type">ai · example <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">ai · example <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Calls OpenAI's Responses API. Requires `OPENAI_API_KEY` env var.
 </div>
@@ -409,7 +410,7 @@ Setup:
 | `prompt` | `STRING` | ✓ | User prompt / question |
 | `model` | `STRING` |  | Model id (default 'gpt-5.4-mini') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.openai.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -451,7 +452,7 @@ return { content, reasoning };
 <div class="tcg-card t-slack tcg-card--clickable" id="sendSlackMessage" data-tool-id="sendSlackMessage" data-tool-title="sendSlackMessage" markdown>
 <div class="tcg-name"><span class="tcg-name__text">sendSlackMessage</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-pound-box-outline:</div>
-<div class="tcg-type">messaging · example <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">messaging · example <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Posts a text message to a Slack channel via Incoming Webhook. Requires `SLACK_WEBHOOK_URL` env var (the full https://hooks.slack.com/services/... URL).
 </div>
@@ -475,7 +476,7 @@ Setup:
 |---|---|---|---|
 | `text` | `STRING` | ✓ | Message text to post |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `hooks.slack.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -497,11 +498,11 @@ return { status: 'ok' };
 
 ## Composition patterns (starter chains)
 
-These seven tools are picked so any pair plugs together — a perfect first agentic-workflow surface. Two patterns you can reproduce after Local Pass:
+These seven tools are picked so any pair plugs together - a perfect first agentic-workflow surface. Two patterns you can reproduce after Local Pass:
 
-- **Search → summarise** — `googlePseSearch(query)` returns ranked snippets; pass them as a prompt fragment into `openaiResponseGenerator` so the model cites recent sources rather than parametric memory.
-- **Fetch → notify** — `getWeather(location)` (or `getOpenMeteoForecast` from [Global](global.md)) → `sendSlackMessage(text)` to post a daily threshold alert to a channel.
-- **Time + Calendar** — `getCurrentTime(timeZone)` produces an ISO timestamp the model can offset, then `buildGoogleCalendarCreateLink(title, start, end, ...)` returns a one-click "Add to Calendar" URL.
+- **Search → summarise** - `googlePseSearch(query)` returns ranked snippets; pass them as a prompt fragment into `openaiResponseGenerator` so the model cites recent sources rather than parametric memory.
+- **Fetch → notify** - `getWeather(location)` (or `getOpenMeteoForecast` from [Global](global.md)) → `sendSlackMessage(text)` to post a daily threshold alert to a channel.
+- **Time + Calendar** - `getCurrentTime(timeZone)` produces an ISO timestamp the model can offset, then `buildGoogleCalendarCreateLink(title, start, end, ...)` returns a one-click "Add to Calendar" URL.
 
 Deeper walk-throughs in [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md).
 
@@ -515,4 +516,4 @@ Three of the seven need a credential. The launcher's **Environment Variables** c
 | `googlePseSearch` | `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | [Google Cloud Console](https://console.cloud.google.com/) for the API key, [Programmable Search Engine](https://programmablesearchengine.google.com/) for the PSE ID |
 | `sendSlackMessage` | `SLACK_WEBHOOK_URL` | [api.slack.com/apps](https://api.slack.com/apps) → Incoming Webhooks → Add to Workspace |
 
-→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) — how `${ENV_VAR}` placeholders resolve at runtime.
+→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) - how `${ENV_VAR}` placeholders resolve at runtime.

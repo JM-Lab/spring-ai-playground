@@ -1,9 +1,9 @@
 title: Desktop App
-description: Install Spring AI Playground from the desktop installer — platform-specific install notes, configuration walkthrough, MCP tools curation, environment variables and secrets.
+description: Install Spring AI Playground from the desktop installer - platform-specific install notes, configuration walkthrough, MCP tools curation, environment variables and secrets.
 
 # Desktop App
 
-The desktop installer is the recommended default. It wraps the Electron launcher, the JVM, and the Spring Boot fat JAR into a single platform installer (DMG / EXE / DEB / RPM) — no separate Java toolchain, no manual Docker setup. Compared with [Docker or From Source](alternative-runtimes.md), the desktop path adds a built-in configuration editor with provider starter templates, OS-encrypted secret storage for API keys, and an Ollama model manager.
+The desktop installer is the recommended default. It wraps the Electron launcher, the JVM, and the Spring Boot fat JAR into a single platform installer (DMG / EXE / DEB / RPM) - no separate Java toolchain, no manual Docker setup. Compared with [Docker or From Source](alternative-runtimes.md), the desktop path adds a built-in configuration editor with provider starter templates, OS-encrypted secret storage for API keys, and an Ollama model manager.
 
 For Docker or source / fat-JAR runs instead of the desktop installer, see [Alternative Runtimes](alternative-runtimes.md). For universal post-install steps (Your First Five Tasks, model configuration, telemetry), see [Getting Started](index.md).
 
@@ -96,27 +96,27 @@ This makes it much easier to keep multiple clean launch profiles without hand-ma
 
 ## Default MCP Tools Curation
 
-Preset selection for the built-in MCP server happens **inside the configuration editor**. The first launch opens Configure Spring AI Playground (the walkthrough below); pick a preset on the **Default MCP Tools** card before clicking Save and Launch and that choice is written to `<home>/spring-ai-playground/tool/save/default-tools-preference.json`. Without an explicit pick the app falls back to `Starter 5` — the cross-locale defaults that need no API keys.
+Preset selection for the built-in MCP server happens **inside the configuration editor**. The first launch opens Configure Spring AI Playground (the walkthrough below); pick a preset on the **Default MCP Tools** card before clicking Save and Launch and that choice is written to `<home>/spring-ai-playground/tool/save/default-tools-preference.json`. Without an explicit pick the app falls back to `Starter 5` - the cross-locale defaults that need no API keys.
 
-![Default MCP Tools card on the configuration editor — collapsed view: TOOLS EXPOSED line shows the active preset (Starter 5 · 5 of 86 tools) + per-tool chips, a preset dropdown, and an Advanced curation section with a Show toggle](../assets/images/launcher/launcher-default-tools-card.png)
-*The Default MCP Tools card, collapsed — preset chooser with the active preset's tools listed as chips. `Advanced curation` is folded by default.*
+![Default MCP Tools card on the configuration editor - collapsed view: TOOLS EXPOSED line shows the active preset (Starter 5 · 5 of 86 tools) + per-tool chips, a preset dropdown, and an Advanced curation section with a Show toggle](../assets/images/launcher/launcher-default-tools-card.png)
+*The Default MCP Tools card, collapsed - preset chooser with the active preset's tools listed as chips. `Advanced curation` is folded by default.*
 
-The card and Tool Studio's **Tool MCP Server Setting drawer** (toolbox icon, available once the app is running) write to the same `default-tools-preference.json` file. Two surfaces, one source of truth.
+The card writes `default-tools-preference.json`; the same preference can also be pinned via CLI / yaml. The app reads it at startup to decide which built-in tools are **Local-Passed (active)**. Tool Studio's **Built-in MCP Server Native Tools** drawer is a separate concern - it picks which Local-Passed tools the built-in MCP server *exposes*, not which are active.
 
 The five presets:
 
-- `Starter 5` (default, no API keys) — `getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`.
-- `Dev Essentials` — local dev utilities (`uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract`) plus `getCurrentTime` and `evalExpression`.
-- `Korea Toolkit (free)` — free Korean services (Upbit, Bithumb, iTunes K-pop, K-beauty search) plus `getCurrentTime` and `evalExpression`.
-- `File Toolkit` — filesystem pipeline (`readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields`) plus `getCurrentTime` and `evalExpression`. Set `TOOL_STUDIO_FS_BASE` to pin a custom workspace root.
-- `Everything` — exposes every default tool. Heavy MCP catalog.
+- `Starter 5` (default, no API keys) - `getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`.
+- `Dev Essentials` - local dev utilities (`uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract`) plus `getCurrentTime` and `evalExpression`.
+- `Korea Toolkit (free)` - free Korean services (Upbit, Bithumb, iTunes K-pop, K-beauty search) plus `getCurrentTime` and `evalExpression`.
+- `File Toolkit` - filesystem pipeline (`readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields`) plus `getCurrentTime` and `evalExpression`. Set `TOOL_STUDIO_FS_BASE` to pin a custom workspace root.
+- `Everything` - exposes every default tool. Heavy MCP catalog.
 
-The non-Starter presets each carry only `getCurrentTime` and `evalExpression` from Starter 5 by design — they do not stack on top of it.
+The non-Starter presets each carry only `getCurrentTime` and `evalExpression` from Starter 5 by design - they do not stack on top of it.
 
-Clicking **Advanced curation → Show** expands an Include / Exclude pair that mirrors Tool Studio's **Tool MCP Server Setting** drawer: add tools by tag, by category, or by name; remove tools by tag or by name. The chip pickers populate from the live catalog when the section opens (a brief flash of `Loading…` is normal — that's the IPC fetch).
+Clicking **Advanced curation → Show** expands an Include / Exclude pair: add tools by tag, by category, or by name; remove tools by tag or by name. The chip pickers populate from the live catalog when the section opens (a brief flash of `Loading...` is normal - that's the IPC fetch).
 
-![Default MCP Tools card with Advanced curation expanded — two columns (Include / Exclude) with By tag chips, By category chips, and a By name picker on each side](../assets/images/launcher/launcher-default-tools-card-expanded.png)
-*The same card with `Advanced curation` expanded — Include (`+`) on the left adds tools matching any rule; Exclude (`−`) on the right removes them. Rules layer in this order: name-add → tag-add → category-add → name-remove → tag-remove → category-remove.*
+![Default MCP Tools card with Advanced curation expanded - two columns (Include / Exclude) with By tag chips, By category chips, and a By name picker on each side](../assets/images/launcher/launcher-default-tools-card-expanded.png)
+*The same card with `Advanced curation` expanded - Include (`+`) on the left adds tools matching any rule; Exclude (`-`) on the right removes them. Rules layer in this order: name-add → tag-add → category-add → name-remove → tag-remove → category-remove.*
 
 For the full preset contents, the CLI override, and the migration note from the prior `defaultToolOverrides.json`, see [Tool Studio → Pre-built Example Tools](../features/tool-studio/index.md#pre-built-example-tools).
 
@@ -224,7 +224,7 @@ This section is currently shown for the `Ollama` config type. Even if an `OpenAI
 ??? note "Show details"
 
 
-    When the selected setting or bundled tools need secrets, the launcher shows an **Environment Variables** section. This is where you keep API keys and tool secrets out of YAML.
+    When the selected setting or bundled tools need secrets, the launcher shows an **Environment Variables** section. This is where you keep API keys and tool secrets out of YAML. For the full list of configuration knobs (beyond secrets) and how each maps to a property or env var, see the [Configuration reference](configuration.md).
 
     ![Environment variables card](../assets/images/launcher/launcher-env-card.png)
 
@@ -245,18 +245,18 @@ This section is currently shown for the `Ollama` config type. Even if an `OpenAI
 
     The card also shows the current **secret-storage mode**:
 
-    - **Encrypted by your OS secure storage** — Electron's `safeStorage` API is using the platform secure store under the hood: **macOS Keychain**, **Windows DPAPI** (current-user scope), or **libsecret / GNOME Keyring / KWallet** on Linux. The launcher writes the ciphertext to `<userData>/spring-ai-playground/config/secrets.store` on disk; the decryption key never leaves the OS keychain.
-    - **OS-backed encryption unavailable — stored as plain text in this session** — fallback when no platform secure store is reachable (typical on bare Linux without a keyring daemon, or in some sandboxed Linux containers). The same file is written in plain JSON so values still survive the launch, but they are no longer encrypted at rest.
+    - **Encrypted by your OS secure storage** - Electron's `safeStorage` API is using the platform secure store under the hood: **macOS Keychain**, **Windows DPAPI** (current-user scope), or **libsecret / GNOME Keyring / KWallet** on Linux. The launcher writes the ciphertext to `<userData>/spring-ai-playground/config/secrets.store` on disk; the decryption key never leaves the OS keychain.
+    - **OS-backed encryption unavailable - stored as plain text in this session** - fallback when no platform secure store is reachable (typical on bare Linux without a keyring daemon, or in some sandboxed Linux containers). The same file is written in plain JSON so values still survive the launch, but they are no longer encrypted at rest.
 
     The launcher's secret workflow is the same in both modes:
 
     - values are stored **per saved setting** (`configId` keyed)
-    - values are **exported only as environment variables to the launched Spring AI Playground JVM** — they never get written into the YAML override or into chat history
+    - values are **exported only as environment variables to the launched Spring AI Playground JVM** - they never get written into the YAML override or into chat history
     - the secrets file is rewritten on every save; a legacy `secrets.json.enc` from older versions is auto-renamed to `secrets.store` on first read
 
-    This is why the env-var pathway is the recommended place for `OPENAI_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_API_KEY`, and any other tool-side secret — the value reaches `Tool Studio` and the bundled tools through `System.getenv()` rather than through a config file checked into git.
+    This is why the env-var pathway is the recommended place for `OPENAI_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_API_KEY`, and any other tool-side secret - the value reaches `Tool Studio` and the bundled tools through `System.getenv()` rather than through a config file checked into git.
 
-    **The resolved value is also masked from `console.log` output** in Tool Studio's Debug Console and in Agentic Chat's tool-call trace — any tool that references the env var as a static variable (or builds a string containing its resolved value) sees the secret substring replaced before the line surfaces in the UI. See [Tool Studio → Built-in JavaScript Helpers — `console.log`](../features/tool-studio/index.md#built-in-javascript-helpers) for the masking rule details (anchored full-string env-refs are auto-collected; substring-concatenated values are masked best-effort).
+    **The resolved value is also masked from `console.log` output** in Tool Studio's Debug Console and in Agentic Chat's tool-call trace - any tool that references the env var as a static variable (or builds a string containing its resolved value) sees the secret substring replaced before the line surfaces in the UI. See [Tool Studio → Built-in JavaScript Helpers - `console.log`](../features/tool-studio/index.md#built-in-javascript-helpers) for the masking rule details (anchored full-string env-refs are auto-collected; substring-concatenated values are masked best-effort).
 
     For the current desktop behavior:
 
@@ -364,7 +364,8 @@ This makes the model manager useful both for first-time setup and for cleaning u
 
 ## Further Reading
 
-- [Getting Started](index.md) — universal post-install steps, model configuration, telemetry
-- [Alternative Runtimes](alternative-runtimes.md) — Docker and source / fat-JAR alternatives
-- [Features → Tool Studio](../features/tool-studio/index.md) — author tools that the built-in MCP server exposes
-- [Tutorials](../tutorials/index.md) — end-to-end workflows
+- [Getting Started](index.md) - universal post-install steps, model configuration, telemetry
+- [Configuration](configuration.md) - every property / env var / default, and how to set it per launch mode
+- [Alternative Runtimes](alternative-runtimes.md) - Docker and source / fat-JAR alternatives
+- [Features → Tool Studio](../features/tool-studio/index.md) - author tools that the built-in MCP server exposes
+- [Tutorials](../tutorials/index.md) - end-to-end workflows

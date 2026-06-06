@@ -15,7 +15,8 @@
       "args": ["mcp-server-git", "--repository", "."]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Memory-Windows",
@@ -33,7 +34,8 @@
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Sequential-Thinking-Windows",
@@ -51,7 +53,8 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Puppeteer-Windows",
@@ -61,15 +64,16 @@
     "tier": 2,
     "vendor": "modelcontextprotocol/servers",
     "vendorOfficial": false,
-    "description": "[Windows] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on Windows. First run downloads ~170 MB Chromium under %USERPROFILE%\\\\AppData\\\\Local\\\\puppeteer.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"C:\\\\\\\\Program Files\\\\\\\\Google\\\\\\\\Chrome\\\\\\\\Application\\\\\\\\chrome.exe\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "description": "[Windows] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on Windows. First run downloads ~170 MB Chromium under %USERPROFILE%\\\\AppData\\\\Local\\\\puppeteer.\n\nThe activated form is pre-filled to run:\n  npx.cmd -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"C:\\\\\\\\Program Files\\\\\\\\Google\\\\\\\\Chrome\\\\\\\\Application\\\\\\\\chrome.exe\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers-archived/tree/main/src/puppeteer",
     "stability": "GA",
     "transports": [{
       "type": "STDIO",
       "urlTemplate": "npx.cmd",
       "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
     }],
-    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
-    "trustSignals": ["community"]
+    "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/puppeteer",
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "MCP-Everything-Windows",
@@ -87,7 +91,8 @@
       "args": ["-y", "@modelcontextprotocol/server-everything"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Playwright-Windows",
@@ -105,7 +110,8 @@
       "args": ["-y", "@playwright/mcp@latest"]
     }],
     "docsUrl": "https://github.com/microsoft/playwright-mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "SQLite-Windows",
@@ -123,7 +129,8 @@
       "args": ["mcp-server-sqlite", "--db-path", "C:\\\\path\\\\to\\\\your.db"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Brave-Search-Windows",
@@ -142,6 +149,7 @@
       "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}
     }],
     "docsUrl": "https://github.com/brave/brave-search-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   }
 ]

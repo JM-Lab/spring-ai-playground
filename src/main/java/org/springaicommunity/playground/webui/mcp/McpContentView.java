@@ -30,6 +30,8 @@ import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.catalog.McpCategoryService;
 import org.springaicommunity.playground.service.mcp.catalog.McpTagSuggestionService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.mcp.risk.McpRegistrationRiskPreview;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskAdvisor;
 
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
@@ -42,7 +44,9 @@ public class McpContentView extends VerticalLayout {
 
     public McpContentView(McpServerInfo mcpServerInfo, McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService, McpCategoryService mcpCategoryService,
-            McpTagSuggestionService mcpTagSuggestionService, PropertyChangeSupport mcpServerInfoChangeSupport) {
+            McpTagSuggestionService mcpTagSuggestionService, McpToolRiskAdvisor riskAdvisor,
+            McpRegistrationRiskPreview registrationRiskPreview,
+            PropertyChangeSupport mcpServerInfoChangeSupport) {
         this.mcpServerInfo = mcpServerInfo;
 
         setSizeFull();
@@ -51,7 +55,8 @@ public class McpContentView extends VerticalLayout {
         getStyle().set("overflow", "auto");
 
         McpServerConfigView mcpServerConfigView = new McpServerConfigView(mcpServerInfo, mcpServerInfoService,
-                mcpClientService, mcpCategoryService, mcpTagSuggestionService, mcpServerInfoChangeSupport);
+                mcpClientService, mcpCategoryService, mcpTagSuggestionService, registrationRiskPreview,
+                mcpServerInfoChangeSupport);
         mcpServerConfigView.setWidthFull();
         add(mcpServerConfigView);
 
@@ -65,7 +70,8 @@ public class McpContentView extends VerticalLayout {
                         if (Objects.isNull(ui))
                             return;
                         ui.access(() -> toolListAsOpt.ifPresent(toolList -> replace(inspectorPlaceholder,
-                                new McpServerInspectorView(this.mcpServerInfo, mcpClientService, toolList))));
+                                new McpServerInspectorView(this.mcpServerInfo, mcpClientService, toolList,
+                                        riskAdvisor))));
                     });
         }
     }

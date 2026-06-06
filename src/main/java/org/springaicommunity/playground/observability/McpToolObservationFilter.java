@@ -18,8 +18,10 @@ package org.springaicommunity.playground.observability;
 import io.micrometer.common.KeyValue;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationFilter;
+import org.slf4j.MDC;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService.McpToolSource;
+import org.springaicommunity.playground.service.mcp.risk.McpRiskMdcKeys;
 import org.springframework.ai.tool.observation.ToolCallingObservationContext;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +33,15 @@ public class McpToolObservationFilter implements ObservationFilter {
     public static final String MCP_TRANSPORT = "mcp.transport";
     public static final String MCP_SERVER = "mcp.server";
     public static final String MCP_KIND = "mcp.kind";
+    public static final String MCP_ORIGIN = McpRiskMdcKeys.ORIGIN;
+    public static final String MCP_COMPOSITION_ID = McpRiskMdcKeys.COMPOSITION_ID;
+    public static final String MCP_COMPOSITION_NAME = McpRiskMdcKeys.COMPOSITION_NAME;
+    public static final String MCP_TOOL_EXPOSED_ALIAS = McpRiskMdcKeys.EXPOSED_ALIAS;
+    public static final String MCP_RISK_FINAL = McpRiskMdcKeys.RISK_FINAL;
+    public static final String MCP_RISK_SERVER = McpRiskMdcKeys.RISK_SERVER;
+    public static final String MCP_RISK_PUBLISH = McpRiskMdcKeys.RISK_PUBLISH;
+    public static final String MCP_RISK_FLOOR_TRIGGER = McpRiskMdcKeys.FLOOR_TRIGGER;
+
     static final String MCP_KIND_VALUE = "mcp";
     static final String IN_PROCESS_KIND_VALUE = "in-process";
 
@@ -50,16 +61,48 @@ public class McpToolObservationFilter implements ObservationFilter {
         if (toolName == null || toolName.isBlank()) {
             return context;
         }
+
+        String origin = MDC.get(McpRiskMdcKeys.ORIGIN);
+        if (McpRiskMdcKeys.ORIGIN_WRAPPED_EXTERNAL.equals(origin)) {
+            context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, MCP_KIND_VALUE));
+            context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN, origin));
+            addNonBlank(context, MCP_TRANSPORT, MDC.get(McpRiskMdcKeys.UPSTREAM_TRANSPORT));
+            addNonBlank(context, MCP_SERVER, MDC.get(McpRiskMdcKeys.UPSTREAM_SERVER));
+            addCompositionAndRiskDimensions(context);
+            return context;
+        }
+
         Optional<McpToolSource> source = mcpClientService.lookupToolSource(toolName);
         if (source.isEmpty()) {
-            // In-process tool — tag so dashboards can split on mcp.kind.
             context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, IN_PROCESS_KIND_VALUE));
+            context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN,
+                    origin == null || origin.isBlank() ? McpRiskMdcKeys.ORIGIN_INTERNAL_JS : origin));
+            addCompositionAndRiskDimensions(context);
             return context;
         }
         McpToolSource s = source.get();
         context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, MCP_KIND_VALUE));
         context.addHighCardinalityKeyValue(KeyValue.of(MCP_TRANSPORT, s.transport()));
         context.addHighCardinalityKeyValue(KeyValue.of(MCP_SERVER, s.serverName()));
+        if (origin != null && !origin.isBlank()) {
+            context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN, origin));
+        }
+        addCompositionAndRiskDimensions(context);
         return context;
+    }
+
+    private static void addCompositionAndRiskDimensions(Observation.Context context) {
+        addNonBlank(context, MCP_COMPOSITION_ID, MDC.get(McpRiskMdcKeys.COMPOSITION_ID));
+        addNonBlank(context, MCP_COMPOSITION_NAME, MDC.get(McpRiskMdcKeys.COMPOSITION_NAME));
+        addNonBlank(context, MCP_TOOL_EXPOSED_ALIAS, MDC.get(McpRiskMdcKeys.EXPOSED_ALIAS));
+        addNonBlank(context, MCP_RISK_FINAL, MDC.get(McpRiskMdcKeys.RISK_FINAL));
+        addNonBlank(context, MCP_RISK_SERVER, MDC.get(McpRiskMdcKeys.RISK_SERVER));
+        addNonBlank(context, MCP_RISK_PUBLISH, MDC.get(McpRiskMdcKeys.RISK_PUBLISH));
+        addNonBlank(context, MCP_RISK_FLOOR_TRIGGER, MDC.get(McpRiskMdcKeys.FLOOR_TRIGGER));
+    }
+
+    private static void addNonBlank(Observation.Context context, String key, String value) {
+        if (value == null || value.isBlank()) return;
+        context.addHighCardinalityKeyValue(KeyValue.of(key, value));
     }
 }

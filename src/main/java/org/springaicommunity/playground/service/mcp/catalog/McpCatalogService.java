@@ -163,9 +163,12 @@ public class McpCatalogService {
                 && transport.oauthDefaults().issuerUri() != null
                 && !transport.oauthDefaults().issuerUri().isBlank()) {
             String issuer = substitutePlaceholders(transport.oauthDefaults().issuerUri(), values);
+            String clientIdTemplate = pickEnvTemplate(transport.requiredEnv(), "_OAUTH_CLIENT_ID");
+            String clientSecretTemplate = pickEnvTemplate(transport.requiredEnv(), "_OAUTH_CLIENT_SECRET");
             oauth = new HttpConnectionParametersWithExtras.OAuth(
                     issuer, null, null,
-                    null, null, transport.oauthDefaults().scopes(), null);
+                    clientIdTemplate, clientSecretTemplate,
+                    transport.oauthDefaults().scopes(), null);
         }
         Object record = switch (transport.type()) {
             case STREAMABLE_HTTP -> new HttpConnectionParametersWithExtras.StreamableHttp(
@@ -189,6 +192,16 @@ public class McpCatalogService {
             }
         };
         return objectMapper.writeValueAsString(record);
+    }
+
+    static String pickEnvTemplate(List<String> requiredEnv, String suffix) {
+        if (requiredEnv == null) return null;
+        for (String name : requiredEnv) {
+            if (name != null && name.endsWith(suffix)) {
+                return "${" + name + "}";
+            }
+        }
+        return null;
     }
 
     public static String substitutePlaceholders(String template, Map<String, String> values) {

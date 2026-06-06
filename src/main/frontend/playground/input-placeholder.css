@@ -1,0 +1,6 @@
+::slotted(input)::placeholder,
+::slotted(textarea)::placeholder {
+    color: var(--lumo-tertiary-text-color);
+    -webkit-text-fill-color: var(--lumo-tertiary-text-color);
+    opacity: 0.6;
+}

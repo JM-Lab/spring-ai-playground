@@ -19,8 +19,10 @@ package org.springaicommunity.playground.service.chat;
 import com.openai.core.JsonValue;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.config.MdcIdentityFilter;
 import org.springaicommunity.playground.service.SharedDataReader;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.tool.HumanQuestionHandler;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +47,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
-import reactor.util.context.Context;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,6 +62,8 @@ import java.util.stream.Collectors;
 
 import static org.springaicommunity.playground.service.SpringAiPlaygroundRagAdvisor.RAG_PROCESS_MESSAGE_CONSUMER;
 import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.MCP_PROCESS_MESSAGE_CONSUMER;
+import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.TOOL_CONTEXT_SESSION_ID;
+import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.TOOL_CONTEXT_USER_ID;
 import static org.springaicommunity.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
 import static org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID;
 import static org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT;
@@ -106,15 +110,16 @@ public class ChatService {
             Consumer<Object> mcpToolProcessMessageConsumer, Consumer<Object> ragProcessMessageConsumer,
             Consumer<Object> thinkProcessMessageConsumer) {
         return stream(chatHistory, prompt, filterExpression, completeChatHistoryConsumer, toolCallbacks,
-                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, thinkProcessMessageConsumer, null);
+                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, thinkProcessMessageConsumer, null, null);
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
             Consumer<ChatHistory> completeChatHistoryConsumer, List<ToolCallback> toolCallbacks,
             Consumer<Object> mcpToolProcessMessageConsumer, Consumer<Object> ragProcessMessageConsumer,
-            Consumer<Object> thinkProcessMessageConsumer, Consumer<SignalType> beforeHistoryCommit) {
+            Consumer<Object> thinkProcessMessageConsumer, Consumer<SignalType> beforeHistoryCommit,
+            HumanQuestionHandler humanQuestionHandler) {
         return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer,
-                ragProcessMessageConsumer, thinkProcessMessageConsumer).map(
+                ragProcessMessageConsumer, thinkProcessMessageConsumer, humanQuestionHandler).map(
                         Generation::getOutput)
                 .map(assistantMessage -> Optional.ofNullable(assistantMessage.getText()).orElse(""))
                 .doFinally(signalType -> {
@@ -129,11 +134,23 @@ public class ChatService {
     public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression,
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
             Consumer<Object> ragProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer) {
+        return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer,
+                ragProcessMessageConsumer, thinkProcessMessageConsumer, null);
+    }
+
+    public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression,
+            List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
+            Consumer<Object> ragProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer,
+            HumanQuestionHandler humanQuestionHandler) {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         StringBuilder accumulatedText = new StringBuilder();
         String userMessageId = UUID.randomUUID().toString();
+        // Captured on the servlet thread (MdcIdentityFilter set it) to propagate into the reactive chain below.
+        String userId = MDC.get(MdcIdentityFilter.USER_ID);
+        String sessionId = MDC.get(MdcIdentityFilter.SESSION_ID);
         return getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                mcpToolProcessMessageConsumer, ragProcessMessageConsumer).stream().chatClientResponse().map(
+                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, humanQuestionHandler)
+                .stream().chatClientResponse().map(
                         chatClientResponse -> {
                     if (Objects.nonNull(thinkProcessMessageConsumer)) {
                         Generation generation = chatClientResponse.chatResponse().getResult();
@@ -149,12 +166,18 @@ public class ChatService {
                     }
                     return false;
                 }).map(chatClientResponse -> chatClientResponse.chatResponse().getResult())
-                .contextWrite(Context.of(
-                        MDC_CONVERSATION_ID, chatHistory.conversationId(),
-                        MDC_USER_MESSAGE_ID, userMessageId))
+                .contextWrite(ctx -> {
+                    ctx = ctx.put(MDC_CONVERSATION_ID, chatHistory.conversationId())
+                            .put(MDC_USER_MESSAGE_ID, userMessageId);
+                    if (userId != null) ctx = ctx.put(MdcIdentityFilter.USER_ID, userId);
+                    if (sessionId != null) ctx = ctx.put(MdcIdentityFilter.SESSION_ID, sessionId);
+                    return ctx;
+                })
                 .doFirst(() -> {
                     MDC.put(MDC_CONVERSATION_ID, chatHistory.conversationId());
                     MDC.put(MDC_USER_MESSAGE_ID, userMessageId);
+                    if (userId != null) MDC.put(MdcIdentityFilter.USER_ID, userId);
+                    if (sessionId != null) MDC.put(MdcIdentityFilter.SESSION_ID, sessionId);
                 })
                 .doFinally(signalType -> {
                     try {
@@ -166,6 +189,8 @@ public class ChatService {
                     } finally {
                         MDC.remove(MDC_CONVERSATION_ID);
                         MDC.remove(MDC_USER_MESSAGE_ID);
+                        if (userId != null) MDC.remove(MdcIdentityFilter.USER_ID);
+                        if (sessionId != null) MDC.remove(MdcIdentityFilter.SESSION_ID);
                     }
                 });
     }
@@ -179,7 +204,7 @@ public class ChatService {
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
             String filterExpression, List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
-            Consumer<Object> ragProcessMessageConsumer) {
+            Consumer<Object> ragProcessMessageConsumer, HumanQuestionHandler humanQuestionHandler) {
         DefaultChatOptions chatOptions = chatHistory.chatOptions();
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = this.chatClient.prompt().user(prompt).options(
                         DefaultToolCallingChatOptions.builder().frequencyPenalty(chatOptions.getFrequencyPenalty())
@@ -196,13 +221,23 @@ public class ChatService {
                     }
                 });
         if (Objects.nonNull(mcpToolProcessMessageConsumer) && Objects.nonNull(toolCallbacks) &&
-                !toolCallbacks.isEmpty())
-            chatClientRequestSpec.toolCallbacks(toolCallbacks)
-                    .toolContext(Map.of(MCP_PROCESS_MESSAGE_CONSUMER, mcpToolProcessMessageConsumer));
+                !toolCallbacks.isEmpty()) {
+            Map<String, Object> toolContext = new HashMap<>();
+            toolContext.put(MCP_PROCESS_MESSAGE_CONSUMER, mcpToolProcessMessageConsumer);
+            if (Objects.nonNull(humanQuestionHandler))
+                toolContext.put(HumanQuestionHandler.TOOL_CONTEXT_KEY, humanQuestionHandler);
+            // Carry identity via tool context so McpToolCallingManager can restore it on the tool-exec thread.
+            putIfPresent(toolContext, TOOL_CONTEXT_USER_ID, MDC.get(MdcIdentityFilter.USER_ID));
+            putIfPresent(toolContext, TOOL_CONTEXT_SESSION_ID, MDC.get(MdcIdentityFilter.SESSION_ID));
+            chatClientRequestSpec.toolCallbacks(toolCallbacks).toolContext(toolContext);
+        }
         return Optional.ofNullable(chatHistory.systemPrompt()).filter(Predicate.not(String::isBlank))
                 .map(chatClientRequestSpec::system).orElse(chatClientRequestSpec);
     }
 
+    private static void putIfPresent(Map<String, Object> toolContext, String key, String value) {
+        if (value != null && !value.isBlank()) toolContext.put(key, value);
+    }
 
     public String call(ChatHistory chatHistory, String prompt, String filterExpression,
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer) {
@@ -218,7 +253,7 @@ public class ChatService {
         try {
             return applyChatResponseMetadataToLastUserMessage(chatHistory,
                     getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                            mcpToolProcessMessageConsumer, null).call()
+                            mcpToolProcessMessageConsumer, null, null).call()
                             .chatClientResponse()).getResult();
         } finally {
             MDC.remove(MDC_CONVERSATION_ID);

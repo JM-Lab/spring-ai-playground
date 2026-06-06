@@ -24,7 +24,8 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.search.Search;
-import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -35,9 +36,17 @@ import java.util.concurrent.TimeUnit;
 public class SystemMetricsSnapshot {
 
     private final MeterRegistry registry;
+    private final String selfLoopbackServerName;
 
     public SystemMetricsSnapshot(MeterRegistry registry) {
+        this(registry, null);
+    }
+
+    @Autowired
+    public SystemMetricsSnapshot(MeterRegistry registry, SpringAiPlaygroundOptions playgroundOptions) {
         this.registry = registry;
+        this.selfLoopbackServerName = playgroundOptions == null ? null
+                : playgroundOptions.builtInMcpServer().name();
     }
 
     public Snapshot capture() {
@@ -49,13 +58,11 @@ public class SystemMetricsSnapshot {
         s.jvmNonHeapUsedBytes = sumGauge("jvm.memory.used", Tags.of("area", "nonheap"));
         s.jvmNonHeapCommittedBytes = sumGauge("jvm.memory.committed", Tags.of("area", "nonheap"));
 
-        // Per memory pool used/max for the heap area (eg. "G1 Eden Space", "G1 Old Gen")
         registry.find("jvm.memory.used").tag("area", "heap").gauges().forEach(g -> {
             String id = g.getId().getTag("id");
             if (id != null) s.jvmHeapPoolUsed.put(id, (long) g.value());
         });
 
-        // Buffer pools (direct, mapped)
         registry.find("jvm.buffer.count").gauges().forEach(g -> {
             String id = g.getId().getTag("id");
             if (id != null) s.jvmBufferCount.put(id, (long) g.value());
@@ -119,8 +126,7 @@ public class SystemMetricsSnapshot {
             s.httpRequestsTotalTimeSeconds += t.totalTime(TimeUnit.SECONDS);
         });
 
-        // active.current / active.max / alive.max are TimeGauge/Gauge.
-        // created / expired / rejected are FunctionCounter (lifetime counts).
+        // sessions active/alive are Gauges; created/expired/rejected are lifetime FunctionCounters.
         s.tomcatSessionsActive = (long) firstGauge("tomcat.sessions.active.current");
         s.tomcatSessionsActiveMax = (long) firstGauge("tomcat.sessions.active.max");
         s.tomcatSessionsCreated = (long) firstFunctionCounterValue("tomcat.sessions.created");
@@ -139,7 +145,7 @@ public class SystemMetricsSnapshot {
         s.activeChatClientStream = (long) sumGauge("gen_ai.chat.client.operation.active",
                 Tags.of("spring.ai.chat.client.stream", "true"));
 
-        // jvm.info — vendor / runtime / version metadata, value is constant 1
+        // jvm.info value is always 1; the metadata is in the tags.
         Gauge info = registry.find("jvm.info").gauge();
         if (info != null) {
             for (Tag tag : info.getId().getTags()) {
@@ -212,13 +218,12 @@ public class SystemMetricsSnapshot {
             }
         });
 
-        // Exclude self-loopback so MCP Primitives reflects only external MCP servers.
         registry.find("mcp.primitive").timers().forEach(t -> {
             String kind = t.getId().getTag("kind");
             String outcome = t.getId().getTag("outcome");
             String server = t.getId().getTag("server");
             if (kind == null) return;
-            if (McpClientService.SELF_LOOPBACK_SERVER_NAME.equals(server)) return;
+            if (this.selfLoopbackServerName != null && this.selfLoopbackServerName.equalsIgnoreCase(server)) return;
             long count = (long) t.count();
             double totalMs = t.totalTime(TimeUnit.MILLISECONDS);
             double maxMs = t.max(TimeUnit.MILLISECONDS);
@@ -293,7 +298,6 @@ public class SystemMetricsSnapshot {
     }
 
     public static class Snapshot {
-        // JVM memory
         public double jvmHeapUsedBytes;
         public double jvmHeapMaxBytes;
         public double jvmHeapCommittedBytes;
@@ -303,14 +307,12 @@ public class SystemMetricsSnapshot {
         public final Map<String, Long> jvmBufferCount = new LinkedHashMap<>();
         public final Map<String, Long> jvmBufferUsedBytes = new LinkedHashMap<>();
 
-        // Threads
         public long jvmThreadsLive;
         public long jvmThreadsDaemon;
         public long jvmThreadsPeak;
         public long jvmThreadsStarted;
         public final Map<String, Long> jvmThreadsByState = new LinkedHashMap<>();
 
-        // GC
         public final Map<String, Double> gcPauseSecondsSum = new LinkedHashMap<>();
         public final Map<String, Long> gcPauseCount = new LinkedHashMap<>();
         public final Map<String, Double> gcPauseMaxMs = new LinkedHashMap<>();
@@ -320,11 +322,9 @@ public class SystemMetricsSnapshot {
         public long gcMemoryPromotedBytes;
         public double gcOverheadFraction;
 
-        // Classes
         public long jvmClassesLoaded;
         public long jvmClassesUnloaded;
 
-        // OS / Process
         public double processCpuUsage;
         public double systemCpuUsage;
         public long systemCpuCount;
@@ -336,26 +336,21 @@ public class SystemMetricsSnapshot {
         public long processFilesOpen;
         public long processFilesMax;
 
-        // Disk
         public long diskFreeBytes;
         public long diskTotalBytes;
 
-        // HTTP
         public final Map<String, Long> httpRequestsByStatus = new LinkedHashMap<>();
         public long httpRequestsTotal;
         public double httpRequestsTotalTimeSeconds;
 
-        // Tomcat
         public long tomcatSessionsActive;
         public long tomcatSessionsActiveMax;
         public long tomcatSessionsCreated;
         public long tomcatSessionsExpired;
         public long tomcatSessionsRejected;
 
-        // Logback
         public final Map<String, Long> logbackEventsByLevel = new LinkedHashMap<>();
 
-        // Spring AI in-flight
         public long activeChatClient;
         public long activeChatModel;
         public long activeAdvisor;
@@ -396,8 +391,7 @@ public class SystemMetricsSnapshot {
         public final TimerSummary genAiEmbeddingDuration = new TimerSummary();
         public final TimerSummary genAiImageDuration = new TimerSummary();
 
-        // Playground sandbox guard blocks (category/reason → count, plus
-        // collapsed by category for top-level KPI)
+        // Sandbox guard blocks: category/reason → count, plus collapsed by category for the KPI.
         public final Map<String, Long> sandboxGuardBlocked = new LinkedHashMap<>();
         public final Map<String, Long> sandboxGuardBlockedByCategory = new LinkedHashMap<>();
 

@@ -1,5 +1,5 @@
 (function () {
-  // Preset is single-select (mutually exclusive — only one preset can be
+  // Preset is single-select (mutually exclusive - only one preset can be
   // active at a time). Tag, Category, Transport are multi-select. Within
   // tag/category a card matches if ANY selected value matches (OR); transport
   // is AND because each card has exactly one transport. Search is AND with
@@ -21,7 +21,7 @@
       preset: null,            // single
       tag: new Set(),          // multi
       category: new Set(),     // multi
-      transport: new Set(),    // multi (MCP catalog only — empty on tools page)
+      transport: new Set(),    // multi (MCP catalog only - empty on tools page)
     };
 
     function matches(row) {
@@ -58,7 +58,7 @@
         }
         if (!any) return false;
       }
-      // Transport is an independent AND — each card has exactly one transport,
+      // Transport is an independent AND - each card has exactly one transport,
       // so any selection narrows the visible set to that subset.
       if (filterState.transport.size > 0) {
         const tr = (row.dataset.transport || '').toLowerCase();
@@ -114,7 +114,7 @@
     if (search) {
       search.addEventListener('input', (e) => {
         filterState.q = e.target.value || '';
-        // Search and tag/category are part of the non-preset mode — typing
+        // Search and tag/category are part of the non-preset mode - typing
         // exits any active preset.
         if (filterState.q) clearPreset();
         apply();
@@ -223,7 +223,7 @@
   }
 
   // Auto-open the card matching window.location.hash when the page loads (or
-  // when the hash changes — e.g. user clicks a stretched-link from a directory
+  // when the hash changes - e.g. user clicks a stretched-link from a directory
   // page that lands on this sub-page with `#<entry-id>`). Without this, the
   // browser only scrolls to the anchor; the detail row stays hidden and the
   // user can't tell whether the navigation arrived.

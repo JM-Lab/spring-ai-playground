@@ -1,6 +1,6 @@
 {#-
   Override of mkdocs-material's partials/nav-item.html (Material 9.x).
-  Only change vs upstream is the `checked` line — render depth-1 nested
+  Only change vs upstream is the `checked` line - render depth-1 nested
   sections under each tab as checked by default, so the sidebar paints in
   the expanded state on first paint and we don't depend on JS to flip
   toggles between paint frames (which causes the leaf-page sidebar
@@ -106,7 +106,7 @@
     <li class="{{ class }} md-nav__item--nested">
       {% if not is_pruned %}
         {#- spring-ai-playground override: depth-1 nested under tabs is checked
-            by default. `level == 2` here means "direct child of a tab" — i.e.,
+            by default. `level == 2` here means "direct child of a tab" - i.e.,
             Tool Studio / MCP Server / Observability under Features. -#}
         {% set checked = "checked" if nav_item.active or ("navigation.tabs" in features and level == 2) %}
         {% if "navigation.expand" in features and not checked %}

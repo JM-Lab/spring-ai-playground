@@ -3,7 +3,7 @@ description: Four dashboards covering JVM/OS health, HTTP and Tomcat instrumenta
 
 # Runtime
 
-The **Runtime** group is the operational view — JVM and OS health, HTTP and session instrumentation, log search, and the raw trace stream. Where AI Usage and AI Stack answer *"what did the agent do,"* Runtime answers *"is the process itself healthy"* and *"give me the unfiltered evidence."*
+The **Runtime** group is the operational view - JVM and OS health, HTTP and session instrumentation, log search, and the raw trace stream. Where AI Usage and AI Stack answer *"what did the agent do,"* Runtime answers *"is the process itself healthy"* and *"give me the unfiltered evidence."*
 
 ```mermaid
 flowchart LR
@@ -21,7 +21,7 @@ flowchart LR
     LG -. traceId match .-> TR
 ```
 
-The four tabs are independent — Logs and Traces share an MDC `traceId` so an operator can drill from a log line to the trace it came from (and vice versa), but otherwise each tab pulls from its own source. The Host and Web Application tabs both read `MeterRegistry`, but Host historizes it through the dedicated `SystemMetricsCollector` parallel pipeline while Web Application reads live values directly.
+The four tabs are independent - Logs and Traces share an MDC `traceId` so an operator can drill from a log line to the trace it came from (and vice versa), but otherwise each tab pulls from its own source. The Host and Web Application tabs both read `MeterRegistry`, but Host historizes it through the dedicated `SystemMetricsCollector` parallel pipeline while Web Application reads live values directly.
 
 ## Pages in this group
 
@@ -55,8 +55,8 @@ The four tabs are independent — Logs and Traces share an MDC `traceId` so an o
 
 ## Cross-references
 
-- [Index](../index.md) — observability landing + the four group pages
-- [AI Usage](../ai-usage/index.md) — Tokens & Cost · AI Models
-- [AI Stack](../ai-stack/index.md) — Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat
-- [Tokens & Cost → Model Pricing Manager](../ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) — configure per-model rates and display currency
-- [Observability Architecture](../../../observability-architecture.md) — pipeline, storage tiers, external export, configuration
+- [Index](../index.md) - observability landing + the four group pages
+- [AI Usage](../ai-usage/index.md) - Tokens & Cost · AI Models
+- [AI Stack](../ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat
+- [Tokens & Cost → Model Pricing Manager](../ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) - configure per-model rates and display currency
+- [Observability Architecture](../../../observability-architecture.md) - pipeline, storage tiers, external export, configuration

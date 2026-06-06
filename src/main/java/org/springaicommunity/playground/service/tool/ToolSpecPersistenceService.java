@@ -65,7 +65,7 @@ public class ToolSpecPersistenceService implements
     private final DefaultToolsPreferenceResolver preferenceResolver;
 
     public ToolSpecPersistenceService(Path springAiPlaygroundHomeDir, ToolSpecService toolSpecService,
-            @Value("${spring.ai.playground.default-tool-location:}")
+            @Value("${spring.ai.playground.tool-studio.spec-location:}")
             String defaultToolSpecsLocation, ObjectMapper objectMapper, ResourceLoader resourceLoader,
             PersistenceExecutor persistenceExecutor,
             DefaultToolsPreferenceService preferenceService,
@@ -145,22 +145,6 @@ public class ToolSpecPersistenceService implements
         return this.defaultToolSpecs;
     }
 
-    public DefaultToolsPreferenceService getPreferenceService() {
-        return this.preferenceService;
-    }
-
-    public void applyPreference(DefaultToolsPreference next) {
-        preferenceService.update(next);
-        Set<String> active = preferenceResolver.resolveActiveNames(next, defaultToolSpecs);
-        for (ToolSpec spec : defaultToolSpecs) {
-            boolean shouldBeDraft = !active.contains(spec.name());
-            if (spec.draft() != shouldBeDraft) {
-                spec.withDraft(shouldBeDraft);
-                toolSpecService.update(spec);
-            }
-        }
-    }
-
     @Override
     public Path getSaveDir() {
         return this.saveDir;
@@ -205,5 +189,6 @@ public class ToolSpecPersistenceService implements
                         toolSpecsMcpServerSettings.stream().map(ToolSpecsMcpServerSetting::toolSpecs)
                                 .filter(Objects::nonNull).flatMap(List::stream))
                 .forEach(toolSpecService::update));
+        this.toolSpecService.reconcileNativeExposure();
     }
 }

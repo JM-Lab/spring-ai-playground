@@ -272,6 +272,7 @@ public class ToolBuilderView extends VerticalLayout {
             }
             this.javascriptToolPlaygroundView.updateContents(toolSpec.staticVariables(), toolSpec.code());
             this.javascriptToolPlaygroundView.applySandboxOverrides(toolSpec.sandboxOverrides());
+            this.javascriptToolPlaygroundView.applyHumanInTheLoop(toolSpec.humanInTheLoop());
         } else {
             addDefaultParameterForm();
         }
@@ -360,6 +361,7 @@ public class ToolBuilderView extends VerticalLayout {
                 .withCategory(this.categoryField.getValue())
                 .withTags(this.tagsField.getValue() == null ? Set.of() : this.tagsField.getValue())
                 .withSandboxOverrides(this.javascriptToolPlaygroundView.currentSandboxOverrides())
+                .withHumanInTheLoop(this.javascriptToolPlaygroundView.currentHumanInTheLoop())
                 .withDraft(targetDraft);
         ToolSpec registeredToolSpec = toolSpecService.update(formSpec);
         String stateLabel = targetDraft ? "saved as Draft" : "published";

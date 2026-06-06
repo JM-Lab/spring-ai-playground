@@ -27,7 +27,7 @@
     </parent>
     <groupId>io.github.springaicommunity</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.2.0-M7</version>
+    <version>0.2.0-M8</version>
     <name>Spring AI Playground</name>
     <description>Incubating project from the Spring AI Community</description>
     <url>https://github.com/spring-ai-community/spring-ai-playground</url>
@@ -53,7 +53,7 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>1.1.6</spring-ai.version>
+        <spring-ai.version>1.1.7</spring-ai.version>
         <vaadin.version>24.10.4</vaadin.version>
         <graalvm.version>24.2.2</graalvm.version>
     </properties>
@@ -83,12 +83,6 @@
         <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>in.virit</groupId>
-            <artifactId>viritin</artifactId>
-            <version>2.21.1</version>
         </dependency>
 
         <dependency>

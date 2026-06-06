@@ -21,10 +21,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.McpAsyncServer;
+import io.modelcontextprotocol.server.McpServerFeatures.AsyncToolSpecification;
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.mcp.McpServerHitlToolGate;
+import org.springaicommunity.playground.service.mcp.risk.WrappedExternalToolCallback;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.risk.DefaultIntegrityVerifier;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.NetworkPolicy;
 import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor;
@@ -34,10 +39,12 @@ import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResol
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.Overrides;
 import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.McpToolUtils;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.execution.ToolExecutionException;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.function.FunctionToolCallback;
@@ -68,15 +75,38 @@ import java.util.stream.Collectors;
 @Service
 public class ToolSpecService {
 
-    public record ToolMcpServerSetting(boolean autoAdd, Set<String> exposedToolIds) {}
+    public enum ExposureMode {
+        BUILTIN_ONLY, COMPOSED_ONLY, BOTH;
+
+        public boolean includesBuiltin() {
+            return this != COMPOSED_ONLY;
+        }
+
+        public boolean includesComposed() {
+            return this != BUILTIN_ONLY;
+        }
+    }
+
+    public record ToolMcpServerSetting(boolean autoAdd, Set<String> exposedToolIds, Set<String> excludedToolIds) {
+        public ToolMcpServerSetting {
+            exposedToolIds = exposedToolIds == null ? Set.of() : exposedToolIds;
+            excludedToolIds = excludedToolIds == null ? Set.of() : excludedToolIds;
+        }
+        public ToolMcpServerSetting(boolean autoAdd, Set<String> exposedToolIds) {
+            this(autoAdd, exposedToolIds, Set.of());
+        }
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(ToolSpecService.class);
     private static final ParameterizedTypeReference<Map<String, Object>>
             MAP_PARAMETERIZED_TYPE_REFERENCE = new ParameterizedTypeReference<>() {};
+    private static final ToolManifest.HumanInTheLoop REQUIRED_HITL =
+            new ToolManifest.HumanInTheLoop(ToolManifest.HumanInTheLoop.Mode.REQUIRED, null);
 
     private final McpSyncServer mcpSyncServer;
     private final McpAsyncServer mcpAsyncServer;
     private final McpServerInfoService mcpServerInfoService;
+    private final McpServerHitlToolGate hitlGate;
     private final ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider;
     private final Map<String, ToolSpec> toolIdSpecs;
     private final JsToolExecutor jsToolExecutor;
@@ -84,27 +114,36 @@ public class ToolSpecService {
     private final EffectivePolicyResolver policyResolver;
     private final SandboxPostureCalculator postureCalculator;
     private final ObservationRegistry observationRegistry;
+    private final DefaultIntegrityVerifier integrityVerifier;
     private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private final Map<String, ToolSpec> externalToolSpecs = new ConcurrentHashMap<>();
+    private final Map<String, String> externalToolRiskLevels = new ConcurrentHashMap<>();
 
     private ToolMcpServerSetting toolMcpServerSetting;
+    private volatile ExposureMode exposureMode;
 
     public ToolSpecService(ObjectProvider<McpSyncServer> syncServerProvider,
             ObjectProvider<McpAsyncServer> asyncServerProvider, McpServerInfoService mcpServerInfoService,
+            McpServerHitlToolGate hitlGate,
             ObjectProvider<ToolSpecPersistenceService> toolSpecPersistenceServiceProvider,
             SpringAiPlaygroundOptions playgroundOptions, EffectivePolicyResolver policyResolver,
             SandboxPostureCalculator postureCalculator,
-            ObservationRegistry observationRegistry)
+            ObservationRegistry observationRegistry,
+            DefaultIntegrityVerifier integrityVerifier)
             throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
         this.mcpServerInfoService = mcpServerInfoService;
+        this.hitlGate = hitlGate;
         this.toolSpecPersistenceServiceProvider = toolSpecPersistenceServiceProvider;
         this.toolMcpServerSetting = new ToolMcpServerSetting(true, Set.of());
+        this.exposureMode = playgroundOptions.builtInMcpServer().exposureMode();
         this.toolIdSpecs = new ConcurrentHashMap<>();
         this.sandboxBaseline = playgroundOptions.toolStudio().jsSandbox();
         this.policyResolver = policyResolver;
         this.postureCalculator = postureCalculator;
         this.observationRegistry = observationRegistry;
+        this.integrityVerifier = integrityVerifier;
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
                 this.sandboxBaseline, playgroundOptions.toolStudio().fs());
     }
@@ -135,6 +174,7 @@ public class ToolSpecService {
         result.withCategory(toolSpec.category())
                 .withTags(toolSpec.tags())
                 .withSandboxOverrides(toolSpec.sandboxOverrides())
+                .withHumanInTheLoop(toolSpec.humanInTheLoop())
                 .withDraft(targetDraft);
         syncMcpExposureForDraft(result, targetDraft);
         return result;
@@ -143,18 +183,26 @@ public class ToolSpecService {
     private void syncMcpExposureForDraft(ToolSpec spec, boolean targetDraft) {
         boolean currentlyExposed = getMcpToolList().stream()
                 .anyMatch(tool -> tool.name().equals(spec.name()));
+        Set<String> excluded = this.toolMcpServerSetting.excludedToolIds();
         boolean changed = false;
-        if (targetDraft && currentlyExposed) {
-            removeMcpTool(spec.name());
-            HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
-            ids.remove(spec.toolId());
-            this.toolMcpServerSetting = new ToolMcpServerSetting(this.toolMcpServerSetting.autoAdd(), ids);
-            changed = true;
-        } else if (!targetDraft && !currentlyExposed && this.toolMcpServerSetting.autoAdd()) {
+        if (targetDraft) {
+            if (currentlyExposed) {
+                removeMcpTool(spec.name());
+            }
+            if (this.toolMcpServerSetting.exposedToolIds().contains(spec.toolId())) {
+                HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
+                ids.remove(spec.toolId());
+                this.toolMcpServerSetting = new ToolMcpServerSetting(
+                        this.toolMcpServerSetting.autoAdd(), ids, excluded);
+                changed = true;
+            }
+        } else if (!currentlyExposed
+                && this.toolMcpServerSetting.autoAdd()
+                && !excluded.contains(spec.toolId())) {
             addMcpTool(spec);
             HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
             ids.add(spec.toolId());
-            this.toolMcpServerSetting = new ToolMcpServerSetting(true, ids);
+            this.toolMcpServerSetting = new ToolMcpServerSetting(true, ids, excluded);
             changed = true;
         }
         if (changed) {
@@ -224,23 +272,24 @@ public class ToolSpecService {
         if (Objects.nonNull(toolSpec))
             getMcpToolList().stream().filter(tool -> tool.name().equals(toolSpec.name())).findFirst()
                     .map(McpSchema.Tool::name).ifPresent(this::removeMcpTool);
-        if (this.toolMcpServerSetting.autoAdd() &&
-                getMcpToolList().stream().noneMatch(tool -> tool.name().equals(newToolSpec.name()))) {
-            addMcpTool(newToolSpec);
-            HashSet<String> exposedToolIds = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
-            exposedToolIds.add(newToolSpec.toolId());
-            this.toolMcpServerSetting = new ToolMcpServerSetting(true, exposedToolIds);
-        }
         persistAsync();
         return newToolSpec;
     }
 
     public void addMcpTool(ToolSpec toolSpec) {
+        if (!this.exposureMode.includesBuiltin()) {
+            return;
+        }
+        if (this.integrityVerifier.verifyTool(toolSpec).isBlocked()) {
+            return;
+        }
         logger.info("Adding MCP tool to server: name={}", toolSpec.name());
         if (Objects.nonNull(this.mcpSyncServer)) {
-            this.mcpSyncServer.addTool(McpToolUtils.toSyncToolSpecification(toolSpec.toolCallback()));
+            this.mcpSyncServer.addTool(this.hitlGate.decorate(
+                    McpToolUtils.toSyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop()));
         } else {
-            this.mcpAsyncServer.addTool(McpToolUtils.toAsyncToolSpecification(toolSpec.toolCallback()));
+            this.mcpAsyncServer.addTool(this.hitlGate.decorate(
+                    McpToolUtils.toAsyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop()));
         }
         this.mcpServerInfoService.updateDefaultMcpTool();
     }
@@ -257,6 +306,58 @@ public class ToolSpecService {
     public List<McpSchema.Tool> getMcpToolList() {
         return Objects.nonNull(this.mcpSyncServer) ? this.mcpSyncServer.listTools() : this.mcpAsyncServer.listTools()
                 .toStream().toList();
+    }
+
+    // Re-exposed external tools live in their own registry, outside authored toolIdSpecs (never persisted/listed).
+    public void addExternalMcpTool(ToolCallback callback, boolean hitl) {
+        String name = callback.getToolDefinition().name();
+        if (this.externalToolSpecs.containsKey(name)) return;
+        if (this.integrityVerifier.isReservedToolName(name)) {
+            logger.warn("Refusing to expose external MCP tool '{}' — name is a reserved built-in default "
+                    + "(impersonation guard)", name);
+            return;
+        }
+        logger.info("Adding external MCP tool to built-in server: name={}, hitl={}", name, hitl);
+        ToolSpec externalSpec = new ToolSpec(name, name, null, null, null, null, null, callback)
+                .withHumanInTheLoop(hitl ? REQUIRED_HITL : null);
+        try {
+            if (Objects.nonNull(this.mcpSyncServer)) {
+                SyncToolSpecification spec = McpToolUtils.toSyncToolSpecification(callback);
+                this.mcpSyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL) : spec);
+            } else if (Objects.nonNull(this.mcpAsyncServer)) {
+                AsyncToolSpecification spec = McpToolUtils.toAsyncToolSpecification(callback);
+                this.mcpAsyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL) : spec);
+            }
+            this.externalToolSpecs.put(name, externalSpec);
+            if (callback instanceof WrappedExternalToolCallback wrapped) {
+                this.externalToolRiskLevels.put(name, wrapped.riskLevel().name());
+            }
+        } catch (RuntimeException e) {
+            logger.warn("Failed to add external MCP tool: name={}, error={}", name, e.getMessage());
+        }
+    }
+
+    public void removeExternalMcpTool(String toolName) {
+        logger.info("Removing external MCP tool from built-in server: name={}", toolName);
+        try {
+            if (Objects.nonNull(this.mcpSyncServer)) {
+                this.mcpSyncServer.removeTool(toolName);
+            } else if (Objects.nonNull(this.mcpAsyncServer)) {
+                this.mcpAsyncServer.removeTool(toolName);
+            }
+        } catch (RuntimeException e) {
+            logger.warn("Failed to remove external MCP tool: name={}, error={}", toolName, e.getMessage());
+        }
+        this.externalToolSpecs.remove(toolName);
+        this.externalToolRiskLevels.remove(toolName);
+    }
+
+    public Set<String> getExternalMcpToolNames() {
+        return Set.copyOf(this.externalToolSpecs.keySet());
+    }
+
+    public List<ToolSpec> getExternalToolSpecs() {
+        return List.copyOf(this.externalToolSpecs.values());
     }
 
     public Optional<ToolSpec> getToolSpecAsOpt(String name) {
@@ -322,11 +423,7 @@ public class ToolSpecService {
                 cid, toolName, level, caps, hosts,
                 overrideBase == null ? "-" : overrideBase, safeParams);
 
-        // Augment the in-flight Spring AI `spring.ai.tool` observation (if any)
-        // with sandbox attributes so the Observability dashboards can plot the
-        // sandbox tier of each call. Skipped when this runs outside a chat
-        // tool callback (e.g. Tool Studio Test Run) — no current observation,
-        // no observation orphan to clean up.
+        // Tag the in-flight spring.ai.tool observation with sandbox attrs (skipped outside a chat tool callback).
         Observation current = observationRegistry.getCurrentObservation();
         if (current != null) {
             current.lowCardinalityKeyValue("sandbox.level", level);
@@ -356,6 +453,40 @@ public class ToolSpecService {
         }
         logger.debug("tool.exec.result cid={} result={}", cid, jsExecutionResult);
         return jsExecutionResult;
+    }
+
+    public RiskLevel getSandboxRiskLevel(String toolName) {
+        return getToolSpecAsOpt(toolName)
+                .map(spec -> riskLevelFor(spec.sandboxOverrides()))
+                .map(RiskLevel::valueOf)
+                .orElse(RiskLevel.L0);
+    }
+
+    public String riskLevelOf(ToolSpec spec) {
+        if (spec != null) {
+            String external = this.externalToolRiskLevels.get(spec.name());
+            if (external != null) return external;
+        }
+        return riskLevelFor(spec == null ? null : spec.sandboxOverrides());
+    }
+
+    public boolean requiresApproval(ToolSpec spec) {
+        if (spec == null) return false;
+        ToolManifest.HumanInTheLoop hitl = spec.humanInTheLoop();
+        return hitl != null && hitl.mode() == ToolManifest.HumanInTheLoop.Mode.REQUIRED;
+    }
+
+    public boolean requiresApproval(String toolName) {
+        return requiresApproval(specForGating(toolName));
+    }
+
+    public ToolManifest.HumanInTheLoop humanInTheLoopFor(String toolName) {
+        ToolSpec spec = specForGating(toolName);
+        return spec == null ? null : spec.humanInTheLoop();
+    }
+
+    private ToolSpec specForGating(String toolName) {
+        return getToolSpecAsOpt(toolName).orElseGet(() -> this.externalToolSpecs.get(toolName));
     }
 
     private String riskLevelFor(ToolSpec.SandboxOverrides sbo) {
@@ -463,17 +594,40 @@ public class ToolSpecService {
         logger.info("Updating Tool MCP server setting: autoAdd={}, exposedToolCount={}",
                 toolMcpServerSetting.autoAdd(), toolMcpServerSetting.exposedToolIds().size());
         setToolMcpServerSetting(toolMcpServerSetting);
-        Set<String> toExposeToolNames =
-                toolMcpServerSetting.exposedToolIds().stream().map(toolIdSpecs::get).map(ToolSpec::name)
-                        .collect(Collectors.toSet());
-        Set<String> currentExposedToolNames =
-                getMcpToolList().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
-        currentExposedToolNames.stream().filter(name -> !toExposeToolNames.contains(name)).forEach(this::removeMcpTool);
-        toExposeToolNames.stream().filter(name -> !currentExposedToolNames.contains(name))
-                .map(name -> toolIdSpecs.values().stream().filter(spec -> name.equals(spec.name())).findFirst())
-                .flatMap(Optional::stream).forEach(this::addMcpTool);
-        logger.info("Tool MCP server setting updated: exposedToolNames={}", toExposeToolNames);
+        reconcileNativeExposure();
         persistAsync();
+    }
+
+    public ExposureMode exposureMode() {
+        return this.exposureMode;
+    }
+
+    public synchronized void setExposureMode(ExposureMode mode) {
+        ExposureMode next = mode == null ? ExposureMode.BOTH : mode;
+        if (this.exposureMode == next) return;
+        this.exposureMode = next;
+        reconcileNativeExposure();
+    }
+
+    public synchronized void reconcileNativeExposure() {
+        Set<String> desired = this.exposureMode.includesBuiltin()
+                ? this.toolMcpServerSetting.exposedToolIds().stream().map(this.toolIdSpecs::get)
+                        .filter(Objects::nonNull).filter(spec -> !spec.draft())
+                        .map(ToolSpec::name).collect(Collectors.toSet())
+                : Set.of();
+        Set<String> external = getExternalMcpToolNames();
+        Set<String> currentNative = getMcpToolList().stream().map(McpSchema.Tool::name)
+                .filter(name -> !external.contains(name)).collect(Collectors.toSet());
+        currentNative.stream().filter(name -> !desired.contains(name)).forEach(this::removeMcpTool);
+        desired.stream().filter(name -> !currentNative.contains(name))
+                .map(name -> this.toolIdSpecs.values().stream().filter(spec -> name.equals(spec.name())).findFirst())
+                .flatMap(Optional::stream).forEach(this::addMcpTool);
+        refreshDefaultMcpTool();
+        logger.info("Native exposure reconciled: mode={}, exposedNativeCount={}", this.exposureMode, desired.size());
+    }
+
+    public void refreshDefaultMcpTool() {
+        this.mcpServerInfoService.updateDefaultMcpTool();
     }
 
     @EventListener(ContextClosedEvent.class)

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 860" role="img" aria-label="Spring AI Playground runtime layers">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 838" role="img" aria-label="Spring AI Playground runtime layers">
   <defs>
     <style>
       .band { stroke: #c9d3e0; stroke-width: 1; }
@@ -11,7 +11,7 @@
       .layer-sub { font: 400 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; }
       .box { fill: #ffffff; stroke: #7c93af; stroke-width: 1; }
       .box-label { font: 600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; text-anchor: middle; }
-      .box-sub { font: 400 10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; text-anchor: middle; }
+      .box-sub { font: 400 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; text-anchor: middle; }
       .arrow { stroke: #475569; stroke-width: 1.6; fill: none; marker-end: url(#arrowhead); }
     </style>
     <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -20,113 +20,108 @@
   </defs>
 
   <!-- Layer 1 -->
-  <rect class="band band-1" x="10" y="10" width="940" height="100" rx="8" ry="8"/>
-  <text class="layer-title" x="30" y="32">Layer 1 — Desktop Launcher (Electron)</text>
-  <text class="layer-sub" x="30" y="52">Optional packaging, process lifecycle, provider config templates</text>
-  <rect class="box" x="270" y="64" width="420" height="34" rx="6" ry="6"/>
-  <text class="box-label" x="480" y="86">main.js · launcher-config.js · ollama-manager.js</text>
+  <rect class="band band-1" x="10" y="10" width="940" height="104" rx="8" ry="8"/>
+  <text class="layer-title" x="30" y="32">Layer 1 - Desktop Launcher (Electron)</text>
+  <text class="layer-sub" x="30" y="50">Optional packaging, process lifecycle, OS-encrypted secrets</text>
+  <rect class="box" x="30" y="62" width="440" height="40" rx="6" ry="6"/>
+  <text class="box-label" x="250" y="86">main.js · launcher-config.js · ollama-manager.js</text>
+  <rect class="box" x="490" y="62" width="440" height="40" rx="6" ry="6"/>
+  <text class="box-label" x="710" y="80">OS secure storage</text>
+  <text class="box-sub" x="710" y="96">Keychain / DPAPI → encrypted secrets.enc (keys · env)</text>
 
-  <path class="arrow" d="M480,110 L480,130"/>
+  <path class="arrow" d="M480,114 L480,134"/>
 
   <!-- Layer 2 -->
-  <rect class="band band-2" x="10" y="130" width="940" height="115" rx="8" ry="8"/>
-  <text class="layer-title" x="30" y="154">Layer 2 — UI Surfaces (Vaadin 24)</text>
-  <text class="layer-sub" x="30" y="172">Hand-written views under webui/</text>
-  <rect class="box" x="30" y="185" width="168" height="45" rx="6" ry="6"/>
-  <text class="box-label" x="114" y="212">HomeView</text>
-  <rect class="box" x="213" y="185" width="168" height="45" rx="6" ry="6"/>
-  <text class="box-label" x="297" y="212">ToolStudioView</text>
-  <rect class="box" x="396" y="185" width="168" height="45" rx="6" ry="6"/>
-  <text class="box-label" x="480" y="212">McpServerView</text>
-  <rect class="box" x="579" y="185" width="168" height="45" rx="6" ry="6"/>
-  <text class="box-label" x="663" y="212">VectorStoreView</text>
-  <rect class="box" x="762" y="185" width="168" height="45" rx="6" ry="6"/>
-  <text class="box-label" x="846" y="212">ChatView</text>
+  <rect class="band band-2" x="10" y="134" width="940" height="116" rx="8" ry="8"/>
+  <text class="layer-title" x="30" y="158">Layer 2 - UI Surfaces (Vaadin Flow)</text>
+  <text class="layer-sub" x="30" y="176">Hand-written views under webui/</text>
+  <rect class="box" x="30" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="100" y="219">Home</text>
+  <rect class="box" x="182" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="252" y="219">Tool Studio</text>
+  <rect class="box" x="334" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="404" y="219">MCP Server</text>
+  <rect class="box" x="486" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="556" y="219">Vector Database</text>
+  <rect class="box" x="638" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="708" y="219">Agentic Chat</text>
+  <rect class="box" x="790" y="192" width="140" height="46" rx="6" ry="6"/>
+  <text class="box-label" x="860" y="219">Observability</text>
 
-  <path class="arrow" d="M480,245 L480,265"/>
+  <path class="arrow" d="M480,250 L480,270"/>
 
   <!-- Layer 3 -->
-  <rect class="band band-3" x="10" y="265" width="940" height="130" rx="8" ry="8"/>
-  <text class="layer-title" x="30" y="289">Layer 3 — Service Layer</text>
-  <text class="layer-sub" x="30" y="307">One service per feature area — persistence and runtime concerns</text>
-  <rect class="box" x="30" y="320" width="210" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="135" y="342">ChatService</text>
-  <text class="box-sub" x="135" y="362">ChatHistoryService</text>
+  <rect class="band band-3" x="10" y="270" width="940" height="150" rx="8" ry="8"/>
+  <text class="layer-title" x="30" y="294">Layer 3 - Backend Services</text>
+  <text class="layer-sub" x="30" y="312">Per-feature services under service/ · plus the top-level observability/ pipeline</text>
+  <rect class="box" x="30" y="324" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="175" y="344">ChatService</text>
+  <text class="box-sub" x="175" y="361">ChatHistoryService</text>
+  <rect class="box" x="335" y="324" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="344">ToolSpecService</text>
+  <text class="box-sub" x="480" y="361">JsToolExecutor · sandbox policy · risk</text>
+  <rect class="box" x="640" y="324" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="785" y="344">McpClientService</text>
+  <text class="box-sub" x="785" y="361">McpServerInfoService · OAuth 2.1 · catalog</text>
+  <rect class="box" x="30" y="372" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="175" y="392">VectorStoreService</text>
+  <text class="box-sub" x="175" y="409">VectorStoreDocumentService</text>
+  <rect class="box" x="335" y="372" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="392">Observability</text>
+  <text class="box-sub" x="480" y="409">Collector · RingBuffer · TimeSeries (observability/)</text>
+  <rect class="box" x="640" y="372" width="290" height="44" rx="6" ry="6"/>
+  <text class="box-label" x="785" y="392">Util</text>
+  <text class="box-sub" x="785" y="409">SecretMasking · EnvVarResolver · Identity</text>
 
-  <rect class="box" x="260" y="320" width="210" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="365" y="342">ToolSpecService</text>
-  <text class="box-sub" x="365" y="362">JsToolExecutor</text>
-
-  <rect class="box" x="490" y="320" width="210" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="595" y="342">McpClientService</text>
-  <text class="box-sub" x="595" y="362">McpServerInfoService</text>
-
-  <rect class="box" x="720" y="320" width="210" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="825" y="342">VectorStoreService</text>
-  <text class="box-sub" x="825" y="362">VectorStoreDocumentService</text>
-
-  <path class="arrow" d="M480,395 L480,415"/>
+  <path class="arrow" d="M480,420 L480,440"/>
 
   <!-- Layer 4 -->
-  <rect class="band band-4" x="10" y="415" width="940" height="195" rx="8" ry="8"/>
-  <text class="layer-title" x="30" y="439">Layer 4 — Spring AI Integration</text>
-  <text class="layer-sub" x="30" y="457">Thin adapters wired via Spring beans — ChatClient, advisors, MCP, vector and embedding</text>
+  <rect class="band band-4" x="10" y="440" width="940" height="180" rx="8" ry="8"/>
+  <text class="layer-title" x="30" y="464">Layer 4 - Spring AI Integration</text>
+  <text class="layer-sub" x="30" y="482">Thin adapters wired via Spring beans - ChatClient, advisors, MCP, vector, embedding</text>
+  <rect class="box" x="30" y="494" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="175" y="516">ChatClient · Advisor chain</text>
+  <text class="box-sub" x="175" y="536">MessageChatMemory · RAG · Logger · HITL</text>
+  <rect class="box" x="335" y="494" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="516">VectorStore · EmbeddingModel</text>
+  <text class="box-sub" x="480" y="536">RetrievalAugmentationAdvisor · SimpleStore</text>
+  <rect class="box" x="640" y="494" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="785" y="516">ChatMemory</text>
+  <text class="box-sub" x="785" y="536">MessageWindowChatMemory (last 10)</text>
+  <rect class="box" x="30" y="560" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="175" y="582">McpToolCallingManager</text>
+  <text class="box-sub" x="175" y="602">implements Spring AI ToolCallingManager · HITL gate</text>
+  <rect class="box" x="335" y="560" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="582">MCP Server</text>
+  <text class="box-sub" x="480" y="602">built-in · spring-ai-starter-mcp-server · /mcp</text>
+  <rect class="box" x="640" y="560" width="290" height="58" rx="6" ry="6"/>
+  <text class="box-label" x="785" y="582">MCP Client</text>
+  <text class="box-sub" x="785" y="602">spring-ai-starter-mcp-client → external</text>
 
-  <!-- Row 1 -->
-  <rect class="box" x="30" y="470" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="175" y="492">ChatClient · Advisor chain</text>
-  <text class="box-sub" x="175" y="512">MessageChatMemory · RAG · Logger</text>
-
-  <rect class="box" x="335" y="470" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="480" y="492">VectorStore · EmbeddingModel</text>
-  <text class="box-sub" x="480" y="512">RetrievalAugmentationAdvisor · SimpleVectorStore</text>
-
-  <rect class="box" x="640" y="470" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="785" y="492">ChatMemory · Repository</text>
-  <text class="box-sub" x="785" y="512">MessageWindowChatMemory · InMemory store</text>
-
-  <!-- Row 2 -->
-  <rect class="box" x="30" y="540" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="175" y="562">McpToolCallingManager</text>
-  <text class="box-sub" x="175" y="582">tool execution · UI event streaming</text>
-
-  <rect class="box" x="335" y="540" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="480" y="562">Built-in MCP Server</text>
-  <text class="box-sub" x="480" y="582">spring-ai-starter-mcp-server · /mcp</text>
-
-  <rect class="box" x="640" y="540" width="290" height="62" rx="6" ry="6"/>
-  <text class="box-label" x="785" y="562">MCP Client</text>
-  <text class="box-sub" x="785" y="582">spring-ai-starter-mcp-client → External MCP Server</text>
-
-  <path class="arrow" d="M480,610 L480,630"/>
+  <path class="arrow" d="M480,620 L480,640"/>
 
   <!-- Layer 5 -->
-  <rect class="band band-5" x="10" y="630" width="940" height="220" rx="8" ry="8"/>
-  <text class="layer-title" x="30" y="654">Layer 5 — External Runtimes</text>
-  <text class="layer-sub" x="30" y="672">Everything outside the JVM</text>
-
-  <rect class="box" x="30" y="690" width="210" height="145" rx="6" ry="6"/>
-  <text class="box-label" x="135" y="715">Model providers</text>
-  <text class="box-sub" x="135" y="737">Ollama (local, default)</text>
-  <text class="box-sub" x="135" y="755">OpenAI</text>
-  <text class="box-sub" x="135" y="773">OpenAI-compatible</text>
-  <text class="box-sub" x="135" y="791">(llama.cpp · LM Studio · vLLM)</text>
-
-  <rect class="box" x="260" y="690" width="210" height="145" rx="6" ry="6"/>
-  <text class="box-label" x="365" y="715">Vector databases</text>
-  <text class="box-sub" x="365" y="733">(optional, opt-in build)</text>
-  <text class="box-sub" x="365" y="755">pgvector · Weaviate</text>
-  <text class="box-sub" x="365" y="773">Qdrant · Milvus · ...</text>
-
-  <rect class="box" x="490" y="690" width="210" height="145" rx="6" ry="6"/>
-  <text class="box-label" x="595" y="715">External MCP servers</text>
-  <text class="box-sub" x="595" y="737">STDIO (spawned process)</text>
-  <text class="box-sub" x="595" y="755">Streamable HTTP</text>
-  <text class="box-sub" x="595" y="773">SSE (legacy)</text>
-
-  <rect class="box" x="720" y="690" width="210" height="145" rx="6" ry="6"/>
-  <text class="box-label" x="825" y="715">Apache Tika</text>
-  <text class="box-sub" x="825" y="737">Document readers</text>
-  <text class="box-sub" x="825" y="755">PDF · DOCX · HTML</text>
-  <text class="box-sub" x="825" y="773">and others</text>
+  <rect class="band band-5" x="10" y="640" width="940" height="188" rx="8" ry="8"/>
+  <text class="layer-title" x="30" y="664">Layer 5 - External Runtimes</text>
+  <text class="layer-sub" x="30" y="682">Everything outside the JVM</text>
+  <rect class="box" x="30" y="700" width="210" height="118" rx="6" ry="6"/>
+  <text class="box-label" x="135" y="724">Model providers</text>
+  <text class="box-sub" x="135" y="744">Ollama (local, default)</text>
+  <text class="box-sub" x="135" y="762">OpenAI · OpenAI-compatible</text>
+  <text class="box-sub" x="135" y="780">(llama.cpp · LM Studio · vLLM)</text>
+  <rect class="box" x="260" y="700" width="210" height="118" rx="6" ry="6"/>
+  <text class="box-label" x="365" y="724">Vector databases</text>
+  <text class="box-sub" x="365" y="744">(optional, opt-in build)</text>
+  <text class="box-sub" x="365" y="762">pgvector · Weaviate</text>
+  <text class="box-sub" x="365" y="780">Qdrant · Milvus · ...</text>
+  <rect class="box" x="490" y="700" width="210" height="118" rx="6" ry="6"/>
+  <text class="box-label" x="595" y="724">External MCP servers</text>
+  <text class="box-sub" x="595" y="744">STDIO (spawned process)</text>
+  <text class="box-sub" x="595" y="762">Streamable HTTP</text>
+  <text class="box-sub" x="595" y="780">SSE (legacy)</text>
+  <rect class="box" x="720" y="700" width="210" height="118" rx="6" ry="6"/>
+  <text class="box-label" x="825" y="724">Apache Tika</text>
+  <text class="box-sub" x="825" y="744">Document readers</text>
+  <text class="box-sub" x="825" y="762">PDF · DOCX · HTML</text>
+  <text class="box-sub" x="825" y="780">and others</text>
 </svg>

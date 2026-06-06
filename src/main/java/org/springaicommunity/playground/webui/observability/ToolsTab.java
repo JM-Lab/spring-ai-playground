@@ -50,6 +50,7 @@ public class ToolsTab extends BaseDashboardTab {
     private final ObservabilityRingBuffer buffer;
     private final ObservabilityTimeSeries timeSeries;
     private final SystemMetricsSnapshot systemMetrics;
+    private final McpClientService mcpClientService;
 
     private final KpiCard tracesWithToolsCard = new KpiCard("Traces with tools");
     private final KpiCard totalToolCallsCard = new KpiCard("Total tool calls");
@@ -65,11 +66,12 @@ public class ToolsTab extends BaseDashboardTab {
     private final ChartCanvas guardBlocksBar = new ChartCanvas();
 
     public ToolsTab(ObservabilityRingBuffer buffer, ObservabilityTimeSeries timeSeries,
-            SystemMetricsSnapshot systemMetrics) {
+            SystemMetricsSnapshot systemMetrics, McpClientService mcpClientService) {
         super();
         this.buffer = buffer;
         this.timeSeries = timeSeries;
         this.systemMetrics = systemMetrics;
+        this.mcpClientService = mcpClientService;
 
         Div intro = buildIntro(
                 "Built-in tools — JS sandbox functions and local @Tool methods, including " +
@@ -233,7 +235,7 @@ public class ToolsTab extends BaseDashboardTab {
                 String transport = attrs == null ? null : attrs.get("mcp.transport");
                 String server = attrs == null ? null : attrs.get("mcp.server");
                 boolean directInProcess = transport == null || "in-process".equalsIgnoreCase(transport);
-                boolean viaSelfLoopback = McpClientService.SELF_LOOPBACK_SERVER_NAME.equals(server);
+                boolean viaSelfLoopback = this.mcpClientService.isSelfLoopback(server);
                 if (!directInProcess && !viaSelfLoopback) continue;
                 String name = attrs == null ? "(unnamed)"
                         : attrs.getOrDefault("spring.ai.tool.definition.name", "(unnamed)");

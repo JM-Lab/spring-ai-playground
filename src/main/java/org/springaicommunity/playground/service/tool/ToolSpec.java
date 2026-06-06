@@ -78,6 +78,7 @@ public class ToolSpec {
     private SandboxOverrides sandboxOverrides;
     private boolean draft;
     private Map<String, Object> toolSafety;
+    private ToolManifest.HumanInTheLoop humanInTheLoop;
 
     @JsonIgnore
     private ToolCallback toolCallback;
@@ -163,6 +164,15 @@ public class ToolSpec {
 
     public ToolSpec withToolSafety(Map<String, Object> toolSafety) {
         this.toolSafety = toolSafety;
+        return this;
+    }
+
+    public ToolManifest.HumanInTheLoop humanInTheLoop() {
+        return humanInTheLoop;
+    }
+
+    public ToolSpec withHumanInTheLoop(ToolManifest.HumanInTheLoop humanInTheLoop) {
+        this.humanInTheLoop = humanInTheLoop;
         return this;
     }
 

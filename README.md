@@ -23,9 +23,22 @@ Safe execution does not end at publication. Every chat, tool call, vector lookup
 
 In Tool Studio, new or updated built-in tools are test-run before they are published to the built-in MCP server. You do not need to know Java, Spring, or JVM internals to use it. If you can install a desktop app and write a small JavaScript function, you can build tools here and connect them to hosts and clients such as Claude Desktop, Claude Code, Cursor, IDEs, and other MCP-compatible environments.
 
-Ships with **86 default tools** across five source bundles — web fetch, datetime, math, security, encoding, crypto, filesystem, GitHub, Wikipedia, weather, finance, geo, and a Korean-domain bundle (Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain) — searchable and filterable in the [Default Tools directory](docs/features/default-tools/index.md#browse-all-tools).
+Ships with a **bundled catalog of default tools** across five source bundles — web fetch, datetime, math, security, encoding, crypto, filesystem, GitHub, Wikipedia, weather, finance, geo, and a Korean-domain bundle (Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain) — searchable and filterable in the [Default Tools directory](docs/features/default-tools/index.md#browse-all-tools).
 
-Plus **49 preset external MCP servers** — Gmail, Notion, Slack, GitHub, Linear, Atlassian, Tavily, Firecrawl, Microsoft-Teams, Sentry, and more — grouped by category with `${ENV_VAR}` placeholders so disabled servers can't be activated without setup. Browse the full list in the [Default MCP Catalog](docs/features/default-mcp-catalog/index.md).
+Plus a **preset catalog of external MCP servers** — Gmail, Notion, Slack, GitHub, Linear, Atlassian, Tavily, Firecrawl, Microsoft-Teams, Sentry, and more — grouped by category with `${ENV_VAR}` placeholders so disabled servers can't be activated without setup. Browse the full list in the [Default MCP Catalog](docs/features/default-mcp-catalog/index.md).
+
+<p align="center">
+  <b>Spring AI Playground — Demo</b><br/>
+  Connect an MCP server · compose a safe proxy · human-in-the-loop approval · full observability
+</p>
+
+<p align="center">
+  <a href="docs/assets/images/spring-ai-playground-demo.mp4">
+    <img src="docs/assets/images/spring-ai-playground-demo-poster.png" width="800" alt="Spring AI Playground demo — agentic chat with human-in-the-loop approval of an external MCP tool, plus observability"/>
+  </a>
+  <br/>
+  <sub>▶ Click to watch the demo — or see it autoplay on the <a href="https://spring-ai-community.github.io/spring-ai-playground/">docs site</a></sub>
+</p>
 
 ## The Problem
 
@@ -63,7 +76,7 @@ Choose the installer for your platform from the latest release:
 [![Linux DEB](https://img.shields.io/badge/Linux-DEB-A81D33?logo=debian&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-deb)
 [![Linux RPM](https://img.shields.io/badge/Linux-RPM-EE0000?logo=redhat&logoColor=white)](https://spring-ai-community.github.io/spring-ai-playground/#linux-rpm)
 
-Each badge resolves to the latest published release automatically and opens a confirm dialog with the filename, size, and OS-specific default save path. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-0.2.0-M7-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
+Each badge resolves to the latest published release automatically and opens a confirm dialog with the filename, size, and OS-specific default save path. The downloaded file keeps the version in its name (e.g. `spring-ai-playground-<version>-mac-arm64.dmg`). Or browse all available assets on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases).
 
 ### 2. Install and Launch
 
@@ -105,27 +118,7 @@ If you install the app, you can run Spring AI Playground immediately without set
 
 Every release ships with a matching `.sha256` checksum file and a Sigstore SLSA build provenance attestation. See [Verify Your Download](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#verify-your-download) in the docs for the exact `shasum`, `Get-FileHash`, and `gh attestation verify` commands.
 
-<p align="center">
-  <b>First-Launch Configuration Screen</b><br/>
-  Desktop launcher overview — config editor, Default MCP Tools curation, JVM &amp; environment cards on one screen
-</p>
-
-<p align="center">
-  <a href="docs/assets/images/launcher-openai.png">
-    <img src="docs/assets/images/launcher-openai.png" width="760" alt="Spring AI Playground first-launch configuration screen — Spring AI Playground Config + Ollama startup + Default MCP Tools + Environment Variables + JVM Settings"/>
-  </a>
-</p>
-
-<p align="center">
-  <b>Ollama Model Manager</b><br/>
-  Review recommended models, search exact Ollama names, and manage downloaded models
-</p>
-
-<p align="center">
-  <a href="docs/assets/images/launcher-ollama-config.png">
-    <img src="docs/assets/images/launcher-ollama-config.png" width="760" alt="Spring AI Playground Ollama model manager"/>
-  </a>
-</p>
+The desktop launcher handles first-run setup on one screen — provider config, Default MCP Tools curation, and JVM/environment cards — and includes an Ollama model manager to review, search, and download models. See [Getting Started](https://spring-ai-community.github.io/spring-ai-playground/getting-started/) and [Model Configuration](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#model-configuration).
 
 ## Documentation
 
@@ -152,25 +145,16 @@ For the **stdio MCP server** (drop-in for Claude Desktop, Claude Code, IDEs, and
 
 Full setup details for both modes live in [Getting Started: Alternative Runtimes](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#alternative-runtimes).
 
-<p align="center">
-  <b>Agentic Chat Demo</b><br/>
-  Tool-enabled agentic AI built with Spring AI and MCP
-</p>
-
-<p align="center">
-  <a href="docs/assets/images/agentic-chat-demo.gif">
-    <img src="docs/assets/images/agentic-chat-demo.gif" width="800" alt="Spring AI Playground Agentic Chat Demo"/>
-  </a>
-</p>
-
 ## Why Spring AI Playground?
 
 - **Built-In MCP Server**: Publish tools directly from the app and expose them immediately through the built-in MCP server instead of wiring ad-hoc local scripts by hand.
-- **External MCP Catalog**: 49 preset external MCP server connections (Gmail, Notion, Slack, GitHub, Linear, Atlassian, Tavily, Microsoft-Teams, Sentry, and more) grouped by category with `${ENV_VAR}` placeholders so disabled servers can't be activated without setup. One-click activation from the sidebar once the required env vars exist.
+- **External MCP Catalog**: a preset catalog of external MCP server connections (Gmail, Notion, Slack, GitHub, Linear, Atlassian, Tavily, Microsoft-Teams, Sentry, and more) grouped by category with `${ENV_VAR}` placeholders so disabled servers can't be activated without setup. One-click activation from the sidebar once the required env vars exist. Browse the full list in the [Default MCP Catalog](docs/features/default-mcp-catalog/index.md).
+- **MCP Server Proxy**: Select tools from any connected external MCP server and re-expose them on the built-in `/mcp` endpoint — compose multiple servers into one surface callable from Agentic Chat, the Inspector, and external MCP clients, each gated by per-tool human-in-the-loop.
 - **No Pass, No Run Workflow**: A new tool starts as a **Draft** — invisible to the MCP server and to chat. It only crosses the exposure gate after a Local Pass (a successful test run with its declared sample inputs), making validation part of the default product flow instead of an optional afterthought.
-- **Tool MCP Server Setting**: The launcher's Default MCP Tools card and Tool Studio's Tool MCP Server Setting drawer both edit the same `default-tools-preference.json` — pick a preset (`Starter 5`, `Dev Essentials`, `Korea Toolkit`, `File Toolkit`, `Everything`) plus optional per-tool include / exclude rules to decide exactly which subset of the 86 bundled tools the built-in MCP server exposes.
+- **Built-in MCP Server Native Tools**: The launcher's Default MCP Tools card and Tool Studio's Built-in MCP Server Native Tools drawer both edit the same `default-tools-preference.json` — pick a preset (`Starter 5`, `Dev Essentials`, `Korea Toolkit`, `File Toolkit`, `Everything`) plus optional per-tool include / exclude rules to decide exactly which subset of the bundled tools the built-in MCP server exposes.
 - **Executable Tool Validation**: Test tools with real inputs, outputs, and runtime constraints before you reuse them from other MCP-compatible hosts and clients.
 - **Defense-in-depth Sandbox + Risk Level**: Every tool runs through a deny-first class allowlist, SSRF-guarded `fetch`, rooted `safety.fs`, statement and wall-clock limits, with a visible per-tool **Risk Level (L0–L5)** computed from the declared capabilities — surface every tool's blast radius before you publish it.
+- **Human-in-the-Loop Approval**: Sensitive tool calls pause for explicit approval — both Agentic Chat and the built-in MCP server gate per-tool execution behind a human confirmation, so an agent never runs a risky tool without your sign-off.
 - **Secure Secret Management**: API keys and sensitive configuration stay out of YAML and live in the desktop app's secret storage or `${ENV_VAR}` placeholders that resolve at tool / MCP load time. **SecretMasking** redacts any resolved value (≥ 4 characters) from error logs and console output. When OS-backed secure storage is unavailable, the app clearly warns before falling back to plain-text local storage.
 - **Tool-to-Agent Workflow**: Create tools in Tool Studio, inspect them through MCP, and use them in Agentic Chat in one continuous workflow.
 - **Provider Agnostic**: Switch between Ollama, OpenAI, and other OpenAI-compatible APIs without changing the overall workflow.
@@ -200,12 +184,12 @@ It complements agent builders by providing a reliable execution layer.
 Spring AI Playground doubles as a working reference implementation of the Spring AI framework — every surface in the app maps to a real Spring AI API, so you can use this repo as an end-to-end example of how those pieces fit together.
 
 - **ChatClient + advisor pipeline** drives Agentic Chat — message memory, the `RetrievalAugmentationAdvisor` for RAG, and the Tool Calling pipeline are composed through `ChatClient.builder()` and a custom `SpringAiPlaygroundRagAdvisor`.
-- **MCP client and server starters together** — `spring-ai-starter-mcp-client` connects to external MCP servers in the 49-entry catalog and to the built-in MCP server in the same JVM, while `spring-ai-starter-mcp-server-webmvc` publishes every Local-Pass tool you author through the `spring-ai-playground-tool-mcp` connection on `/mcp`.
+- **MCP client and server starters together** — `spring-ai-starter-mcp-client` connects to the external MCP servers in the preset catalog and to the built-in MCP server in the same JVM, while `spring-ai-starter-mcp-server-webmvc` publishes every Local-Pass tool you author through the `spring-ai-playground-tool-mcp` connection on `/mcp`.
 - **Tool Calling Manager + custom `ToolCallback`** — Tool Studio tools and external MCP tools both register through a single `McpToolCallingManager`, with `LoggingMcpToolCallback` adding correlation ids and secret masking around every call.
 - **Vector store + ETL pipeline** — `SimpleVectorStore` plus the Spring AI Tika document reader power Vector Database, exposed through the same reader / chunker / pre-retrieval / retrieval / post-retrieval stages the framework ships.
 - **Micrometer Observation API** — `ObservationRegistry` is wired into `ToolCallingManager` and `SimpleVectorStore`, so spans emitted by Spring AI's semantic conventions (`gen_ai.client.operation`, `spring.ai.chat.client`) flow straight into the in-app Observability dashboards alongside chat-client spans.
 
-The version tracks the latest Spring AI release (currently `spring-ai 1.1.6`); use it as a reference when integrating these same features into your own Spring Boot app.
+The version tracks the latest Spring AI release; use it as a reference when integrating these same features into your own Spring Boot app.
 
 ## Project Scope & Positioning
 

@@ -38,16 +38,29 @@ public record McpCatalogEntry(
         boolean tenantIdRequired,
         List<TransportSpec> transports,
         String docsUrl,
-        Set<String> trustSignals) {
+        boolean docsAdequate,
+        Set<String> trustSignals,
+        List<McpToolDescriptor> tools,
+        String curator) {
 
     public McpCatalogEntry {
         tags = tags == null ? Set.of() : Set.copyOf(tags);
         trustSignals = trustSignals == null ? Set.of() : Set.copyOf(trustSignals);
         transports = transports == null ? List.of() : List.copyOf(transports);
+        tools = tools == null ? List.of() : List.copyOf(tools);
         if (stability == null || stability.isBlank()) stability = "GA";
         if (description == null) description = "";
         if (vendor == null) vendor = "";
         if (docsUrl == null) docsUrl = "";
+        if (curator == null) curator = "";
+    }
+
+    public McpRiskFactors serverDerivedRiskFactors() {
+        McpRiskFactors merged = McpRiskFactors.SAFE_READ_ONLY;
+        for (McpToolDescriptor tool : tools) {
+            merged = merged.orWith(tool.riskFactors());
+        }
+        return merged;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

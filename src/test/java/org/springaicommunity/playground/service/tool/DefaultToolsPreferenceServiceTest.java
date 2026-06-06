@@ -120,6 +120,7 @@ class DefaultToolsPreferenceServiceTest {
     }
 
     private static SpringAiPlaygroundOptions optionsWithDefaultTools(DefaultTools dt) {
-        return new SpringAiPlaygroundOptions(null, false, null, null, dt);
+        return new SpringAiPlaygroundOptions(
+                new SpringAiPlaygroundOptions.ToolStudio(null, null, null, dt), false, null, null, null, null);
     }
 }

@@ -71,10 +71,13 @@ nav:
       - getting-started/index.md
       - "Desktop App": getting-started/desktop.md
       - "Alternative Runtimes": getting-started/alternative-runtimes.md
+      - "Configuration": getting-started/configuration.md
   - "Architecture":
       - "Application": architecture.md
       - "Safe Tool Specification": safe-tool-specification.md
       - "AI Agent Tool Safety": safety-architecture.md
+      - "MCP Server Safety": mcp-server-safety.md
+      - "Human-in-the-Loop Approval": hitl-architecture.md
       - "AI Agent Observability": observability-architecture.md
   - "Features":
       - features/index.md
@@ -89,8 +92,7 @@ nav:
               - "Korea": features/default-tools/korea.md
       - "MCP Server":
           - features/mcp-server/index.md
-          - "MCP Inspector": features/mcp-server/inspector.md
-          - "Default MCP Catalog":
+          - "Default MCP Servers":
               - features/default-mcp-catalog/index.md
               - "Productivity & Communication": features/default-mcp-catalog/productivity.md
               - "Dev & Project Management": features/default-mcp-catalog/dev.md
@@ -98,8 +100,11 @@ nav:
               - "Business": features/default-mcp-catalog/business.md
               - "Search": features/default-mcp-catalog/search.md
               - "Examples": features/default-mcp-catalog/examples.md
+          - "MCP Inspector": features/mcp-server/inspector.md
+          - "MCP Server Proxy": features/mcp-server/proxy.md
       - "Vector Database": features/vector-database.md
       - "Agentic Chat": features/agentic-chat.md
+      - "Human-in-the-Loop": features/human-in-the-loop.md
       - "Observability":
           - features/observability/index.md
           - "Overview": features/observability/overview.md
@@ -131,6 +136,8 @@ nav:
       - "7. Weather to Slack": tutorials/7-weather-to-slack.md
       - "8. Default Tool Recipes": tutorials/8-default-tool-recipes.md
       - "9. MCP Everything Walkthrough": tutorials/9-mcp-everything.md
+      - "10. Proxy an MCP Server": tutorials/10-proxy-external-tool.md
+      - "11. Approve a Tool in Chat": tutorials/11-human-approval.md
   # Changelog is published in the repo as CHANGELOG.md (and rendered at
   # /changelog/ when reached by URL via the docs/changelog.md include).
   # Intentionally omitted from main nav to avoid duplicating GitHub-hosted
@@ -142,7 +149,6 @@ docs_dir: docs
 exclude_docs: |
   /assets/images/README.md
   /requirements.txt
-  /getting-started.md
 
 extra_css:
   - assets/stylesheets/extra.css

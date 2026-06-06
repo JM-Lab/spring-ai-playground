@@ -15,6 +15,8 @@
  */
 package org.springaicommunity.playground;
 
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
+import org.springaicommunity.playground.service.tool.ToolSpecService.ExposureMode;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
@@ -26,7 +28,32 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "spring.ai.playground")
 public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio toolStudio, boolean persistence,
                                         String userHome, @NestedConfigurationProperty Chat chat,
-                                        @NestedConfigurationProperty DefaultTools defaultTools) {
+                                        @NestedConfigurationProperty BuiltInMcpServer builtInMcpServer,
+                                        @NestedConfigurationProperty McpServer mcpServer) {
+
+    public SpringAiPlaygroundOptions {
+        if (builtInMcpServer == null) builtInMcpServer = new BuiltInMcpServer(null, null, null);
+        if (mcpServer == null) mcpServer = new McpServer(null, null);
+    }
+
+    public record BuiltInMcpServer(String name, String description, ExposureMode exposureMode) {
+        public BuiltInMcpServer {
+            if (name == null || name.isBlank()) name = "spring-ai-playground-built-in-mcp";
+            if (description == null || description.isBlank()) {
+                description = "Spring AI Playground's built-in MCP server.";
+            }
+            if (exposureMode == null) exposureMode = ExposureMode.BOTH;
+        }
+    }
+
+    public record McpServer(RiskLevel composedToolsMaxRisk, List<ComposedTool> composedTools) {
+        public McpServer {
+            if (composedToolsMaxRisk == null) composedToolsMaxRisk = RiskLevel.L5;
+            composedTools = composedTools == null ? List.of() : List.copyOf(composedTools);
+        }
+    }
+
+    public record ComposedTool(String server, String tool, String alias, String description, boolean hitl) {}
 
     public record DefaultTools(String preset,
                                @NestedConfigurationProperty SelectionRule include,
@@ -35,7 +62,8 @@ public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio 
     public record SelectionRule(Set<String> names, Set<String> tags, Set<String> categories) {}
 
     public record ToolStudio(Long timeoutSeconds, @NestedConfigurationProperty JsSandbox jsSandbox,
-                             @NestedConfigurationProperty FsConfig fs) {}
+                             @NestedConfigurationProperty FsConfig fs,
+                             @NestedConfigurationProperty DefaultTools defaultTools) {}
 
     public record JsSandbox(boolean allowNetworkIo, boolean allowFileIo, boolean allowNativeAccess,
                             boolean allowCreateThread, Long maxStatements, Set<String> denyClasses,

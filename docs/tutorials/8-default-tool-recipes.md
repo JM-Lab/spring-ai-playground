@@ -1,37 +1,37 @@
-description: Tutorial 8 — five default-tool recipes composed inside a single JS action, published as new MCP-exposed custom tools.
+description: Tutorial 8 - five default-tool recipes composed inside a single JS action, published as new MCP-exposed custom tools.
 
-# Tutorial 8 — Default Tool Recipes
+# Tutorial 8 - Default Tool Recipes
 
 **Time** 20 min (5 recipes ~ 4 min each) · **Difficulty** ★★★ · **Surfaces** Tool Studio + Agentic Chat
 
 !!! abstract "Goal"
-    Compose default-tool helpers inside one JS action — five new custom tools you author and publish in Tool Studio, each one going live on the built-in MCP server the moment Local Pass succeeds. Same flow each time: copy a default tool, swap the action, run Local Pass, hit **Test & Publish**.
+    Compose default-tool helpers inside one JS action - five new custom tools you author and publish in Tool Studio, each one going live on the built-in MCP server the moment Local Pass succeeds. Same flow each time: copy a default tool, swap the action, run Local Pass, hit **Test & Publish**.
 
-This tutorial differs from [Tutorial 7](7-weather-to-slack.md) in *where* the chaining happens. Tutorial 7 chains two pre-existing tools at the **agent loop** layer — the model decides "call A, then call B". Tutorial 8 chains the same kind of helpers *inside one JS action*, producing a single new tool the agent then calls once. Both shapes are useful: pick the agent-loop pattern when each step's output should be a separate user-visible turn, and pick the in-action pattern when the steps are an implementation detail.
+This tutorial differs from [Tutorial 7](7-weather-to-slack.md) in *where* the chaining happens. Tutorial 7 chains two pre-existing tools at the **agent loop** layer - the model decides "call A, then call B". Tutorial 8 chains the same kind of helpers *inside one JS action*, producing a single new tool the agent then calls once. Both shapes are useful: pick the agent-loop pattern when each step's output should be a separate user-visible turn, and pick the in-action pattern when the steps are an implementation detail.
 
 The pattern (every recipe follows it):
 
 1. Open the closest default tool in Tool Studio.
-2. **Copy to New Tool** — gives you the same parameter shape with a fresh `toolId` and a `Draft` badge.
+2. **Copy And New Tool** - gives you the same parameter shape with a fresh `toolId` and a `Draft` badge.
 3. Rewrite the JS action to chain the helpers you need.
 4. Adjust the test value so Local Pass exercises the new logic.
-5. **Test & Publish**. The new tool joins the built-in MCP server the same moment Local Pass succeeds — Agentic Chat sees it on the next turn.
+5. **Test & Publish**. The new tool joins the built-in MCP server the same moment Local Pass succeeds - Agentic Chat sees it on the next turn.
 
-The cross-platform property carries through — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`), so the same JS runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
+The cross-platform property carries through - all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`), so the same JS runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
 
 ---
 
-## Recipe 1 — Hacker News digest (`hnDailyDigest`)
+## Recipe 1 - Hacker News digest (`hnDailyDigest`)
 
 **Default tools used:** [`searchHackerNews`](../features/default-tools/global.md) ・ [`openaiResponseGenerator`](../features/default-tools/examples.md)
 
-**What we're building** — a tool that takes a `query` ("AI", "TypeScript", "Rust", …), pulls the top Hacker News stories from the last 24 h, and asks the OpenAI Responses API to summarise the chatter in five bullet points. The most universally useful "morning brief" recipe.
+**What we're building** - a tool that takes a `query` ("AI", "TypeScript", "Rust", ...), pulls the top Hacker News stories from the last 24 h, and asks the OpenAI Responses API to summarise the chatter in five bullet points. The most universally useful "morning brief" recipe.
 
-**Sandbox** — `networkMode: strict` (default).
+**Sandbox** - `networkMode: strict` (default).
 
-**Static variable required** — `openaiApiKey = ${OPENAI_API_KEY}`.
+**Static variable required** - `openaiApiKey = ${OPENAI_API_KEY}`.
 
-**Parameters** — `query` (string, required), `hits` (integer, optional, default 10), `model` (string, optional, default `gpt-4o-mini`).
+**Parameters** - `query` (string, required), `hits` (integer, optional, default 10), `model` (string, optional, default `gpt-4o-mini`).
 
 **JS action:**
 
@@ -55,7 +55,7 @@ const stories = (hn.hits || []).map(h => ({
 const prompt = `Summarise these Hacker News stories in 5 short bullets ` +
                `for a developer audience. Lead with what changed; mention ` +
                `concrete numbers and breaking news.\n\n` +
-               stories.map((s, i) => `${i+1}. ${s.title} (${s.points} pts, ${s.comments} comments) — ${s.url}`).join('\n');
+               stories.map((s, i) => `${i+1}. ${s.title} (${s.points} pts, ${s.comments} comments) - ${s.url}`).join('\n');
 const aiResp = await fetch('https://api.openai.com/v1/responses', {
   method: 'POST',
   headers: {
@@ -70,23 +70,23 @@ const summary = ai.output_text || ai.output?.[0]?.content?.[0]?.text || '';
 return { query, count: stories.length, summary, stories };
 ```
 
-**Test value** — `query`: `Anthropic`.
+**Test value** - `query`: `Anthropic`.
 
-**Chat prompt** — *"Give me today's HN digest on AI agents."*
+**Chat prompt** - *"Give me today's HN digest on AI agents."*
 
 ---
 
-## Recipe 2 — GitHub release radar → Slack (`releaseRadar`)
+## Recipe 2 - GitHub release radar → Slack (`releaseRadar`)
 
 **Default tools used:** [`getGithubLatestRelease`](../features/default-tools/global.md) ・ [`openaiResponseGenerator`](../features/default-tools/examples.md) ・ [`sendSlackMessage`](../features/default-tools/examples.md)
 
-**What we're building** — takes `owner` and `repo`, fetches the latest non-draft release, asks the LLM for a three-sentence "what users will feel" digest, and posts it to a Slack channel. The single most common "ship-it" agent pattern in dev teams.
+**What we're building** - takes `owner` and `repo`, fetches the latest non-draft release, asks the LLM for a three-sentence "what users will feel" digest, and posts it to a Slack channel. The single most common "ship-it" agent pattern in dev teams.
 
-**Sandbox** — `networkMode: strict`.
+**Sandbox** - `networkMode: strict`.
 
-**Static variables required** — `openaiApiKey = ${OPENAI_API_KEY}` ・ `slackWebhookUrl = ${SLACK_WEBHOOK_URL}`.
+**Static variables required** - `openaiApiKey = ${OPENAI_API_KEY}` ・ `slackWebhookUrl = ${SLACK_WEBHOOK_URL}`.
 
-**Parameters** — `owner` (string, required), `repo` (string, required), `model` (string, optional, default `gpt-4o-mini`).
+**Parameters** - `owner` (string, required), `repo` (string, required), `model` (string, optional, default `gpt-4o-mini`).
 
 **JS action:**
 
@@ -127,21 +127,21 @@ await fetch(slackWebhookUrl, {
 return { tag: release.tag_name, publishedAt: release.published_at, url: release.html_url, summary };
 ```
 
-**Test value** — `owner`: `spring-projects`, `repo`: `spring-ai`.
+**Test value** - `owner`: `spring-projects`, `repo`: `spring-ai`.
 
-**Chat prompt** — *"Post the latest spring-projects/spring-ai release to #releases."*
+**Chat prompt** - *"Post the latest spring-projects/spring-ai release to #releases."*
 
 ---
 
-## Recipe 3 — City weather → Calendar event (`cityForecastEvent`)
+## Recipe 3 - City weather → Calendar event (`cityForecastEvent`)
 
 **Default tools used:** [`geocodeAddress`](../features/default-tools/global.md) ・ [`getOpenMeteoForecast`](../features/default-tools/global.md) ・ [`buildGoogleCalendarCreateLink`](../features/default-tools/examples.md)
 
-**What we're building** — given a city name, forward-geocode it through Nominatim, fetch tomorrow's hourly forecast from Open-Meteo, and if it is going to be sunny in the afternoon, return an "Add to Google Calendar" URL pre-filled with a "Beach trip" event. The agent then offers the link to the user. No keys needed for the geo + weather half; only the calendar URL builder is free.
+**What we're building** - given a city name, forward-geocode it through Nominatim, fetch tomorrow's hourly forecast from Open-Meteo, and if it is going to be sunny in the afternoon, return an "Add to Google Calendar" URL pre-filled with a "Beach trip" event. The agent then offers the link to the user. No keys needed for the geo + weather half; only the calendar URL builder is free.
 
-**Sandbox** — `networkMode: strict`.
+**Sandbox** - `networkMode: strict`.
 
-**Parameters** — `city` (string, required), `eventTitle` (string, optional, default `Outdoor plan`), `timeZone` (string, optional, default `UTC`).
+**Parameters** - `city` (string, required), `eventTitle` (string, optional, default `Outdoor plan`), `timeZone` (string, optional, default `UTC`).
 
 **JS action:**
 
@@ -182,7 +182,7 @@ const endDate = new Date(new Date(pick.iso).getTime() + 2 * 60 * 60 * 1000)
                   .toISOString().slice(0, 16).replace(/[-:]/g, '');
 const calUrl =
   'https://calendar.google.com/calendar/render?action=TEMPLATE' +
-  `&text=${encodeURIComponent(eventTitle + ' — ' + display_name.split(',')[0])}` +
+  `&text=${encodeURIComponent(eventTitle + ' - ' + display_name.split(',')[0])}` +
   `&dates=${start}/${endDate}` +
   `&details=${encodeURIComponent('Forecast says ' + pick.pp + '% chance of rain at ' + pick.iso)}` +
   `&location=${encodeURIComponent(display_name)}` +
@@ -191,21 +191,21 @@ const calUrl =
 return { city: display_name, slot: pick.iso, rainProbability: pick.pp, addToCalendarUrl: calUrl };
 ```
 
-**Test value** — `city`: `Seoul`, `timeZone`: `Asia/Seoul`.
+**Test value** - `city`: `Seoul`, `timeZone`: `Asia/Seoul`.
 
-**Chat prompt** — *"Find me a sunny afternoon in Jeju this week and add a beach trip to my calendar."*
+**Chat prompt** - *"Find me a sunny afternoon in Jeju this week and add a beach trip to my calendar."*
 
 ---
 
-## Recipe 4 — Korea crypto kimchi-premium (`kimchiPremium`)
+## Recipe 4 - Korea crypto kimchi-premium (`kimchiPremium`)
 
 **Default tools used:** [`getUpbitTicker` · `getBithumbTicker`](../features/default-tools/korea.md) ・ [`evalExpression`](../features/default-tools/utilities.md)
 
-**What we're building** — fetches the live BTC price from Upbit and Bithumb (both anonymous), computes the cross-exchange spread (the "kimchi premium" between Korean exchanges and the global market is a long-running phenomenon), and returns a JSON snapshot. Pure-Korea recipe — no English-speaking equivalent. No keys needed.
+**What we're building** - fetches the live BTC price from Upbit and Bithumb (both anonymous), computes the cross-exchange spread (the "kimchi premium" between Korean exchanges and the global market is a long-running phenomenon), and returns a JSON snapshot. Pure-Korea recipe - no English-speaking equivalent. No keys needed.
 
-**Sandbox** — `networkMode: strict`.
+**Sandbox** - `networkMode: strict`.
 
-**Parameters** — `symbol` (string, optional, default `BTC`).
+**Parameters** - `symbol` (string, optional, default `BTC`).
 
 **JS action:**
 
@@ -237,21 +237,21 @@ return {
 };
 ```
 
-**Test value** — `symbol`: `BTC`.
+**Test value** - `symbol`: `BTC`.
 
-**Chat prompt** — *"비트코인 김치프리미엄 지금 얼마야?"*
+**Chat prompt** - *"비트코인 김치프리미엄 지금 얼마야?"*
 
 ---
 
-## Recipe 5 — Filesystem pipeline (`summariseRecentLogs`)
+## Recipe 5 - Filesystem pipeline (`summariseRecentLogs`)
 
 **Default tools used:** [`listDir`, `grepFile`, `sliceFile`, `writeTextFile`](../features/default-tools/filesystem.md)
 
-**What we're building** — finds the most recent `*.log` file under a directory, greps a regex (default `ERROR`), takes the last 50 matching lines, and writes them to a summary file. Useful for chunked log directories where the agent should produce a "recent errors" digest without inhaling the whole tree.
+**What we're building** - finds the most recent `*.log` file under a directory, greps a regex (default `ERROR`), takes the last 50 matching lines, and writes them to a summary file. Useful for chunked log directories where the agent should produce a "recent errors" digest without inhaling the whole tree.
 
-**Sandbox** — `fileRead = true` (L3) and `fileWrite = true` (L4) — open the **Sandbox & Capabilities** pane and switch **Filesystem mode** to `read+write` before publishing.
+**Sandbox** - `fileRead = true` (L3) and `fileWrite = true` (L4) - open the **Sandbox & Capabilities** pane and switch **Filesystem mode** to `read+write` before publishing.
 
-**Parameters** — `dir` (string, required), `pattern` (string, optional, default `ERROR`), `outPath` (string, optional, default `${dir}/errors-summary.txt`).
+**Parameters** - `dir` (string, required), `pattern` (string, optional, default `ERROR`), `outPath` (string, optional, default `${dir}/errors-summary.txt`).
 
 **JS action:**
 
@@ -277,9 +277,9 @@ safety.fs.writeText(outPath, tail.join('\n'));
 return { ok: true, source: latest, matches: hits.length, written: outPath };
 ```
 
-**Test value** — `dir`: `/tmp/logs` (set `TOOL_STUDIO_FS_BASE=/tmp` first), `pattern`: `ERROR`.
+**Test value** - `dir`: `/tmp/logs` (set `TOOL_STUDIO_FS_BASE=/tmp` first), `pattern`: `ERROR`.
 
-**Chat prompt** — *"Summarise the recent errors in /tmp/logs."*
+**Chat prompt** - *"Summarise the recent errors in /tmp/logs."*
 
 ---
 
@@ -287,14 +287,14 @@ return { ok: true, source: latest, matches: hits.length, written: outPath };
 
 For each recipe:
 
-- The `Drafts` badge disappears as soon as Local Pass succeeds — the tool moves to `LOCAL PASS` in the sidebar and the MCP server's Tools tab updates without restart.
+- The `Drafts` badge disappears as soon as Local Pass succeeds - the tool moves to `LOCAL PASS` in the sidebar and the MCP server's Tools tab updates without restart.
 - The Agentic Chat inventory shows the new tool name when MCP is reconnected.
-- The action invocation appears as a single MCP tool call in the chat trace, not several — that's the whole point of in-action composition.
+- The action invocation appears as a single MCP tool call in the chat trace, not several - that's the whole point of in-action composition.
 - Risk badge matches your sandbox edits: Recipe 5 = L4, Recipes 1-4 = L0 (no overrides) or L3 if you tightened anything.
 
 ## Where to go from here
 
-- **Two-layer composition** — call a tool you just made from another new tool. Example: a `multiRepoDigest` that loops over `[{ owner, repo }, ...]`, calls `releaseRadar` per row, and rolls the summaries into a single Slack post.
-- **Move from JS chain to model chain** — re-implement Recipe 3 as a Tutorial-7-style agent loop. Use `geocodeAddress` and `getOpenMeteoForecast` directly from the preset and let the model decide. Compare the trace: one MCP tool call vs two.
-- **Stress the cross-platform property** — all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`). The same JS works on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
+- **Two-layer composition** - call a tool you just made from another new tool. Example: a `multiRepoDigest` that loops over `[{ owner, repo }, ...]`, calls `releaseRadar` per row, and rolls the summaries into a single Slack post.
+- **Move from JS chain to model chain** - re-implement Recipe 3 as a Tutorial-7-style agent loop. Use `geocodeAddress` and `getOpenMeteoForecast` directly from the preset and let the model decide. Compare the trace: one MCP tool call vs two.
+- **Stress the cross-platform property** - all five recipes use only JVM-backed helpers (`fetch`, `safety.fs.*`). The same JS works on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../features/tool-studio/index.md#cross-platform-by-design).
 

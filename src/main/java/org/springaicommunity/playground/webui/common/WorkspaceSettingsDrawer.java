@@ -38,7 +38,9 @@ public class WorkspaceSettingsDrawer extends Div {
     private Supplier<? extends Component> bodyFactory;
     private Runnable onOpenCallback;
     private Button applyButton;
+    private Button secondaryButton;
     private Runnable currentApplyAction;
+    private boolean applyAutoCloses = true;
     private boolean opened;
 
     public WorkspaceSettingsDrawer(String title) {
@@ -127,7 +129,12 @@ public class WorkspaceSettingsDrawer extends Div {
     }
 
     public WorkspaceSettingsDrawer setApplyButton(String label, Runnable applyAction) {
+        return setApplyButton(label, applyAction, true);
+    }
+
+    public WorkspaceSettingsDrawer setApplyButton(String label, Runnable applyAction, boolean autoClose) {
         this.currentApplyAction = applyAction;
+        this.applyAutoCloses = autoClose;
         if (applyButton == null) {
             applyButton = new Button(label);
             applyButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -135,11 +142,27 @@ public class WorkspaceSettingsDrawer extends Div {
                 if (currentApplyAction != null) {
                     currentApplyAction.run();
                 }
-                close();
+                if (applyAutoCloses) close();
             });
             footerLayout.add(applyButton);
         } else {
             applyButton.setText(label);
+        }
+        footerLayout.setVisible(true);
+        return this;
+    }
+
+    public WorkspaceSettingsDrawer setSecondaryButton(String label, Runnable action) {
+        if (secondaryButton == null) {
+            secondaryButton = new Button(label);
+            secondaryButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            secondaryButton.addClickListener(e -> {
+                if (action != null) action.run();
+                close();
+            });
+            footerLayout.addComponentAsFirst(secondaryButton);
+        } else {
+            secondaryButton.setText(label);
         }
         footerLayout.setVisible(true);
         return this;

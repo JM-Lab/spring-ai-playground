@@ -17,6 +17,7 @@ package org.springaicommunity.playground.webui.tool;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
@@ -33,6 +34,7 @@ import com.vaadin.flow.component.treegrid.TreeGrid;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
 import org.springaicommunity.playground.service.tool.ChipListBinding;
+import org.springaicommunity.playground.service.tool.ToolManifest.HumanInTheLoop;
 import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
@@ -62,6 +64,11 @@ public class SandboxCapabilitiesView extends Details {
     private final Icon postureIcon;
     private final Set<String> yamlBaselineDeny;
     private final Set<String> yamlBaselineAllow;
+
+    private final RadioButtonGroup<HumanInTheLoop.Mode> hitlModeField;
+    private final TextField hitlPromptTemplateField;
+    private boolean hitlUserTouched;
+    private HumanInTheLoop.Mode previousHitlMode = HumanInTheLoop.Mode.DISABLED;
 
     public SandboxCapabilitiesView(SpringAiPlaygroundOptions options, SandboxPostureCalculator postureCalculator) {
         this.postureCalculator = postureCalculator;
@@ -171,11 +178,35 @@ public class SandboxCapabilitiesView extends Details {
         fsGroup.setSpacing(false);
         fsGroup.setWidthFull();
 
+        this.hitlModeField = new RadioButtonGroup<>();
+        this.hitlModeField.setLabel("Human-in-the-loop");
+        this.hitlModeField.setItems(HumanInTheLoop.Mode.REQUIRED, HumanInTheLoop.Mode.DISABLED);
+        this.hitlModeField.setItemLabelGenerator(SandboxCapabilitiesView::hitlModeLabel);
+        this.hitlModeField.setValue(HumanInTheLoop.Mode.DISABLED);
+        this.hitlModeField.setHelperText(
+                "REQUIRED = ask the caller every run (MCP elicitation) · "
+                        + "DISABLED = run without asking. Defaults to REQUIRED above L0.");
+
+        this.hitlPromptTemplateField = new TextField("Approval prompt (optional)");
+        this.hitlPromptTemplateField.setWidthFull();
+        this.hitlPromptTemplateField.setPlaceholder("Run tool '{toolName}' with arguments {args}?");
+        this.hitlPromptTemplateField.setHelperText("{toolName} and {args} are substituted at call time.");
+        this.hitlPromptTemplateField.setVisible(false);
+
+        this.hitlModeField.addValueChangeListener(
+                e -> handleHitlModeChange(e.getValue(), e.getOldValue(), e.isFromClient()));
+
+        VerticalLayout hitlGroup = new VerticalLayout(this.hitlModeField, this.hitlPromptTemplateField);
+        hitlGroup.setPadding(false);
+        hitlGroup.setSpacing(false);
+        hitlGroup.setWidthFull();
+
         VerticalLayout body = new VerticalLayout(
                 this.denyClassesField,
                 this.allowClassesField,
                 networkGroup,
-                fsGroup);
+                fsGroup,
+                hitlGroup);
         body.setPadding(false);
         body.setSpacing(false);
         body.setWidthFull();
@@ -260,6 +291,85 @@ public class SandboxCapabilitiesView extends Details {
         updatePostureBadge();
     }
 
+    public HumanInTheLoop currentHumanInTheLoop() {
+        HumanInTheLoop.Mode mode = this.hitlModeField.getValue();
+        if (mode == null) mode = HumanInTheLoop.Mode.DISABLED;
+        String template = this.hitlPromptTemplateField.getValue();
+        return new HumanInTheLoop(mode, template == null || template.isBlank() ? null : template.trim());
+    }
+
+    public void applyHumanInTheLoop(HumanInTheLoop humanInTheLoop) {
+        if (humanInTheLoop == null || humanInTheLoop.mode() == null) return;
+        this.hitlUserTouched = true;
+        this.previousHitlMode = humanInTheLoop.mode();
+        this.hitlModeField.setValue(humanInTheLoop.mode());
+        this.hitlPromptTemplateField.setValue(
+                humanInTheLoop.promptTemplate() == null ? "" : humanInTheLoop.promptTemplate());
+        this.hitlPromptTemplateField.setVisible(humanInTheLoop.mode() != HumanInTheLoop.Mode.DISABLED);
+    }
+
+    private void handleHitlModeChange(HumanInTheLoop.Mode next, HumanInTheLoop.Mode old, boolean fromClient) {
+        if (next == null) return;
+        if (!fromClient) {
+            this.previousHitlMode = next;
+            this.hitlPromptTemplateField.setVisible(next != HumanInTheLoop.Mode.DISABLED);
+            return;
+        }
+        this.hitlUserTouched = true;
+        if (isHitlDowngrade(old, next)) {
+            ConfirmDialog dialog = buildHitlDowngradeDialog();
+            dialog.addConfirmListener(e -> {
+                this.previousHitlMode = next;
+                this.hitlPromptTemplateField.setVisible(next != HumanInTheLoop.Mode.DISABLED);
+            });
+            dialog.addCancelListener(e -> this.hitlModeField.setValue(old));
+            dialog.open();
+        } else {
+            this.previousHitlMode = next;
+            this.hitlPromptTemplateField.setVisible(next != HumanInTheLoop.Mode.DISABLED);
+        }
+    }
+
+    private void applyHitlDefault(RiskLevel level) {
+        if (this.hitlModeField == null || this.hitlUserTouched) return;
+        HumanInTheLoop.Mode want = level == RiskLevel.L0
+                ? HumanInTheLoop.Mode.DISABLED : HumanInTheLoop.Mode.REQUIRED;
+        if (this.hitlModeField.getValue() != want) {
+            this.previousHitlMode = want;
+            this.hitlModeField.setValue(want);
+        }
+    }
+
+    private static boolean isHitlDowngrade(HumanInTheLoop.Mode from, HumanInTheLoop.Mode to) {
+        return hitlStrength(to) < hitlStrength(from);
+    }
+
+    private static int hitlStrength(HumanInTheLoop.Mode mode) {
+        if (mode == null) return 0;
+        return switch (mode) {
+            case REQUIRED -> 2;
+            case DISABLED -> 0;
+        };
+    }
+
+    private static String hitlModeLabel(HumanInTheLoop.Mode mode) {
+        return switch (mode) {
+            case REQUIRED -> "Required — ask every run";
+            case DISABLED -> "Disabled — no prompt";
+        };
+    }
+
+    private ConfirmDialog buildHitlDowngradeDialog() {
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Reduce human oversight?");
+        dialog.setText("DISABLED lets any client run this tool immediately, with no human approval step beyond the "
+                + "sandbox. Continue?");
+        dialog.setConfirmText("Understood, change it");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Cancel");
+        return dialog;
+    }
+
     private void applyBasePathHelperText(String fileMode, String defaultBasePath) {
         String helper = "off".equals(fileMode)
                 ? "Filesystem mode is off — set a path now and toggle to read/read+write to enable safety.fs.* (default: " + defaultBasePath + ")"
@@ -290,6 +400,7 @@ public class SandboxCapabilitiesView extends Details {
     private void updatePostureBadge() {
         if (this.postureBadge == null) return;
         RiskLevel level = computeRisk();
+        applyHitlDefault(level);
         this.postureBadge.setText(postureLabel(level, currentSignals()) + "  " + level.name());
         String theme = switch (level) {
             case L0, L1 -> "badge success primary small";

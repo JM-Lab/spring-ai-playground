@@ -36,6 +36,7 @@ import com.vaadin.flow.component.page.PendingJavaScriptResult;
 import com.vaadin.flow.component.textfield.TextArea;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionResult;
+import org.springaicommunity.playground.service.tool.ToolManifest.HumanInTheLoop;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpec.JsonSchemaType;
 import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
@@ -291,6 +292,14 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         return this.sandboxView.currentOverrides();
     }
 
+    public HumanInTheLoop currentHumanInTheLoop() {
+        return this.sandboxView.currentHumanInTheLoop();
+    }
+
+    public void applyHumanInTheLoop(HumanInTheLoop humanInTheLoop) {
+        this.sandboxView.applyHumanInTheLoop(humanInTheLoop);
+    }
+
     private void formatCodeWithPrettier() {
         formatButton.setEnabled(false);
         String code = ace.getValue();
@@ -493,14 +502,11 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
                         const lineCount = session.getLength();
                         for (let row = 0; row < lineCount; row++) {
                             const line = session.getLine(row) || '';
-                            // ES2021 numeric separator (e.g. 60_000) — bundled JSHint can't parse it
-                            // and cascades errors onto both preceding (statement boundary) and
-                            // following lines until it resyncs.
+                            // ES2021 numeric separator (60_000) — bundled JSHint mis-parses and cascades errors until it resyncs.
                             if (/\\d_\\d/.test(line)) {
                                 for (let offset = -3; offset <= 6; offset++) dropRows.add(row + offset);
                             }
-                            // Top-level await — our runtime wraps each tool body in an async
-                            // function, but the bundled JSHint sees it as a parse error.
+                            // Top-level await — runtime wraps tool bodies in async, but bundled JSHint flags it as a parse error.
                             if (/^(const|let|var)\\s+\\S+\\s*=\\s*await\\s|^await\\s/.test(line)) {
                                 dropRows.add(row);
                                 dropRows.add(row + 1);

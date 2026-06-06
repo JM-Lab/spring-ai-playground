@@ -1,29 +1,29 @@
-description: Default Tools — Korea reference. 21 Korea-locale tools — Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain.
+description: Default Tools - Korea reference. 21 Korea-locale tools - Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain.
 
-# Default Tools — Korea
+# Default Tools - Korea
 
-The 21 tools in `default-tool-specs-kr.json` are **Korea-locale services** — crypto exchanges (Upbit, Bithumb), search and local discovery (Naver, Kakao, K-pop iTunes, K-beauty, Korea Tourism), government open-data services (data.go.kr keychain, Seoul Open Data Plaza), and Korea-specific finance and disaster feeds (KAMIS, KOFIC, KRX, MOLIT, MFDS, MOIS).
+The 21 tools in `default-tool-specs-kr.json` are **Korea-locale services** - crypto exchanges (Upbit, Bithumb), search and local discovery (Naver, Kakao, K-pop iTunes, K-beauty, Korea Tourism), government open-data services (data.go.kr keychain, Seoul Open Data Plaza), and Korea-specific finance and disaster feeds (KAMIS, KOFIC, KRX, MOLIT, MFDS, MOIS).
 
-Most return **Korean text in their response payloads** — names, addresses, codenames — so a chat agent calling them should be locale-aware. Eight are no-key (Upbit endpoints, Bithumb endpoints, iTunes K-pop, Open Beauty Facts), the other thirteen need provider-issued keys. Provider keys live in the tool's static variables as `${ENV_VAR}` placeholders that resolve at runtime from the JVM environment — they are not committed to the spec.
+Most return **Korean text in their response payloads** - names, addresses, codenames - so a chat agent calling them should be locale-aware. Eight are no-key (Upbit endpoints, Bithumb endpoints, iTunes K-pop, Open Beauty Facts), the other thirteen need provider-issued keys. Provider keys live in the tool's static variables as `${ENV_VAR}` placeholders that resolve at runtime from the JVM environment - they are not committed to the spec.
 
-Like the global network tools, every fetch runs through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) in the default strict egress mode.
+Like the global network tools, every fetch runs through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) in the default host-`allowlist` egress mode.
 
 ## Browse the 21 services { #browse-the-services }
 
-Crypto markets (6, no key) · Search & local (5, mixed) · Finance & data (4, mixed) · Weather & disaster (3, mixed) · Government dispatcher (2 + 1 generic). All run at sandbox **L0** with `networkMode: strict`.
+Crypto markets (6, no key) · Search & local (5, mixed) · Finance & data (4, mixed) · Weather & disaster (3, mixed) · Government dispatcher (2 + 1 generic). All run at sandbox **L3** with host-`allowlist` egress.
 
 <div class="tcg-grid" markdown>
 
 <div class="tcg-card t-crypto tcg-card--clickable" id="getUpbitTicker" data-tool-id="getUpbitTicker" data-tool-title="getUpbitTicker" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getUpbitTicker</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-currency-btc:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches the current KRW ticker(s) from Upbit, a major Korean crypto exchange (no auth). `markets` is comma-separated, e.g. 'KRW-BTC,KRW-ETH'. Returns an array of { market, tradePrice, openingPrice, highPrice, lowPrice, change, changeRate, accTradeVolume24h, timestamp }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `markets`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -34,7 +34,7 @@ Fetches the current KRW ticker(s) from Upbit, a major Korean crypto exchange (no
 |---|---|---|---|
 | `markets` | `STRING` | ✓ | Comma-separated Upbit market codes |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -77,13 +77,13 @@ return (resp.json() || []).map(t => ({
 <div class="tcg-card t-crypto tcg-card--clickable" id="getUpbitOrderbook" data-tool-id="getUpbitOrderbook" data-tool-title="getUpbitOrderbook" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getUpbitOrderbook</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-chart-box-outline:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches Upbit live orderbook (bids/asks) for one or more KRW markets (no auth). `markets` is comma-separated like 'KRW-BTC,KRW-ETH'. Optional `level` controls price aggregation upstream. Returns an array of { market, timestamp, totalAskSize, totalBidSize, units:[{askPrice,bidPrice,askSize,bidSize}] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `markets` · `level`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -95,7 +95,7 @@ Fetches Upbit live orderbook (bids/asks) for one or more KRW markets (no auth). 
 | `markets` | `STRING` | ✓ | Comma-separated Upbit market codes |
 | `level` | `STRING` |  | Optional price-aggregation level (e.g. 10000 for 10k KRW buckets) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -140,13 +140,13 @@ return (resp.json() || []).map(b => ({
 <div class="tcg-card t-crypto tcg-card--clickable" id="getUpbitCandles" data-tool-id="getUpbitCandles" data-tool-title="getUpbitCandles" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getUpbitCandles</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-chart-line:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches Upbit OHLCV candles for a market (no auth). `interval` accepts 'days' (default), 'weeks', 'months', or 'minutes/N' where N is one of 1, 3, 5, 10, 15, 30, 60, 240. `count` is capped at 200 upstream. Returns an array (most recent first) of { market, candleDateTimeKst, candleDateTimeUtc, openingPrice, highPrice, lowPrice, tradePrice, candleAccTradeVolume, candleAccTradePrice }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `market` · `interval` · `count`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -159,7 +159,7 @@ Fetches Upbit OHLCV candles for a market (no auth). `interval` accepts 'days' (d
 | `interval` | `STRING` |  | 'days' \| 'weeks' \| 'months' \| 'minutes/1' \| 'minutes/60' ... |
 | `count` | `STRING` |  | How many candles (max 200) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -214,13 +214,13 @@ return (resp.json() || []).map(c => ({
 <div class="tcg-card t-crypto tcg-card--clickable" id="listUpbitMarkets" data-tool-id="listUpbitMarkets" data-tool-title="listUpbitMarkets" markdown>
 <div class="tcg-name"><span class="tcg-name__text">listUpbitMarkets</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-format-list-bulleted:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Lists all tradable markets on Upbit (no auth). Pass `quote` (e.g. 'KRW', 'BTC', 'USDT') to filter by quote currency. Returns { count, markets: [{ market, koreanName, englishName }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `quote`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -231,7 +231,7 @@ Lists all tradable markets on Upbit (no auth). Pass `quote` (e.g. 'KRW', 'BTC', 
 |---|---|---|---|
 | `quote` | `STRING` |  | Optional quote currency filter (KRW, BTC, USDT). Omit for all. |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -273,13 +273,13 @@ return { count: rows.length, markets: rows };
 <div class="tcg-card t-crypto tcg-card--clickable" id="getBithumbTicker" data-tool-id="getBithumbTicker" data-tool-title="getBithumbTicker" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getBithumbTicker</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-currency-btc:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches the current KRW ticker for a symbol from Bithumb (no auth). Used as an Upbit alternative or for cross-exchange checks. Returns: { symbol, openingPrice, closingPrice, minPrice, maxPrice, unitsTraded24h, accTradeValue24h, change24h, changeRate24h, fluctate24h, fluctateRate24h }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `symbol`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -290,7 +290,7 @@ Fetches the current KRW ticker for a symbol from Bithumb (no auth). Used as an U
 |---|---|---|---|
 | `symbol` | `STRING` | ✓ | Coin symbol (e.g. BTC, ETH). Pair against KRW is implicit. |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.bithumb.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -335,13 +335,13 @@ return {
 <div class="tcg-card t-crypto tcg-card--clickable" id="getBithumbOrderbook" data-tool-id="getBithumbOrderbook" data-tool-title="getBithumbOrderbook" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getBithumbOrderbook</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-chart-box-outline:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches Bithumb public orderbook depth for a KRW pair (no auth). `count` defaults to 5, max 30. Returns { symbol, paymentCurrency, orderCurrency, timestamp, bids:[{price,quantity}], asks:[{price,quantity}] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `symbol` · `count`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -353,7 +353,7 @@ Fetches Bithumb public orderbook depth for a KRW pair (no auth). `count` default
 | `symbol` | `STRING` | ✓ | Coin symbol (e.g. BTC, ETH). Pair against KRW is implicit. |
 | `count` | `STRING` |  | Depth (1-30). Default 5. |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.bithumb.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -397,7 +397,7 @@ return {
 <div class="tcg-card t-naver tcg-card--clickable" id="searchNaver" data-tool-id="searchNaver" data-tool-title="searchNaver" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchNaver</span> <span class="cost">🔑 × 2</span></div>
 <div class="tcg-art" markdown>:simple-naver:</div>
-<div class="tcg-type">web · korea · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Naver Search API (KR; key required). Searches across blog, news, webkr, encyc, book, image, shop, kin, or cafearticle. Issue Client-Id + Client-Secret at https://developers.naver.com/apps/ and set NAVER_CLIENT_ID + NAVER_CLIENT_SECRET on the tool's staticVariables, or inject as env vars. Returns: { type, total, start, display, items:[{title, description, link, pubDate, bloggerName, author}] }.
 </div>
@@ -412,12 +412,12 @@ Naver Search API (KR; key required). Searches across blog, news, webkr, encyc, b
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `query` | `STRING` | ✓ | Search keyword — Korean queries typical (e.g. '스프링 AI'); other languages also accepted. |
+| `query` | `STRING` | ✓ | Search keyword - Korean queries typical (e.g. '스프링 AI'); other languages also accepted. |
 | `type` | `STRING` |  | blog \| news \| webkr \| encyc \| book \| image \| shop \| kin \| cafearticle |
 | `display` | `STRING` |  | Result count (1-100, default 10) |
 | `start` | `STRING` |  | Start index (1-1000, default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `openapi.naver.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -431,7 +431,7 @@ Naver Search API (KR; key required). Searches across blog, news, webkr, encyc, b
  *   X-Naver-Client-Id:     <Naver Open API client id>
  *   X-Naver-Client-Secret: <Naver Open API client secret>
  *
- * Credentials are pulled from the tool's staticVariables, which support `${ENV_VAR}` —
+ * Credentials are pulled from the tool's staticVariables, which support `${ENV_VAR}` -
  * by default `${NAVER_CLIENT_ID}` and `${NAVER_CLIENT_SECRET}`. Issue them at
  * https://developers.naver.com/apps/.
  *
@@ -486,9 +486,9 @@ return {
 <div class="tcg-card t-kakao tcg-card--clickable" id="searchKakaoLocal" data-tool-id="searchKakaoLocal" data-tool-title="searchKakaoLocal" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchKakaoLocal</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:simple-kakaotalk:</div>
-<div class="tcg-type">web · korea · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Kakao Local keyword search — finds places/POIs and returns WGS84 coordinates (KR; key required). Issue a REST API key at https://developers.kakao.com/ and set KAKAO_REST_API_KEY on the tool's staticVariables, or inject as env var. Optionally pass (longitude, latitude, radius) to search around a point. Returns: { totalCount, pageableCount, isEnd, places:[{ name, category, categoryGroup, phone, address, roadAddress, latitude, longitude, placeUrl, distance }] }.
+Kakao Local keyword search - finds places/POIs and returns WGS84 coordinates (KR; key required). Issue a REST API key at https://developers.kakao.com/ and set KAKAO_REST_API_KEY on the tool's staticVariables, or inject as env var. Optionally pass (longitude, latitude, radius) to search around a point. Returns: { totalCount, pageableCount, isEnd, places:[{ name, category, categoryGroup, phone, address, roadAddress, latitude, longitude, placeUrl, distance }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `size` · `page` · `longitude` · `latitude` · `radius`</div>
@@ -501,26 +501,26 @@ Kakao Local keyword search — finds places/POIs and returns WGS84 coordinates (
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `query` | `STRING` | ✓ | Search keyword — Korean queries typical for KR POIs (e.g. '강남역 스타벅스'); other languages also accepted. |
+| `query` | `STRING` | ✓ | Search keyword - Korean queries typical for KR POIs (e.g. '강남역 스타벅스'); other languages also accepted. |
 | `size` | `STRING` |  | Results per page (1-15, default 10) |
 | `page` | `STRING` |  | Page number (1-45, default 1) |
 | `longitude` | `STRING` |  | Center longitude (WGS84). Leave empty for nationwide search. |
 | `latitude` | `STRING` |  | Center latitude (WGS84). Leave empty for nationwide search. |
 | `radius` | `STRING` |  | Radius in meters (0-20000). Used only when longitude/latitude are set. |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `dapi.kakao.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * Kakao Local — keyword place search (KR; requires Kakao REST API key).
+ * Kakao Local - keyword place search (KR; requires Kakao REST API key).
  *
  * GET https://dapi.kakao.com/v2/local/search/keyword.json?query=...&size=...&page=...
  *
  * Auth header: Authorization: KakaoAK <REST_API_KEY>
  *
- * Credential lives in staticVariables — `${KAKAO_REST_API_KEY}` by default.
+ * Credential lives in staticVariables - `${KAKAO_REST_API_KEY}` by default.
  * Issue a REST API key at https://developers.kakao.com/.
  *
  * Optional (longitude, latitude, radius) narrows the search to a circle.
@@ -581,7 +581,7 @@ return {
 <div class="tcg-card t-datagokr tcg-card--clickable" id="getAirKoreaPm" data-tool-id="getAirKoreaPm" data-tool-title="getAirKoreaPm" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getAirKoreaPm</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-air-filter:</div>
-<div class="tcg-type">web · korea · weather <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · weather <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 AirKorea (data.go.kr) real-time air quality readings by Korean province (KR; data.go.kr key required). Issue the air-quality serviceKey at https://www.data.go.kr/data/15073861/openapi.do and set DATA_GO_KR_AIR_KEY on the tool's staticVariables, or inject as env var. Returns: { sidoName, totalCount, stations:[{ stationName, sidoName, dataTime, pm10, pm25, o3, no2, co, so2, khaiValue, khaiGrade }] }. On auth error: { success:false, status, message }.
 </div>
@@ -596,29 +596,29 @@ AirKorea (data.go.kr) real-time air quality readings by Korean province (KR; dat
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `sidoName` | `STRING` | ✓ | Korean string required — province name as the AirKorea API expects. Examples: '전국' (nationwide), '서울', '부산', '제주', '경기'. |
+| `sidoName` | `STRING` | ✓ | Korean string required - province name as the AirKorea API expects. Examples: '전국' (nationwide), '서울', '부산', '제주', '경기'. |
 | `numOfRows` | `STRING` |  | Stations per call (1-1000, default 100) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * AirKorea — 시도별 실시간 대기질 (PM10/PM2.5/O3/...) (KR; requires data.go.kr key).
+ * AirKorea - 시도별 실시간 대기질 (PM10/PM2.5/O3/...) (KR; requires data.go.kr key).
  *
  * GET http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty
  *     ?sidoName={sido}&pageNo=1&numOfRows=100&returnType=json&serviceKey={key}&ver=1.3
  *
- * Credential lives in staticVariables — `${DATA_GO_KR_AIR_KEY}` by default.
+ * Credential lives in staticVariables - `${DATA_GO_KR_AIR_KEY}` by default.
  * Issue a serviceKey at https://www.data.go.kr/data/15073861/openapi.do.
  *
  * `sidoName` is the Korean province name: 전국 | 서울 | 부산 | 대구 | 인천 | 광주 | 대전 |
  *   울산 | 경기 | 강원 | 충북 | 충남 | 전북 | 전남 | 경북 | 경남 | 제주 | 세종.
  *
- * NOTE: data.go.kr endpoints are HTTP not HTTPS — included in the allowlist.
+ * NOTE: data.go.kr endpoints are HTTP not HTTPS - included in the allowlist.
  *       data.go.kr returns HTTP 200 with an error envelope when the serviceKey
- *       is bad — we detect `OpenAPI_ServiceResponse.cmmMsgHeader` and surface
+ *       is bad - we detect `OpenAPI_ServiceResponse.cmmMsgHeader` and surface
  *       a structured failure.
  */
 
@@ -681,13 +681,13 @@ return {
 <div class="tcg-card t-apple tcg-card--clickable" id="searchKpopOnItunes" data-tool-id="searchKpopOnItunes" data-tool-title="searchKpopOnItunes" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchKpopOnItunes</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-applemusic:</div>
-<div class="tcg-type">web · korea <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-iTunes Search API — Korean music catalog including K-pop (no auth). Default country=kr biases results to the Korean iTunes storefront. Suitable for song / musicArtist / album / musicVideo lookups. Each result includes a 30s preview URL and album artwork URL. Catalog metadata is in the storefront language (Korean for kr). `entity`: musicArtist | song | album | musicVideo | mix. `country`: ISO-2 storefront code (kr/us/jp/...). Default kr. Returns: { country, entity, resultCount, results:[{ kind, artistName, trackName, collection, releaseDate, primaryGenre, previewUrl, trackViewUrl, artworkUrl, ... }] }.
+iTunes Search API - Korean music catalog including K-pop (no auth). Default country=kr biases results to the Korean iTunes storefront. Suitable for song / musicArtist / album / musicVideo lookups. Each result includes a 30s preview URL and album artwork URL. Catalog metadata is in the storefront language (Korean for kr). `entity`: musicArtist | song | album | musicVideo | mix. `country`: ISO-2 storefront code (kr/us/jp/...). Default kr. Returns: { country, entity, resultCount, results:[{ kind, artistName, trackName, collection, releaseDate, primaryGenre, previewUrl, trackViewUrl, artworkUrl, ... }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `term` · `entity` · `country` · `limit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -696,18 +696,18 @@ iTunes Search API — Korean music catalog including K-pop (no auth). Default co
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `term` | `STRING` | ✓ | Search keyword (artist / track / album) — Korean (e.g. '블랙핑크') or romanized ('BLACKPINK') both work. |
+| `term` | `STRING` | ✓ | Search keyword (artist / track / album) - Korean (e.g. '블랙핑크') or romanized ('BLACKPINK') both work. |
 | `entity` | `STRING` |  | song \| musicArtist \| album \| musicVideo \| mix (default song) |
 | `country` | `STRING` |  | ISO-2 storefront code (kr/us/jp/...), default kr |
 | `limit` | `STRING` |  | Result count (1-200, default 10) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `itunes.apple.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * iTunes Search API — K-pop & Korean music catalog (no auth).
+ * iTunes Search API - K-pop & Korean music catalog (no auth).
  *
  * GET https://itunes.apple.com/search?term=BTS&country=kr&media=music&entity=song&limit=10
  *
@@ -771,13 +771,13 @@ return {
 <div class="tcg-card t-beauty tcg-card--clickable" id="searchKBeautyProducts" data-tool-id="searchKBeautyProducts" data-tool-title="searchKBeautyProducts" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchKBeautyProducts</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-flower-tulip-outline:</div>
-<div class="tcg-type">web · korea · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-K-beauty cosmetics product search via Open Beauty Facts (no auth). Default country=south-korea biases the lookup to Korean brand catalogs (Innisfree / Laneige / COSRX / ...). Returns ingredients, allergens, packaging, and product image URLs. For a global search pass country='', or other slugs like country='japan'. Note: localized product names may appear in Korean. Pass a barcode (e.g. '8809610706106') as `query` for single-product lookup — useful for ingredient checks. Returns: { country, count, page, pageSize, products:[{ code, productName, brands, countries, categories, allergens, ingredients, packaging, imageUrl, openBeautyFactsUrl }] }.
+K-beauty cosmetics product search via Open Beauty Facts (no auth). Default country=south-korea biases the lookup to Korean brand catalogs (Innisfree / Laneige / COSRX / ...). Returns ingredients, allergens, packaging, and product image URLs. For a global search pass country='', or other slugs like country='japan'. Note: localized product names may appear in Korean. Pass a barcode (e.g. '8809610706106') as `query` for single-product lookup - useful for ingredient checks. Returns: { country, count, page, pageSize, products:[{ code, productName, brands, countries, categories, allergens, ingredients, packaging, imageUrl, openBeautyFactsUrl }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `country` · `pageSize`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -786,11 +786,11 @@ K-beauty cosmetics product search via Open Beauty Facts (no auth). Default count
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `query` | `STRING` | ✓ | Search keyword or barcode — English typical for ingredients ('snail mucin'), Korean works for brand names ('이니스프리'). |
+| `query` | `STRING` | ✓ | Search keyword or barcode - English typical for ingredients ('snail mucin'), Korean works for brand names ('이니스프리'). |
 | `country` | `STRING` |  | Open Beauty Facts country slug. Default 'south-korea'. Empty string for global, 'japan' for Japan, etc. |
 | `pageSize` | `STRING` |  | Result count (1-50, default 10) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `world.openbeautyfacts.org` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -869,9 +869,9 @@ return {
 <div class="tcg-card t-tour tcg-card--clickable" id="searchKoreaTour" data-tool-id="searchKoreaTour" data-tool-title="searchKoreaTour" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchKoreaTour</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-bag-suitcase-outline:</div>
-<div class="tcg-type">web · korea · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Korea Tourism Organization TourAPI 4.0 keyword search — tourist spots, cultural facilities, festivals, lodging, restaurants by Korean keyword (KR; data.go.kr key required, separate from the air-quality key). Issue the Korean tourism serviceKey at https://www.data.go.kr/data/15101578/openapi.do and set DATA_GO_KR_TOUR_KEY on the tool's staticVariables, or inject as env var. Filters: `areaCode` (province) + `sigunguCode` (city/county) + `contentTypeId` (content type). Examples: Jeonju = areaCode 37 + sigunguCode 12, Gyeongju = 35+2, Jeju City = 39+4, Seogwipo = 39+5. Metropolitan cities (Busan=6, Daegu=4, ...) do not require sigunguCode. Returns: { keyword, totalCount, pageNo, numOfRows, items:[{ contentId, contentTypeId, title, addr1, addr2, areaCode, sigunguCode, firstImage, mapX, mapY, tel, ... }] }.
+Korea Tourism Organization TourAPI 4.0 keyword search - tourist spots, cultural facilities, festivals, lodging, restaurants by Korean keyword (KR; data.go.kr key required, separate from the air-quality key). Issue the Korean tourism serviceKey at https://www.data.go.kr/data/15101578/openapi.do and set DATA_GO_KR_TOUR_KEY on the tool's staticVariables, or inject as env var. Filters: `areaCode` (province) + `sigunguCode` (city/county) + `contentTypeId` (content type). Examples: Jeonju = areaCode 37 + sigunguCode 12, Gyeongju = 35+2, Jeju City = 39+4, Seogwipo = 39+5. Metropolitan cities (Busan=6, Daegu=4, ...) do not require sigunguCode. Returns: { keyword, totalCount, pageNo, numOfRows, items:[{ contentId, contentTypeId, title, addr1, addr2, areaCode, sigunguCode, firstImage, mapX, mapY, tel, ... }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `keyword` · `areaCode` · `sigunguCode` · `contentTypeId` · `pageNo` · `numOfRows`</div>
@@ -884,26 +884,26 @@ Korea Tourism Organization TourAPI 4.0 keyword search — tourist spots, cultura
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `keyword` | `STRING` | ✓ | Korean string required — Korean-language tour keyword (e.g. '경복궁', '제주 흑돼지', '부산 해운대'). |
+| `keyword` | `STRING` | ✓ | Korean string required - Korean-language tour keyword (e.g. '경복궁', '제주 흑돼지', '부산 해운대'). |
 | `areaCode` | `STRING` |  | Optional. Province code (Seoul=1, Busan=6, Gyeongbuk=35, Jeonbuk=37, Jeju=39, ...) |
 | `sigunguCode` | `STRING` |  | Optional. City/county code (e.g. Jeonju=12 in Jeonbuk, Gyeongju=2 in Gyeongbuk, Jeju City=4 in Jeju, Seogwipo=5) |
 | `contentTypeId` | `STRING` |  | Optional. 12=tourist spot, 14=cultural facility, 15=festival, 25=travel course, 28=leisure sports, 32=lodging, 38=shopping, 39=restaurant |
 | `pageNo` | `STRING` |  | Page number (default 1) |
 | `numOfRows` | `STRING` |  | Results per page (1-100, default 10) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * Korea TourAPI 4.0 — 한국관광공사 키워드 검색 (KR; requires data.go.kr key).
+ * Korea TourAPI 4.0 - 한국관광공사 키워드 검색 (KR; requires data.go.kr key).
  *
  * GET http://apis.data.go.kr/B551011/KorService2/searchKeyword2
  *     ?serviceKey={KEY}&keyword=경복궁&areaCode=&sigunguCode=&contentTypeId=
  *     &MobileOS=ETC&MobileApp=spring-ai-playground&_type=json&pageNo=1&numOfRows=10
  *
- * Credential lives in staticVariables — `${DATA_GO_KR_TOUR_KEY}` by default.
+ * Credential lives in staticVariables - `${DATA_GO_KR_TOUR_KEY}` by default.
  * Issue a serviceKey at https://www.data.go.kr/data/15101578/openapi.do.
  *
  * Optional filters:
@@ -991,7 +991,7 @@ return {
 <div class="tcg-card t-seoul tcg-card--clickable" id="searchSeoulCulturalEvents" data-tool-id="searchSeoulCulturalEvents" data-tool-title="searchSeoulCulturalEvents" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchSeoulCulturalEvents</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-theater:</div>
-<div class="tcg-type">web · korea · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Seoul Open Data Plaza (data.seoul.go.kr) cultural events search (KR; separate key required). This API is operated directly by the Seoul city government and is separate from the data.go.kr keychain. Issue a free key at https://data.seoul.go.kr/together/apikey.do (1,000 req/day) and set SEOUL_OPEN_API_KEY on the tool's staticVariables, or inject as env var. Optional filters: `codename` (category: musical / exhibition / Korean classical music / concert / ...), `titleSearch` (partial title match), `eventDate` ('YYYY-MM-DD'; events active on that date only). Returns: { totalCount, events:[{ category, gu, title, period, startDate, endDate, place, organizer, audience, fee, isFree, program, imageUrl, latitude, longitude, ... }] }.
 </div>
@@ -1008,17 +1008,17 @@ Seoul Open Data Plaza (data.seoul.go.kr) cultural events search (KR; separate ke
 |---|---|---|---|
 | `startIndex` | `STRING` |  | Start index (default 1) |
 | `endIndex` | `STRING` |  | End index (max 1000 per call) |
-| `codename` | `STRING` |  | Optional. Korean string required when used — category in Korean (e.g. '뮤지컬', '전시', '국악', '콘서트'). |
-| `titleSearch` | `STRING` |  | Optional. Partial title match — Korean strings typical (e.g. '봄꽃'). |
-| `eventDate` | `STRING` |  | Optional. 'YYYY-MM-DD' — only events active on that date |
+| `codename` | `STRING` |  | Optional. Korean string required when used - category in Korean (e.g. '뮤지컬', '전시', '국악', '콘서트'). |
+| `titleSearch` | `STRING` |  | Optional. Partial title match - Korean strings typical (e.g. '봄꽃'). |
+| `eventDate` | `STRING` |  | Optional. 'YYYY-MM-DD' - only events active on that date |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `openapi.seoul.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * Seoul Open Data Plaza — 서울시 문화행사 정보 (KR; requires Seoul Open API key,
+ * Seoul Open Data Plaza - 서울시 문화행사 정보 (KR; requires Seoul Open API key,
  * issued separately from data.go.kr).
  *
  * URL is positional (path-segment style):
@@ -1027,7 +1027,7 @@ Seoul Open Data Plaza (data.seoul.go.kr) cultural events search (KR; separate ke
  *
  * - CODENAME: optional 분류 (예: '뮤지컬', '전시/미술', '국악', '콘서트')
  * - TITLE:    optional 제목 부분 일치
- * - DATE:     optional 'YYYY-MM-DD' — 해당 날짜에 진행되는 행사만
+ * - DATE:     optional 'YYYY-MM-DD' - 해당 날짜에 진행되는 행사만
  *
  * Empty trailing params are simply omitted. Issue a key at
  * https://data.seoul.go.kr/together/apikey.do (free; 1,000 req/day).
@@ -1101,9 +1101,9 @@ return {
 <div class="tcg-card t-kamis tcg-card--clickable" id="getKamisAgriPrice" data-tool-id="getKamisAgriPrice" data-tool-title="getKamisAgriPrice" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getKamisAgriPrice</span> <span class="cost">🔑 × 2</span></div>
 <div class="tcg-art" markdown>:material-leaf:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-KAMIS agricultural product wholesale/retail prices — daily price data operated by aT (Korea Agro-Fisheries & Food Trade Corp). KR; cert_id + cert_key required, free. Issue credentials at https://www.kamis.or.kr/customer/reference/openapi_list.do and set KAMIS_CERT_ID + KAMIS_CERT_KEY on the tool's staticVariables, or inject as env vars. `productClsCode`: 01=retail, 02=wholesale (default). `itemCode` is the KAMIS product code (rice=111, apple=411, napa cabbage=211, pork belly=515, ...). Returns: { productClass, itemCode, startDay, endDay, count, rows:[{ itemName, kindName, county, market, year, date, price, unit }] }.
+KAMIS agricultural product wholesale/retail prices - daily price data operated by aT (Korea Agro-Fisheries & Food Trade Corp). KR; cert_id + cert_key required, free. Issue credentials at https://www.kamis.or.kr/customer/reference/openapi_list.do and set KAMIS_CERT_ID + KAMIS_CERT_KEY on the tool's staticVariables, or inject as env vars. `productClsCode`: 01=retail, 02=wholesale (default). `itemCode` is the KAMIS product code (rice=111, apple=411, napa cabbage=211, pork belly=515, ...). Returns: { productClass, itemCode, startDay, endDay, count, rows:[{ itemName, kindName, county, market, year, date, price, unit }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `itemCode` · `startDay` · `endDay` · `productClsCode` · `itemCategoryCode` · `kindCode`</div>
@@ -1123,20 +1123,20 @@ KAMIS agricultural product wholesale/retail prices — daily price data operated
 | `itemCategoryCode` | `STRING` |  | Optional. 100=grain, 200=vegetable, 300=specialty, 400=fruit, 500=livestock, 600=fishery |
 | `kindCode` | `STRING` |  | Optional. Variety code (omit for all) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.kamis.or.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * KAMIS — 한국농수산식품유통공사 농산물 도·소매 가격 조회 (KR; cert_id + cert_key 필요).
+ * KAMIS - 한국농수산식품유통공사 농산물 도·소매 가격 조회 (KR; cert_id + cert_key 필요).
  *
  * GET http://www.kamis.or.kr/service/price/xml.do?action=periodProductList
  *     &p_cert_key={KEY}&p_cert_id={ID}&p_returntype=json
  *     &p_productclscode=02&p_itemcategorycode=400&p_itemcode=411
  *     &p_startday=2026-05-01&p_endday=2026-05-13
  *
- * Credentials live in staticVariables — `${KAMIS_CERT_ID}` and `${KAMIS_CERT_KEY}` by default.
+ * Credentials live in staticVariables - `${KAMIS_CERT_ID}` and `${KAMIS_CERT_KEY}` by default.
  * Sign up at https://www.kamis.or.kr/customer/reference/openapi_list.do (free).
  *
  * Codes (a small subset):
@@ -1219,7 +1219,7 @@ return {
 <div class="tcg-card t-kofic tcg-card--clickable" id="getKoficBoxOffice" data-tool-id="getKoficBoxOffice" data-tool-title="getKoficBoxOffice" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getKoficBoxOffice</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-movie-outline:</div>
-<div class="tcg-type">web · korea <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 KOFIC (Korean Film Council) daily box-office ranking (KR; single API key required, free instant issuance). Issue the key at https://www.kobis.or.kr/kobisopenapi/ and set KOFIC_API_KEY on the tool's staticVariables, or inject as env var. `targetDate` is typically yesterday's date (same-day totals are tallied after market close). Both YYYYMMDD and YYYY-MM-DD are accepted. Optional filters: `multiMovieYn` (Y=diversity films only / N=commercial films only), `repNationCd` (K=Korean / F=foreign), `wideAreaCd` (screening region). Returns: { type, showRange, count, movies:[{ rank, rankChange, isNew, movieCode, title, openDate, salesAmount, salesShare, salesAccumulated, audience, audienceAccumulated, screens, shows }] }.
 </div>
@@ -1239,13 +1239,13 @@ KOFIC (Korean Film Council) daily box-office ranking (KR; single API key require
 | `repNationCd` | `STRING` |  | Optional. K=Korean / F=foreign (omit for all) |
 | `wideAreaCd` | `STRING` |  | Optional. Screening region code (omit for nationwide) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.kobis.or.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * KOFIC — 영화진흥위원회 일별 박스오피스 순위 (KR; single API key, lightweight signup).
+ * KOFIC - 영화진흥위원회 일별 박스오피스 순위 (KR; single API key, lightweight signup).
  *
  * GET http://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json
  *     ?key={KEY}&targetDt=20260512
@@ -1320,9 +1320,9 @@ return {
 <div class="tcg-card t-krx tcg-card--clickable" id="getKrxStockPrice" data-tool-id="getKrxStockPrice" data-tool-title="getKrxStockPrice" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getKrxStockPrice</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-chart-line:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-KRX Korea Exchange daily stock quotes (data.go.kr) — KOSPI/KOSDAQ/KONEX daily open/close/change/volume/market cap. KR; data.go.kr serviceKey required, separate service application from other dgk keys. Register the `Financial Services Commission stock quote info` service at data.go.kr (https://www.data.go.kr/data/15094808/openapi.do), receive a serviceKey, and set DATA_GO_KR_STOCK_KEY on the tool's staticVariables, or inject as env var. Note: the KIS API (Korea Investment & Securities) is a two-step token → Bearer flow that is inefficient for stateless tools (token consumed per call). This tool uses the KRX-official channel that exposes the same data behind a single key. Filters: `basDt` (business day YYYYMMDD), `itmsNm` (exact stock name), `likeItmsNm` (partial name match), `srtnCd` (short code e.g. 005930), `mrktCls` (KOSPI/KOSDAQ/KONEX). Returns: { totalCount, pageNo, numOfRows, items:[{ baseDate, shortCode, isinCode, name, market, close, diff, changePct, open, high, low, volume, tradeValue, listedShares, marketCap }] }.
+KRX Korea Exchange daily stock quotes (data.go.kr) - KOSPI/KOSDAQ/KONEX daily open/close/change/volume/market cap. KR; data.go.kr serviceKey required, separate service application from other dgk keys. Register the `Financial Services Commission stock quote info` service at data.go.kr (https://www.data.go.kr/data/15094808/openapi.do), receive a serviceKey, and set DATA_GO_KR_STOCK_KEY on the tool's staticVariables, or inject as env var. Note: the KIS API (Korea Investment & Securities) is a two-step token → Bearer flow that is inefficient for stateless tools (token consumed per call). This tool uses the KRX-official channel that exposes the same data behind a single key. Filters: `basDt` (business day YYYYMMDD), `itmsNm` (exact stock name), `likeItmsNm` (partial name match), `srtnCd` (short code e.g. 005930), `mrktCls` (KOSPI/KOSDAQ/KONEX). Returns: { totalCount, pageNo, numOfRows, items:[{ baseDate, shortCode, isinCode, name, market, close, diff, changePct, open, high, low, volume, tradeValue, listedShares, marketCap }] }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `basDt` · `itmsNm` · `likeItmsNm` · `srtnCd` · `mrktCls` · `numOfRows` · `pageNo`</div>
@@ -1336,14 +1336,14 @@ KRX Korea Exchange daily stock quotes (data.go.kr) — KOSPI/KOSDAQ/KONEX daily 
 | Param | Type | Req | Description |
 |---|---|---|---|
 | `basDt` | `STRING` |  | Business day (YYYYMMDD or YYYY-MM-DD). Latest if omitted. |
-| `itmsNm` | `STRING` |  | Korean string required — exact stock name (e.g. '삼성전자', '현대자동차', 'SK하이닉스'). |
-| `likeItmsNm` | `STRING` |  | Korean string required when used — partial stock name match (e.g. '삼성', '현대'). |
+| `itmsNm` | `STRING` |  | Korean string required - exact stock name (e.g. '삼성전자', '현대자동차', 'SK하이닉스'). |
+| `likeItmsNm` | `STRING` |  | Korean string required when used - partial stock name match (e.g. '삼성', '현대'). |
 | `srtnCd` | `STRING` |  | Short stock code (e.g. '005930' for Samsung Electronics) |
 | `mrktCls` | `STRING` |  | Market segment: KOSPI / KOSDAQ / KONEX (omit for all) |
 | `numOfRows` | `STRING` |  | Results per page (1-1000, default 10) |
 | `pageNo` | `STRING` |  | Page (default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1442,9 +1442,9 @@ return {
 <div class="tcg-card t-datagokr tcg-card--clickable" id="callDataGoKrOpenApi" data-tool-id="callDataGoKrOpenApi" data-tool-title="callDataGoKrOpenApi" markdown>
 <div class="tcg-name"><span class="tcg-name__text">callDataGoKrOpenApi</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-database:</div>
-<div class="tcg-type">web · korea <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-data.go.kr generic dispatcher — calls arbitrary data.go.kr services not covered by dedicated tools in this catalog. High-frequency services (air quality / tourism / stocks / ...) have their own tools; use this dispatcher for the 7,000+ other services (real-estate transactions / postal codes / road-name addresses / drug-safety agency / national statistics / ...). Most responses are in Korean. Set the data.go.kr serviceKey on the tool's staticVariables as DATA_GO_KR_KEY, or inject as env var. NOTE: each data.go.kr dataset requires its own service registration (the key value can be the same, but each OpenAPI service is approved separately). Inputs: { servicePath: 'B551011/KorService2/...' (the path after apis.data.go.kr/), query: { pageNo:1, numOfRows:10, ... } (extra query parameters) }. On success: { ok:true, totalCount, pageNo, numOfRows, items, raw }. On failure: { ok:false, status, message } (HTTP error or OpenAPI_ServiceResponse.cmmMsgHeader error).
+data.go.kr generic dispatcher - calls arbitrary data.go.kr services not covered by dedicated tools in this catalog. High-frequency services (air quality / tourism / stocks / ...) have their own tools; use this dispatcher for the 7,000+ other services (real-estate transactions / postal codes / road-name addresses / drug-safety agency / national statistics / ...). Most responses are in Korean. Set the data.go.kr serviceKey on the tool's staticVariables as DATA_GO_KR_KEY, or inject as env var. NOTE: each data.go.kr dataset requires its own service registration (the key value can be the same, but each OpenAPI service is approved separately). Inputs: { servicePath: 'B551011/KorService2/...' (the path after apis.data.go.kr/), query: { pageNo:1, numOfRows:10, ... } (extra query parameters) }. On success: { ok:true, totalCount, pageNo, numOfRows, items, raw }. On failure: { ok:false, status, message } (HTTP error or OpenAPI_ServiceResponse.cmmMsgHeader error).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `servicePath` · `query`</div>
@@ -1458,15 +1458,15 @@ data.go.kr generic dispatcher — calls arbitrary data.go.kr services not covere
 | Param | Type | Req | Description |
 |---|---|---|---|
 | `servicePath` | `STRING` | ✓ | Path after apis.data.go.kr/ (e.g. '1741000/StanReginCd/getStanReginCdList' for the MOIS region-code service) |
-| `query` | `OBJECT` |  | Extra query parameters as an object (the example payload — including any Korean region name — lives in testValue) |
+| `query` | `OBJECT` |  | Extra query parameters as an object (the example payload - including any Korean region name - lives in testValue) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
 ```javascript
 /**
- * Generic data.go.kr OpenAPI dispatcher — call any service under apis.data.go.kr
+ * Generic data.go.kr OpenAPI dispatcher - call any service under apis.data.go.kr
  * that isn't covered by a purpose-built tool in this catalog.
  *
  * GET http://apis.data.go.kr/{servicePath}?serviceKey={KEY}&{...query}
@@ -1478,7 +1478,7 @@ data.go.kr generic dispatcher — calls arbitrary data.go.kr services not covere
  *                    (예: { pageNo: 1, numOfRows: 10, basDt: '20260512', itmsNm: '삼성전자' })
  *   - serviceKey   : data.go.kr serviceKey (from staticVariable / env-backed `${DATA_GO_KR_KEY}`).
  *
- * Each service on data.go.kr requires its own approval — the same physical
+ * Each service on data.go.kr requires its own approval - the same physical
  * serviceKey is reused, but the developer must have "신청" the dataset.
  *
  * Output envelope:
@@ -1527,7 +1527,7 @@ if (d && d.OpenAPI_ServiceResponse) {
 }
 
 // Unwrap the typical response.body shape. Many data.go.kr services use this layout
-// (TourAPI, AirKorea, KRX, etc.) — return items as a flat array when present.
+// (TourAPI, AirKorea, KRX, etc.) - return items as a flat array when present.
 const body = (d.response && d.response.body) || d.body || null;
 let items = body && body.items;
 if (items && items.item) items = items.item;
@@ -1550,9 +1550,9 @@ return {
 <div class="tcg-card t-kma tcg-card--clickable" id="getKmaShortTermForecast" data-tool-id="getKmaShortTermForecast" data-tool-title="getKmaShortTermForecast" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getKmaShortTermForecast</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-weather-cloudy:</div>
-<div class="tcg-type">web · korea · weather <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · weather <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-KMA short-term weather forecast — hourly forecast for the next ~72 hours by lat/lon or KMA grid coordinates (nx,ny). KR; data.go.kr serviceKey required, separate KMA service registration. Register the `KMA short-term forecast service` at data.go.kr, receive a serviceKey, and set DATA_GO_KR_KMA_KEY on the tool's staticVariables, or inject as env var. Coordinates: pass either (latitude, longitude) or (nx, ny). Lat/lon are converted internally to KMA Lambert grid. baseDate/baseTime default to today's 0500 release (KMA releases at 02/05/08/11/14/17/20/23). Response is pivoted to 1-hour slots: { fcstDate, fcstTime, temp(℃), humidity(%), precipProbability(%), precipType, precipAmount, skyCondition, windSpeed(m/s), windDirection(deg) }.
+KMA short-term weather forecast - hourly forecast for the next ~72 hours by lat/lon or KMA grid coordinates (nx,ny). KR; data.go.kr serviceKey required, separate KMA service registration. Register the `KMA short-term forecast service` at data.go.kr, receive a serviceKey, and set DATA_GO_KR_KMA_KEY on the tool's staticVariables, or inject as env var. Coordinates: pass either (latitude, longitude) or (nx, ny). Lat/lon are converted internally to KMA Lambert grid. baseDate/baseTime default to today's 0500 release (KMA releases at 02/05/08/11/14/17/20/23). Response is pivoted to 1-hour slots: { fcstDate, fcstTime, temp(℃), humidity(%), precipProbability(%), precipType, precipAmount, skyCondition, windSpeed(m/s), windDirection(deg) }.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `latitude` · `longitude` · `nx` · `ny` · `baseDate` · `baseTime`</div>
@@ -1572,7 +1572,7 @@ KMA short-term weather forecast — hourly forecast for the next ~72 hours by la
 | `baseDate` | `STRING` |  | Release date YYYYMMDD (today if omitted) |
 | `baseTime` | `STRING` |  | Release time HHMM (one of 0200/0500/0800/1100/1400/1700/2000/2300, default 0500) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1585,9 +1585,9 @@ KMA short-term weather forecast — hourly forecast for the next ~72 hours by la
  *     &base_date=20260513&base_time=0500&nx=60&ny=127
  *
  * 좌표 입력 방식 (둘 중 하나):
- *   (1) latitude + longitude  — 위경도 (WGS84) → 내부에서 KMA Lambert Conformal Conic
+ *   (1) latitude + longitude  - 위경도 (WGS84) → 내부에서 KMA Lambert Conformal Conic
  *       격자 (nx, ny)로 변환
- *   (2) nx + ny               — KMA 격자 좌표 (예: 서울 60,127 / 부산 98,76 / 제주 52,38)
+ *   (2) nx + ny               - KMA 격자 좌표 (예: 서울 60,127 / 부산 98,76 / 제주 52,38)
  *
  * base_date/base_time 미지정 시 오늘 0500 발표분. KMA는 02/05/08/11/14/17/20/23시
  * 발표하며 데이터는 발표 ~30분 후 가용.
@@ -1709,7 +1709,7 @@ return {
 <div class="tcg-card t-molit tcg-card--clickable" id="getApartmentTradePrice" data-tool-id="getApartmentTradePrice" data-tool-title="getApartmentTradePrice" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getApartmentTradePrice</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-home-city-outline:</div>
-<div class="tcg-type">web · korea · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 MOLIT (Ministry of Land, Infrastructure & Transport) apartment sale transactions (KR; data.go.kr serviceKey required). Register the MOLIT apartment-trade data service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_APT_KEY on the tool's staticVariables, or inject as env var. `lawdCode` is the 5-digit legal-dong city/county code (not the road-name address). Examples: Gangnam=11680, Seocho=11650, Songpa=11710, Haeundae=26350, Bundang(Seongnam)=41135, Jeju City=50110. `dealYmd` is the transaction month as YYYYMM. Returns: { lawdCode, dealYmd, totalCount, pageNo, numOfRows, items:[{ aptName, dealYear, dealMonth, dealDay, dealAmount(10K KRW), excluUseAr(sqm), floor, buildYear, umdNm(legal dong), jibun(lot), roadName, dealingType }] }.
 </div>
@@ -1729,7 +1729,7 @@ MOLIT (Ministry of Land, Infrastructure & Transport) apartment sale transactions
 | `numOfRows` | `STRING` |  | Results per page (1-1000, default 100) |
 | `pageNo` | `STRING` |  | Page number (default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1821,7 +1821,7 @@ return {
 <div class="tcg-card t-mfds tcg-card--clickable" id="searchKoreaDrugInfo" data-tool-id="searchKoreaDrugInfo" data-tool-title="searchKoreaDrugInfo" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchKoreaDrugInfo</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-pill:</div>
-<div class="tcg-type">web · korea · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 MFDS (Ministry of Food & Drug Safety) drug product approval search (KR; data.go.kr serviceKey required). Register the `MFDS drug product approval info` service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_DRUG_KEY on the tool's staticVariables, or inject as env var. At least one of `itemName` (partial product name), `entpName` (company name), or `itemSeq` (product sequence) is required. Returns: { totalCount, pageNo, numOfRows, items:[{ itemSeq, itemName, entpName, itemPermitDate, className, storageMethod, packUnit, validTerm, cancelDate, cancelName, chart }] }.
 </div>
@@ -1836,13 +1836,13 @@ MFDS (Ministry of Food & Drug Safety) drug product approval search (KR; data.go.
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `itemName` | `STRING` |  | Korean string required — partial product name (e.g. '타이레놀', '아스피린'). |
+| `itemName` | `STRING` |  | Korean string required - partial product name (e.g. '타이레놀', '아스피린'). |
 | `entpName` | `STRING` |  | Optional. Company name in Korean (e.g. '한국얀센', '유한양행'). |
 | `itemSeq` | `STRING` |  | Product sequence code (MFDS unique ID) |
 | `numOfRows` | `STRING` |  | Results per page (1-100, default 10) |
 | `pageNo` | `STRING` |  | Page number (default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1928,7 +1928,7 @@ return {
 <div class="tcg-card t-mois tcg-card--clickable" id="getKoreaEmergencyAlerts" data-tool-id="getKoreaEmergencyAlerts" data-tool-title="getKoreaEmergencyAlerts" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getKoreaEmergencyAlerts</span> <span class="cost">🔑 × 1</span></div>
 <div class="tcg-art" markdown>:material-alert-octagon-outline:</div>
-<div class="tcg-type">web · korea <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · korea <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 MOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (KR; data.go.kr serviceKey required). Register the `MOIS emergency disaster alerts` service at data.go.kr, receive a serviceKey, and set DATA_GO_KR_DISASTER_KEY on the tool's staticVariables, or inject as env var. `area` matches the dispatch region name partially (Korean string). `fromDate`/`toDate` accept YYYYMMDD or YYYY-MM-DD. Returns: { totalCount, pageNo, numOfRows, items:[{ serialNo, createDate, message, emergencyStep, disasterType, location }] }.
 </div>
@@ -1943,13 +1943,13 @@ MOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (K
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `area` | `STRING` |  | Korean string required when used — partial dispatch-region name (e.g. '서울특별시', '경기도', '부산광역시'). Omit for nationwide. |
+| `area` | `STRING` |  | Korean string required when used - partial dispatch-region name (e.g. '서울특별시', '경기도', '부산광역시'). Omit for nationwide. |
 | `fromDate` | `STRING` |  | Query start date YYYYMMDD or YYYY-MM-DD |
 | `toDate` | `STRING` |  | Query end date YYYYMMDD or YYYY-MM-DD |
 | `numOfRows` | `STRING` |  | Results per page (1-1000, default 20) |
 | `pageNo` | `STRING` |  | Page number (default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -2023,17 +2023,17 @@ return {
 
 The Korea bundle is heavier on data sources, so most chains are *Korean source → analysis*:
 
-- **Cross-exchange spread (kimchi premium)** — `getUpbitTicker(markets='KRW-BTC')` + `getBithumbTicker(symbol='BTC')` → `evalExpression(expression='(a-b)/b*100', variables={a, b})` for the live KRW spread between the two majors. No keys, no setup.
-- **Local + weather** — `searchKakaoLocal(query)` for POI lat/lon → `getKmaShortTermForecast(latitude, longitude)` for the next 72h hourly forecast in the KMA grid — "Will it rain tomorrow at this Gyeongju temple?"
-- **Tour + box office** — `searchKoreaTour(keyword)` for festivals in a region → `getKoficBoxOffice(targetDate)` to cross-reference what is also showing in cinemas that weekend.
-- **Agri price tracker** — `getKamisAgriPrice(itemCode='211', startDay, endDay)` for napa cabbage (or any 4-digit KAMIS code) → `formatCsv` the rows → `writeTextFile` snapshot for a monthly price history.
-- **Disaster → Slack** — `getKoreaEmergencyAlerts(area='경주', fromDate, toDate)` → conditional → `sendSlackMessage(text)` to fan out emergency-alert SMS history to a channel.
+- **Cross-exchange spread (kimchi premium)** - `getUpbitTicker(markets='KRW-BTC')` + `getBithumbTicker(symbol='BTC')` → `evalExpression(expression='(a-b)/b*100', variables={a, b})` for the live KRW spread between the two majors. No keys, no setup.
+- **Local + weather** - `searchKakaoLocal(query)` for POI lat/lon → `getKmaShortTermForecast(latitude, longitude)` for the next 72h hourly forecast in the KMA grid - "Will it rain tomorrow at this Gyeongju temple?"
+- **Tour + box office** - `searchKoreaTour(keyword)` for festivals in a region → `getKoficBoxOffice(targetDate)` to cross-reference what is also showing in cinemas that weekend.
+- **Agri price tracker** - `getKamisAgriPrice(itemCode='211', startDay, endDay)` for napa cabbage (or any 4-digit KAMIS code) → `formatCsv` the rows → `writeTextFile` snapshot for a monthly price history.
+- **Disaster → Slack** - `getKoreaEmergencyAlerts(area='경주', fromDate, toDate)` → conditional → `sendSlackMessage(text)` to fan out emergency-alert SMS history to a channel.
 
 [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md) walks the **cross-exchange spread** and **disaster → Slack** patterns end-to-end.
 
 ## Keys & secrets
 
-Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts — see the cost badges on each card). The other fifteen pull from three keychains.
+Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts - see the cost badges on each card). The other fifteen pull from three keychains.
 
 ### Naver Open APIs
 
@@ -2051,19 +2051,19 @@ Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts — se
 
 | Tool | Env var | Where to issue |
 |---|---|---|
-| `searchSeoulCulturalEvents` | `SEOUL_OPEN_API_KEY` | [data.seoul.go.kr/together/apikey.do](https://data.seoul.go.kr/together/apikey.do) — 1 000 req/day free |
+| `searchSeoulCulturalEvents` | `SEOUL_OPEN_API_KEY` | [data.seoul.go.kr/together/apikey.do](https://data.seoul.go.kr/together/apikey.do) - 1 000 req/day free |
 
 ### KAMIS (aT Korea Agro-Fisheries)
 
 | Tool | Env var | Where to issue |
 |---|---|---|
-| `getKamisAgriPrice` | `KAMIS_CERT_ID` + `KAMIS_CERT_KEY` | [kamis.or.kr/customer/reference/openapi_list.do](https://www.kamis.or.kr/customer/reference/openapi_list.do) — free credentials |
+| `getKamisAgriPrice` | `KAMIS_CERT_ID` + `KAMIS_CERT_KEY` | [kamis.or.kr/customer/reference/openapi_list.do](https://www.kamis.or.kr/customer/reference/openapi_list.do) - free credentials |
 
 ### KOFIC (Korean Film Council)
 
 | Tool | Env var | Where to issue |
 |---|---|---|
-| `getKoficBoxOffice` | `KOFIC_API_KEY` | [kobis.or.kr/kobisopenapi/](https://www.kobis.or.kr/kobisopenapi/) — instant issuance |
+| `getKoficBoxOffice` | `KOFIC_API_KEY` | [kobis.or.kr/kobisopenapi/](https://www.kobis.or.kr/kobisopenapi/) - instant issuance |
 
 ### data.go.kr keychain (8 services)
 
@@ -2071,15 +2071,15 @@ Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts — se
 
 | Tool | Env var | data.go.kr service |
 |---|---|---|
-| `getAirKoreaPm` | `DATA_GO_KR_AIR_KEY` | [data.go.kr/data/15073861/openapi.do](https://www.data.go.kr/data/15073861/openapi.do) — AirKorea air quality |
-| `searchKoreaTour` | `DATA_GO_KR_TOUR_KEY` | [data.go.kr/data/15101578/openapi.do](https://www.data.go.kr/data/15101578/openapi.do) — KTO TourAPI 4.0 |
-| `getKrxStockPrice` | `DATA_GO_KR_STOCK_KEY` | [data.go.kr/data/15094808/openapi.do](https://www.data.go.kr/data/15094808/openapi.do) — KRX stock quotes |
-| `getKmaShortTermForecast` | `DATA_GO_KR_KMA_KEY` | [data.go.kr/data/15084084/openapi.do](https://www.data.go.kr/data/15084084/openapi.do) — KMA short-term forecast (VilageFcstInfoService_2.0) |
-| `getApartmentTradePrice` | `DATA_GO_KR_APT_KEY` | [data.go.kr/data/15126468/openapi.do](https://www.data.go.kr/data/15126468/openapi.do) — MOLIT apartment-trade transactions (detailed) |
-| `searchKoreaDrugInfo` | `DATA_GO_KR_DRUG_KEY` | [data.go.kr/data/15095677/openapi.do](https://www.data.go.kr/data/15095677/openapi.do) — MFDS drug-product approval |
-| `getKoreaEmergencyAlerts` | `DATA_GO_KR_DISASTER_KEY` | [data.go.kr/data/15134001/openapi.do](https://www.data.go.kr/data/15134001/openapi.do) — MOIS emergency disaster alerts |
-| `callDataGoKrOpenApi` | `DATA_GO_KR_KEY` | [data.go.kr/tcs/dss/selectDataSetList.do?dType=API](https://www.data.go.kr/tcs/dss/selectDataSetList.do?dType=API) — generic dispatcher; pick any other data.go.kr service from the API catalog |
+| `getAirKoreaPm` | `DATA_GO_KR_AIR_KEY` | [data.go.kr/data/15073861/openapi.do](https://www.data.go.kr/data/15073861/openapi.do) - AirKorea air quality |
+| `searchKoreaTour` | `DATA_GO_KR_TOUR_KEY` | [data.go.kr/data/15101578/openapi.do](https://www.data.go.kr/data/15101578/openapi.do) - KTO TourAPI 4.0 |
+| `getKrxStockPrice` | `DATA_GO_KR_STOCK_KEY` | [data.go.kr/data/15094808/openapi.do](https://www.data.go.kr/data/15094808/openapi.do) - KRX stock quotes |
+| `getKmaShortTermForecast` | `DATA_GO_KR_KMA_KEY` | [data.go.kr/data/15084084/openapi.do](https://www.data.go.kr/data/15084084/openapi.do) - KMA short-term forecast (VilageFcstInfoService_2.0) |
+| `getApartmentTradePrice` | `DATA_GO_KR_APT_KEY` | [data.go.kr/data/15126468/openapi.do](https://www.data.go.kr/data/15126468/openapi.do) - MOLIT apartment-trade transactions (detailed) |
+| `searchKoreaDrugInfo` | `DATA_GO_KR_DRUG_KEY` | [data.go.kr/data/15095677/openapi.do](https://www.data.go.kr/data/15095677/openapi.do) - MFDS drug-product approval |
+| `getKoreaEmergencyAlerts` | `DATA_GO_KR_DISASTER_KEY` | [data.go.kr/data/15134001/openapi.do](https://www.data.go.kr/data/15134001/openapi.do) - MOIS emergency disaster alerts |
+| `callDataGoKrOpenApi` | `DATA_GO_KR_KEY` | [data.go.kr/tcs/dss/selectDataSetList.do?dType=API](https://www.data.go.kr/tcs/dss/selectDataSetList.do?dType=API) - generic dispatcher; pick any other data.go.kr service from the API catalog |
 
 The launcher's **Environment Variables** card is the recommended place to set the whole keychain at once. Each `${ENV_VAR}` placeholder on the tool's static variables resolves at runtime from the JVM environment; the resolved string is masked from `console.log` whenever it appears in the trace.
 
-→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) — how the masking works.
+→ [Tool Studio: Static Variables](../tool-studio/index.md#key-tool-studio-capabilities) - how the masking works.

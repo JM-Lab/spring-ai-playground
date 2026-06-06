@@ -21,12 +21,18 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.shared.Tooltip;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.springaicommunity.playground.service.mcp.McpServerHitlToolGate;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.mcp.risk.McpToolPoisoningScanner;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskAdvisor;
+import org.springaicommunity.playground.webui.mcp.McpRiskChip;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers.ToolInfo;
 import org.springaicommunity.playground.webui.mcp.inspector.primitives.InlineResultPanel;
@@ -53,7 +59,7 @@ public class ToolPrimitive extends Div {
     private boolean rawView = false;
 
     public ToolPrimitive(ToolInfo tool, int displayIndex, McpServerInfo serverInfo,
-            McpClientService clientService) {
+            McpClientService clientService, McpToolRiskAdvisor.ToolRiskView risk) {
         this.tool = tool;
         this.serverInfo = serverInfo;
         this.clientService = clientService;
@@ -61,7 +67,19 @@ public class ToolPrimitive extends Div {
         PrimitiveCardLayout.applyCardStyle(this);
 
         String displayTitle = InspectorHelpers.pickFirstNonBlank(tool.displayTitle(), tool.name());
-        add(PrimitiveCardLayout.titleRow(VaadinIcon.PLAY, "Run tool", displayTitle, this::handleRun));
+        HorizontalLayout titleRow = PrimitiveCardLayout.titleRow(VaadinIcon.PLAY, "Run tool", displayTitle,
+                this::handleRun);
+        if (tool.description() != null && !tool.description().isBlank()) {
+            titleRow.getChildren()
+                    .filter(c -> c instanceof Span)
+                    .findFirst()
+                    .ifPresent(span -> Tooltip.forComponent(span).withText(tool.description()));
+        }
+        if (risk != null && risk.finalLevel() != null) {
+            String tip = buildRiskTooltip(risk);
+            titleRow.add(new McpRiskChip(risk.finalLevel(), risk.floorTrigger()).withTooltip(tip));
+        }
+        add(titleRow);
 
         if (tool.displayTitle() != null && !tool.displayTitle().isBlank()
                 && !tool.displayTitle().equals(tool.name())) {
@@ -73,44 +91,11 @@ public class ToolPrimitive extends Div {
             badges.getStyle().set("margin", "0.3em 0 0 2.4em");
             add(badges);
         }
+        if (risk != null && risk.poisoningResult() != null && !risk.poisoningResult().clean()) {
+            add(buildPoisoningWarning(risk.poisoningResult()));
+        }
 
-        Div desc = PrimitiveCardLayout.description(tool.description());
-        boolean hasParams = !tool.propertySchemas().isEmpty();
-
-        if (desc != null && hasParams) {
-            HorizontalLayout twoCol = new HorizontalLayout();
-            twoCol.setWidthFull();
-            twoCol.setSpacing(true);
-            twoCol.setPadding(false);
-            twoCol.getStyle().set("align-items", "flex-start").set("flex-wrap", "wrap");
-
-            Div leftCol = new Div(desc);
-            leftCol.getStyle()
-                    .set("flex", "1 1 280px")
-                    .set("min-width", "0");
-
-            Div rightCol = new Div();
-            rightCol.getStyle()
-                    .set("flex", "1 1 280px")
-                    .set("min-width", "0");
-            rightCol.add(InspectorHelpers.simpleSectionLabel("Parameters"));
-            VerticalLayout argsLayout = new VerticalLayout();
-            argsLayout.setPadding(false);
-            argsLayout.setSpacing(false);
-            argsLayout.getStyle().set("gap", "0.6em");
-            tool.propertySchemas().forEach((key, schema) -> {
-                AbstractField<?, ?> field =
-                        InspectorHelpers.buildArgField(key, schema, tool.required().contains(key));
-                fields.put(key, field);
-                argsLayout.add(field);
-            });
-            rightCol.add(argsLayout);
-
-            twoCol.add(leftCol, rightCol);
-            add(twoCol);
-        } else if (desc != null) {
-            add(desc);
-        } else if (hasParams) {
+        if (!tool.propertySchemas().isEmpty()) {
             add(InspectorHelpers.simpleSectionLabel("Parameters"));
             VerticalLayout argsLayout = new VerticalLayout();
             argsLayout.setPadding(false);
@@ -159,8 +144,8 @@ public class ToolPrimitive extends Div {
 
         long startNs = System.nanoTime();
         try {
-            Optional<McpSchema.CallToolResult> resultOpt =
-                    clientService.callTool(serverInfo, tool.name(), args, null);
+            Optional<McpSchema.CallToolResult> resultOpt = clientService.callTool(serverInfo, tool.name(), args,
+                    Map.of(McpServerHitlToolGate.INTERACTIVE_HITL_META_KEY, true));
             lastArgs = args;
             lastResult = resultOpt.orElse(null);
             lastError = null;
@@ -255,6 +240,42 @@ public class ToolPrimitive extends Div {
         } catch (JsonProcessingException e) {
             return String.valueOf(envelope);
         }
+    }
+
+    private static String buildRiskTooltip(McpToolRiskAdvisor.ToolRiskView risk) {
+        StringBuilder sb = new StringBuilder(McpRiskChip.levelRationale(risk.finalLevel()));
+        if (risk.publishLevel() != null && risk.publishLevel() != risk.finalLevel()) {
+            sb.append(" · publish ").append(risk.publishLevel().name());
+        }
+        if (risk.floorTrigger() != null) {
+            sb.append(" · floor: ").append(risk.floorTrigger());
+        }
+        sb.append(" · hover tool name for description");
+        return sb.toString();
+    }
+
+    private static Div buildPoisoningWarning(McpToolPoisoningScanner.ScanResult result) {
+        StringBuilder text = new StringBuilder("⚠ Poisoning patterns detected (");
+        text.append(result.matches().size()).append("): ");
+        boolean first = true;
+        for (McpToolPoisoningScanner.Match match : result.matches()) {
+            if (!first) text.append(", ");
+            text.append(match.pattern().name());
+            first = false;
+        }
+        text.append(". Publish blocked.");
+        Div warning = new Div();
+        warning.setText(text.toString());
+        warning.getStyle()
+                .set("margin", "0.5em 0 0 2.4em")
+                .set("padding", "0.4em 0.7em")
+                .set("background-color", "#fdecea")
+                .set("color", "#b71c1c")
+                .set("border-left", "3px solid #e53935")
+                .set("border-radius", "var(--lumo-border-radius-s)")
+                .set("font-size", "12px")
+                .set("font-weight", "600");
+        return warning;
     }
 
     private String rawResponseJson() {

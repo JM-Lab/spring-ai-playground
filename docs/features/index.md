@@ -17,31 +17,31 @@ Spring AI Playground is organized around five product surfaces, designed to be u
 
     ---
 
-    Built-in MCP server over Streamable HTTP, external connections via HTTP / SSE / STDIO / OAuth 2.1, a multi-tab Inspector for tools, resources, prompts, and client primitives, and a preset catalog of 57 vendor-official MCP servers activatable from the sidebar — see the [MCP Catalog directory](default-mcp-catalog/index.md).
+    Built-in MCP server over Streamable HTTP, external connections via HTTP / SSE / STDIO / OAuth 2.1, a multi-tab Inspector for tools, resources, prompts, and client primitives, and a preset catalog of 57 preset MCP servers (49 vendor-official remote + 8 community stdio) activatable from the sidebar - see the [MCP Catalog directory](default-mcp-catalog/index.md).
 
 -   :material-database-search:{ .lg .middle } **[Vector Database](vector-database.md)**
 
     ---
 
-    Document ingestion, chunking, embedding, storage, and similarity search across Spring AI vector stores — the RAG validation surface.
+    Document ingestion, chunking, embedding, storage, and similarity search across Spring AI vector stores - the RAG validation surface.
 
 -   :material-chat-processing:{ .lg .middle } **[Agentic Chat](agentic-chat.md)**
 
     ---
 
-    Unified runtime that composes tools and RAG context in one conversational interface — chain workflows and agentic tool-use side by side.
+    Unified runtime that composes tools and RAG context in one conversational interface - chain workflows and agentic tool-use side by side.
 
 -   :material-chart-line:{ .lg .middle } **[Observability](observability/index.md)**
 
     ---
 
-    Twelve in-app dashboards across four groups (AI Usage · AI Stack · Runtime · Overview) covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail — the operator surface that watches the other four.
+    Twelve in-app dashboards across four groups (AI Usage · AI Stack · Runtime · Overview) covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail - the operator surface that watches the other four.
 
 </div>
 
-The first four surfaces are intentionally connected. A tool authored in **Tool Studio** is exposed by the **built-in MCP server**, verified through the **MCP Inspector**, and consumed by **Agentic Chat** together with documents indexed in the **Vector Database** — without restart or redeploy at any step. Every chat turn, tool call, MCP exchange, and vector query is captured by **Observability** as it happens.
+The first four surfaces are intentionally connected. A tool authored in **Tool Studio** is exposed by the **built-in MCP server**, verified through the **MCP Inspector**, and consumed by **Agentic Chat** together with documents indexed in the **Vector Database** - without restart or redeploy at any step. Every chat turn, tool call, MCP exchange, and vector query is captured by **Observability** as it happens.
 
-For a system-level view — runtime layers, data flows, and extension points behind these surfaces — see [Architecture](../architecture.md).
+For a system-level view - runtime layers, data flows, and extension points behind these surfaces - see [Architecture](../architecture.md).
 
 ## Further Reading
 

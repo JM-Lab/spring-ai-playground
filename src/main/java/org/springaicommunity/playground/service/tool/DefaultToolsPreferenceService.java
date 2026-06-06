@@ -55,8 +55,8 @@ public class DefaultToolsPreferenceService {
     }
 
     private DefaultToolsPreference readCliOverride(SpringAiPlaygroundOptions options) {
-        if (options == null) return null;
-        SpringAiPlaygroundOptions.DefaultTools dt = options.defaultTools();
+        if (options == null || options.toolStudio() == null) return null;
+        SpringAiPlaygroundOptions.DefaultTools dt = options.toolStudio().defaultTools();
         if (dt == null) return null;
         boolean hasPreset = dt.preset() != null && !dt.preset().isBlank();
         boolean hasInclude = ruleNonEmpty(dt.include());

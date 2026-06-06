@@ -96,7 +96,8 @@ public class ChatHistoryView extends WorkspaceSidebar implements BeforeEnterObse
     private void notifyChatHistorySelection(ChatHistory oldChatHistory, ChatHistory newChatHistory) {
         if (Objects.isNull(newChatHistory))
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, null);
-        else if (!newChatHistory.equals(oldChatHistory)) {
+        else if (Objects.isNull(oldChatHistory)
+                || !newChatHistory.conversationId().equals(oldChatHistory.conversationId())) {
             this.chatHistoryChangeSupport.firePropertyChange(CHAT_HISTORY_SELECT_EVENT, oldChatHistory, newChatHistory);
             this.persistentUiDataStorage.saveData(LAST_SELECTED_CHAT_HISTORY, newChatHistory);
         }

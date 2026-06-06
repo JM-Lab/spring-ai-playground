@@ -1,10 +1,10 @@
-description: Default Tools — Filesystem reference. 10 safety.fs-wrapped tools (read · list · stat · grep · slice · sort · cut · find · write) rooted at the FS base.
+description: Default Tools - Filesystem reference. 10 safety.fs-wrapped tools (read · list · stat · grep · slice · sort · cut · find · write) rooted at the FS base.
 
-# Default Tools — Filesystem
+# Default Tools - Filesystem
 
-The 10 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools — a small shell-style filesystem pipeline covering read, list, stat, grep, slice, sort, cut, find, and write. **All paths are resolved against the per-app base path** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/fs-tool-workspace`); any path whose `normalize()` lands outside the base is rejected before any I/O.
+The 10 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools - a small shell-style filesystem pipeline covering read, list, stat, grep, slice, sort, cut, find, and write. **All paths are resolved against the per-app base path** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/fs-tool-workspace`); any path whose `normalize()` lands outside the base is rejected before any I/O.
 
-Because they ride on `java.nio.file.Path` / `Files`, separator handling (`/` vs `\`), case folding, and symlink semantics are normalised at the JVM layer — these tools behave identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics, and [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) for the read-only / read-write sandbox split.
+Because they ride on `java.nio.file.Path` / `Files`, separator handling (`/` vs `\`), case folding, and symlink semantics are normalised at the JVM layer - these tools behave identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics, and [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) for the read-only / read-write sandbox split.
 
 ## The 10 filesystem tools { #the-filesystem-tools }
 
@@ -19,7 +19,7 @@ Reads a UTF-8 text file from disk and returns its contents as a single string.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -34,7 +34,7 @@ All paths are resolved relative to the playground's configured filesystem base p
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path inside the FS base directory |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -67,7 +67,7 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `dir`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -78,7 +78,7 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 |---|---|---|---|
 | `dir` | `STRING` |  | Relative directory path (default '.') |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -86,7 +86,7 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 /**
  * Lists immediate entries (files + directories) of a directory.
  *
- * Returned as an array of leaf names — no recursion, no full paths.
+ * Returned as an array of leaf names - no recursion, no full paths.
  * Use `findFiles` for recursive globbing.
  *
  * Uses host helper: safety.fs.list.
@@ -109,7 +109,7 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -120,7 +120,7 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path inside the FS base directory |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -128,9 +128,9 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 /**
  * Returns { size, mtime, directory } for a path inside the FS base.
  *
- * - size       — file size in bytes (0 for directories).
- * - mtime      — ISO timestamp of last modification.
- * - directory  — true if the path is a directory.
+ * - size       - file size in bytes (0 for directories).
+ * - mtime      - ISO timestamp of last modification.
+ * - directory  - true if the path is a directory.
  *
  * Uses host helper: safety.fs.stat.
  */
@@ -152,7 +152,7 @@ Counts the lines in a UTF-8 text file. Uses safety.fs.lineCount().
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -163,7 +163,7 @@ Counts the lines in a UTF-8 text file. Uses safety.fs.lineCount().
 |---|---|---|---|
 | `path` | `STRING` | ✓ | Relative path to the file |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -191,7 +191,7 @@ Returns a slice of lines from a UTF-8 text file (head / tail / range). `start` i
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `start` · `end`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -204,7 +204,7 @@ Returns a slice of lines from a UTF-8 text file (head / tail / range). `start` i
 | `start` | `INTEGER` |  | First line index (0-based inclusive; negatives from end) |
 | `end` | `INTEGER` |  | End line index (0-based exclusive; negatives from end) |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -237,7 +237,7 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `reverse` · `numeric` · `caseInsensitive` · `unique`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -252,7 +252,7 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
 | `caseInsensitive` | `BOOLEAN` |  | Ignore case when comparing |
 | `unique` | `BOOLEAN` |  | Drop duplicate lines |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -261,10 +261,10 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
  * Sorts a file's lines and returns them as an array.
  *
  * Options:
- *   reverse           — descending order
- *   numeric           — numeric comparison (otherwise lexical)
- *   caseInsensitive   — compare lowercased
- *   unique            — drop duplicates
+ *   reverse           - descending order
+ *   numeric           - numeric comparison (otherwise lexical)
+ *   caseInsensitive   - compare lowercased
+ *   unique            - drop duplicates
  *
  * Uses host helper: safety.fs.sort.
  */
@@ -291,7 +291,7 @@ Searches a UTF-8 text file for lines matching a JavaScript regex. Returns an arr
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `pattern` · `path` · `caseInsensitive` · `numbered` · `limit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -306,7 +306,7 @@ Searches a UTF-8 text file for lines matching a JavaScript regex. Returns an arr
 | `numbered` | `BOOLEAN` |  | Prefix each result with 'N:' (1-based line number) |
 | `limit` | `INTEGER` |  | Max matches to return (0 = no limit) |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -342,7 +342,7 @@ Recursively finds files matching a glob inside a directory. Glob supports `*` an
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `dir` · `glob` · `maxDepth` · `type`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -356,7 +356,7 @@ Recursively finds files matching a glob inside a directory. Glob supports `*` an
 | `maxDepth` | `INTEGER` |  | Max recursion depth (0 = unlimited) |
 | `type` | `STRING` |  | 'file' \| 'dir' \| omit for both |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -392,7 +392,7 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `fields` · `delimiter` · `regex`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -406,7 +406,7 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 | `delimiter` | `STRING` |  | Field delimiter character or regex (default '\t' tab) |
 | `regex` | `BOOLEAN` |  | Treat `delimiter` as a regex pattern instead of literal |
 
-**Sandbox** — Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
 **JS source**
 
@@ -414,8 +414,8 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 /**
  * Extracts selected fields from each line of a delimited file.
  *
- * - `fields`     — 1-based field indices to keep (array). [1, 3] picks columns 1 and 3.
- * - `delimiter`  — single character (literal) OR a regex pattern when `regex=true`.
+ * - `fields`     - 1-based field indices to keep (array). [1, 3] picks columns 1 and 3.
+ * - `delimiter`  - single character (literal) OR a regex pattern when `regex=true`.
  *                  Defaults to tab (\t).
  *
  * Uses host helper: safety.fs.cut. Each returned row is a delimiter-joined string.
@@ -446,7 +446,7 @@ Writes a UTF-8 text file inside the FS base path (creating parent directories as
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `content`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -458,7 +458,7 @@ Writes a UTF-8 text file inside the FS base path (creating parent directories as
 | `path` | `STRING` | ✓ | Relative path to write |
 | `content` | `STRING` | ✓ | Full text content to write (UTF-8) |
 
-**Sandbox** — Sandbox needs **`fileWrite`** (L4). Paths resolve against `TOOL_STUDIO_FS_BASE`; the helper auto-creates parent directories.
+**Sandbox** - Sandbox needs **`fileWrite`** (L4). Paths resolve against `TOOL_STUDIO_FS_BASE`; the helper auto-creates parent directories.
 
 **JS source**
 
@@ -489,10 +489,10 @@ return { ok: true, path, bytes: new TextEncoder().encode(String(content)).length
 
 These ten tools mirror the standard Unix-shell pipeline shape, but every step is a JSON-returning function so the agent can reason between calls:
 
-- **Read → filter → trim → save** — `listDir(dir)` → `grepFile(pattern, path)` → `sliceFile(path, start, end)` → `writeTextFile(outPath, content)`. The canonical "summarise recent errors from a log directory" flow.
-- **Find → cut → ETL** — `findFiles(dir, glob='*.csv')` → loop with `cutFileFields(path, fields=[1,3])` to project a directory of CSVs into one structured dataset.
-- **Sort dedupe → count** — `sortFile(path, numeric=true, unique=true)` → `lineCount(path)` to deduplicate a numeric stream in place and report the resulting size.
-- **Stat-first guard** — `statFile(path)` → branch on `size` / `lastModified` → only run the rest of the pipeline if the file changed since the last run.
+- **Read → filter → trim → save** - `listDir(dir)` → `grepFile(pattern, path)` → `sliceFile(path, start, end)` → `writeTextFile(outPath, content)`. The canonical "summarise recent errors from a log directory" flow.
+- **Find → cut → ETL** - `findFiles(dir, glob='*.csv')` → loop with `cutFileFields(path, fields=[1,3])` to project a directory of CSVs into one structured dataset.
+- **Sort dedupe → count** - `sortFile(path, numeric=true, unique=true)` → `lineCount(path)` to deduplicate a numeric stream in place and report the resulting size.
+- **Stat-first guard** - `statFile(path)` → branch on `size` / `lastModified` → only run the rest of the pipeline if the file changed since the last run.
 
 [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md) walks the **Read → filter → trim → save** chain end-to-end as `summariseRecentLogs`.
 
@@ -502,8 +502,8 @@ One configuration value, no real secrets.
 
 | Variable | What it does | Default | Where to set |
 |---|---|---|---|
-| `TOOL_STUDIO_FS_BASE` | Per-app `safety.fs` base path — every path resolved against it; `normalize()` rejects any escape. | `${user.home}/spring-ai-playground/fs-tool-workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
+| `TOOL_STUDIO_FS_BASE` | Per-app `safety.fs` base path - every path resolved against it; `normalize()` rejects any escape. | `${user.home}/spring-ai-playground/fs-tool-workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
 
-The `File Toolkit` preset opts every read tool into `fileRead` automatically; `writeTextFile` requires `fileWrite` (L4) which you enable per-tool in the **Sandbox & Capabilities** pane — see [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode).
+The `File Toolkit` preset opts every read tool into `fileRead` automatically; `writeTextFile` requires `fileWrite` (L4) which you enable per-tool in the **Sandbox & Capabilities** pane - see [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode).
 
-→ [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) — `fileRead` / `fileWrite` semantics and base-path enforcement.
+→ [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) - `fileRead` / `fileWrite` semantics and base-path enforcement.

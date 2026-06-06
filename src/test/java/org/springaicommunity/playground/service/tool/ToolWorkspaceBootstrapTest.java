@@ -76,10 +76,10 @@ class ToolWorkspaceBootstrapTest {
 
     private SpringAiPlaygroundOptions buildOptions(String basePath) {
         return new SpringAiPlaygroundOptions(
-                new ToolStudio(30L, null, new FsConfig(basePath)),
-                true, null, null,
-                new SpringAiPlaygroundOptions.DefaultTools(null,
-                        new SpringAiPlaygroundOptions.SelectionRule(Set.of(), Set.of(), Set.of()),
-                        new SpringAiPlaygroundOptions.SelectionRule(java.util.Set.of(), java.util.Set.of(), java.util.Set.of())));
+                new ToolStudio(30L, null, new FsConfig(basePath),
+                        new SpringAiPlaygroundOptions.DefaultTools(null,
+                                new SpringAiPlaygroundOptions.SelectionRule(Set.of(), Set.of(), Set.of()),
+                                new SpringAiPlaygroundOptions.SelectionRule(Set.of(), Set.of(), Set.of()))),
+                true, null, null, null, null);
     }
 }

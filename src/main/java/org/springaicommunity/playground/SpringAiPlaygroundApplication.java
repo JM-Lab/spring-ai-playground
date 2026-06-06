@@ -27,6 +27,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springaicommunity.playground.service.mcp.HitlToolCallAdvisor;
+import org.springaicommunity.playground.service.mcp.McpToolCallingManager;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
@@ -65,7 +67,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Override
     public void configurePage(AppShellSettings settings) {
-        if (!isTelemetryEnabled()) return;
+        if (!isTelemetryEnabled()) {
+            settings.addInlineWithContents(Inline.Position.PREPEND,
+                    "window['ga-disable-G-52TGT1G9B3'] = true;", Inline.Wrapping.JAVASCRIPT);
+            return;
+        }
         String gtmContainerId = "GTM-PVX8227Q";
         String gtmDataLayerInit = """
                 window.dataLayer = window.dataLayer || [];
@@ -151,6 +157,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     @Bean
     public SimpleLoggerAdvisor simpleLoggerAdvisor() {
         return new SimpleLoggerAdvisor();
+    }
+
+    @Bean
+    public HitlToolCallAdvisor hitlToolCallAdvisor(McpToolCallingManager mcpToolCallingManager) {
+        return new HitlToolCallAdvisor(mcpToolCallingManager);
     }
 
     @Bean

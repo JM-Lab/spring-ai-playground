@@ -590,7 +590,11 @@ public class McpServerConnectionView extends WorkspaceSidebar implements BeforeE
     public void selectMcpConnectionContent(McpServerInfo targetMcpServerInfo) {
         VaadinUtils.getUi(this).access(() -> {
             ListBox<McpServerInfo> box = this.mcpServerInfoListBoxMap.get(listBoxKeyFor(targetMcpServerInfo));
-            if (box != null) box.setValue(targetMcpServerInfo);
+            if (box == null) return;
+            box.getListDataView().getItems()
+                    .filter(item -> Objects.equals(item.serverName(), targetMcpServerInfo.serverName()))
+                    .findFirst()
+                    .ifPresent(box::setValue);
         });
     }
 

@@ -9,7 +9,7 @@
   "properties": {
     "toolId": {
       "type": "string",
-      "description": "Stable identifier — UUID v5 derived from `name` against a fixed namespace is the reference scheme."
+      "description": "Stable identifier - UUID v5 derived from `name` against a fixed namespace is the reference scheme."
     },
     "name": {
       "type": "string",
@@ -56,6 +56,22 @@
     },
     "sandboxOverrides": { "$ref": "#/$defs/SandboxOverrides" },
     "toolSafety":       { "$ref": "#/$defs/ToolSafety" },
+    "humanInTheLoop": {
+      "type": ["object", "null"],
+      "description": "Per-tool human approval policy. Absent or null = DISABLED (no approval). See Section 10.7.",
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["DISABLED", "REQUIRED"],
+          "description": "DISABLED = run without asking; REQUIRED = ask on every call."
+        },
+        "promptTemplate": {
+          "type": ["string", "null"],
+          "description": "Optional approval-prompt text. {toolName} and {args} are substituted at call time. Null = default prompt."
+        }
+      }
+    },
     "draft": {
       "type": "boolean",
       "default": false,

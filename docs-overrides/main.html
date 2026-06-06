@@ -20,7 +20,7 @@
     /* Suppress the 0.25s grid-template-rows animation Material applies to
        .md-nav while we apply pre-paint defaults / user-saved collapse state.
        Without this guard, the depth-1 sections animate open on every leaf
-       navigation — visible as a sidebar scrollbar flicker. The body class is
+       navigation - visible as a sidebar scrollbar flicker. The body class is
        removed after first paint settles so user-triggered toggles still
        animate normally. */
     html:not(.md-nav-anim-ready) .md-sidebar--primary .md-nav,
@@ -29,10 +29,10 @@
     }
   </style>
   <script>
-    // Sidebar nav defaults — applied via MutationObserver during HTML parse so
+    // Sidebar nav defaults - applied via MutationObserver during HTML parse so
     // the toggle state is set BEFORE the browser paints. Without this, depth-1
     // sections render collapsed (Material's default), then our post-DOM script
-    // expands them — visible as a sidebar "flash/reset" on every leaf-page nav.
+    // expands them - visible as a sidebar "flash/reset" on every leaf-page nav.
     // Full nav UX logic (persist, section-header click intercept, active-path
     // force-expand) still runs from assets/javascripts/nav-default-expand.js
     // after DOMContentLoaded; this inline block only handles the pre-paint
@@ -43,7 +43,7 @@
       try {
         var raw = localStorage.getItem(STORAGE_KEY);
         if (raw) saved = JSON.parse(raw);
-      } catch (e) { /* private mode or quota — ignore */ }
+      } catch (e) { /* private mode or quota - ignore */ }
 
       function isDepth1Nested(input) {
         var item = input.parentElement;
@@ -86,7 +86,7 @@
       function finalize() {
         observer.disconnect();
         // Re-enable the .md-nav transition once layout has settled. Two rAFs
-        // — the first ensures the current frame's painted state is committed,
+        // - the first ensures the current frame's painted state is committed,
         // the second runs after the browser's next paint, so the class swap
         // happens between paints and never animates the just-set initial state.
         // setTimeout fallback covers browsers/tabs that throttle rAF (preview
@@ -110,32 +110,46 @@
       }
     })();
   </script>
-  {% set ga_measurement_id = "G-QGJEJ4NXQ8" %}
+  {# Docs-only Google tag (routes only to the G-QGJEJ4NXQ8 stream). Use the GT- tag id, NOT the G- measurement id - gtag/js?id=G-QGJEJ4NXQ8 has no installable loader (404). #}
+  {% set ga_tag_id = "GT-MJKRMQZH" %}
   {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
   {% set ga_page_title = "Doc - " ~ page.title if page and page.title else "Doc - " ~ config.site_name %}
   {% set page_description = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = config.site_url ~ page.url if page and page.url else config.site_url %}
   <script>
-    // GA loads only on the prod docs domain — silently skips localhost, 127.0.0.1, PR previews, forks.
+    // GA loads only on the prod docs domain - silently skips localhost, 127.0.0.1, PR previews, forks.
     (function () {
       if (window.location.hostname !== 'spring-ai-community.github.io') return;
       var s = document.createElement('script');
       s.async = true;
-      s.src = 'https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}';
+      s.src = 'https://www.googletagmanager.com/gtag/js?id={{ ga_tag_id }}';
       document.head.appendChild(s);
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       window.gtag = gtag;
       gtag('js', new Date());
       gtag('set', 'user_properties', { app_surface: 'docs' });
-      gtag('config', '{{ ga_measurement_id }}', {
+      gtag('config', '{{ ga_tag_id }}', {
         app_name: 'spring-ai-playground-docs',
         app_surface: 'docs',
         page_title: '{{ ga_page_title | e }}'
       });
+
+      // navigation.instant has no reload, so re-fire page_view per in-site nav (skip first; the config above counts the entry page).
+      var firstEmit = true;
+      (function hookInstantNav(tries) {
+        if (window.document$ && typeof window.document$.subscribe === 'function') {
+          window.document$.subscribe(function () {
+            if (firstEmit) { firstEmit = false; return; }
+            gtag('event', 'page_view', { page_title: document.title, page_location: location.href });
+          });
+        } else if (tries > 0) {
+          setTimeout(function () { hookInstantNav(tries - 1); }, 100);
+        }
+      })(50);
     })();
   </script>
-  {# Open Graph and Twitter Card meta — kept here as a fallback when the
+  {# Open Graph and Twitter Card meta - kept here as a fallback when the
      mkdocs-material `social` plugin is not active (e.g. local dev without
      the imaging extras). When the plugin runs, it injects its own og:image
      and twitter:image with a generated 1200x630 card; browsers honor the

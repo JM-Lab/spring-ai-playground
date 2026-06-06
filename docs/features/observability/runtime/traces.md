@@ -1,21 +1,21 @@
 title: Traces
-description: The raw trace stream — every other dashboard tab aggregates from this view; Traces shows it without rollup. Filters by model, status, conv id; click any row to open the Trace Detail dialog.
+description: The raw trace stream - every other dashboard tab aggregates from this view; Traces shows it without rollup. Filters by model, status, conv id; click any row to open the Trace Detail dialog.
 
 # Traces
 
-![Traces dashboard — three filters in header (Model dropdown, Status dropdown, Conv id contains text field), and per-trace rows each showing trace ID, conversation ID, timestamp, provider, model, token counts, duration, span count, with the first row expanded into an inline span timeline](../../../assets/images/observability/traces-full.png)
+![Traces dashboard - three filters in header (Model dropdown, Status dropdown, Conv id contains text field), and per-trace rows each showing trace ID, conversation ID, timestamp, provider, model, token counts, duration, span count, with the first row expanded into an inline span timeline](../../../assets/images/observability/traces-full.png)
 
-*Traces tab — the live raw trace stream. The first row expands inline to a span Gantt (Spring AI advisor chain → model call); clicking the card opens the Trace Detail dialog with the full timeline and raw JSON.*
+*Traces tab - the live raw trace stream. The first row expands inline to a span Gantt (Spring AI advisor chain → model call); clicking the card opens the Trace Detail dialog with the full timeline and raw JSON.*
 
-**Purpose** — the raw trace stream. Every other dashboard tab aggregates from this view; Traces shows it without rollup. The headline operator drill-down for *"give me the unfiltered evidence."*
+**Purpose** - the raw trace stream. Every other dashboard tab aggregates from this view; Traces shows it without rollup. The headline operator drill-down for *"give me the unfiltered evidence."*
 
 ## When to look here
 
-- *"Show me everything that just happened"* — open the tab, watch the live stream.
-- *"I have a trace ID from a log line — find it"* — Conv id contains filter (works for trace IDs and conversation IDs).
-- *"What's in this trace's span tree?"* — click any row → Trace Detail dialog.
-- *"Filter to a specific model"* — Model dropdown.
-- *"Find every errored trace"* — Status filter → ERROR.
+- *"Show me everything that just happened"* - open the tab, watch the live stream.
+- *"I have a trace ID from a log line - find it"* - Conv id contains filter (works for trace IDs and conversation IDs).
+- *"What's in this trace's span tree?"* - click any row → Trace Detail dialog.
+- *"Filter to a specific model"* - Model dropdown.
+- *"Find every errored trace"* - Status filter → ERROR.
 
 ## Data source
 
@@ -23,9 +23,9 @@ Reactor `ObservabilityRingBuffer.liveStream()` (multicast `Sinks.Many.directBest
 
 ## Controls
 
-- **Model** dropdown — `ALL` plus distinct model names auto-populated from the ring buffer
-- **Status** dropdown — `ALL`, `OK`, `ERROR`, `TIMEOUT`, `CANCELLED`
-- **Conv id contains** text field — substring match on either trace ID or conversation ID
+- **Model** dropdown - `ALL` plus distinct model names auto-populated from the ring buffer
+- **Status** dropdown - `ALL`, `OK`, `ERROR`, `CANCELLED`
+- **Conv id contains** text field - substring match on either trace ID or conversation ID
 
 The [Observability global refresh interval](../index.md#global-settings) is honored, but Traces also subscribes to the live `Sinks.Many` stream so new rows appear without polling. The manual refresh button re-applies the filter to a static snapshot.
 
@@ -43,11 +43,11 @@ The [Observability global refresh interval](../index.md#global-settings) is hono
 | Status dot | Green / red by `TraceRecord.status` |
 | Inline span timeline (top row only) | Mini Gantt of the spans for quick triage |
 
-## Drilldown — Trace Detail dialog
+## Drilldown - Trace Detail dialog
 
-![Trace Detail dialog — header "Trace <id>", summary grid (Provider, Model, Status, Duration, In tokens, Out tokens, Tools, RAG, Conversation, Finish reason), Timeline section with horizontal Gantt of spans, Spans list with name · duration · status, footer with Open conversation thread / Show raw JSON / Close buttons](../../../assets/images/observability/trace-detail-dialog.png)
+![Trace Detail dialog - header "Trace <id>", summary grid (Provider, Model, Status, Duration, In tokens, Out tokens, Tools, RAG, Conversation, Finish reason), Timeline section with horizontal Gantt of spans, Spans list with name · duration · status, footer with Open conversation thread / Show raw JSON / Close buttons](../../../assets/images/observability/trace-detail-dialog.png)
 
-*Trace Detail dialog — the Timeline section is a Gantt of every span in the `TraceRecord`; the Spans section lists their attributes inline. "Open conversation thread" routes to the Conversation Thread dialog for the parent conversation.*
+*Trace Detail dialog - the Timeline section is a Gantt of every span in the `TraceRecord`; the Spans section lists their attributes inline. "Open conversation thread" routes to the Conversation Thread dialog for the parent conversation.*
 
 Click any trace row to open. Provides:
 
@@ -61,16 +61,16 @@ Click any trace row to open. Provides:
 | **Show raw JSON** button | Opens a sub-dialog with the full `TraceRecord` JSON for the selected trace |
 | **Close** button | Dismiss |
 
-## Drilldown — Conversation Thread dialog
+## Drilldown - Conversation Thread dialog
 
-![Conversation Thread dialog — header "Conversation Chat-…", summary strip (Messages, Conv span, Tokens in/out, Tools), chronological message thread alternating USER / ASSISTANT with per-message footer (date · model · token count · duration), and Continue in chat / Close buttons](../../../assets/images/observability/conversation-thread-dialog.png)
+![Conversation Thread dialog - header "Conversation Chat-...", summary strip (Messages, Conv span, Tokens in/out, Tools), chronological message thread alternating USER / ASSISTANT with per-message footer (date · model · token count · duration), and Continue in chat / Close buttons](../../../assets/images/observability/conversation-thread-dialog.png)
 
-*Conversation Thread dialog — `ConversationMessageExtractor` deserialises the trace's prompt and completion content attributes into a structured chronological view. Tool calls (when present) render as inline cards between turns.*
+*Conversation Thread dialog - `ConversationMessageExtractor` deserialises the trace's prompt and completion content attributes into a structured chronological view. Tool calls (when present) render as inline cards between turns.*
 
 A sibling drilldown to Trace Detail. Reached from two entry points:
 
-- The **Conversations grid** on the [Agentic Chat](../ai-stack/agentic-chat.md) dashboard — click any conversation row.
-- The **Open conversation thread** button on the [Trace Detail dialog](#drilldown-trace-detail-dialog) above — drilling from a specific turn back out to the whole conversation it belongs to.
+- The **Conversations grid** on the [Agentic Chat](../ai-stack/agentic-chat.md) dashboard - click any conversation row.
+- The **Open conversation thread** button on the [Trace Detail dialog](#drilldown-trace-detail-dialog) above - drilling from a specific turn back out to the whole conversation it belongs to.
 
 Where Trace Detail is per-turn (one `TraceRecord`), Conversation Thread is per-conversation (all `TraceRecord`s sharing the same `conversationId`, reassembled into a chronological user / assistant / tool thread).
 
@@ -84,11 +84,11 @@ Where Trace Detail is per-turn (one `TraceRecord`), Conversation Thread is per-c
 | **Continue in chat** button | Navigates to Agentic Chat with the same conversation loaded |
 | **Close** button | Dismiss |
 
-**Content capture caveat** — message bodies are present only if `spring.ai.playground.observability.capture-prompt-content=true` (the default). When that property is `false`, the thread shows roles and counts only — bodies do not flow into the trace stream. See [Observability Architecture → Configuration surface](../../../observability-architecture.md#configuration-surface) for the property reference.
+**Content capture caveat** - message bodies are present only if `spring.ai.playground.observability.capture-prompt-content=true` (the default). When that property is `false`, the thread shows roles and counts only - bodies do not flow into the trace stream. See [Observability Architecture → Configuration surface](../../../observability-architecture.md#configuration-surface) for the property reference.
 
 ## Cross-references
 
-- [Logs](logs.md) — drill from a log line to the trace it came from
-- [Agentic Chat](../ai-stack/agentic-chat.md) — aggregated per-conversation view (one row per conversation, not per trace)
-- [Observability Architecture → Storage tiers](../../../observability-architecture.md#storage-tiers) — `ObservabilityRingBuffer` design + the JSONL persistence shape used by *Show raw JSON*
-- [Observability Architecture → Live stream](../../../observability-architecture.md#live-stream) — the Reactor `Sinks.Many` and 500 ms sampling
+- [Logs](logs.md) - drill from a log line to the trace it came from
+- [Agentic Chat](../ai-stack/agentic-chat.md) - aggregated per-conversation view (one row per conversation, not per trace)
+- [Observability Architecture → Storage tiers](../../../observability-architecture.md#storage-tiers) - `ObservabilityRingBuffer` design + the JSONL persistence shape used by *Show raw JSON*
+- [Observability Architecture → Live stream](../../../observability-architecture.md#live-stream) - the Reactor `Sinks.Many` and 500 ms sampling

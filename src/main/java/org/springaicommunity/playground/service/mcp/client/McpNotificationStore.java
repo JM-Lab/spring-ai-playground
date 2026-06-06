@@ -128,10 +128,22 @@ public class McpNotificationStore {
         String id = UUID.randomUUID().toString();
         pendingElicitations.computeIfAbsent(serverKey, k -> new LinkedHashMap<>())
                 .put(id, new PendingElicitation(id, request, future));
+        // Drop on settle so an abandoned elicitation does not re-render as a stale prompt on reattach.
+        future.whenComplete((result, error) -> discardPendingElicitation(serverKey, id));
         record(serverKey, Event.of(Kind.ELICITATION_REQUEST,
                 "Elicitation request: " + request.message(), request));
         firePendingChange(serverKey);
         return future;
+    }
+
+    private void discardPendingElicitation(String serverKey, String id) {
+        Map<String, PendingElicitation> m = pendingElicitations.get(serverKey);
+        if (m == null) return;
+        boolean removed;
+        synchronized (m) {
+            removed = m.remove(id) != null;
+        }
+        if (removed) firePendingChange(serverKey);
     }
 
     public List<PendingSampling> snapshotPendingSamplings(String serverKey) {

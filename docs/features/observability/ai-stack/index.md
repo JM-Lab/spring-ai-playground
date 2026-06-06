@@ -1,9 +1,9 @@
 title: AI Stack
-description: Five dashboards that split agent tool execution and RAG by integration kind — Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat.
+description: Five dashboards that split agent tool execution and RAG by integration kind - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat.
 
 # AI Stack
 
-The **AI Stack** group surfaces *what the agent actually integrated with* on each turn — split by integration kind so that *"did my sandbox tool work?"* and *"is my MCP server alive?"* never share the same view. Five dashboards.
+The **AI Stack** group surfaces *what the agent actually integrated with* on each turn - split by integration kind so that *"did my sandbox tool work?"* and *"is my MCP server alive?"* never share the same view. Five dashboards.
 
 ```mermaid
 flowchart LR
@@ -41,7 +41,7 @@ The discriminator that powers the Tool Studio / MCP Servers split is `McpToolObs
 
     ---
 
-    MCP primitive observations — Tools list, Resources read, Prompts get, Sampling, Elicitation, Roots. MCP server introspection traffic and server-initiated handlers.
+    MCP primitive observations - Tools list, Resources read, Prompts get, Sampling, Elicitation, Roots. MCP server introspection traffic and server-initiated handlers.
 
 -   :material-database-search:{ .lg .middle } **[Vector Database](vector-database.md)**
 
@@ -53,15 +53,15 @@ The discriminator that powers the Tool Studio / MCP Servers split is `McpToolObs
 
     ---
 
-    `TraceRecord` grouped by `conversationId` via `ConversationAggregator`. Per-conversation summaries — message count, cost, multi-turn rate, loop depth.
+    `TraceRecord` grouped by `conversationId` via `ConversationAggregator`. Per-conversation summaries - message count, cost, multi-turn rate, loop depth.
 
 </div>
 
 ## Cross-references
 
-- [Index](../index.md) — observability landing + the four group pages
-- [AI Usage](../ai-usage/index.md) — Tokens & Cost · AI Models
-- [Runtime](../runtime/index.md) — Host · Web Application · Logs · Traces
-- [Tokens & Cost → Model Pricing Manager](../ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) — configure per-model rates and display currency
-- [Observability Architecture](../../../observability-architecture.md) — pipeline + storage tiers + configuration
-- [Safety Architecture](../../../safety-architecture.md) — sandbox layers that Tool Studio's `Sandbox guard blocks` counter ties to
+- [Index](../index.md) - observability landing + the four group pages
+- [AI Usage](../ai-usage/index.md) - Tokens & Cost · AI Models
+- [Runtime](../runtime/index.md) - Host · Web Application · Logs · Traces
+- [Tokens & Cost → Model Pricing Manager](../ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) - configure per-model rates and display currency
+- [Observability Architecture](../../../observability-architecture.md) - pipeline + storage tiers + configuration
+- [Safety Architecture](../../../safety-architecture.md) - sandbox layers that Tool Studio's `Sandbox guard blocks` counter ties to

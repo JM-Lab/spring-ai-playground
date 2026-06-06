@@ -104,6 +104,35 @@ class ObservabilityCollectorTest {
     }
 
     @Test
+    void duplicateSpanIdIsNotDoubleCounted() {
+        Tracer tracer = mockTracer("duptrace", List.of("modelspan", "modelspan", "rootspan"));
+        ObservabilityCollector collector = new ObservabilityCollector(buffer,
+                absent(), present(tracer), props);
+
+        Observation.Context root = ctx("spring.ai.chat.client");
+        Observation.Context m1 = ctx("gen_ai.client.operation");
+        m1.addHighCardinalityKeyValue(KeyValue.of("gen_ai.usage.input_tokens", "100"));
+        m1.addHighCardinalityKeyValue(KeyValue.of("gen_ai.usage.output_tokens", "200"));
+        Observation.Context m2 = ctx("gen_ai.client.operation");
+        m2.addHighCardinalityKeyValue(KeyValue.of("gen_ai.usage.input_tokens", "100"));
+        m2.addHighCardinalityKeyValue(KeyValue.of("gen_ai.usage.output_tokens", "200"));
+
+        collector.onStart(m1);
+        collector.onStart(m2);
+        collector.onStart(root);
+        collector.onStop(m1);
+        collector.onStop(m2);
+        collector.onStop(root);
+
+        List<TraceRecord> snapshot = buffer.snapshot();
+        assertThat(snapshot).hasSize(1);
+        TraceRecord t = snapshot.get(0);
+        assertThat(t.inputTokens()).isEqualTo(100);
+        assertThat(t.outputTokens()).isEqualTo(200);
+        assertThat(t.spans()).hasSize(2);
+    }
+
+    @Test
     void errorInAnySpanMarksTraceStatusError() {
         Tracer tracer = mockTracer("dead", List.of("r", "c"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,

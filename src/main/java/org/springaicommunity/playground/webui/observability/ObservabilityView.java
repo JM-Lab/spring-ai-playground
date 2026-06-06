@@ -108,7 +108,7 @@ public class ObservabilityView extends ContentWorkspaceView {
         HostRuntimeTab hostRuntime = new HostRuntimeTab(systemMetrics, systemMetricsTimeSeries);
         WebApplicationTab webApp = new WebApplicationTab(systemMetrics);
         this.logsTab = new LogsTab(springAiPlaygroundHomeDir, globalSettings);
-        ToolsTab toolsView = new ToolsTab(buffer, timeSeries, systemMetrics);
+        ToolsTab toolsView = new ToolsTab(buffer, timeSeries, systemMetrics, mcpClientService);
         McpTab mcp = new McpTab(buffer, timeSeries, systemMetrics, mcpClientService);
         McpPrimitivesTab mcpPrimitives = new McpPrimitivesTab(systemMetrics);
         VectorTab vector = new VectorTab(buffer, timeSeries);

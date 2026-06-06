@@ -157,10 +157,13 @@ public class HomeInfoView extends Div {
                             logger.info("Update check: could not fetch latest release");
                             return;
                         }
-                        boolean same = isSameVersion(release.tagName(), CURRENT_VERSION);
-                        logger.info("Update check: current={} latest={} upToDate={}",
-                                CURRENT_VERSION, release.tagName(), same);
-                        if (same) return;
+                        if (!isNewer(release.tagName(), CURRENT_VERSION)) {
+                            logger.info("Update up-to-date: current={} latest={}",
+                                    CURRENT_VERSION, release.tagName());
+                            return;
+                        }
+                        logger.info("Update available: current={} latest={}",
+                                CURRENT_VERSION, release.tagName());
                         ui.access(() -> renderUpdateBanner(release));
                     })
                     .exceptionally(ex -> {
@@ -391,8 +394,40 @@ public class HomeInfoView extends Div {
 
     // ---------- Version + release fetching ----------
 
-    private static boolean isSameVersion(String a, String b) {
-        return normalizeVersion(a).equalsIgnoreCase(normalizeVersion(b));
+    static boolean isNewer(String latest, String current) {
+        int[] l = parseVersion(latest);
+        int[] c = parseVersion(current);
+        if (l == null || c == null) return false;
+        for (int i = 0; i < l.length; i++) {
+            if (l[i] != c[i]) return l[i] > c[i];
+        }
+        return false;
+    }
+
+    // milestone = MAX for a GA so a release outranks any -M milestone of the same x.y.z
+    static int[] parseVersion(String version) {
+        String v = normalizeVersion(version);
+        if (v.isEmpty()) return null;
+        int dash = v.indexOf('-');
+        String core = dash < 0 ? v : v.substring(0, dash);
+        String suffix = dash < 0 ? "" : v.substring(dash + 1);
+        String[] parts = core.split("\\.");
+        int[] out = { 0, 0, 0, Integer.MAX_VALUE };
+        try {
+            for (int i = 0; i < 3 && i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        if (!suffix.isEmpty()) {
+            if (suffix.charAt(0) == 'M' || suffix.charAt(0) == 'm') {
+                int i = 1;
+                while (i < suffix.length() && Character.isDigit(suffix.charAt(i))) i++;
+                out[3] = i > 1 ? Integer.parseInt(suffix.substring(1, i)) : 0;
+            } else {
+                out[3] = 0;
+            }
+        }
+        return out;
     }
 
     private static String normalizeVersion(String version) {

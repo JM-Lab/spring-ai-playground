@@ -70,7 +70,7 @@
 
     // Mobile / narrow viewports: skip svg-pan-zoom (its transform-based scaling
     // crops content inside the host clip-box). Let the SVG scale naturally to
-    // the host width via preserveAspectRatio. Wide LR diagrams shrink — the
+    // the host width via preserveAspectRatio. Wide LR diagrams shrink - the
     // accompanying table in each section is the authoritative content; the
     // diagram is a visual companion.
     const isNarrow = window.matchMedia('(max-width: 768px)').matches;

@@ -65,7 +65,7 @@ public record ToolManifest(
     }
 
     public record HumanInTheLoop(Mode mode, String promptTemplate) {
-        public enum Mode {DISABLED, AUTO_APPROVE, REQUIRED}
+        public enum Mode {DISABLED, REQUIRED}
     }
 
     public record TestCase(String name, Map<String, Object> input, Map<String, Object> assertSpec) {}

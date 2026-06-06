@@ -35,11 +35,9 @@
     <!-- M6 baseline files unchanged in M7 — incremental adoption: only files touched by M7
          (added or modified) participate in the checkstyle scan. Remove a line here whenever
          you next edit that file so it joins the scan. -->
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]SpringAiPlaygroundOptions\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]SpringAiPlaygroundPersistenceManager\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]config[\\/]OAuthCompleteController\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]config[\\/]SecurityConfig\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]PersistenceExecutor\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SharedDataReader\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SpringAiPlaygroundRagAdvisor\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistory\.java$" checks=".*"/>
@@ -81,7 +79,6 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]PersistentUiDataStorage\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]SttMicButton\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]VaadinUtils\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatContentView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatHistoryView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatModelSettingView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]common[\\/]WorkspaceContentHeader\.java$" checks=".*"/>
@@ -112,7 +109,6 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]mcp[\\/]inspector[\\/]primitives[\\/]server[\\/]ResourceTemplatePrimitive\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]SandboxCapabilitiesView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]StaticVariableForm\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolMcpServerSettingView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolStudioView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreContentItem\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreContentView\.java$" checks=".*"/>

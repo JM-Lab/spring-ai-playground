@@ -34,6 +34,7 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskAdvisor;
 import org.springaicommunity.playground.webui.mcp.inspector.ElicitationTab;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers.ToolInfo;
@@ -85,7 +86,7 @@ public class McpServerInspectorView extends VerticalLayout {
     private ElicitationTab elicitationTab;
 
     public McpServerInspectorView(McpServerInfo serverInfo, McpClientService clientService,
-            List<McpSchema.Tool> tools) {
+            List<McpSchema.Tool> tools, McpToolRiskAdvisor riskAdvisor) {
         this.serverInfo = Objects.requireNonNull(serverInfo);
         this.clientService = Objects.requireNonNull(clientService);
         this.allTools = tools.stream().map(InspectorHelpers::toToolInfo).toList();
@@ -102,7 +103,10 @@ public class McpServerInspectorView extends VerticalLayout {
         }
 
         for (int i = 0; i < allTools.size(); i++) {
-            ToolPrimitive card = new ToolPrimitive(allTools.get(i), i + 1, serverInfo, clientService);
+            ToolInfo info = allTools.get(i);
+            McpToolRiskAdvisor.ToolRiskView risk = riskAdvisor.evaluateTool(serverInfo, info.name(),
+                    info.description(), info.propertySchemas());
+            ToolPrimitive card = new ToolPrimitive(info, i + 1, serverInfo, clientService, risk);
             cards.add(card);
             cardsContainer.add(card);
         }

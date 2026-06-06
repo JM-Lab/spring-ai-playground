@@ -111,7 +111,7 @@ class McpToolDefinitionTest {
         assertEquals(List.of("*.spring.io"), m.capabilities().network().outbound());
         assertFalse(m.capabilities().sideEffect());
         // HumanInTheLoop
-        assertEquals(HumanInTheLoop.Mode.AUTO_APPROVE, m.humanInTheLoop().mode());
+        assertEquals(HumanInTheLoop.Mode.REQUIRED, m.humanInTheLoop().mode());
         // Audit — passing + matching hash
         assertTrue(m.audit().passing());
         assertEquals("sha256:abc", m.audit().lastTestedHash());
@@ -160,7 +160,7 @@ class McpToolDefinitionTest {
     @Test
     void enumsExposeExpectedValues() {
         assertEquals(6, RiskLevel.values().length);
-        assertEquals(3, HumanInTheLoop.Mode.values().length);
+        assertEquals(2, HumanInTheLoop.Mode.values().length);
         assertEquals(2, StaticVariable.Kind.values().length);
         assertEquals(2, Params.Binding.values().length);
         assertEquals(3, Code.EntryPoint.values().length);
@@ -190,7 +190,7 @@ class McpToolDefinitionTest {
                                 new NetworkPolicy("allowlist", Set.of("*.spring.io"), Set.of()))),
                 new Capabilities(new Capabilities.Network(List.of("*.spring.io"), List.of()),
                         List.of(), List.of(), false),
-                new HumanInTheLoop(HumanInTheLoop.Mode.AUTO_APPROVE, "Fetch ${pageUrl}?"),
+                new HumanInTheLoop(HumanInTheLoop.Mode.REQUIRED, "Fetch ${pageUrl}?"),
                 List.of(new TestCase("happy", Map.of("url", "https://x"), Map.of("ok", true))),
                 new Audit(1, Instant.parse("2026-05-09T00:00:00Z"), "sha256:abc", true),
                 new Integrity("sha256:m", "sha256:c", "sha256:d"),

@@ -79,7 +79,6 @@ spring:
       observations:
         log-query-response: ${SPRING_AI_VECTORSTORE_OBSERVE_LOG:false}
     playground:
-      default-tool-location: "classpath*:tool/default-tool-specs*.json"
       observability:
         ring-buffer-capacity: ${OBS_RING_CAPACITY:2000}
         retain-days: ${OBS_RETAIN_DAYS:30}
@@ -87,6 +86,7 @@ spring:
         max-spans-per-trace: ${OBS_MAX_SPANS:200}
       tool-studio:
         timeout-seconds: 30
+        spec-location: "classpath*:tool/default-tool-specs*.json"
         fs:
           base-path: ${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}
         js-sandbox:
@@ -123,15 +123,23 @@ spring:
       user-home: ${user.home}
       chat:
         system-prompt:
+      built-in-mcp-server:
+        name: ${SPRING_AI_PLAYGROUND_MCP_NAME:spring-ai-playground-built-in-mcp}
+        description: "${SPRING_AI_PLAYGROUND_MCP_DESCRIPTION:Spring AI Playground's built-in MCP server, served over Streamable HTTP at /mcp. Publishes your native Tool Studio tools (default catalog + custom) plus composed tools from connected external MCP servers, per the configured exposure mode.}"
+        exposure-mode: ${SPRING_AI_PLAYGROUND_MCP_EXPOSURE_MODE:both}
+      mcp-server:
+        composed-tools-max-risk: L5
+        composed-tools: []
     mcp:
       client:
         type: SYNC
         initialized: false
       server:
-        name: spring-ai-playground-tool-mcp
+        name: ${spring.ai.playground.built-in-mcp-server.name}
         protocol: STREAMABLE
         type: SYNC
-        request-timeout: 30
+        # Server-to-client elicitation (HITL) timeout; must outlast the client's 2-min decision wait (bare number = millis).
+        request-timeout: 150s
 
 ---
 spring:

@@ -10,6 +10,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Local speech-to-text mic in Agentic Chat — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
+- **MCP safety observability** — a new `McpRiskSignalSink` taps the MCP risk pipeline (server / tool risk scoring, risk-floor overrides, hash-ledger mismatches, composition lifecycle, and tool-poisoning hits) and a default `McpRiskSignalLogger` (`@Component`, replacing the prior NOOP sink) fans each event out to structured logs, Micrometer metrics, and a bounded `McpRiskEventRingBuffer`. A new **Safety** tab in the Observability dashboards surfaces the live risk-event feed, making the integrity verifier, poisoning scanner, and risk calculators observable at runtime.
+
+## [0.2.0-M8]
+
+### Added
+
+- **MCP server & tool risk profiles with L0–L5 scoring** — every connected MCP server and each tool it exposes earns a risk level (L0 Verified → L5) derived from `McpRiskFactors` / `McpTrustSignal` signals: transport, authentication (`McpAuthClassifier` / `McpAuthMode`), catalog trust tier, and a per-server **documentation-completeness** dimension. `McpServerInfoService` surfaces a per-server risk chip on the MCP Server Info pane and per-tool chips in the Inspector, a connection-time **tool-poisoning scan** flags description / parameter injection, and `McpCompositionRiskAggregator` rolls member-tool risk up to a composed server. Risk levels ride the observability spans through `McpToolObservationFilter` (`feat(mcp)`).
+- **MCP Server Proxy — re-publish external tools on the built-in server** — the **Expose Tools** drawer (gear icon on the MCP Server Info pane) composes selected tools from connected external MCP servers onto the playground's own built-in `/mcp` server. `McpExposedToolService` + `McpCompositionService` + `McpCompositionToolCallbackProvider` register `WrappedExternalToolCallback`s that carry a per-tool **alias / description override**, risk level, HITL flag, logging, and secret masking; an **exposure mode** (`built-in` / `composed` / `both`) and a **max-risk-to-expose** cap gate selection. Re-exposed tools become callable from Agentic Chat and any external `/mcp` client. Persisted via `McpCompositionPersistenceService` (`feat(mcp)`).
+- **Human-in-the-Loop (HITL) tool approval** — a per-tool flag pauses an individual tool call and waits for explicit human approval before it runs, enforced at the caller's entry point: a chat approval dialog (`HumanQuestion` / `HumanQuestionHandler` via `HitlToolCallAdvisor`) for Agentic Chat and `McpServerHitlToolGate` (MCP elicitation) for external clients, wired through `McpToolCallingManager`, `ChatService`, and `ChatContentView`. The gate is set per tool in Tool Studio (Sandbox & Capabilities) or per re-exposed tool in the Expose Tools drawer. Also adds session-local chat tool selection so a conversation can scope which tools it may call (`feat(mcp)`).
+- **Tamper- and impersonation-proof default tools** — `CanonicalHasher` + `DefaultIntegrityVerifier` name-pin the 86 bundled default tools against a golden `resources/integrity/default-integrity.json` manifest (86 tool hashes + a manifest version). A tool that claims a reserved default name must match the canonical classpath hash or it is rejected at registration in `ToolSpecService`; customizing a default forks it to a new identity rather than mutating the pinned one. A `DefaultIntegrityManifestTest` tripwire fails the build if the shipped catalog drifts from the manifest (`feat(mcp)`).
+- **Tool hash ledger re-review approval** — `McpToolHashLedger` records a trust-on-first-use fingerprint for every exposed tool; when an upstream tool's hash changes (rug-pull), `McpCompositionToolCallbackProvider` surfaces a re-review prompt and records the operator's re-approval against the new hash on the ledger (`feat(mcp)`).
+- **YAML-configurable built-in MCP server** — `spring.ai.playground.built-in-mcp-server.{name,description,exposure-mode}` (env `SPRING_AI_PLAYGROUND_MCP_NAME` / `_DESCRIPTION` / `_EXPOSURE_MODE`, exposure default `both`) set the built-in server's published name, description, and default exposure at startup, read by `McpServerInfoService` and reflected in the MCP Server view, Observability tabs, and Tool Studio (`feat(mcp)`).
+- **Device-based user identity in logs** — `DeviceIdProvider` derives a stable per-device user id that `UserIdentityService` + `MdcIdentityFilter` propagate into the MDC (`user=`) across web requests, the persistence executor, and MCP tool-call log lines, so multi-surface activity correlates to one local identity (`feat(identity)`).
+
+### Changed
+
+- **Chat message rendering moved off Viritin to Vaadin Markdown** — chat bubbles are now a `ChatMessage` built on Vaadin's core `vaadin-message` plus the official `Markdown` component with server-side content, dropping the `viritin` (and an interim `flexmark`) dependency. Avatar color comes from a server-side `userColorIndex` (USER / ASSISTANT presets) instead of a client-only `executeJs`, so it survives component re-attach (`fix(chat)`).
+- **Trusted-server tools waive the documentation penalty** — tools from trusted catalog servers no longer take the doc-completeness risk penalty, and HITL is offered as an explicit risk mitigation that lowers the effective level by one band (`fix(mcp)`).
+- **Per-server documentation-adequacy evaluation** — the catalog computes a `docsAdequate` signal per server (feeding the risk score), and the Puppeteer entry's docs link is corrected to the archived-servers location (`feat(mcp)`).
+
+### Fixed
+
+- **Chat bodies and avatars survive menu round-trips** — returning to Agentic Chat from another menu no longer blanks the last turn's message body or greys its avatar; the server-side `ChatMessage` re-sends content and color index on re-attach (`fix(chat)`).
+- **Chat scroll pinned after stream; same-conversation reload de-duplicated** (`fix(chat)`).
+- **MCP server view refreshes on attach; connection-filter empty state fixed** (`fix(mcp)`).
+- **Hand-picked built-in MCP exposure survives a restart** — with auto-expose off, the explicitly selected built-in tools are re-published to `/mcp` on startup instead of silently dropping to none until re-confirmed; the startup reconcile also filters drafts, so an un-passed tool can never reach `/mcp` through a stale exposed id, and the chat model-settings *Apply* no longer throws when its drawer was never opened (`fix(mcp)`).
+- **MCP connection form polish** — OAuth checkbox, clearable header / env rows, presets fill only empty fields, and PlayMCP Bearer auth (`fix(mcp)`).
+- **Expose selection capped by base risk; update banner gated on a genuinely newer release; streaming usage tokens de-duplicated** (`fix(qa)`).
+- **Analytics split** — the docs site loads Google Analytics via its own Google tag id (docs stream only) and the app disables GA when telemetry is off (`fix(analytics)`).
+
+### Documentation
+
+- **Human-in-the-Loop pages** — new `docs/hitl-architecture.md` (two-gate approval model and proxied call path), `docs/features/human-in-the-loop.md`, and `docs/tutorials/11-human-approval.md`.
+- **MCP server safety, proxy, and configuration** — new `docs/mcp-server-safety.md` (L0–L5 connection risk, tool-poisoning scan, fingerprint ledger, composition shadowing rules, HITL mitigation), `docs/features/mcp-server/proxy.md`, `docs/getting-started/configuration.md`, and `docs/tutorials/10-proxy-external-tool.md`, with screenshots and nav.
+- **Catalog & tutorial refresh** — OAuth flow, env rows, per-server risk chips and typical-level chips, setup-time preset vs. exposure drawer, and reordered catalog sections.
+- **Docs analytics** — the docs site moved to its own Google tag with production-only loading, and glightbox is skipped on catalog card icons (`docs(site)`).
+- **Reference docs normalized to ASCII punctuation; duplicate page titles fixed** — prepares the documentation for translation (`docs`).
+
+### Security
+
+- **Default-tool integrity** — name-pinned canonical hashing rejects tampered or impersonated default tools at registration, and the hash ledger detects upstream rug-pulls and forces human re-review before the changed tool can run.
+- **Human-in-the-loop approval gate** — high-risk and re-exposed tools can require explicit per-call human approval before execution, on both the chat path and the external MCP elicitation path.
+- **Tool-poisoning scan** — a connection-time scan flags prompt-injection in tool descriptions / parameters and feeds the server risk level.
+
+### Build / Tooling
+
+- **Spring AI bumped to 1.1.7** — `build(pom): bump to 0.2.0-M8, spring-ai 1.1.7`.
 
 ## [0.2.0-M7]
 

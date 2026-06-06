@@ -19,6 +19,7 @@ import com.vaadin.flow.component.AbstractField;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -67,6 +68,12 @@ public class ElicitationRequestPrimitive extends Div {
                 form.add(field);
             }
             add(form);
+        } else if (schema == null || schema.isEmpty()) {
+            add(InspectorHelpers.simpleSectionLabel("Confirmation"));
+            Span note = new Span("No additional input required — approve to allow this action.");
+            note.getStyle().set("font-size", "var(--lumo-font-size-s)")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            add(note);
         } else {
             add(InspectorHelpers.simpleSectionLabel("Schema"));
             add(InspectorHelpers.codeBlock(InspectorHelpers.prettyPrint(schema), false));

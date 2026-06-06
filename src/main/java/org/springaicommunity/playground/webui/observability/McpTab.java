@@ -90,8 +90,6 @@ public class McpTab extends BaseDashboardTab {
         this.systemMetrics = systemMetrics;
         this.mcpClientService = mcpClientService;
 
-        // Server KPIs (volume / quality) lead. OAuth bundle visually split into
-        // its own row so authentication state reads as one logical unit.
         Div serverKpis = DashboardLayout.kpiGrid(activeServersCard, serversUpCard, mcpCallsCard,
                 distinctToolsCard, p95LatencyCard, errorRateCard);
         Div oauthKpis = DashboardLayout.kpiGrid(oauthAuthorizedCard, oauthAwaitingCard,
@@ -358,7 +356,7 @@ public class McpTab extends BaseDashboardTab {
                 String tool = attrs.getOrDefault("spring.ai.tool.definition.name", "(unnamed)");
                 String server = attrs.getOrDefault("mcp.server",
                         attrs.getOrDefault("mcp.server.name", "(unknown)"));
-                if (McpClientService.SELF_LOOPBACK_SERVER_NAME.equals(server)) continue;
+                if (this.mcpClientService.isSelfLoopback(server)) continue;
                 b.toolCounts.merge(tool, 1L, Long::sum);
                 b.serverCounts.merge(server, 1L, Long::sum);
                 b.transportCounts.merge(transport, 1L, Long::sum);

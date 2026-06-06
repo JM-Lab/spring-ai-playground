@@ -15,7 +15,8 @@
       "args": ["mcp-server-git", "--repository", "."]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Memory-Linux",
@@ -33,7 +34,8 @@
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Sequential-Thinking-Linux",
@@ -51,7 +53,8 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Puppeteer-Linux",
@@ -61,15 +64,16 @@
     "tier": 2,
     "vendor": "modelcontextprotocol/servers",
     "vendorOfficial": false,
-    "description": "[Linux] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on Linux. First run downloads ~170 MB Chromium under ~/.cache/puppeteer. Headless sandbox may need extra deps (libnss3, libatk-bridge2.0-0, libgbm1, …).\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"/usr/bin/chromium\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox (required in many containers)\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "description": "[Linux] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.\n\nPrereq: Node.js 18+ on Linux. First run downloads ~170 MB Chromium under ~/.cache/puppeteer. Headless sandbox may need extra deps (libnss3, libatk-bridge2.0-0, libgbm1, …).\n\nThe activated form is pre-filled to run:\n  npx -y @modelcontextprotocol/server-puppeteer\n\nOptional — set in the env section:\n  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {\"executablePath\":\"/usr/bin/chromium\"}\n  ALLOW_DANGEROUS — set to true to enable --no-sandbox (required in many containers)\n\nSecurity: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.\n\nDocs: https://github.com/modelcontextprotocol/servers-archived/tree/main/src/puppeteer",
     "stability": "GA",
     "transports": [{
       "type": "STDIO",
       "urlTemplate": "npx",
       "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
     }],
-    "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
-    "trustSignals": ["community"]
+    "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/puppeteer",
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "MCP-Everything-Linux",
@@ -87,7 +91,8 @@
       "args": ["-y", "@modelcontextprotocol/server-everything"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Playwright-Linux",
@@ -105,7 +110,8 @@
       "args": ["-y", "@playwright/mcp@latest"]
     }],
     "docsUrl": "https://github.com/microsoft/playwright-mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "SQLite-Linux",
@@ -123,7 +129,8 @@
       "args": ["mcp-server-sqlite", "--db-path", "/absolute/path/to/your.db"]
     }],
     "docsUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   },
   {
     "id": "Brave-Search-Linux",
@@ -142,6 +149,7 @@
       "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}
     }],
     "docsUrl": "https://github.com/brave/brave-search-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   }
 ]

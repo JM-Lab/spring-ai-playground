@@ -1,19 +1,19 @@
-description: Default MCP Catalog — Search reference: 6 preset MCP connections with transport, auth defaults, required env, and full description per card.
+description: Default MCP Servers - Search reference: 6 preset MCP connections with transport, auth defaults, required env, and full description per card.
 
-# Default MCP Catalog — Search
+# Default MCP Servers - Search
 
 Web search and content retrieval. Remote services (Tavily, Exa, Firecrawl, Jina AI, SerpAPI) expect a vendor API key via `${VAR}` placeholders in the headers; the community stdio entry (`Brave Search`) needs `BRAVE_API_KEY` in the `env` section. All five remote services have a free tier sufficient for tutorial-scale use.
 
 ## Entries (6)
 
-Click any card to expand the full spec inline — transport (Streamable HTTP / STDIO), authentication shape (OAuth 2.1 / API key / Bearer / none), required environment variables, vendor URL or stdio command, and the upstream docs link.
+Click any card to expand the full spec inline - transport (Streamable HTTP / STDIO), authentication shape (OAuth 2.1 / API key / Bearer / none), required environment variables, vendor URL or stdio command, and the upstream docs link.
 
 <div class="tcg-grid" markdown>
 
 <div class="tcg-card tcg-card--clickable" id="Tavily" data-tool-id="Tavily" data-tool-title="Tavily" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Tavily</span> <span class="cost">🔑</span></div>
 <div class="tcg-art" markdown>:material-magnify-scan:</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
 AI-optimised web search and answer engine for grounding LLMs with up-to-date facts and sources. Requires TAVILY_API_KEY.
 </div>
@@ -24,27 +24,34 @@ AI-optimised web search and answer engine for grounding LLMs with up-to-date fac
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Tavily (vendor-official (Tier 1))
+**Vendor** - Tavily (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.tavily.com/mcp`
+**URL** - `https://mcp.tavily.com/mcp`
 
-**Auth** — API key
+**Auth** - API key
 
-**Stability** — GA · **Tier** — Tier 1
+**Stability** - GA · **Tier** - Tier 1
 
-**Required env** — `TAVILY_API_KEY`
+**Required env** - `TAVILY_API_KEY`
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - 4 tools published by the vendor (per its [MCP docs](https://docs.tavily.com/documentation/mcp)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (4) - tavily-search · tavily-extract · tavily-crawl · tavily-map"
+    - `tavily-search`
+    - `tavily-extract`
+    - `tavily-crawl`
+    - `tavily-map`
 
 **Description**
 
 AI-optimised web search and answer engine for grounding LLMs with up-to-date facts and sources. Requires TAVILY_API_KEY.
 
-Docs: https://docs.tavily.com/documentation/mcp
 
-**Docs** — [https://docs.tavily.com/documentation/mcp](https://docs.tavily.com/documentation/mcp)
+**Docs** - [https://docs.tavily.com/documentation/mcp](https://docs.tavily.com/documentation/mcp)
 
 </div>
 </div>
@@ -52,9 +59,9 @@ Docs: https://docs.tavily.com/documentation/mcp
 <div class="tcg-card tcg-card--clickable" id="Exa" data-tool-id="Exa" data-tool-title="Exa" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Exa</span> <span class="cost">🔑</span></div>
 <div class="tcg-art" markdown>:material-magnify-expand:</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Neural web search by Exa — semantic ranking, source-aware retrieval, and high-quality result snippets. Requires EXA_API_KEY (x-api-key header).
+Neural web search by Exa - semantic ranking, source-aware retrieval, and high-quality result snippets. Requires EXA_API_KEY (x-api-key header).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; Exa · T1 vendor</div>
@@ -63,27 +70,33 @@ Neural web search by Exa — semantic ranking, source-aware retrieval, and high-
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Exa (vendor-official (Tier 1))
+**Vendor** - Exa (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.exa.ai/mcp`
+**URL** - `https://mcp.exa.ai/mcp`
 
-**Auth** — API key
+**Auth** - API key
 
-**Stability** — GA · **Tier** — Tier 1
+**Stability** - GA · **Tier** - Tier 1
 
-**Required env** — `EXA_API_KEY`
+**Required env** - `EXA_API_KEY`
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - 3 tools published by the vendor (per its [MCP docs](https://exa.ai/docs/reference/exa-mcp)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools). 3 active (+ several deprecated).
+
+??? note "Tools (3) - web_search_exa · web_fetch_exa · web_search_advanced_exa"
+    - `web_search_exa`
+    - `web_fetch_exa`
+    - `web_search_advanced_exa`
 
 **Description**
 
-Neural web search by Exa — semantic ranking, source-aware retrieval, and high-quality result snippets. Requires EXA_API_KEY (x-api-key header).
+Neural web search by Exa - semantic ranking, source-aware retrieval, and high-quality result snippets. Requires EXA_API_KEY (x-api-key header).
 
-Docs: https://exa.ai/docs/reference/exa-mcp
 
-**Docs** — [https://exa.ai/docs/reference/exa-mcp](https://exa.ai/docs/reference/exa-mcp)
+**Docs** - [https://exa.ai/docs/reference/exa-mcp](https://exa.ai/docs/reference/exa-mcp)
 
 </div>
 </div>
@@ -91,7 +104,7 @@ Docs: https://exa.ai/docs/reference/exa-mcp
 <div class="tcg-card tcg-card--clickable" id="Firecrawl" data-tool-id="Firecrawl" data-tool-title="Firecrawl" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Firecrawl</span> <span class="cost">🔑</span></div>
 <div class="tcg-art" markdown>:material-spider-web:</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Web scraping, crawling, and structured data extraction with anti-bot handling. Bearer-authenticated with FIRECRAWL_API_KEY.
 </div>
@@ -102,27 +115,36 @@ Web scraping, crawling, and structured data extraction with anti-bot handling. B
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Firecrawl (vendor-official (Tier 1))
+**Vendor** - Firecrawl (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.firecrawl.dev/v2/mcp`
+**URL** - `https://mcp.firecrawl.dev/v2/mcp`
 
-**Auth** — Bearer
+**Auth** - Bearer
 
-**Stability** — GA · **Tier** — Tier 1
+**Stability** - GA · **Tier** - Tier 1
 
-**Required env** — `FIRECRAWL_API_KEY`
+**Required env** - `FIRECRAWL_API_KEY`
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - 14 tools published by the vendor (per its [MCP docs](https://docs.firecrawl.dev/mcp-server)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools). core set; optional tools vary by version.
+
+??? note "Tools (6 of 14) - firecrawl_scrape · firecrawl_search · firecrawl_map · firecrawl_crawl · firecrawl_check_crawl_status · firecrawl_extract"
+    - `firecrawl_scrape`
+    - `firecrawl_search`
+    - `firecrawl_map`
+    - `firecrawl_crawl`
+    - `firecrawl_check_crawl_status`
+    - `firecrawl_extract`
 
 **Description**
 
 Web scraping, crawling, and structured data extraction with anti-bot handling. Bearer-authenticated with FIRECRAWL_API_KEY.
 
-Docs: https://docs.firecrawl.dev/mcp-server
 
-**Docs** — [https://docs.firecrawl.dev/mcp-server](https://docs.firecrawl.dev/mcp-server)
+**Docs** - [https://docs.firecrawl.dev/mcp-server](https://docs.firecrawl.dev/mcp-server)
 
 </div>
 </div>
@@ -130,7 +152,7 @@ Docs: https://docs.firecrawl.dev/mcp-server
 <div class="tcg-card tcg-card--clickable" id="Jina-AI" data-tool-id="Jina-AI" data-tool-title="Jina AI" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Jina AI</span> <span class="cost">🔑</span></div>
 <div class="tcg-art" markdown>:material-vector-link:</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Jina AI Reader (URL-to-clean-markdown) and search APIs for LLM-grounded retrieval. Bearer-authenticated with JINA_API_KEY.
 </div>
@@ -141,27 +163,40 @@ Jina AI Reader (URL-to-clean-markdown) and search APIs for LLM-grounded retrieva
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Jina AI (vendor-official (Tier 1))
+**Vendor** - Jina AI (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.jina.ai/v1`
+**URL** - `https://mcp.jina.ai/v1`
 
-**Auth** — Bearer
+**Auth** - Bearer
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — `JINA_API_KEY`
+**Required env** - `JINA_API_KEY`
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - 20 tools published by the vendor (per its [MCP docs](https://github.com/jina-ai/MCP)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10 of 20) - read_url · capture_screenshot_url · search_web · search_arxiv · search_images · parallel_read_url · classify_text · extract_pdf · expand_query · sort_by_relevance"
+    - `read_url`
+    - `capture_screenshot_url`
+    - `search_web`
+    - `search_arxiv`
+    - `search_images`
+    - `parallel_read_url`
+    - `classify_text`
+    - `extract_pdf`
+    - `expand_query`
+    - `sort_by_relevance`
 
 **Description**
 
 Jina AI Reader (URL-to-clean-markdown) and search APIs for LLM-grounded retrieval. Bearer-authenticated with JINA_API_KEY.
 
-Docs: https://github.com/jina-ai/MCP
 
-**Docs** — [https://github.com/jina-ai/MCP](https://github.com/jina-ai/MCP)
+**Docs** - [https://github.com/jina-ai/MCP](https://github.com/jina-ai/MCP)
 
 </div>
 </div>
@@ -169,7 +204,7 @@ Docs: https://github.com/jina-ai/MCP
 <div class="tcg-card tcg-card--clickable" id="SerpAPI" data-tool-id="SerpAPI" data-tool-title="SerpAPI" markdown>
 <div class="tcg-name"><span class="tcg-name__text">SerpAPI</span> <span class="cost">🔑</span></div>
 <div class="tcg-art" markdown>:material-google:</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Real-time Google, Bing, Baidu, DuckDuckGo, Naver and other SERP scraping with structured JSON. API key embedded in URL path (SERPAPI_API_KEY).
 </div>
@@ -180,27 +215,31 @@ Real-time Google, Bing, Baidu, DuckDuckGo, Naver and other SERP scraping with st
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — SerpAPI (vendor-official (Tier 1))
+**Vendor** - SerpAPI (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.serpapi.com/${SERPAPI_API_KEY}/mcp`
+**URL** - `https://mcp.serpapi.com/${SERPAPI_API_KEY}/mcp`
 
-**Auth** — API key
+**Auth** - API key
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — `SERPAPI_API_KEY`
+**Required env** - `SERPAPI_API_KEY`
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - 1 tool published by the vendor (per its [MCP docs](https://github.com/serpapi/serpapi-mcp)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (1) - search"
+    - `search`
 
 **Description**
 
 Real-time Google, Bing, Baidu, DuckDuckGo, Naver and other SERP scraping with structured JSON. API key embedded in URL path (SERPAPI_API_KEY).
 
-Docs: https://github.com/serpapi/serpapi-mcp
 
-**Docs** — [https://github.com/serpapi/serpapi-mcp](https://github.com/serpapi/serpapi-mcp)
+**Docs** - [https://github.com/serpapi/serpapi-mcp](https://github.com/serpapi/serpapi-mcp)
 
 </div>
 </div>
@@ -208,9 +247,9 @@ Docs: https://github.com/serpapi/serpapi-mcp
 <div class="tcg-card tcg-card--clickable" id="Brave-Search" data-tool-id="Brave-Search" data-tool-title="Brave Search" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Brave Search</span> <span class="cost">🛠</span></div>
 <div class="tcg-art" markdown>![Brave Search](https://cdn.simpleicons.org/brave){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">search · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">search · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
-[macOS] Brave Search API — web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface). The activated form is pre-filled to run: npx -y…
+[macOS] Brave Search API - web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface). The activated form is pre-filled to run: npx -y...
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; Brave · T1 vendor</div>
@@ -219,38 +258,49 @@ Docs: https://github.com/serpapi/serpapi-mcp
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Brave (vendor-official)
+**Vendor** - Brave (vendor-official)
 
-**Transport** — STDIO
+**Transport** - STDIO
 
-**Command** — `npx`
+**Command** - `npx`
 
-**Args** — `-y @brave/brave-search-mcp-server`
+**Args** - `-y @brave/brave-search-mcp-server`
 
-**OS variants** — mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
+**OS variants** - mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
 
-**Auth** — STDIO
+**Auth** - STDIO
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global
+**Tags** - global
+
+**Tools** - discovered on connect; vendor-official STDIO (outbound only to `api.search.brave.com`) with no per-tool descriptors, so each tool composes to <span class="rl rl-l2">L2 - Low</span> on its own connection's [Inspector](../mcp-server/inspector.md#tools):
+
+??? abstract "Tools (8) - brave_web_search · brave_local_search · brave_video_search · brave_image_search · brave_news_search · brave_summarizer · brave_place_search · brave_llm_context"
+    - **`brave_web_search`** - general web search with filtering. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_local_search`** - find local businesses and places. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_video_search`** - search videos with metadata and thumbnails. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_image_search`** - search for images. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_news_search`** - search current news articles. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_summarizer`** - AI-generated summary over web-search results. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_place_search`** - points of interest in a geographic area. <span class="rl rl-l2">L2 - Low</span>
+    - **`brave_llm_context`** - pre-extracted page content for LLM grounding / RAG. <span class="rl rl-l2">L2 - Low</span>
 
 **Description**
 
-[macOS] Brave Search API — web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface).
+[macOS] Brave Search API - web, local, news, image, and video search. Outbound calls only to api.search.brave.com (no SSRF surface).
 
 Prereq: Node.js 18+ on macOS (Homebrew, nvm, or installer). Free API key (2k req/month) at https://api.search.brave.com/app/keys.
 
 The activated form is pre-filled to run:
   npx -y @brave/brave-search-mcp-server
 
-Required — set BRAVE_API_KEY in the env section below (treat as a secret).
+Required - set BRAVE_API_KEY in the env section below (treat as a secret).
 
-Docs: https://github.com/brave/brave-search-mcp-server
 
-**Docs** — [https://github.com/brave/brave-search-mcp-server](https://github.com/brave/brave-search-mcp-server)
+**Docs** - [https://github.com/brave/brave-search-mcp-server](https://github.com/brave/brave-search-mcp-server)
 
 </div>
 </div>
@@ -261,11 +311,11 @@ Docs: https://github.com/brave/brave-search-mcp-server
 
 Five remote search services and one community stdio entry. They're substitutable but each has a different latency / quality / quota profile, so the meaningful "combination" is **choosing one as primary and one as fallback**:
 
-- **Primary + fallback** — `Tavily` (LLM-tuned answers) primary, `Exa` (semantic search) fallback. Tavily fails fast on quota; Exa picks up.
-- **Crawl + index** — `Firecrawl` (crawls + structured extract) feeding a downstream Vector Database run. Good when the agent needs the *content* of pages, not just the URLs.
-- **Search-engine results** — `SerpAPI` when you specifically want Google / Bing SERP JSON without scraping.
-- **Long-form context retrieval** — `Jina AI` for embedding + reader API; the model gets cleaned-up article bodies, not raw HTML.
-- **Privacy-first local-stdio** — `Brave Search` (stdio) when you don't want a remote OAuth dance and you have a Brave API key.
+- **Primary + fallback** - `Tavily` (LLM-tuned answers) primary, `Exa` (semantic search) fallback. Tavily fails fast on quota; Exa picks up.
+- **Crawl + index** - `Firecrawl` (crawls + structured extract) feeding a downstream Vector Database run. Good when the agent needs the *content* of pages, not just the URLs.
+- **Search-engine results** - `SerpAPI` when you specifically want Google / Bing SERP JSON without scraping.
+- **Long-form context retrieval** - `Jina AI` for embedding + reader API; the model gets cleaned-up article bodies, not raw HTML.
+- **Privacy-first local-stdio** - `Brave Search` (stdio) when you don't want a remote OAuth dance and you have a Brave API key.
 
 ## Auth & secrets { #auth-secrets }
 
@@ -277,14 +327,14 @@ All six entries are API-key gated. Set the key as a `${VAR}` placeholder in the 
 | Exa | API key | `x-api-key: ${EXA_API_KEY}` |
 | Firecrawl | Bearer | `Authorization: Bearer ${FIRECRAWL_API_KEY}` |
 | Jina AI | Bearer | `Authorization: Bearer ${JINA_API_KEY}` |
-| SerpAPI | API key (query param style; configurable as `${SERPAPI_KEY}`) | per-vendor docs |
+| SerpAPI | API key (query param style; configurable as `${SERPAPI_API_KEY}`) | per-vendor docs |
 | Brave Search (stdio) | API key | `env.BRAVE_API_KEY = ${BRAVE_API_KEY}` |
 
-Every remote vendor on this page ships a free tier large enough for tutorial-scale agent use — the free quotas are intended for evaluation, not production, but a single agent session won't exhaust them.
+Every remote vendor on this page ships a free tier large enough for tutorial-scale agent use - the free quotas are intended for evaluation, not production, but a single agent session won't exhaust them.
 
 ## Picking guide { #picking-guide }
 
-| If you need… | Reach for |
+| If you need... | Reach for |
 |---|---|
 | LLM-shaped answers with citations | `Tavily` |
 | Neural / semantic search | `Exa` |

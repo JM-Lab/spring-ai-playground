@@ -1,5 +1,5 @@
 title: Getting Started
-description: Pick your install path — desktop app, Docker, or source — then connect a model provider and run your first agentic chat.
+description: Pick your install path - desktop app, Docker, or source - then connect a model provider and run your first agentic chat.
 
 # Getting Started
 
@@ -11,9 +11,9 @@ Spring AI Playground ships through three runtimes that all boot the same Spring 
 |---|---|---|---|
 | **[Desktop App](desktop.md)** *(recommended)* | First-time users; anyone who wants a one-click installer with a configuration editor, OS-encrypted secret storage, and a built-in Ollama model manager | Electron launcher + JVM + Spring Boot fat JAR | not required (bundled) |
 | **[Docker](alternative-runtimes.md#docker)** | Containerised deployments; users who already run Docker; quick MCP stdio setup for Claude Desktop without installing Java | Spring Boot fat JAR + JVM in the published container image | not required |
-| **[From Source](alternative-runtimes.md#from-source)** | Developers modifying the codebase; Java users who want fat-JAR portability and full GraalVM speed for the JS sandbox | nothing — you build it | Java 21+ (GraalVM recommended) |
+| **[From Source](alternative-runtimes.md#from-source)** | Developers modifying the codebase; Java users who want fat-JAR portability and full GraalVM speed for the JS sandbox | nothing - you build it | Java 21+ (GraalVM recommended) |
 
-The desktop installer is the recommended default. Docker and direct source execution are equally supported alternatives — same product, same UI, same MCP server.
+The desktop installer is the recommended default. Docker and direct source execution are equally supported alternatives - same product, same UI, same MCP server.
 
 ## Install at a glance
 
@@ -21,13 +21,13 @@ Quick start for each path; full details in the linked pages.
 
 ### Desktop installer
 
-Pick your platform installer from the [Home page download badges](../index.md#1-download-the-desktop-app), or browse the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases) directly. The package wraps the launcher and the Spring Boot runtime — no Docker or Maven required.
+Pick your platform installer from the [Home page download badges](../index.md#1-download-the-desktop-app), or browse the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases) directly. The package wraps the launcher and the Spring Boot runtime - no Docker or Maven required.
 
 First-launch reputation warnings are common; if you trust the release source:
 
-- **macOS** — Gatekeeper may block the DMG and the first app launch. Open **System Settings > Privacy & Security** and click **Open Anyway** in both places. Quarantine fallback if the app still refuses to open: `xattr -dr com.apple.quarantine "/Applications/Spring AI Playground.app"`.
-- **Windows** — Microsoft Defender SmartScreen may flag the installer with "Windows protected your PC". Click **More info → Run anyway**.
-- **Linux** — `.deb` / `.rpm` install with standard package confirmation; reputation warnings are uncommon.
+- **macOS** - Gatekeeper may block the DMG and the first app launch. Open **System Settings > Privacy & Security** and click **Open Anyway** in both places. Quarantine fallback if the app still refuses to open: `xattr -dr com.apple.quarantine "/Applications/Spring AI Playground.app"`.
+- **Windows** - Microsoft Defender SmartScreen may flag the installer with "Windows protected your PC". Click **More info → Run anyway**.
+- **Linux** - `.deb` / `.rpm` install with standard package confirmation; reputation warnings are uncommon.
 
 Full platform notes, configuration walkthrough, MCP tools curation, and Ollama model manager: [Desktop App](desktop.md).
 
@@ -53,7 +53,7 @@ cd spring-ai-playground
 ./mvnw spring-boot:run
 ```
 
-Requires Java 21+ (GraalVM recommended for full-speed JS sandbox). The Vaadin UI opens at `http://localhost:8282`. A published fat JAR is also available alongside the desktop installers on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases) — handy for `java -jar` deployments without a source clone.
+Requires Java 21+ (GraalVM recommended for full-speed JS sandbox). The Vaadin UI opens at `http://localhost:8282`. A published fat JAR is also available alongside the desktop installers on the [Releases page](https://github.com/spring-ai-community/spring-ai-playground/releases) - handy for `java -jar` deployments without a source clone.
 
 Full options (fat JAR, `mcp-stdio` profile, Claude Desktop config): [Alternative Runtimes → From Source](alternative-runtimes.md#from-source).
 
@@ -63,13 +63,13 @@ Once Spring AI Playground is running through any of the three paths above, the *
 
 ![Getting started checklist on the Home screen](../assets/images/home-getting-started.png)
 
-1. **Configure a model provider** — Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider — recheck the launcher config or env vars.
-2. **Start a chat** — Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 86-tool bundled catalog you can opt into through Tool Studio's **Tool MCP Server Setting** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
-3. **Upload a document for RAG** — Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
-4. **Create your first tool** — Open Tool Studio, write a small JavaScript function, and define its sample arguments. A new tool starts as a **Draft** — invisible to MCP and to chat. Run it locally: if the test passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
-5. **Try an agentic workflow** — Ask the assistant: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
+1. **Configure a model provider** - Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider - recheck the launcher config or env vars.
+2. **Start a chat** - Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 86-tool bundled catalog you can opt into through Tool Studio's **Built-in MCP Server Native Tools** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
+3. **Upload a document for RAG** - Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
+4. **Create your first tool** - Open Tool Studio, write a small JavaScript function, and define its sample arguments. A new tool starts as a **Draft** - invisible to MCP and to chat. Run it locally: if the test passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
+5. **Try an agentic workflow** - Ask the assistant: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
 
-> Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking…" or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
+> Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking..." or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
 
 ## Built-in MCP Endpoint
 
@@ -83,7 +83,7 @@ That endpoint is central to Tool Studio, MCP Inspector, and Agentic Chat with to
 
 ## External MCP Catalog
 
-Beyond the built-in server, the app ships a **preset catalog of 57 MCP server connections** that appear in the MCP Server sidebar's **Inactive MCP** section — clicking an entry pre-fills the configuration form with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders, so the easiest first external connection is a one-click activation. The catalog spans mail / calendar / chat / project trackers / code hosting / search / cloud / databases / payments / CRM / design plus two reference test servers (`MCP Everything`, `DeepWiki`). See the [MCP Catalog directory](../features/default-mcp-catalog/index.md) for the per-category browse and [MCP Server → Catalog & Sidebar Filtering](../features/mcp-server/index.md#catalog-sidebar-filtering) for the sidebar mechanics.
+Beyond the built-in server, the app ships a **preset catalog of 57 MCP server connections** that appear in the MCP Server sidebar's **Inactive MCP** section - clicking an entry pre-fills the configuration form with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders, so the easiest first external connection is a one-click activation. The catalog spans mail / calendar / chat / project trackers / code hosting / search / cloud / databases / payments / CRM / design plus two reference test servers (`MCP Everything`, `DeepWiki`). See the [MCP Catalog directory](../features/default-mcp-catalog/index.md) for the per-category browse and [MCP Server → Catalog & Sidebar Filtering](../features/mcp-server/index.md#catalog-sidebar-filtering) for the sidebar mechanics.
 
 ## Backend prerequisites
 
@@ -113,7 +113,7 @@ If you switch to the `OpenAI` setting, Ollama is not required at startup. In tha
 
 For `OpenAI-Compatible` settings, whether Ollama is still required depends on the selected backend and whether embeddings still use Ollama.
 
-The actual launch command for OpenAI depends on your install path — see [Switching to OpenAI](#switching-to-openai) below for cross-references.
+The actual launch command for OpenAI depends on your install path - see [Switching to OpenAI](#switching-to-openai) below for cross-references.
 
 ## Model Configuration
 
@@ -340,10 +340,10 @@ To opt out, set `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` before launching:
 
 - **Server / Docker / `mvn`**: export the env var in your shell
 - **Desktop launcher**: set it in your OS environment or launcher env config before starting
-  the app — the launcher forwards it to every window and to the bundled Spring process
+  the app - the launcher forwards it to every window and to the bundled Spring process
 - **From source / IDE**: pass `-Dspring.ai.playground.telemetry.enabled=false` as a JVM arg
 
-For more details, see the [README](https://github.com/spring-ai-community/spring-ai-playground#anonymous-usage-telemetry).
+For more details, see the [README](https://github.com/spring-ai-community/spring-ai-playground#anonymous-usage-telemetry) and the [Configuration reference → Telemetry](configuration.md#telemetry).
 
 ## Next Step
 
@@ -357,6 +357,7 @@ After the app is running and the model backend is configured:
 - [Overview](../index.md): see the product positioning, quick start path, and documentation map
 - [Desktop App](desktop.md): detailed install + Configuration Walkthrough for the recommended path
 - [Alternative Runtimes](alternative-runtimes.md): Docker container and direct source / fat-JAR execution
+- [Configuration](configuration.md): every property / environment variable / default, and how to set it from the app, Docker, or source
 - [Architecture](../architecture.md): runtime layers, data flows, and extension points
 - [Features](../features/index.md): the main product areas and what they do
 - [Tutorials](../tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat

@@ -30,6 +30,10 @@ import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.service.chat.ChatHistory;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.chat.ChatService;
+import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
+import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
+import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
@@ -62,17 +66,28 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     private final Consumer<ChatHistory> completeChatHistoryConsumer;
     private final ChatHistoryService chatHistoryService;
     private final McpClientService mcpClientService;
+    private final ToolSpecService toolSpecService;
+    private final ToolSpecPersistenceService toolSpecPersistenceService;
+    private final ToolActivationCalculator toolActivationCalculator;
+    private final McpServerInfoService mcpServerInfoService;
     private final ChatHistoryView chatHistoryView;
     private final WorkspaceSettingsDrawer settingsDrawer;
     private ChatModelSettingView chatModelSettingView;
     private ChatContentView chatContentView;
 
     public ChatView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
-            ChatHistoryService chatHistoryService, McpClientService mcpClientService) {
+            ChatHistoryService chatHistoryService, McpClientService mcpClientService,
+            ToolSpecService toolSpecService, ToolSpecPersistenceService toolSpecPersistenceService,
+            ToolActivationCalculator toolActivationCalculator,
+            McpServerInfoService mcpServerInfoService) {
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
         this.mcpClientService = mcpClientService;
+        this.toolSpecService = toolSpecService;
+        this.toolSpecPersistenceService = toolSpecPersistenceService;
+        this.toolActivationCalculator = toolActivationCalculator;
+        this.mcpServerInfoService = mcpServerInfoService;
 
         PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_SELECT_EVENT,
@@ -111,6 +126,10 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     }
 
     private void applySettingsAndNewChat() {
+        if (Objects.isNull(this.chatModelSettingView)) {
+            addNewChatContent();
+            return;
+        }
         addNewChatContent(this.chatModelSettingView.getSystemPromptTextArea(),
                 this.chatModelSettingView.getChatOptions());
     }
@@ -128,8 +147,14 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
         if (Objects.isNull(chatHistory))
             return;
 
+        if (Objects.nonNull(this.chatContentView)
+                && chatHistory.conversationId().equals(this.chatContentView.getConversationId()))
+            return;
+
         this.chatContentView = new ChatContentView(this.persistentUiDataStorage, this.chatService, chatHistory,
-                this.completeChatHistoryConsumer, this.mcpClientService);
+                this.completeChatHistoryConsumer, this.mcpClientService,
+                this.toolSpecService, this.toolSpecPersistenceService, this.toolActivationCalculator,
+                this.mcpServerInfoService);
         ChatOptions chatOptions = chatHistory.chatOptions();
         String label = String.format("%s: %s", this.chatService.getChatModelProvider(), chatOptions.getModel());
         VaadinUtils.getUi(this).access(() -> {
@@ -148,9 +173,7 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
         if (existing != null) {
             changeChatContent(existing);
         } else {
-            // Conversation found in trace data but no longer in active chat memory (cleared / restart
-            // before persistence load / different process). Surface the situation instead of silently
-            // dropping into a fresh chat.
+            // In trace data but not in active chat memory (cleared/restart) — surface it instead of silently starting fresh.
             Notification n = Notification.show(
                     "Conversation " + shortenId(convId) + " is not in active chat history — starting a fresh chat.",
                     6000, Notification.Position.TOP_CENTER);

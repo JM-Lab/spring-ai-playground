@@ -1,29 +1,29 @@
-description: Default Tools — Global reference. 22 tools that call public HTTPS APIs — GitHub, Wikipedia, weather, finance, geo, search.
+description: Default Tools - Global reference. 22 tools that call public HTTPS APIs - GitHub, Wikipedia, weather, finance, geo, search.
 
-# Default Tools — Global
+# Default Tools - Global
 
-The 22 tools in `default-tool-specs-network.json` call **public global HTTPS endpoints** — most of them anonymous, all of them outside Korea. Categories span code (GitHub), encyclopedia (Wikipedia), forum (Hacker News, Stack Overflow, Reddit), finance (CoinGecko, exchangerate.host), geo (ipapi.co, restcountries, Nominatim, sunrise-sunset, USGS), weather (Open-Meteo), and government data (Nager.Date public holidays).
+The 22 tools in `default-tool-specs-network.json` call **public global HTTPS endpoints** - most of them anonymous, all of them outside Korea. Categories span code (GitHub), encyclopedia (Wikipedia), forum (Hacker News, Stack Overflow, Reddit), finance (CoinGecko, exchangerate.host), geo (ipapi.co, restcountries, Nominatim, sunrise-sunset, USGS), weather (Open-Meteo), and government data (Nager.Date public holidays).
 
-None of them need an API key — they live entirely off the providers' anonymous rate-limit tiers. Tool actions execute with the default sandbox `networkMode: strict`, so every fetch goes through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) regardless of whether the destination is a literal IP or a DNS host.
+None of them need an API key - they live entirely off the providers' anonymous rate-limit tiers. Tool actions execute with host-`allowlist` egress, so every fetch goes through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) regardless of whether the destination is a literal IP or a DNS host.
 
-The grouping below mirrors the `tags` axis you can filter by inside the Tool MCP Server Setting drawer.
+The grouping below mirrors the `tags` axis each tool carries - the same axis you can filter by in the Tool Studio tool list.
 
 ## Browse the 22 global APIs { #browse-the-global-apis }
 
-All run with `networkMode: strict` (SSRF four-layer guard) at sandbox **L0**. Tag chips: `github` · `search` · `finance` · `geo` · `weather`.
+All run with host-`allowlist` egress (SSRF four-layer guard) at sandbox **L3**. Tag chips: `github` · `search` · `finance` · `geo` · `weather`.
 
 <div class="tcg-grid" markdown>
 
 <div class="tcg-card t-github tcg-card--clickable" id="getGithubRepo" data-tool-id="getGithubRepo" data-tool-title="getGithubRepo" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getGithubRepo</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches public metadata for a GitHub repository (no authentication needed; subject to GitHub's 60 requests/hour anonymous rate limit).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -39,7 +39,7 @@ Returns: { fullName, description, stars, forks, openIssues, language, license, d
 | `owner` | `STRING` | ✓ | GitHub user or org login (e.g. 'spring-projects') |
 | `repo` | `STRING` | ✓ | Repository name (e.g. 'spring-ai') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -91,13 +91,13 @@ return {
 <div class="tcg-card t-wiki tcg-card--clickable" id="searchWikipedia" data-tool-id="searchWikipedia" data-tool-title="searchWikipedia" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchWikipedia</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-wikipedia:</div>
-<div class="tcg-type">web · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Looks up a Wikipedia page summary by title. No authentication required. Uses the public REST API at en.wikipedia.org/api/rest_v1/page/summary.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `lang`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -113,7 +113,7 @@ Returns: { title, description, extract (plain-text summary), thumbnail, pageUrl 
 | `title` | `STRING` | ✓ | Article title (case-insensitive, spaces ok) |
 | `lang` | `STRING` |  | Language code (e.g. 'en', 'ko', default 'en') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `en.wikipedia.org`, `ko.wikipedia.org`, `ja.wikipedia.org`, `es.wikipedia.org`, `de.wikipedia.org`, `fr.wikipedia.org`, `zh.wikipedia.org` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -124,7 +124,7 @@ Returns: { title, description, extract (plain-text summary), thumbnail, pageUrl 
  * Uses the public REST API:  https://{lang}.wikipedia.org/api/rest_v1/page/summary/{title}
  * No auth, generous rate limits, JSON response.
  *
- * `lang` is the wiki subdomain — 'en', 'ko', 'ja', etc. Defaults to 'en'.
+ * `lang` is the wiki subdomain - 'en', 'ko', 'ja', etc. Defaults to 'en'.
  */
 
 if (title == null || title === '') throw new Error('title required');
@@ -158,13 +158,13 @@ return {
 <div class="tcg-card t-hn tcg-card--clickable" id="searchHackerNews" data-tool-id="searchHackerNews" data-tool-title="searchHackerNews" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchHackerNews</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-ycombinator:</div>
-<div class="tcg-type">web · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Searches Hacker News stories via the public Algolia HN Search API (no auth needed).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `hits` · `tag`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -181,7 +181,7 @@ Returns up to `hits` results, each as: { id, title, url, points, author, comment
 | `hits` | `INTEGER` |  | Max results to return (1-20, default 5) |
 | `tag` | `STRING` |  | HN tag filter: story \| comment \| poll \| etc (optional) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `hn.algolia.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -228,13 +228,13 @@ return (data.hits || []).map(h => ({
 <div class="tcg-card t-stack tcg-card--clickable" id="searchStackOverflow" data-tool-id="searchStackOverflow" data-tool-title="searchStackOverflow" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchStackOverflow</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-stackoverflow:</div>
-<div class="tcg-type">web · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Searches Stack Overflow questions via the public Stack Exchange API (anonymous, capped at 300 requests / IP / day).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `pageSize` · `sort` · `tags`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -252,7 +252,7 @@ Returns up to `pageSize` results sorted by `sort` (relevance | activity | votes 
 | `sort` | `STRING` |  | relevance \| activity \| votes \| creation |
 | `tags` | `STRING` |  | Semicolon-separated tag filter (e.g. 'java;spring') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.stackexchange.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -263,7 +263,7 @@ Returns up to `pageSize` results sorted by `sort` (relevance | activity | votes 
  * Endpoint: https://api.stackexchange.com/2.3/search/advanced
  *
  * Anonymous quota: 300 requests / IP / day. Returns paginated results
- * (this tool returns the first page only — adjust `pageSize` up to 30).
+ * (this tool returns the first page only - adjust `pageSize` up to 30).
  */
 
 if (query == null || query === '') throw new Error('query required');
@@ -305,13 +305,13 @@ return (data.items || []).map(q => ({
 <div class="tcg-card t-github tcg-card--clickable" id="getGithubUser" data-tool-id="getGithubUser" data-tool-title="getGithubUser" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getGithubUser</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Fetches public profile information for a GitHub user or organisation (no auth — 60 req/h anonymous).
+Fetches public profile information for a GitHub user or organisation (no auth - 60 req/h anonymous).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `login`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -326,7 +326,7 @@ Returns: { login, type, name, company, blog, location, bio, publicRepos, publicG
 |---|---|---|---|
 | `login` | `STRING` | ✓ | GitHub user or org login |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -369,13 +369,13 @@ return {
 <div class="tcg-card t-github tcg-card--clickable" id="listGithubRepoIssues" data-tool-id="listGithubRepoIssues" data-tool-title="listGithubRepoIssues" markdown>
 <div class="tcg-name"><span class="tcg-name__text">listGithubRepoIssues</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Lists issues on a public GitHub repository (no auth). Excludes pull requests by default. Anonymous quota 60 req/h.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo` · `state` · `perPage` · `page`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -394,7 +394,7 @@ Returns up to `perPage` issues, each as: { number, title, state, author, labels,
 | `perPage` | `INTEGER` |  | Max issues per page (1-100, default 10) |
 | `page` | `INTEGER` |  | Page number (1-based, default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -441,13 +441,13 @@ return (issues || []).filter(i => !i.pull_request).map(i => ({
 <div class="tcg-card t-github tcg-card--clickable" id="listGithubRepoReleases" data-tool-id="listGithubRepoReleases" data-tool-title="listGithubRepoReleases" markdown>
 <div class="tcg-name"><span class="tcg-name__text">listGithubRepoReleases</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Lists releases on a public GitHub repository (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo` · `perPage`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -464,7 +464,7 @@ Returns: [{ tag, name, draft, prerelease, publishedAt, htmlUrl, body }].
 | `repo` | `STRING` | ✓ | Repo name |
 | `perPage` | `INTEGER` |  | Max releases (1-30, default 5) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -503,13 +503,13 @@ return (resp.json() || []).map(r => ({
 <div class="tcg-card t-github tcg-card--clickable" id="getGithubLatestRelease" data-tool-id="getGithubLatestRelease" data-tool-title="getGithubLatestRelease" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getGithubLatestRelease</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches the latest non-draft, non-prerelease release of a public GitHub repository (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -525,7 +525,7 @@ Returns: { tag, name, publishedAt, htmlUrl, body, assets: [{ name, downloadUrl, 
 | `owner` | `STRING` | ✓ | Repo owner |
 | `repo` | `STRING` | ✓ | Repo name |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -566,13 +566,13 @@ return {
 <div class="tcg-card t-github tcg-card--clickable" id="getGithubFileContent" data-tool-id="getGithubFileContent" data-tool-title="getGithubFileContent" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getGithubFileContent</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches the raw text content of a file from a public GitHub repository (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo` · `path` · `ref`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -590,7 +590,7 @@ For directories this returns a listing instead: [{ name, type, path }]. Files ov
 | `path` | `STRING` | ✓ | Path inside the repo (e.g. 'README.adoc') |
 | `ref` | `STRING` |  | Branch / tag / commit SHA (default: repo's default branch) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -622,7 +622,7 @@ if (Array.isArray(data)) {
   // Directory listing
   return data.map(e => ({ name: e.name, type: e.type, path: e.path, size: e.size }));
 }
-// File — decode base64 content. GitHub wraps lines every 60 chars; strip whitespace first.
+// File - decode base64 content. GitHub wraps lines every 60 chars; strip whitespace first.
 if (data.encoding !== 'base64' || data.type !== 'file') {
   return { found: true, type: data.type, name: data.name, path: data.path, size: data.size,
            note: 'unsupported content; use a smaller file or different endpoint' };
@@ -643,13 +643,13 @@ return { name: data.name, path: data.path, size: data.size, sha: data.sha,
 <div class="tcg-card t-github tcg-card--clickable" id="searchGithubRepos" data-tool-id="searchGithubRepos" data-tool-title="searchGithubRepos" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchGithubRepos</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Searches public GitHub repositories by query (no auth — anonymous limit 10 requests/minute).
+Searches public GitHub repositories by query (no auth - anonymous limit 10 requests/minute).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `sort` · `perPage`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -666,7 +666,7 @@ Returns up to `perPage` results: [{ fullName, description, stars, forks, languag
 | `sort` | `STRING` |  | stars \| forks \| updated \| best-match (default) |
 | `perPage` | `INTEGER` |  | Max results (1-30, default 5) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -709,13 +709,13 @@ return (data.items || []).map(r => ({
 <div class="tcg-card t-github tcg-card--clickable" id="listGithubRepoContributors" data-tool-id="listGithubRepoContributors" data-tool-title="listGithubRepoContributors" markdown>
 <div class="tcg-name"><span class="tcg-name__text">listGithubRepoContributors</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-github:</div>
-<div class="tcg-type">web · github <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · github <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Lists top contributors to a public GitHub repository (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `owner` · `repo` · `perPage`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -732,7 +732,7 @@ Returns: [{ login, contributions, htmlUrl, avatarUrl }] sorted by commit count d
 | `repo` | `STRING` | ✓ | Repo name |
 | `perPage` | `INTEGER` |  | Max contributors (1-100, default 10) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -768,13 +768,13 @@ return (resp.json() || []).map(c => ({
 <div class="tcg-card t-crypto tcg-card--clickable" id="getCryptoPrice" data-tool-id="getCryptoPrice" data-tool-title="getCryptoPrice" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getCryptoPrice</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-currency-btc:</div>
-<div class="tcg-type">web · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches current crypto prices from CoinGecko's public Simple Price API (no auth, generous rate limit). Pass coin ids like 'bitcoin,ethereum' and currency ids like 'usd,krw'.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `ids` · `currencies`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -790,7 +790,7 @@ Returns: { <coinId>: { <currency>: price, ... }, ... }
 | `ids` | `STRING` | ✓ | Comma-separated CoinGecko coin ids |
 | `currencies` | `STRING` |  | Comma-separated target currencies (e.g. usd, krw) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.coingecko.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -826,13 +826,13 @@ return resp.json();
 <div class="tcg-card t-currency tcg-card--clickable" id="convertCurrency" data-tool-id="convertCurrency" data-tool-title="convertCurrency" markdown>
 <div class="tcg-name"><span class="tcg-name__text">convertCurrency</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-currency-usd:</div>
-<div class="tcg-type">web · finance <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Converts between fiat currencies using exchangerate.host (no key, no rate limit listed).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `from` · `to` · `amount`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -849,7 +849,7 @@ Returns: { from, to, amount, rate, result, date }.
 | `to` | `STRING` | ✓ | Target currency code (ISO 4217, e.g. KRW) |
 | `amount` | `NUMBER` |  | Amount in the source currency (default 1) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.exchangerate.host` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -895,13 +895,13 @@ return {
 <div class="tcg-card tcg-card--clickable" id="getIpInfo" data-tool-id="getIpInfo" data-tool-title="getIpInfo" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getIpInfo</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-ip-network-outline:</div>
-<div class="tcg-type">web · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Returns geolocation and ASN info for an IP address (or the caller's IP if `ip` is omitted) via ipapi.co (no auth, 1000 req/day).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `ip`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -916,7 +916,7 @@ Returns: { ip, city, region, country, countryName, latitude, longitude, timezone
 |---|---|---|---|
 | `ip` | `STRING` |  | IPv4 / IPv6 address (omit for caller's own IP) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `ipapi.co` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -926,7 +926,7 @@ Returns: { ip, city, region, country, countryName, latitude, longitude, timezone
  *
  * GET https://ipapi.co/{ip}/json/
  *
- * If `ip` is omitted, ipapi resolves the caller's IP — useful for sanity-checking
+ * If `ip` is omitted, ipapi resolves the caller's IP - useful for sanity-checking
  * what the playground's outbound IP looks like to the rest of the internet.
  */
 
@@ -959,13 +959,13 @@ return {
 <div class="tcg-card tcg-card--clickable" id="getCountryInfo" data-tool-id="getCountryInfo" data-tool-title="getCountryInfo" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getCountryInfo</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-earth:</div>
-<div class="tcg-type">web · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches country information from restcountries.com (no auth) by partial or full name.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `name`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -978,9 +978,9 @@ Returns an array of matches, each: { name, officialName, capital, region, subreg
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `name` | `STRING` | ✓ | Country name (partial match — e.g. 'korea', 'germany') |
+| `name` | `STRING` | ✓ | Country name (partial match - e.g. 'korea', 'germany') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `restcountries.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -991,7 +991,7 @@ Returns an array of matches, each: { name, officialName, capital, region, subreg
  * GET https://restcountries.com/v3.1/name/{name}
  *
  * Partial matches are supported (e.g. "korea" returns both Koreas).
- * The API returns extremely chatty objects — we project to the most useful fields.
+ * The API returns extremely chatty objects - we project to the most useful fields.
  */
 
 if (name == null || name === '') throw new Error('name required');
@@ -1027,13 +1027,13 @@ return (resp.json() || []).map(c => ({
 <div class="tcg-card t-arxiv tcg-card--clickable" id="searchArxiv" data-tool-id="searchArxiv" data-tool-title="searchArxiv" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchArxiv</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-arxiv:</div>
-<div class="tcg-type">web · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Searches arXiv preprints via the public Atom-feed API (no auth). Results are parsed from XML.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `max` · `sortBy`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1050,7 +1050,7 @@ Returns up to `max` entries, each: { id, title, summary, authors, published, upd
 | `max` | `INTEGER` |  | Max results (1-50, default 5) |
 | `sortBy` | `STRING` |  | relevance \| lastUpdatedDate \| submittedDate |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `export.arxiv.org` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1131,13 +1131,13 @@ return entries.map(e => {
 <div class="tcg-card tcg-card--clickable" id="getPublicHolidays" data-tool-id="getPublicHolidays" data-tool-title="getPublicHolidays" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getPublicHolidays</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-calendar-star-outline:</div>
-<div class="tcg-type">web <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Returns public holidays for a given country and year via Nager.Date (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `year` · `countryCode`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1153,7 +1153,7 @@ Returns: [{ date, localName, name, fixed, global, types }]. Country codes are 2-
 | `year` | `INTEGER` | ✓ | Calendar year (e.g. 2026) |
 | `countryCode` | `STRING` |  | 2-letter ISO country code (default 'KR') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `date.nager.at` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1195,13 +1195,13 @@ return (resp.json() || []).map(h => ({
 <div class="tcg-card t-reddit tcg-card--clickable" id="searchReddit" data-tool-id="searchReddit" data-tool-title="searchReddit" markdown>
 <div class="tcg-name"><span class="tcg-name__text">searchReddit</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-reddit:</div>
-<div class="tcg-type">web · search <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Searches a public subreddit via Reddit's JSON API (no auth, but rate-limited and User-Agent required).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `subreddit` · `query` · `limit` · `sort`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1219,7 +1219,7 @@ Returns up to `limit` posts: [{ title, author, score, numComments, createdUtc, s
 | `limit` | `INTEGER` |  | Max posts (1-25, default 5) |
 | `sort` | `STRING` |  | relevance \| hot \| top \| new \| comments |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.reddit.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1230,7 +1230,7 @@ Returns up to `limit` posts: [{ title, author, score, numComments, createdUtc, s
  * GET https://www.reddit.com/r/{subreddit}/search.json?q=...&restrict_sr=1&limit=...
  *
  * No authentication needed for read access. Reddit BANS empty / generic User-Agent
- * strings — we pass a descriptive one. Rate limit: ~60 req/min/IP.
+ * strings - we pass a descriptive one. Rate limit: ~60 req/min/IP.
  */
 
 if (subreddit == null || subreddit === '') throw new Error('subreddit required');
@@ -1277,13 +1277,13 @@ return children.map(c => {
 <div class="tcg-card t-meteo tcg-card--clickable" id="getOpenMeteoForecast" data-tool-id="getOpenMeteoForecast" data-tool-title="getOpenMeteoForecast" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getOpenMeteoForecast</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-weather-cloudy-clock:</div>
-<div class="tcg-type">web · weather <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · weather <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Fetches a multi-day weather forecast from Open-Meteo (no auth, 10k req/day for non-commercial). Open-Meteo serves official ECMWF/GFS/ICON model output — far richer than wttr.in but requires lat/lon (use `geocodeAddress` first if you only have a city name).
+Fetches a multi-day weather forecast from Open-Meteo (no auth, 10k req/day for non-commercial). Open-Meteo serves official ECMWF/GFS/ICON model output - far richer than wttr.in but requires lat/lon (use `geocodeAddress` first if you only have a city name).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `latitude` · `longitude` · `days` · `timezone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1301,7 +1301,7 @@ Returns: { latitude, longitude, timezone, daily: { time, temperatureMax, tempera
 | `days` | `INTEGER` |  | Forecast days (1-16, default 3) |
 | `timezone` | `STRING` |  | IANA tz (default 'auto') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.open-meteo.com` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1369,13 +1369,13 @@ return {
 <div class="tcg-card t-osm tcg-card--clickable" id="geocodeAddress" data-tool-id="geocodeAddress" data-tool-title="geocodeAddress" markdown>
 <div class="tcg-name"><span class="tcg-name__text">geocodeAddress</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:simple-openstreetmap:</div>
-<div class="tcg-type">web · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Forward-geocodes a free-form address to coordinates via OpenStreetMap Nominatim (no key). Nominatim's usage policy requires a descriptive User-Agent and at most 1 req/s — we set both.
+Forward-geocodes a free-form address to coordinates via OpenStreetMap Nominatim (no key). Nominatim's usage policy requires a descriptive User-Agent and at most 1 req/s - we set both.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `address` · `limit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1391,7 +1391,7 @@ Returns up to `limit` matches: [{ displayName, latitude, longitude, country, cit
 | `address` | `STRING` | ✓ | Address / place text (e.g. 'Seoul, South Korea' or 'Eiffel Tower, Paris') |
 | `limit` | `INTEGER` |  | Max matches (1-10, default 3) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `nominatim.openstreetmap.org` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1435,13 +1435,13 @@ return (resp.json() || []).map(r => ({
 <div class="tcg-card tcg-card--clickable" id="getSunriseSunset" data-tool-id="getSunriseSunset" data-tool-title="getSunriseSunset" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getSunriseSunset</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-weather-sunset:</div>
-<div class="tcg-type">web · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Returns sunrise / sunset / twilight times for a given lat-lon and date via sunrise-sunset.org (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `latitude` · `longitude` · `date` · `timezone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1459,7 +1459,7 @@ Returns: { sunrise, sunset, solarNoon, dayLength, civilTwilightBegin, civilTwili
 | `date` | `STRING` |  | ISO date (YYYY-MM-DD), defaults to today |
 | `timezone` | `STRING` |  | IANA tz for the response (default 'UTC') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.sunrise-sunset.org` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1525,13 +1525,13 @@ return {
 <div class="tcg-card t-usgs tcg-card--clickable" id="getRecentEarthquakes" data-tool-id="getRecentEarthquakes" data-tool-title="getRecentEarthquakes" markdown>
 <div class="tcg-name"><span class="tcg-name__text">getRecentEarthquakes</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-vibrate:</div>
-<div class="tcg-type">web · geo <span class="risk risk-l0">L0</span></div>
+<div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
 Fetches recent earthquakes from the USGS public catalog (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `minMagnitude` · `lookbackHours` · `limit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1548,7 +1548,7 @@ Returns up to `limit` events: [{ time, place, magnitude, type, latitude, longitu
 | `lookbackHours` | `INTEGER` |  | Hours to look back (1-720, default 24) |
 | `limit` | `INTEGER` |  | Max events (1-100, default 20) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `earthquake.usgs.gov` (SSRF-guarded); no filesystem.
 
 **JS source**
 
@@ -1559,7 +1559,7 @@ Returns up to `limit` events: [{ time, place, magnitude, type, latitude, longitu
  * GET https://earthquake.usgs.gov/fdsnws/event/1/query?
  *     format=geojson&starttime=...&minmagnitude=...&limit=...
  *
- * `time` field is epoch millis — we convert to ISO. Depth is in km already.
+ * `time` field is epoch millis - we convert to ISO. Depth is in km already.
  */
 
 const mm  = (minMagnitude  == null || minMagnitude  === '') ? 4.5 : Number(minMagnitude);
@@ -1606,13 +1606,13 @@ return (data.features || []).map(f => {
 
 ## Composition patterns (anonymous-API chains)
 
-All 22 run anonymously off rate-limit tiers, so they are the cheapest tools to chain — no credential plumbing, just URL composition:
+All 22 run anonymously off rate-limit tiers, so they are the cheapest tools to chain - no credential plumbing, just URL composition:
 
-- **City → coordinates → forecast** — `geocodeAddress(address)` (Nominatim) → `getOpenMeteoForecast(lat, lon, days)` so the agent can answer "is it raining tomorrow in *city*?" without hard-coding lat/lon.
-- **Release radar** — `getGithubLatestRelease(owner, repo)` → run `openaiResponseGenerator` over the `.body` to get a three-sentence release-notes digest.
-- **Knowledge cross-check** — `searchWikipedia(title)` + `searchHackerNews(query)` + `searchStackOverflow(query)` in parallel; the agent reconciles the three views.
-- **IP triage** — `getIpInfo(ip)` → branch on `country_code` / `org` → call `getRecentEarthquakes(lat, lon)` or `getOpenMeteoForecast(lat, lon)` for the same coordinates.
-- **arXiv → summary** — `searchArxiv(query)` → top-N abstracts as prompt fragments → `openaiResponseGenerator` for a literature snapshot.
+- **City → coordinates → forecast** - `geocodeAddress(address)` (Nominatim) → `getOpenMeteoForecast(lat, lon, days)` so the agent can answer "is it raining tomorrow in *city*?" without hard-coding lat/lon.
+- **Release radar** - `getGithubLatestRelease(owner, repo)` → run `openaiResponseGenerator` over the `.body` to get a three-sentence release-notes digest.
+- **Knowledge cross-check** - `searchWikipedia(title)` + `searchHackerNews(query)` + `searchStackOverflow(query)` in parallel; the agent reconciles the three views.
+- **IP triage** - `getIpInfo(ip)` → branch on `country_code` / `org` → call `getRecentEarthquakes(lat, lon)` or `getOpenMeteoForecast(lat, lon)` for the same coordinates.
+- **arXiv → summary** - `searchArxiv(query)` → top-N abstracts as prompt fragments → `openaiResponseGenerator` for a literature snapshot.
 
 [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md) walks the first two patterns (geo-anchored weather + release radar) end-to-end.
 
@@ -1629,6 +1629,6 @@ All 22 run anonymously off rate-limit tiers, so they are the cheapest tools to c
 | Nominatim (OpenStreetMap) | 1 req / s + descriptive User-Agent required (both honoured by the helper) |
 | Wikipedia / HN Algolia / arXiv / restcountries / Nager.Date / USGS / exchangerate.host / CoinGecko / sunrise-sunset | generous (no published per-day cap) |
 
-If you need higher quotas you can fork a tool and add a vendor key — the same `${ENV_VAR}` static-variable mechanism the [Examples](examples.md) tools use.
+If you need higher quotas you can fork a tool and add a vendor key - the same `${ENV_VAR}` static-variable mechanism the [Examples](examples.md) tools use.
 
-→ [Tool Studio: SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) — the network policy these tools run under.
+→ [Tool Studio: SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) - the network policy these tools run under.

@@ -716,6 +716,10 @@
         "fileWrite": true
       }
     },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to write to a file. Allow '{toolName}' with {args}?"
+    },
     "draft": true
   }
 ]

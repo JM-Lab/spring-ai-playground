@@ -1,10 +1,10 @@
-description: Default Tools — Utilities reference. 26 pure-compute tools — text, datetime, math, security, encoding, crypto, CSV. No network, no env vars, no filesystem.
+description: Default Tools - Utilities reference. 26 pure-compute tools - text, datetime, math, security, encoding, crypto, CSV. No network, no env vars, no filesystem.
 
-# Default Tools — Utilities
+# Default Tools - Utilities
 
-The 26 tools in `default-tool-specs-builtin.json` (16) and `default-tool-specs-builtin-helpers.json` (10) cover text manipulation, date arithmetic, math, security scanners, encoding, cryptographic primitives, and CSV serialisation / parsing. They share one property — **no network, no filesystem, no env vars**. Everything runs in-memory at sandbox **L0** by default; the only outside helpers in play are `safety.parser.csv` for `formatCsv` / `parseCsv` and `crypto.subtle` for the crypto group — both still purely in-memory.
+The 26 tools in `default-tool-specs-builtin.json` (16) and `default-tool-specs-builtin-helpers.json` (10) cover text manipulation, date arithmetic, math, security scanners, encoding, cryptographic primitives, and CSV serialisation / parsing. They share one property - **no network, no filesystem, no env vars**. Everything runs in-memory at sandbox **L0** by default; the only outside helpers in play are `safety.parser.csv` for `formatCsv` / `parseCsv` and `crypto.subtle` for the crypto group - both still purely in-memory.
 
-Because they ride on JVM stdlib — `java.security.MessageDigest`, `javax.crypto`, JCE, the JDK regex engine — every one of these runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics.
+Because they ride on JVM stdlib - `java.security.MessageDigest`, `javax.crypto`, JCE, the JDK regex engine - every one of these runs identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics.
 
 The 26 tools split by concern.
 
@@ -23,7 +23,7 @@ Converts a moment in time between IANA time zones. Returns the same instant rend
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `toTimeZone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -35,7 +35,7 @@ Converts a moment in time between IANA time zones. Returns the same instant rend
 | `text` | `STRING` | ✓ | ISO date/time text |
 | `toTimeZone` | `STRING` | ✓ | Target IANA time zone |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -46,7 +46,7 @@ Converts a moment in time between IANA time zones. Returns the same instant rend
  * Output is ISO-8601 with explicit ±HH:MM offset (NOT 'Z'), so the
  * time zone is unambiguous in the rendered string.
  *
- * Pure ES2024 — Intl.DateTimeFormat for components + manual offset calc.
+ * Pure ES2024 - Intl.DateTimeFormat for components + manual offset calc.
  */
 
 if (text == null || text === '') throw new Error('text required');
@@ -97,7 +97,7 @@ Computes b - a in the requested unit (days|hours|minutes|seconds|milliseconds). 
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `a` · `b` · `unit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -110,18 +110,18 @@ Computes b - a in the requested unit (days|hours|minutes|seconds|milliseconds). 
 | `b` | `STRING` | ✓ | End ISO date/time |
 | `unit` | `STRING` |  | Unit of the result (default 'milliseconds') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
 ```javascript
 /**
  * Computes `b - a` in the requested unit. Result is a (possibly fractional)
- * number — e.g. 5.5 days, 36.0 hours, 0.25 seconds.
+ * number - e.g. 5.5 days, 36.0 hours, 0.25 seconds.
  *
  * `unit` accepts: days / hours / minutes / seconds / milliseconds.
  *
- * Pure ES2024 — Date.getTime() based; not calendar-aware (use dateMath for
+ * Pure ES2024 - Date.getTime() based; not calendar-aware (use dateMath for
  * month/year-level arithmetic).
  */
 
@@ -154,7 +154,7 @@ Percent-encodes a string for use in a URL component. Equivalent to encodeURIComp
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -165,7 +165,7 @@ Percent-encodes a string for use in a URL component. Equivalent to encodeURIComp
 |---|---|---|---|
 | `text` | `STRING` | ✓ | Text to URL-encode |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -177,7 +177,7 @@ Percent-encodes a string for use in a URL component. Equivalent to encodeURIComp
  * (ALPHA / DIGIT / -._~). Spaces become %20 (NOT '+'); '&', '=', '?', '#'
  * and other reserved characters are all encoded.
  *
- * Pure ES2024 — uses the standard encodeURIComponent only.
+ * Pure ES2024 - uses the standard encodeURIComponent only.
  */
 
 if (text == null) throw new Error('text required');
@@ -197,7 +197,7 @@ Adds (or subtracts) a duration to a date and returns the resulting ISO timestamp
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `amount` · `unit`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -210,7 +210,7 @@ Adds (or subtracts) a duration to a date and returns the resulting ISO timestamp
 | `amount` | `INTEGER` | ✓ | Amount to add (negative to subtract) |
 | `unit` | `STRING` | ✓ | Duration unit |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -222,7 +222,7 @@ Adds (or subtracts) a duration to a date and returns the resulting ISO timestamp
  *                  seconds / milliseconds (both singular and plural).
  * Negative `amount` performs subtraction.
  *
- * Pure ES2024 — uses Date UTC setters so DST never bites.
+ * Pure ES2024 - uses Date UTC setters so DST never bites.
  */
 
 if (text == null || text === '') throw new Error('text required');
@@ -260,7 +260,7 @@ Parses a date/time string (ISO 8601 or RFC 2822) and returns its components plus
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `timeZone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -272,7 +272,7 @@ Parses a date/time string (ISO 8601 or RFC 2822) and returns its components plus
 | `text` | `STRING` | ✓ | Date/time text |
 | `timeZone` | `STRING` |  | IANA time zone to interpret the components in (default UTC) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -286,7 +286,7 @@ Parses a date/time string (ISO 8601 or RFC 2822) and returns its components plus
  *   { iso, epochMillis, year, month, day, hour, minute, second,
  *     weekday, timeZone }
  *
- * Pure ES2024 — uses Date + Intl.DateTimeFormat.formatToParts.
+ * Pure ES2024 - uses Date + Intl.DateTimeFormat.formatToParts.
  */
 
 if (text == null || text === '') throw new Error('text required');
@@ -333,7 +333,7 @@ Computes the next datetime matching a standard 5-field cron expression (minute h
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `expression` · `from` · `count`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -346,7 +346,7 @@ Computes the next datetime matching a standard 5-field cron expression (minute h
 | `from` | `STRING` |  | Starting ISO datetime (default: now) |
 | `count` | `INTEGER` |  | Number of next occurrences to return (default 1, max 100) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -360,7 +360,7 @@ Computes the next datetime matching a standard 5-field cron expression (minute h
  *
  * All times are computed in UTC and returned as ISO timestamps.
  *
- * Pure ES2024 — Date + Set, no external scheduler library.
+ * Pure ES2024 - Date + Set, no external scheduler library.
  */
 
 if (expression == null || expression === '') throw new Error('expression required');
@@ -432,7 +432,7 @@ Returns a line-by-line diff between two texts. Each entry is {op, line} where op
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `a` · `b`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -444,7 +444,7 @@ Returns a line-by-line diff between two texts. Each entry is {op, line} where op
 | `a` | `STRING` | ✓ | First text (the 'before' side) |
 | `b` | `STRING` | ✓ | Second text (the 'after' side) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -501,7 +501,7 @@ Sorts lines of text alphabetically. Supports reverse and case-insensitive option
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `reverse` · `caseInsensitive`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -514,7 +514,7 @@ Sorts lines of text alphabetically. Supports reverse and case-insensitive option
 | `reverse` | `BOOLEAN` |  | Sort descending |
 | `caseInsensitive` | `BOOLEAN` |  | Compare case-insensitively |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -522,8 +522,8 @@ Sorts lines of text alphabetically. Supports reverse and case-insensitive option
 /**
  * Sorts text by line.
  *
- * - `reverse=true`        — descending order.
- * - `caseInsensitive=true` — compare with String.localeCompare ignoring case.
+ * - `reverse=true`        - descending order.
+ * - `caseInsensitive=true` - compare with String.localeCompare ignoring case.
  *
  * Pure ES2024.
  */
@@ -553,7 +553,7 @@ Scans text for personally identifiable information patterns (email, US SSN, US p
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -564,7 +564,7 @@ Scans text for personally identifiable information patterns (email, US SSN, US p
 |---|---|---|---|
 | `text` | `STRING` | ✓ | Text to scan |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -617,7 +617,7 @@ for (const { type, re } of patterns) {
   }
 }
 
-// Credit card detection — extract digit groups then validate Luhn.
+// Credit card detection - extract digit groups then validate Luhn.
 const ccRe = /\b(?:\d[ -]?){13,19}\b/g;
 for (const m of s.matchAll(ccRe)) {
   const digits = m[0].replace(/[ -]/g, '');
@@ -643,7 +643,7 @@ Returns all regex matches in the input. With the 'g' flag every match is returne
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `pattern` · `flags`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -656,7 +656,7 @@ Returns all regex matches in the input. With the 'g' flag every match is returne
 | `pattern` | `STRING` | ✓ | JavaScript-flavoured regex pattern |
 | `flags` | `STRING` |  | Regex flags (e.g. 'g', 'i', 'gi') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -669,7 +669,7 @@ Returns all regex matches in the input. With the 'g' flag every match is returne
  *
  * Each result item is:  { match, groups: [...], index }
  *
- * Pure ES2024 — uses RegExp, matchAll, match.
+ * Pure ES2024 - uses RegExp, matchAll, match.
  */
 
 if (text == null) return [];
@@ -706,7 +706,7 @@ Formats a date (ISO string or epoch ms) using a pattern with tokens yyyy/MM/dd H
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `pattern` · `timeZone`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -719,7 +719,7 @@ Formats a date (ISO string or epoch ms) using a pattern with tokens yyyy/MM/dd H
 | `pattern` | `STRING` |  | Format pattern (e.g. 'yyyy-MM-dd HH:mm:ss') |
 | `timeZone` | `STRING` |  | IANA time zone (default UTC) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -730,7 +730,7 @@ Formats a date (ISO string or epoch ms) using a pattern with tokens yyyy/MM/dd H
  * Supported tokens:  yyyy MM dd HH mm ss SSS
  * Anything else in the pattern is passed through literally.
  *
- * Pure ES2024 — uses Intl.DateTimeFormat.formatToParts.
+ * Pure ES2024 - uses Intl.DateTimeFormat.formatToParts.
  */
 
 if (text == null || text === '') throw new Error('text required');
@@ -776,7 +776,7 @@ Returns summary statistics (count, sum, min, max, mean, median, stddev) for an a
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `numbers`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -787,7 +787,7 @@ Returns summary statistics (count, sum, min, max, mean, median, stddev) for an a
 |---|---|---|---|
 | `numbers` | `ARRAY` | ✓ | Array of numbers |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -848,7 +848,7 @@ Scans text for well-known secret patterns (AWS keys, GitHub tokens, Slack tokens
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -859,7 +859,7 @@ Scans text for well-known secret patterns (AWS keys, GitHub tokens, Slack tokens
 |---|---|---|---|
 | `text` | `STRING` | ✓ | Text to scan |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -869,13 +869,13 @@ Scans text for well-known secret patterns (AWS keys, GitHub tokens, Slack tokens
  * with its masked value + character offset.
  *
  * Detected formats:
- *   AWS access key id          (AKIA…)
+ *   AWS access key id          (AKIA...)
  *   GitHub PAT / OAuth / app   (ghp_, gho_, ghu_, ghs_, ghr_)
- *   Slack token                (xox[abprs]-…)
- *   OpenAI API key             (sk-…)
- *   Stripe key                 (sk_/pk_/rk_test|live_…)
- *   PEM private key block      (-----BEGIN … PRIVATE KEY-----)
- *   JWT compact form           (eyJ…eyJ….…)
+ *   Slack token                (xox[abprs]-...)
+ *   OpenAI API key             (sk-...)
+ *   Stripe key                 (sk_/pk_/rk_test|live_...)
+ *   PEM private key block      (-----BEGIN ... PRIVATE KEY-----)
+ *   JWT compact form           (eyJ...eyJ...sig)
  *
  * Each finding is masked to `XXXX****XXXX` form so the secret never leaks
  * into the result. Pure ES2024.
@@ -921,7 +921,7 @@ Replaces regex matches in the input with the given replacement string. Supports 
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `pattern` · `replacement` · `flags`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -935,7 +935,7 @@ Replaces regex matches in the input with the given replacement string. Supports 
 | `replacement` | `STRING` | ✓ | Replacement string (supports $1, $2, ...) |
 | `flags` | `STRING` |  | Regex flags (e.g. 'g', 'i', 'gi') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -947,7 +947,7 @@ Replaces regex matches in the input with the given replacement string. Supports 
  * Add the `g` flag to replace every match; otherwise only the first match
  * is replaced.
  *
- * Pure ES2024 — uses RegExp + String.replace.
+ * Pure ES2024 - uses RegExp + String.replace.
  */
 
 if (text == null) return '';
@@ -971,7 +971,7 @@ Evaluates a safe arithmetic/logical expression (no eval, no host access). Suppor
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `expression` · `variables`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -983,7 +983,7 @@ Evaluates a safe arithmetic/logical expression (no eval, no host access). Suppor
 | `expression` | `STRING` | ✓ | Expression to evaluate |
 | `variables` | `OBJECT` |  | Map of variable bindings |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -996,7 +996,7 @@ Evaluates a safe arithmetic/logical expression (no eval, no host access). Suppor
  *            number / string literals, true / false / null
  *            variables resolved from the `variables` parameter.
  *
- * Does NOT call `eval`, `new Function`, or any host class — the parser is
+ * Does NOT call `eval`, `new Function`, or any host class - the parser is
  * hand-written so untrusted expressions cannot break out of the sandbox.
  *
  * Pure ES2024.
@@ -1066,7 +1066,7 @@ function parseValue() {
   throw new Error('unexpected: ' + c);
 }
 
-// Operator precedence climbing — Pow > Mul/Div > Add/Sub > Cmp > Eq > And > Or.
+// Operator precedence climbing - Pow > Mul/Div > Add/Sub > Cmp > Eq > And > Or.
 function parsePow() { let a = parseValue(); skipWs();
   if (src[i] === '*' && src[i+1] === '*') { i += 2; return a ** parsePow(); }
   return a;
@@ -1127,7 +1127,7 @@ Serialises an array of rows into CSV text. Rows may be arrays (use header param)
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `rows` · `header` · `delimiter`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1140,7 +1140,7 @@ Serialises an array of rows into CSV text. Rows may be arrays (use header param)
 | `header` | `ARRAY` |  | Optional explicit column order |
 | `delimiter` | `STRING` |  | Field delimiter (default ',') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1154,7 +1154,7 @@ Serialises an array of rows into CSV text. Rows may be arrays (use header param)
  *   - arrays   →  rows are written as-is; pass `header` to add a header row.
  *
  * Cells that contain the delimiter, a double-quote, CR or LF are wrapped in
- * `"…"` and embedded quotes are doubled per RFC 4180.
+ * `"..."` and embedded quotes are doubled per RFC 4180.
  *
  * Pure ES2024.
  */
@@ -1226,7 +1226,7 @@ Encodes UTF-8 text to base64, or decodes base64 back to UTF-8 text. Use mode='en
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `mode` · `urlSafe`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1239,7 +1239,7 @@ Encodes UTF-8 text to base64, or decodes base64 back to UTF-8 text. Use mode='en
 | `mode` | `STRING` |  | encode \| decode |
 | `urlSafe` | `BOOLEAN` |  | Use URL-safe alphabet (- _ instead of + /) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1247,9 +1247,9 @@ Encodes UTF-8 text to base64, or decodes base64 back to UTF-8 text. Use mode='en
 /**
  * Base64 encode / decode of UTF-8 text.
  *
- * - `mode='encode'` (default) — UTF-8 text → base64 string.
- * - `mode='decode'`           — base64 string → UTF-8 text.
- * - `urlSafe=true`            — emit/accept the URL-safe alphabet
+ * - `mode='encode'` (default) - UTF-8 text → base64 string.
+ * - `mode='decode'`           - base64 string → UTF-8 text.
+ * - `urlSafe=true`            - emit/accept the URL-safe alphabet
  *                                (`-` `_` instead of `+` `/`, padding stripped).
  *
  * Uses host-injected btoa / atob and the standard TextEncoder / TextDecoder.
@@ -1260,7 +1260,7 @@ const m = (mode || 'encode').toLowerCase();
 
 if (m === 'encode') {
   const bytes = new TextEncoder().encode(String(text));
-  // btoa expects a Latin-1 binary string — assemble it byte-by-byte.
+  // btoa expects a Latin-1 binary string - assemble it byte-by-byte.
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
   let b64 = btoa(bin);
@@ -1296,7 +1296,7 @@ Encodes UTF-8 text to hex string, or decodes hex back to UTF-8 text. Use mode='e
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `mode` · `upperCase`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1309,7 +1309,7 @@ Encodes UTF-8 text to hex string, or decodes hex back to UTF-8 text. Use mode='e
 | `mode` | `STRING` |  | encode \| decode |
 | `upperCase` | `BOOLEAN` |  | Use uppercase hex when encoding |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1317,9 +1317,9 @@ Encodes UTF-8 text to hex string, or decodes hex back to UTF-8 text. Use mode='e
 /**
  * Hex encode / decode of UTF-8 text.
  *
- * - `mode='encode'` (default) — UTF-8 text → lowercase hex string.
- * - `mode='decode'`           — hex string → UTF-8 text.
- * - `upperCase=true`          — emit uppercase hex when encoding.
+ * - `mode='encode'` (default) - UTF-8 text → lowercase hex string.
+ * - `mode='decode'`           - hex string → UTF-8 text.
+ * - `upperCase=true`          - emit uppercase hex when encoding.
  *
  * Whitespace inside the hex input is ignored on decode.
  * Uses host TextEncoder / TextDecoder.
@@ -1359,13 +1359,13 @@ throw new Error('mode must be encode or decode');
 Generates a cryptographically random UUID v4 string.
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; —</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; -</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1373,7 +1373,7 @@ Generates a cryptographically random UUID v4 string.
 /**
  * Generates a cryptographically random UUID v4.
  *
- * Uses the host-injected crypto.randomUUID() (no static seeding —
+ * Uses the host-injected crypto.randomUUID() (no static seeding -
  * each call is unpredictable).
  */
 
@@ -1393,7 +1393,7 @@ Computes the cryptographic hash of UTF-8 text. Algorithms: SHA-256 (default), SH
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `algorithm`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1405,7 +1405,7 @@ Computes the cryptographic hash of UTF-8 text. Algorithms: SHA-256 (default), SH
 | `text` | `STRING` | ✓ | Text to hash |
 | `algorithm` | `STRING` |  | SHA-256 \| SHA-384 \| SHA-512 |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1441,7 +1441,7 @@ Computes an HMAC signature over UTF-8 text using a secret. Algorithms: SHA-256 (
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `secret` · `text` · `algorithm`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1454,7 +1454,7 @@ Computes an HMAC signature over UTF-8 text using a secret. Algorithms: SHA-256 (
 | `text` | `STRING` | ✓ | Text to sign |
 | `algorithm` | `STRING` |  | SHA-256 \| SHA-384 \| SHA-512 |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1464,7 +1464,7 @@ Computes an HMAC signature over UTF-8 text using a secret. Algorithms: SHA-256 (
  *
  * Supported HMAC hashes:  SHA-256 (default), SHA-384, SHA-512.
  *
- * Uses WebCrypto:  importKey('raw', …, HMAC) → sign('HMAC', key, data).
+ * Uses WebCrypto:  importKey('raw', ..., HMAC) → sign('HMAC', key, data).
  */
 
 if (secret == null || secret === '') throw new Error('secret required');
@@ -1494,7 +1494,7 @@ Generates cryptographically secure random bytes. encoding: 'hex' (default), 'bas
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `bytes` · `encoding`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1506,7 +1506,7 @@ Generates cryptographically secure random bytes. encoding: 'hex' (default), 'bas
 | `bytes` | `INTEGER` |  | Number of random bytes (default 16, max 4096) |
 | `encoding` | `STRING` |  | hex \| base64 \| base64url |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1514,8 +1514,8 @@ Generates cryptographically secure random bytes. encoding: 'hex' (default), 'bas
 /**
  * Generates cryptographically secure random bytes.
  *
- * - `bytes`     — number of bytes (1..4096, default 16).
- * - `encoding`  — 'hex' (default), 'base64', or 'base64url'.
+ * - `bytes`     - number of bytes (1..4096, default 16).
+ * - `encoding`  - 'hex' (default), 'base64', or 'base64url'.
  *
  * Uses crypto.getRandomValues, which delegates to the OS CSPRNG.
  */
@@ -1553,7 +1553,7 @@ Generates a strong random password from selected character classes. Uses crypto.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `length` · `includeLowercase` · `includeUppercase` · `includeDigits` · `includeSymbols`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1568,7 +1568,7 @@ Generates a strong random password from selected character classes. Uses crypto.
 | `includeDigits` | `BOOLEAN` |  | Include 0-9 |
 | `includeSymbols` | `BOOLEAN` |  | Include ASCII punctuation |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1578,7 +1578,7 @@ Generates a strong random password from selected character classes. Uses crypto.
  *
  * Guarantees one character from EACH enabled class, then fills the rest
  * uniformly from the union and shuffles cryptographically. Uses unbiased
- * rejection sampling — no modulo bias.
+ * rejection sampling - no modulo bias.
  *
  * Defaults: length 16, classes lower/upper/digits enabled, symbols off.
  * Uses host crypto.getRandomValues.
@@ -1645,7 +1645,7 @@ Decodes a JWT without verifying its signature. Returns the header and payload as
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `token`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1656,7 +1656,7 @@ Decodes a JWT without verifying its signature. Returns the header and payload as
 |---|---|---|---|
 | `token` | `STRING` | ✓ | JWT compact form (header.payload.signature) |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1705,7 +1705,7 @@ Verifies a HS256/HS384/HS512 JWT signature using a shared secret and returns the
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `token` · `secret`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1717,7 +1717,7 @@ Verifies a HS256/HS384/HS512 JWT signature using a shared secret and returns the
 | `token` | `STRING` | ✓ | JWT compact form |
 | `secret` | `STRING` | ✓ | Shared HMAC secret |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1803,7 +1803,7 @@ Parses CSV text into an array of rows. If header=true, each row is an object key
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `text` · `header` · `delimiter`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; —</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
 <div class="tcg-detail-template" hidden markdown>
@@ -1816,7 +1816,7 @@ Parses CSV text into an array of rows. If header=true, each row is an object key
 | `header` | `BOOLEAN` |  | Treat the first row as the header |
 | `delimiter` | `STRING` |  | Field delimiter (default ',') |
 
-**Sandbox** — Runs at sandbox **L0** baseline — no filesystem, default-strict network (SSRF-defended).
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 **JS source**
 
@@ -1825,11 +1825,11 @@ Parses CSV text into an array of rows. If header=true, each row is an object key
  * Parses RFC 4180 CSV via the host-bridged Apache Commons CSV parser
  * (`safety.parser.csv`).
  *
- * - `header=true`        — first row is the header; each subsequent row is
+ * - `header=true`        - first row is the header; each subsequent row is
  *                          returned as an object keyed by header.
- * - `delimiter`          — single-character field separator (default ',').
+ * - `delimiter`          - single-character field separator (default ',').
  *
- * Always available — no Java interop or network needed.
+ * Always available - no Java interop or network needed.
  */
 
 if (text == null || text === '') return [];
@@ -1848,16 +1848,16 @@ return safety.parser.csv(String(text), opts);
 
 The 26 utilities are deliberately I/O-free, which makes them perfect for chains the agent runs entirely in-memory:
 
-- **Text-shell ETL** — `regexExtract(text, pattern)` → `sortLines(text)` → `formatCsv(rows)` to turn raw log/text into structured CSV in one tool turn.
-- **Crypto sign-and-mint** — `secureRandom(bytes=32)` for the secret → `hmac(secret, payload)` for the signature → `base64(text)` to wire-encode — issuing a signed token without any `Java.type(...)` interop.
-- **JWT inspect → re-encode** — `jwtDecode(token)` exposes header + payload → mutate fields in the agent prompt → `hmac` + `base64` to rebuild a signed JWT (HS256/384/512).
-- **Time math chain** — `parseDate(text)` → `dateMath(text, amount, unit)` → `formatDate(text, pattern, timeZone)` to normalise a user-supplied datetime to a target zone with a single call.
-- **PII / secret scrub** — `piiDetect(text)` + `secretPatternDetect(text)` over a chat transcript before forwarding it to a model — both return `[{type, masked, index}]` so the agent can redact in-place.
+- **Text-shell ETL** - `regexExtract(text, pattern)` → `sortLines(text)` → `formatCsv(rows)` to turn raw log/text into structured CSV in one tool turn.
+- **Crypto sign-and-mint** - `secureRandom(bytes=32)` for the secret → `hmac(secret, payload)` for the signature → `base64(text)` to wire-encode - issuing a signed token without any `Java.type(...)` interop.
+- **JWT inspect → re-encode** - `jwtDecode(token)` exposes header + payload → mutate fields in the agent prompt → `hmac` + `base64` to rebuild a signed JWT (HS256/384/512).
+- **Time math chain** - `parseDate(text)` → `dateMath(text, amount, unit)` → `formatDate(text, pattern, timeZone)` to normalise a user-supplied datetime to a target zone with a single call.
+- **PII / secret scrub** - `piiDetect(text)` + `secretPatternDetect(text)` over a chat transcript before forwarding it to a model - both return `[{type, masked, index}]` so the agent can redact in-place.
 
 [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md) walks one of these end-to-end (the text-shell ETL chain).
 
 ## Keys & secrets
 
-**None.** All 26 utilities run with the default sandbox baseline — no network, no filesystem, no env vars. That is what makes them the safe slice of the catalog to expose to the model with zero setup.
+**None.** All 26 utilities run with the default sandbox baseline - no network, no filesystem, no env vars. That is what makes them the safe slice of the catalog to expose to the model with zero setup.
 
-→ [Tool Studio: Built-in JavaScript Helpers](../tool-studio/index.md#built-in-javascript-helpers) — the underlying `crypto.subtle`, `safety.parser.csv`, regex helpers each of these tools wraps.
+→ [Tool Studio: Built-in JavaScript Helpers](../tool-studio/index.md#built-in-javascript-helpers) - the underlying `crypto.subtle`, `safety.parser.csv`, regex helpers each of these tools wraps.

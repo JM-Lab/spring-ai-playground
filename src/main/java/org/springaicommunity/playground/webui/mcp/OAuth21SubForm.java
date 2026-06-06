@@ -20,7 +20,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.formlayout.FormLayout;
-import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -65,13 +64,7 @@ public class OAuth21SubForm extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
         setWidthFull();
-        getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
-                .set("border-radius", "var(--lumo-border-radius-m)")
-                .set("padding", "var(--lumo-space-s)")
-                .set("margin-bottom", "var(--lumo-space-s)");
-
-        H4 header = new H4("OAuth 2.1 Authorization Code");
-        header.getStyle().set("margin-top", "0").set("margin-bottom", "var(--lumo-space-xs)");
+        getStyle().set("padding-top", "var(--lumo-space-s)");
 
         Span helpText = new Span(
                 "Use ${ENV_VAR} in any value. Click Authorize after Save & Connect to grant access in your browser.");
@@ -142,13 +135,15 @@ public class OAuth21SubForm extends VerticalLayout {
         actions.setSpacing(true);
         actions.getStyle().set("margin-top", "var(--lumo-space-s)");
 
-        add(header, helpText, primaryForm, advanced, redirectInfo, actions);
+        add(helpText, primaryForm, advanced, redirectInfo, actions);
     }
 
     private void wireChangeListeners() {
         Arrays.asList(issuerUriField, authorizationUriField, tokenUriField, clientIdField, clientSecretField,
                         scopesField)
                 .forEach(field -> field.addValueChangeListener(e -> {
+                    field.setInvalid(false);
+                    field.setErrorMessage(null);
                     onChange.run();
                     updateAuthorizeButtonState();
                 }));
@@ -156,6 +151,15 @@ public class OAuth21SubForm extends VerticalLayout {
             onChange.run();
             updateAuthorizeButtonState();
         });
+    }
+
+    private void clearAllInvalid() {
+        Arrays.asList(issuerUriField, authorizationUriField, tokenUriField, clientIdField, clientSecretField,
+                        scopesField)
+                .forEach(field -> {
+                    field.setInvalid(false);
+                    field.setErrorMessage(null);
+                });
     }
 
     private void updateAuthorizeButtonState() {
@@ -204,6 +208,7 @@ public class OAuth21SubForm extends VerticalLayout {
     }
 
     public void populate(HttpConnectionParametersWithExtras.OAuth oauth) {
+        clearAllInvalid();
         if (oauth == null) {
             clearFields();
             return;
@@ -225,6 +230,7 @@ public class OAuth21SubForm extends VerticalLayout {
     }
 
     public void clearFields() {
+        clearAllInvalid();
         issuerUriField.clear();
         authorizationUriField.clear();
         tokenUriField.clear();
@@ -238,12 +244,9 @@ public class OAuth21SubForm extends VerticalLayout {
     }
 
     public boolean validateForSave() {
-        boolean valid = true;
-        clientIdField.setInvalid(false);
-        issuerUriField.setInvalid(false);
-        authorizationUriField.setInvalid(false);
-        tokenUriField.setInvalid(false);
+        clearAllInvalid();
 
+        boolean valid = true;
         if (!hasText(clientIdField.getValue())) {
             clientIdField.setInvalid(true);
             clientIdField.setErrorMessage("Client ID is required for OAuth.");

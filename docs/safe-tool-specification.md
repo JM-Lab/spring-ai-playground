@@ -1,6 +1,6 @@
 ---
-title: Safe Tool Specification 1.0
-description: Normative JSON spec for tools runnable in Spring AI Playground's Safe Local Execution Layer — two-field safety model, Risk Level L0–L5, lifecycle, JSON Schema.
+title: Safe Tool Specification
+description: Normative JSON spec for tools runnable in Spring AI Playground's Safe Local Execution Layer - two-field safety model, Risk Level L0-L5, lifecycle, JSON Schema.
 ---
 
 # Safe Tool Specification
@@ -11,9 +11,10 @@ The Safe Tool Specification (this document) defines the on-disk JSON document fo
 
 This document complements but does not replace:
 
-- [Application Architecture](architecture.md) — where the spec fits in the system
-- [AI Agent Tool Safety Architecture](safety-architecture.md) — defense-in-depth model, threat-to-layer mapping, known limitations
-- [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities) — the UI surface that edits one of these documents
+- [Application](architecture.md) - where the spec fits in the system
+- [AI Agent Tool Safety](safety-architecture.md) - defense-in-depth model, threat-to-layer mapping, known limitations
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate that honors this spec's `humanInTheLoop` block
+- [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities) - the UI surface that edits one of these documents
 
 ## 1. Introduction
 
@@ -27,6 +28,16 @@ A Safe Tool Spec is a self-contained JSON document. It declares:
 - **Cataloging metadata** (`category`, `tags`, `toolId`, timestamps)
 
 The spec is not concerned with how a tool is *invoked* through MCP, only with how a tool is *defined*. Invocation semantics belong to the [MCP `tools/list` and `tools/call` schemas](https://modelcontextprotocol.io).
+
+At a glance, a Safe Tool Spec is one JSON document that binds three concerns, which together earn a Local Pass before publish:
+
+```mermaid
+flowchart LR
+    SPEC["Safe Tool Spec<br/>one JSON document"] --> ID["Identity<br/>name · description<br/>params"]
+    SPEC --> CODE["Code<br/>JS + staticVariables"]
+    SPEC --> SAFE["Safety posture<br/>sandboxOverrides<br/>→ Risk Level"]
+    ID & CODE & SAFE --> PASS["Local Pass<br/>then /mcp"]
+```
 
 ### 1.2 Terminology
 
@@ -44,33 +55,33 @@ Throughout this document:
 A document conforms to this specification if:
 
 1. It parses as JSON (RFC 8259).
-2. Every field present validates against [§ 16 JSON Schema](#16-json-schema).
-3. Every cross-field invariant defined in this document holds (notably the allow/deny disjointness in § 10.1 and the env-var grammar in § 7.2).
+2. Every field present validates against [Section 16 JSON Schema](#16-json-schema).
+3. Every cross-field invariant defined in this document holds (notably the allow/deny disjointness in Section 10.1 and the env-var grammar in Section 7.2).
 
-A resolver conforms if, given a conforming spec, it produces a `toolSafety` block that matches § 10.3 and a Risk Level that matches the algorithm in § 10.6.
+A resolver conforms if, given a conforming spec, it produces a `toolSafety` block that matches Section 10.3 and a Risk Level that matches the algorithm in Section 10.6.
 
-A runtime conforms if it enforces the policy described by `toolSafety` — never more permissive, possibly less — and records what was actually enforced (see § 11 audit contract).
+A runtime conforms if it enforces the policy described by `toolSafety` - never more permissive, possibly less - and records what was actually enforced (see Section 11 audit contract).
 
 ### 1.4 Relationship to existing tool specs
 
-Several schemas exist today to declare a tool an LLM can call: MCP `tools/list`, OpenAI function calling, Anthropic tool use, Google function declarations, and framework-internal formats like LangChain's `BaseTool` or LlamaIndex's `FunctionTool`. They are all narrower than this specification — they declare *what the model is allowed to ask for*, but leave *how the tool runs and what guarantees apply* outside the document. The Safe Tool Spec is built to carry both halves in one artifact.
+Several schemas exist today to declare a tool an LLM can call: MCP `tools/list`, OpenAI function calling, Anthropic tool use, Google function declarations, and framework-internal formats like LangChain's `BaseTool` or LlamaIndex's `FunctionTool`. They are all narrower than this specification - they declare *what the model is allowed to ask for*, but leave *how the tool runs and what guarantees apply* outside the document. The Safe Tool Spec is built to carry both halves in one artifact.
 
 | Schema | name + JSON-schema args | Code body | Safety posture | Test value | Persisted on disk |
 |---|---|---|---|---|---|
-| MCP `tools/list` | ✅ | — | — | — | — (runtime emission only) |
-| OpenAI function calling | ✅ | — | — | — | — |
-| Anthropic tool use | ✅ | — | — | — | — |
-| Google function declarations | ✅ | — | — | — | — |
-| LangChain `BaseTool` | ✅ | ✅ (Python class) | partial (rate-limit / auth args) | — | — (the code is the spec) |
-| LlamaIndex `FunctionTool` | ✅ | ✅ (Python callable) | — | — | — (the code is the spec) |
+| MCP `tools/list` | ✅ | - | - | - | - (runtime emission only) |
+| OpenAI function calling | ✅ | - | - | - | - |
+| Anthropic tool use | ✅ | - | - | - | - |
+| Google function declarations | ✅ | - | - | - | - |
+| LangChain `BaseTool` | ✅ | ✅ (Python class) | partial (rate-limit / auth args) | - | - (the code is the spec) |
+| LlamaIndex `FunctionTool` | ✅ | ✅ (Python callable) | - | - | - (the code is the spec) |
 | **Safe Tool Spec** (this doc) | ✅ | ✅ (JS string) | ✅ (`sandboxOverrides` → `toolSafety`) | ✅ (`testValue` + Local Pass) | ✅ (JSON file) |
 
-The pattern the other formats share: declare a function signature the model invokes, leave the implementation to host application code or framework conventions. The signature is the wire format the LLM consumes; the implementation lives outside the spec — in compiled code, in a framework's registry, or in a hand-written request handler.
+The pattern the other formats share: declare a function signature the model invokes, leave the implementation to host application code or framework conventions. The signature is the wire format the LLM consumes; the implementation lives outside the spec - in compiled code, in a framework's registry, or in a hand-written request handler.
 
 The gap they leave open:
 
 - **Where is the tool body?** In MCP, OpenAI, Anthropic, and Google function specs, the body is application code, not part of the document. Two engineers receiving the same spec write two different implementations.
-- **What enforcement runs around the body?** None of the wire-format specs has a field that says "this tool needs filesystem read access" or "this tool's egress is restricted to `api.example.com`." Safety is something the host application implements separately — if it does at all.
+- **What enforcement runs around the body?** None of the wire-format specs has a field that says "this tool needs filesystem read access" or "this tool's egress is restricted to `api.example.com`." Safety is something the host application implements separately - if it does at all.
 - **How is the tool validated before publish?** None of the others define a publish gate. The Safe Tool Spec's `testValue` + Local Pass turns the spec into its own validation artifact: a spec that does not pass its own declared test does not reach the wire.
 - **What does the audit log record?** Wire-format specs are silent on this. The Safe Tool Spec writes the resolved `toolSafety` block into the audit log on every invocation, so "what was actually enforced at this call" is a property of the spec, not of out-of-band instrumentation.
 
@@ -95,9 +106,9 @@ flowchart LR
 
 What flows through each boundary:
 
-- **Spec → MCP entry**: the playground's MCP server emits each non-draft Safe Tool Spec as an MCP `tools/list` entry containing exactly the model-visible subset — `name`, `description`, and `params` lowered into JSON Schema. `code`, `staticVariables`, `sandboxOverrides`, `toolSafety`, `testValue`, and `draft` are stripped. The model never sees them.
+- **Spec → MCP entry**: the playground's MCP server emits each non-draft Safe Tool Spec as an MCP `tools/list` entry containing exactly the model-visible subset - `name`, `description`, and `params` lowered into JSON Schema. `code`, `staticVariables`, `sandboxOverrides`, `toolSafety`, `testValue`, and `draft` are stripped. The model never sees them.
 - **MCP entry → LLM**: identical to any other MCP-served tool. The LLM treats it as an opaque named function with typed arguments. A Safe Tool Spec is indistinguishable from any other tool at this layer.
-- **`tools/call` → runtime**: when the LLM invokes the tool, the playground executes `code` under the resolved `toolSafety`. From the LLM's perspective this is a normal MCP `tools/call`; from the runtime's perspective it is a sandboxed JS invocation with the audit trail described in § 11.4.
+- **`tools/call` → runtime**: when the LLM invokes the tool, the playground executes `code` under the resolved `toolSafety`. From the LLM's perspective this is a normal MCP `tools/call`; from the runtime's perspective it is a sandboxed JS invocation with the audit trail described in Section 11.4.
 - **Audit ← runtime**: every invocation records the resolved `toolSafety` block alongside the request. Operators reading the audit log can answer "what posture was active when this tool was called" *from the spec itself*, without re-running the resolver or correlating across logs.
 
 The pattern is the same separation MCP itself draws: protocol vs. execution. MCP standardizes the wire; the Safe Tool Spec standardizes the on-disk artifact that produces the wire output, gates publication on Local Pass, and writes the enforcement record back into the audit log when the wire call returns.
@@ -106,17 +117,17 @@ The pattern is the same separation MCP itself draws: protocol vs. execution. MCP
 
 - **Not a protocol.** Safe Tool Spec is a document format; it does not define a transport, a handshake, or a capability-negotiation pass. MCP fills that role.
 - **Not a function-calling schema replacement.** A Safe Tool Spec is *projected to* a JSON Schema when published; it does not compete with OpenAI / Anthropic / Google function declarations at the wire layer.
-- **Not a framework binding.** Unlike LangChain or LlamaIndex tools, a Safe Tool Spec is portable across hosts that implement this specification — the artifact is JSON, the runtime contract is what executes it. A spec written for Spring AI Playground can be loaded by any conformant runtime.
+- **Not a framework binding.** Unlike LangChain or LlamaIndex tools, a Safe Tool Spec is portable across hosts that implement this specification - the artifact is JSON, the runtime contract is what executes it. A spec written for Spring AI Playground can be loaded by any conformant runtime.
 
 ## 2. Document structure at a glance
 
-A Safe Tool Spec is a JSON object that groups its fields into three conceptual blocks plus bookkeeping. The diagram below shows how the top-level fields cluster; § 3 catalogues them in a single table.
+A Safe Tool Spec is a JSON object that groups its fields into three conceptual blocks plus bookkeeping. The diagram below shows how the top-level fields cluster; Section 3 catalogues them in a single table.
 
 ```mermaid
 flowchart TB
     SPEC["Safe Tool Spec<br/>(JSON document)"]
 
-    subgraph IDENTITY["① Identity — what the model sees"]
+    subgraph IDENTITY["① Identity - what the model sees"]
         direction LR
         I1["toolId"]
         I2["name"]
@@ -125,18 +136,19 @@ flowchart TB
         I5["category · tags[]"]
     end
 
-    subgraph CODE["② Code — what the runtime executes"]
+    subgraph CODE["② Code - what the runtime executes"]
         direction LR
         C1["code"]
         C2["codeType"]
         C3["staticVariables[]<br/>(${ENV_VAR} placeholders)"]
     end
 
-    subgraph SAFETY["③ Safety — what the sandbox enforces"]
+    subgraph SAFETY["③ Safety - what the sandbox enforces"]
         direction LR
         S1["sandboxOverrides<br/>(author intent)"]
         S2["toolSafety<br/>(resolved posture)"]
         S3["draft"]
+        S4["humanInTheLoop"]
     end
 
     BK["createTimestamp · updateTimestamp"]
@@ -147,7 +159,7 @@ flowchart TB
     SPEC --- BK
 ```
 
-The three blocks correspond to three of the four product-positioning words from § 1.1: **Identity** is "for AI Agent Tools" (the model-visible surface), **Code** is "Execution Layer" (the JS the runtime actually runs), **Safety** is "Safe" (what the sandbox guarantees). § 4–9 cover Identity and Code, § 10 is the entire Safety block, § 11–12 cover lifecycle and bookkeeping.
+The three blocks correspond to three of the four product-positioning words from Section 1.1: **Identity** is "for AI Agent Tools" (the model-visible surface), **Code** is "Execution Layer" (the JS the runtime actually runs), **Safety** is "Safe" (what the sandbox guarantees). Sections 4-9 cover Identity and Code, Section 10 is the entire Safety block, Sections 11-12 cover lifecycle and bookkeeping.
 
 The literal JSON shape:
 
@@ -158,19 +170,19 @@ The literal JSON shape:
   "description":       "<model-visible description>",
   "category":          "<category enum>",
   "tags":              ["<cohort label>", "..."],
-  "params":            [ /* ToolParamSpec, see § 6 */ ],
-  "staticVariables":   [ /* {key: value} entries, see § 7 */ ],
+  "params":            [ /* ToolParamSpec, see Section 6 */ ],
+  "staticVariables":   [ /* {key: value} entries, see Section 7 */ ],
   "code":              "<JavaScript action body>",
   "codeType":          "Javascript",
-  "sandboxOverrides":  { /* author intent, see § 10.1 */ },
-  "toolSafety":        { /* resolved posture, see § 10.3 */ },
+  "sandboxOverrides":  { /* author intent, see Section 10.1 */ },
+  "toolSafety":        { /* resolved posture, see Section 10.3 */ },
   "draft":             true,
   "createTimestamp":   <epoch ms>,
   "updateTimestamp":   <epoch ms>
 }
 ```
 
-All fields listed above except `code`, `name`, and `codeType` MAY be omitted; defaults are defined per § 3 below.
+All fields listed above except `code`, `name`, and `codeType` MAY be omitted; defaults are defined per Section 3 below.
 
 ## 3. Top-level object
 
@@ -178,22 +190,23 @@ The spec is a JSON object. Each field is defined in its own section. Defaults in
 
 | Field | Type | Required | Default | Section |
 |---|---|---|---|---|
-| `toolId` | string (UUID) | SHOULD | derived (§ 4.1) | § 4 |
-| `name` | string | MUST | — | § 4.2 |
-| `description` | string | SHOULD | empty string | § 5 |
-| `category` | string | SHOULD | `null` | § 9.1 |
-| `tags` | array of string | MAY | `[]` | § 9.2 |
-| `params` | array of `ToolParamSpec` | MAY | `[]` | § 6 |
-| `staticVariables` | array of single-entry objects | MAY | `[]` | § 7 |
-| `code` | string | MUST | — | § 8 |
-| `codeType` | enum string | MUST | — (only `"Javascript"` today) | § 8.1 |
-| `sandboxOverrides` | object | MAY | empty overrides (baseline) | § 10.1 |
-| `toolSafety` | object | SHOULD | empty `{}` | § 10.3 |
-| `draft` | boolean | MAY | `true` (catalog), `false` after Local Pass | § 11 |
-| `createTimestamp` | integer (epoch ms) | SHOULD | now | § 12.2 |
-| `updateTimestamp` | integer (epoch ms) | SHOULD | now | § 12.2 |
+| `toolId` | string (UUID) | SHOULD | derived (Section 4.1) | Section 4 |
+| `name` | string | MUST | - | Section 4.2 |
+| `description` | string | SHOULD | empty string | Section 5 |
+| `category` | string | SHOULD | `null` | Section 9.1 |
+| `tags` | array of string | MAY | `[]` | Section 9.2 |
+| `params` | array of `ToolParamSpec` | MAY | `[]` | Section 6 |
+| `staticVariables` | array of single-entry objects | MAY | `[]` | Section 7 |
+| `code` | string | MUST | - | Section 8 |
+| `codeType` | enum string | MUST | - (only `"Javascript"` today) | Section 8.1 |
+| `sandboxOverrides` | object | MAY | empty overrides (baseline) | Section 10.1 |
+| `toolSafety` | object | SHOULD | empty `{}` | Section 10.3 |
+| `humanInTheLoop` | object | MAY | `null` (= DISABLED) | Section 10.7 |
+| `draft` | boolean | MAY | `true` (catalog), `false` after Local Pass | Section 11 |
+| `createTimestamp` | integer (epoch ms) | SHOULD | now | Section 12.2 |
+| `updateTimestamp` | integer (epoch ms) | SHOULD | now | Section 12.2 |
 
-Unknown top-level fields MUST be preserved on round-trip (load → save) and MUST NOT cause validation failure. This is the extension point for future minor versions; see § 14.
+Unknown top-level fields MUST be preserved on round-trip (load → save) and MUST NOT cause validation failure. This is the extension point for future minor versions; see Section 14.
 
 ## 4. Identity
 
@@ -211,7 +224,7 @@ The MCP tool name. This is what models see in `tools/list` and what they invoke 
 
 - `name` MUST be a non-empty string.
 - `name` SHOULD be a slug: lowercase alphanumeric plus `-` or `_`, no whitespace, no path separators.
-- `name` MUST be unique within the set of *published* specs that share an MCP server. Drafts (§ 11) are exempt.
+- `name` MUST be unique within the set of *published* specs that share an MCP server. Drafts (Section 11) are exempt.
 
 Implementations MAY enforce a stricter slug regex; consumers reading a foreign spec MUST NOT reject a non-empty string solely on slug grounds.
 
@@ -225,15 +238,15 @@ Implementations MAY enforce a stricter slug regex; consumers reading a foreign s
 
 Descriptions in the bundled catalog follow conventions worth borrowing:
 
-- **Locale prefix**: tools that target a specific non-English locale prefix their description with `"<Locale> tool — <description of locale requirements>."`. The placeholder takes any ISO-style locale name and the trailing clause describes what the locale binding implies (response language, parameter language, regional API surface, …). Examples: `"Korea-locale (KR) tool — Korean responses; some parameters require Korean input."`, `"Japan-locale (JP) tool — responses in Japanese; queries SHOULD be Japanese for relevance."`, `"China-locale (CN) tool — Simplified Chinese responses; mainland-China API surface only."`. The operational paragraph follows.
-- **Return-shape literal**: closing the description with a literal JSON-ish sketch of the return value (e.g. `Returns an array of { market, tradePrice, openingPrice, … }`) measurably improves model tool selection on small open-weight models.
+- **Locale prefix**: tools that target a specific non-English locale prefix their description with `"<Locale> tool - <description of locale requirements>."`. The placeholder takes any ISO-style locale name and the trailing clause describes what the locale binding implies (response language, parameter language, regional API surface, ...). Examples: `"Korea-locale (KR) tool - Korean responses; some parameters require Korean input."`, `"Japan-locale (JP) tool - responses in Japanese; queries SHOULD be Japanese for relevance."`, `"China-locale (CN) tool - Simplified Chinese responses; mainland-China API surface only."`. The operational paragraph follows.
+- **Return-shape literal**: closing the description with a literal JSON-ish sketch of the return value (e.g. `Returns an array of { market, tradePrice, openingPrice, ... }`) measurably improves model tool selection on small open-weight models.
 - **Auth signal in prose**: tools requiring env-backed credentials describe both injection paths inline (`"set NAVER_CLIENT_ID + NAVER_CLIENT_SECRET on the tool's staticVariables, or inject as env var"`).
 
 A description MUST NOT contain secrets, host names with embedded credentials, or environment-variable values; the audit log captures `description` verbatim.
 
 ## 6. Parameters
 
-`params` is an ordered array of `ToolParamSpec` objects. Order is preserved by the catalog reader, by the persistence layer (see § 12), and on the wire when the MCP server emits the tool's JSON Schema.
+`params` is an ordered array of `ToolParamSpec` objects. Order is preserved by the catalog reader, by the persistence layer (see Section 12), and on the wire when the MCP server emits the tool's JSON Schema.
 
 ### 6.1 `ToolParamSpec` shape
 
@@ -252,7 +265,7 @@ A description MUST NOT contain secrets, host names with embedded credentials, or
 | `name` | string | MUST | Slug; identifies the argument in the model's `tools/call` payload |
 | `description` | string | SHOULD | Model-visible argument hint |
 | `required` | boolean | MUST | If `true`, the runtime refuses to execute without this argument |
-| `type` | `STRING` · `INTEGER` · `NUMBER` · `BOOLEAN` · `OBJECT` · `ARRAY` | MUST | Stored uppercase; see § 6.2 |
+| `type` | `STRING` · `INTEGER` · `NUMBER` · `BOOLEAN` · `OBJECT` · `ARRAY` | MUST | Stored uppercase; see Section 6.2 |
 | `testValue` | string | MUST when `required=true` | Sample value the Local Pass executes the tool with |
 
 ### 6.2 Type enum and JSON Schema mapping
@@ -276,8 +289,8 @@ The `type` field is serialized in the spec document in **uppercase** (`"STRING"`
 
 - `testValue` MUST be a string. For non-string `type`s the runtime parses the string into the declared type before invoking `code`.
 - `testValue` MUST be a representative sample that exercises the same code path the model will hit in production. Pick `"Seoul"`, not `"abc"`.
-- `testValue` MUST NOT contain a secret. If the tool needs a secret, declare it in `staticVariables` (§ 7) and let the Local Pass resolve it from the environment.
-- For tools bound to a non-English locale, `testValue` MAY use that locale's script (e.g. Korean `'스프링 AI'`, Japanese `'東京駅'`, Simplified Chinese `'北京天安门'`, Arabic `'مرحبا'`) even though the rest of the spec is English. `testValue` is the only field where non-English content is normative; see § 9.3.
+- `testValue` MUST NOT contain a secret. If the tool needs a secret, declare it in `staticVariables` (Section 7) and let the Local Pass resolve it from the environment.
+- For tools bound to a non-English locale, `testValue` MAY use that locale's script (e.g. Korean `'스프링 AI'`, Japanese `'東京駅'`, Simplified Chinese `'北京天安门'`, Arabic `'مرحبا'`) even though the rest of the spec is English. `testValue` is the only field where non-English content is normative; see Section 9.3.
 
 ## 7. Static variables
 
@@ -292,53 +305,53 @@ The `type` field is serialized in the spec document in **uppercase** (`"STRING"`
 ]
 ```
 
-`staticVariables` is an **ordered list of single-entry objects**, not a JSON object. Order is preserved on disk, in memory, and when the runtime constructs the variable bag passed to `code`. The ordered-list shape exists to permit duplicate keys (rare but legal — later wins on read), to keep deterministic diffs when specs are edited, and to make `${ENV_VAR}` audit trails reproducible.
+`staticVariables` is an **ordered list of single-entry objects**, not a JSON object. Order is preserved on disk, in memory, and when the runtime constructs the variable bag passed to `code`. The ordered-list shape exists to permit duplicate keys (rare but legal - later wins on read), to keep deterministic diffs when specs are edited, and to make `${ENV_VAR}` audit trails reproducible.
 
 ### 7.2 `${ENV_VAR}` placeholder grammar
 
 A value MAY embed environment variable references using the placeholder grammar `\$\{([A-Z_]+[A-Z0-9_]*)}`:
 
-- Placeholder names match `[A-Z_]+[A-Z0-9_]*` — one-or-more uppercase letters or underscores, then any combination of uppercase / digits / underscore. The reference resolver MUST NOT resolve lowercase placeholders.
+- Placeholder names match `[A-Z_]+[A-Z0-9_]*` - one-or-more uppercase letters or underscores, then any combination of uppercase / digits / underscore. The reference resolver MUST NOT resolve lowercase placeholders.
 - A value MAY mix literal text and placeholders: `"https://${API_HOST}/v2"` is legal. The reference grammar distinguishes *anchored* references (the whole value is a single placeholder, e.g. `"${API_KEY}"`) from *embedded* references (placeholder appears inside literal text).
 - A spec MAY declare more than one placeholder per value; resolution applies to every match.
 
 Resolution order (`EnvVarResolver`):
 
-1. `System.getenv(name)` — process environment.
-2. `System.getProperty(name)` — JVM system properties (fallback).
-3. Unresolved — the literal `${NAME}` is left in place and the spec transitions to `MISSING_REQUIREMENTS` (§ 11.2).
+1. `System.getenv(name)` - process environment.
+2. `System.getProperty(name)` - JVM system properties (fallback).
+3. Unresolved - the literal `${NAME}` is left in place and the spec transitions to `MISSING_REQUIREMENTS` (Section 11.2).
 
 The resolver MUST treat unset, empty, or whitespace-only values as missing. Implementations MAY layer additional resolution sources (a project-local secret store, a vault) ahead of the OS env, but the contract above is the floor: every conforming resolver MUST consult the OS env at minimum.
 
 ### 7.3 Secret storage
 
-The Safe Tool Spec defines a *resolution contract* (§ 7.2), not a storage contract. The on-disk storage of resolved static-variable values is constrained to one rule:
+The Safe Tool Spec defines a *resolution contract* (Section 7.2), not a storage contract. The on-disk storage of resolved static-variable values is constrained to one rule:
 
 | Secret surface | Storage model | Encryption at rest | Decryption scope |
 |---|---|---|---|
-| **Static `${ENV_VAR}` secrets** (this section) | OS environment / JVM properties | None (the playground does not persist them) | n/a — value is only in memory while the process holds it |
+| **Static `${ENV_VAR}` secrets** (this section) | OS environment / JVM properties | None (the playground does not persist them) | n/a - value is only in memory while the process holds it |
 
-Static-variable secrets are deliberately *not* persisted by the playground. The resolution model places trust at the host boundary: if the OS env (or JVM properties) holds the value, the playground reads it for the lifetime of one tool invocation, masks it on output (§ 7.4), and forgets it when the process exits. A spec's `staticVariables` block records only the placeholder, never the resolved value.
+Static-variable secrets are deliberately *not* persisted by the playground. The resolution model places trust at the host boundary: if the OS env (or JVM properties) holds the value, the playground reads it for the lifetime of one tool invocation, masks it on output (Section 7.4), and forgets it when the process exits. A spec's `staticVariables` block records only the placeholder, never the resolved value.
 
-Implementations of this specification SHOULD adopt the same posture: do not persist static-variable secrets at all, and if persisting other credentials (OAuth tokens, MCP-connection bearer tokens, …) on a separate surface, encrypt them with a host-bound or user-bound key so that disk-copy alone is not sufficient to recover plaintext. The reference runtime's OAuth-token storage is documented at [safety-architecture → Encrypted OAuth token storage](safety-architecture.md#encrypted-oauth-token-storage) — it is a separate surface and outside this specification.
+Implementations of this specification SHOULD adopt the same posture: do not persist static-variable secrets at all, and if persisting other credentials (OAuth tokens, MCP-connection bearer tokens, ...) on a separate surface, encrypt them with a host-bound or user-bound key so that disk-copy alone is not sufficient to recover plaintext. The reference runtime's OAuth-token storage is documented at [safety-architecture → Encrypted OAuth token storage](safety-architecture.md#encrypted-oauth-token-storage) - it is a separate surface and outside this specification.
 
 ### 7.4 Secret masking pipeline
 
-Once resolved, a static-variable value is treated as a secret for the rest of its lifetime in the process. Masking is **value-based**, not placeholder-based — the runtime tracks the resolved string and substring-replaces every occurrence of it with `***` on the way to any text egress.
+Once resolved, a static-variable value is treated as a secret for the rest of its lifetime in the process. Masking is **value-based**, not placeholder-based - the runtime tracks the resolved string and substring-replaces every occurrence of it with `***` on the way to any text egress.
 
 The contract has two operations:
 
 | Operation | Behavior |
 |---|---|
-| **Collect** | Walk every `${NAME}` reference in the template, resolve each via the env-var resolver (§ 7.2), and collect values of length ≥ 4 into a `Set<String>` of secrets. Values shorter than 4 characters MUST be excluded from the set to avoid masking incidental words. |
-| **Mask** | Substring-replace each member of the secret set with `***` on the egress text. The replacement MUST be plain string substitution — no regex, no partial-prefix matching, no structural awareness of the surrounding text. |
+| **Collect** | Walk every `${NAME}` reference in the template, resolve each via the env-var resolver (Section 7.2), and collect values of length ≥ 4 into a `Set<String>` of secrets. Values shorter than 4 characters MUST be excluded from the set to avoid masking incidental words. |
+| **Mask** | Substring-replace each member of the secret set with `***` on the egress text. The replacement MUST be plain string substitution - no regex, no partial-prefix matching, no structural awareness of the surrounding text. |
 
 Properties of this pipeline that implementations MUST preserve:
 
-- **Egress-only**: masking is applied at every text-egress point, not at resolution time. The resolved value is what gets passed into `code`, and `code` is allowed to use it for outbound network calls / FS writes — the spec does not censor the value while it is still inside the sandbox.
+- **Egress-only**: masking is applied at every text-egress point, not at resolution time. The resolved value is what gets passed into `code`, and `code` is allowed to use it for outbound network calls / FS writes - the spec does not censor the value while it is still inside the sandbox.
 - **Value identity, not placeholder identity**: a secret that is set via `${API_TOKEN}` and one that is set via `${OTHER_NAME}` to the same string are both masked once that string appears in any output. The resolver tracks resolved values, not placeholder names.
 - **Minimum length guard**: values shorter than 4 characters MUST NOT be added to the mask set. A spec author SHOULD NOT assume a 3-character secret will be masked.
-- **No structural understanding of the output**: masking is substring replacement on the final text. JSON, YAML, log lines, error messages, MCP `tools/call` results — all are masked the same way.
+- **No structural understanding of the output**: masking is substring replacement on the final text. JSON, YAML, log lines, error messages, MCP `tools/call` results - all are masked the same way.
 - **Per-call collection**: the secret set MUST be rebuilt per call from the spec's `staticVariables` (and equivalents for MCP-connection params). A change to the env between calls is picked up on the next invocation without restart.
 
 Egress points a conformant implementation MUST cover:
@@ -346,14 +359,14 @@ Egress points a conformant implementation MUST cover:
 - Every published MCP tool-call log line
 - Every MCP client connection / error / event log line
 - Every UI surface that renders an MCP connection's JSON
-- Every audit log entry (§ 11.4)
+- Every audit log entry (Section 11.4)
 - `console.log` output from inside the tool's JavaScript `code`
 
 A resolver-conformant runtime that adds new text-egress channels (Slack notifier, error reporter, telemetry sink) MUST extend the masking call to those channels as well. For the reference runtime's wiring of these egress points (class names, call sites, mermaid), see [safety-architecture → Secret masking](safety-architecture.md#secret-masking).
 
 ### 7.5 Both injection paths are first-class
 
-A spec may declare a `staticVariables` entry with a literal value (`"clientId": "12345-abc"`) for a tool that does not need a secret, or with a `${ENV_VAR}` placeholder for a tool that does. Catalog conventions strongly prefer placeholders for any value that looks like a secret — both because of the storage posture above and because masking only applies to values that came through a placeholder. A hard-coded secret literal is *not* automatically masked, since the masking pipeline has no way to distinguish "secret hard-coded in spec" from "URL fragment hard-coded in spec." Consumers MUST NOT assume the placeholder vs literal distinction beyond what the value itself declares.
+A spec may declare a `staticVariables` entry with a literal value (`"clientId": "12345-abc"`) for a tool that does not need a secret, or with a `${ENV_VAR}` placeholder for a tool that does. Catalog conventions strongly prefer placeholders for any value that looks like a secret - both because of the storage posture above and because masking only applies to values that came through a placeholder. A hard-coded secret literal is *not* automatically masked, since the masking pipeline has no way to distinguish "secret hard-coded in spec" from "URL fragment hard-coded in spec." Consumers MUST NOT assume the placeholder vs literal distinction beyond what the value itself declares.
 
 ## 8. Code
 
@@ -371,7 +384,7 @@ A spec may declare a `staticVariables` entry with a literal value (`"clientId": 
 
 ### 8.2 Runtime contract
 
-- The runtime MUST execute `code` in a sandboxed context that enforces the resolved `toolSafety` posture from § 10.3.
+- The runtime MUST execute `code` in a sandboxed context that enforces the resolved `toolSafety` posture from Section 10.3.
 - Within `code`, params are bound to their declared `name`s as top-level identifiers.
 - `staticVariables` entries are bound to their declared keys as top-level identifiers (with `${ENV_VAR}` placeholders pre-resolved).
 - The host injects (subject to `toolSafety.runtime.helpers`): `console`, `fetch`, `URL`, `URLSearchParams`, `atob`, `btoa`, `crypto`, and `safety.*` helpers.
@@ -380,21 +393,21 @@ A spec may declare a `staticVariables` entry with a literal value (`"clientId": 
 
 ### 8.3 The `safety.*` helper surface
 
-When the resolved posture grants the corresponding capability, the runtime exposes the following helpers. The version tag in `toolSafety.runtime.helpers[]` (§ 10.3) records which helpers the spec was authored against; any new major version (e.g. `safety.fs/v2`) is a breaking change at the helper level and MUST trigger a spec version bump.
+When the resolved posture grants the corresponding capability, the runtime exposes the following helpers. The version tag in `toolSafety.runtime.helpers[]` (Section 10.3) records which helpers the spec was authored against; any new major version (e.g. `safety.fs/v2`) is a breaking change at the helper level and MUST trigger a spec version bump.
 
 | Helper | Required posture | Purpose |
 |---|---|---|
-| `safety.fs/v1` (read group) | `capabilities.fileRead = true` | `readText`, `list`, `exists`, `stat`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find` — all rooted at `fsBasePath` with path-escape protection |
+| `safety.fs/v1` (read group) | `capabilities.fileRead = true` | `readText`, `list`, `exists`, `stat`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find` - all rooted at `fsBasePath` with path-escape protection |
 | `safety.fs/v1` (write) | `capabilities.fileWrite = true` | `writeText` only |
-| `safety.parser/v1` (or `tool-safety-helpers/v1#parser`) | always available | Jsoup HTML, SnakeYAML `load`, RFC 4180 CSV, DTD/XXE-hardened XML — see § 8.4 for the per-helper contract and known security caveats |
-| `safety.http/v1` | `capabilities.network.mode != "blocked"` | Outbound HTTP via `fetch` with the SSRF four-layer guard active in `strict` and `allowlist` modes |
+| `safety.parser/v1` (or `tool-safety-helpers/v1#parser`) | always available | Jsoup HTML, SnakeYAML `load`, RFC 4180 CSV, DTD/XXE-hardened XML - see Section 8.4 for the per-helper contract and known security caveats |
+| `safety.http/v1` | `capabilities.network.mode != "blocked"` | Outbound HTTP via `fetch` with the SSRF four-layer guard active in `strict` mode (in `allowlist` mode only the explicit host allow-list is enforced - no IP/DNS-rebind guard) |
 | `tool-safety-helpers/v1#crypto` | always available | The `crypto.subtle` API and related primitives |
 | `tool-safety-helpers/v1#encoding` | always available | `atob` / `btoa` plus `TextEncoder` / `TextDecoder` |
 
 Two helper-string conventions are in active use. Both are normative and may be mixed within a single spec:
 
-- **Namespaced** — `<namespace>/v<n>`, e.g. `safety.http/v1`, `safety.fs/v1`. Used for helpers that gate on a runtime capability (network, FS).
-- **Anchor-suffixed** — `<bundle>/v<n>#<group>`, e.g. `tool-safety-helpers/v1#crypto`. Used for grouped utility helpers that share a single bundle version but expose distinct call surfaces.
+- **Namespaced** - `<namespace>/v<n>`, e.g. `safety.http/v1`, `safety.fs/v1`. Used for helpers that gate on a runtime capability (network, FS).
+- **Anchor-suffixed** - `<bundle>/v<n>#<group>`, e.g. `tool-safety-helpers/v1#crypto`. Used for grouped utility helpers that share a single bundle version but expose distinct call surfaces.
 
 Tools authored against v1 MUST list every helper group they use in `toolSafety.runtime.helpers`; a runtime MAY refuse to publish a spec that references a helper version it cannot provide.
 
@@ -405,7 +418,7 @@ The four parser entry points live under `safety.parser.*` and are exposed whenev
 | Call | Behavior |
 |---|---|
 | `safety.parser.html(input)` | Jsoup parse with default settings. ⚠ Returns the host `org.jsoup.nodes.Document` directly (not wrapped in a plain proxy tree like XML / CSV / YAML); JS code can call jsoup methods on the returned object. Implementations MAY wrap the return to match the proxy-tree convention. See [safety-architecture → `safety.parser.html` returns host `Document`](safety-architecture.md#safetyparserhtml-returns-host-document). |
-| `safety.parser.yaml(input)` | SnakeYAML `load`. ⚠ Reference runtime uses default `Constructor` (not `SafeConstructor`) — `!!class.name` tags trigger class instantiation; implementations SHOULD use `SafeConstructor`, and consumers MUST treat untrusted YAML input as security-relevant. See [safety-architecture → `safety.parser.yaml` constructor choice](safety-architecture.md#safetyparseryaml-constructor-choice). |
+| `safety.parser.yaml(input)` | SnakeYAML `load`. ⚠ Reference runtime uses default `Constructor` (not `SafeConstructor`) - `!!class.name` tags trigger class instantiation; implementations SHOULD use `SafeConstructor`, and consumers MUST treat untrusted YAML input as security-relevant. See [safety-architecture → `safety.parser.yaml` constructor choice](safety-architecture.md#safetyparseryaml-constructor-choice). |
 | `safety.parser.csv(input, opts?)` | RFC 4180 CSV with optional `{header, delimiter}` |
 | `safety.parser.xml(input)` | DTD/XXE-hardened DocumentBuilder |
 
@@ -413,9 +426,9 @@ The four parser entry points live under `safety.parser.*` and are exposed whenev
 
 ### 9.1 `category`
 
-`category` is a single-string label used for UI grouping in the catalog browser. It is *not* enforced as an enum at the document level — consumers MUST accept arbitrary string values — but the bundled catalog defines and uses the following 13 values:
+`category` is a single-string label used for UI grouping in the catalog browser. It is *not* enforced as an enum at the document level - consumers MUST accept arbitrary string values - but the bundled catalog defines and uses the following 13 values:
 
-`WEB` · `FILE` · `CRYPTO` · `DATETIME` · `TEXT` · `ENCODING` · `DATA` · `SECURITY` · `MATH` · `NETWORK` · `SYSTEM` · `UTILS` · `OTHER`
+`TEXT` · `DATA` · `DATETIME` · `MATH` · `ENCODING` · `CRYPTO` · `SECURITY` · `FILE` · `WEB` · `PRODUCTIVITY` · `MESSAGING` · `AI` · `CUSTOM`
 
 Catalog-conformant authors SHOULD pick from the list above. Authors publishing private specs MAY introduce new categories; consumers presenting an unknown category MUST render it as a string verbatim.
 
@@ -429,16 +442,16 @@ Catalog-conformant authors SHOULD pick from the list above. Authors publishing p
 
 ### 9.3 Locale rule
 
-Specs published in a multilingual catalog MUST follow these locale rules. The rules apply uniformly to every non-English locale (Korean, Japanese, Chinese, Arabic, Hebrew, Thai, …) so that machine-readable fields stay English while human-targeted examples can carry locale-bound content:
+Specs published in a multilingual catalog MUST follow these locale rules. The rules apply uniformly to every non-English locale (Korean, Japanese, Chinese, Arabic, Hebrew, Thai, ...) so that machine-readable fields stay English while human-targeted examples can carry locale-bound content:
 
 - `name`, slug-like identifiers, JSON keys, and JSON values that look like identifiers MUST be ASCII English.
-- `description` is English prose, possibly with **quoted** non-English fragments inside it. Quote the fragment in the locale the upstream API or end-user actually uses — e.g. `"Korean queries typical (e.g. '스프링 AI'); other languages also accepted."` or `"Japanese station names typical (e.g. '東京駅')."`. The base prose is English; locale-bound *examples* are quoted.
+- `description` is English prose, possibly with **quoted** non-English fragments inside it. Quote the fragment in the locale the upstream API or end-user actually uses - e.g. `"Korean queries typical (e.g. '스프링 AI'); other languages also accepted."` or `"Japanese station names typical (e.g. '東京駅')."`. The base prose is English; locale-bound *examples* are quoted.
 - `params[].testValue` MAY be in any locale required by the upstream API. This is the *only* field where non-English content is normative.
 - JavaScript code in `code` MUST follow English-only naming; `//` comments MAY be in any locale.
 
 ## 10. Safety
 
-The two safety-related blocks are the core of this specification. They look similar but serve opposite directions:
+The two sandbox-related blocks below are the core of this specification, plus a third per-call approval block (`humanInTheLoop`, Section 10.7). The first two look similar but serve opposite directions:
 
 | Block | Direction | Editable by | Stored verbatim |
 |---|---|---|---|
@@ -465,19 +478,19 @@ Implementations MUST treat `sandboxOverrides` as the author's declared widening 
 
 | Field | Type | Tristate? | Meaning of absent / null |
 |---|---|---|---|
-| `addAllowClasses` | array of Java class names | no | empty array — baseline allowlist unchanged |
-| `removeAllowClasses` | array of Java class names | no | empty array — baseline allowlist unchanged |
-| `addDenyClasses` | array of Java class names | no | empty array — baseline denylist unchanged |
-| `removeDenyClasses` | array of Java class names | no | empty array — baseline denylist unchanged |
-| `networkMode` | enum (§ 10.4) | **yes** | inherit baseline (default = `blocked`) |
-| `hostsAllow` | array of hostnames | no | empty — no hosts; `["*"]` is the wildcard sentinel |
+| `addAllowClasses` | array of Java class names | no | empty array - baseline allowlist unchanged |
+| `removeAllowClasses` | array of Java class names | no | empty array - baseline allowlist unchanged |
+| `addDenyClasses` | array of Java class names | no | empty array - baseline denylist unchanged |
+| `removeDenyClasses` | array of Java class names | no | empty array - baseline denylist unchanged |
+| `networkMode` | enum (Section 10.4) | **yes** | inherit baseline (default = `blocked`) |
+| `hostsAllow` | array of hostnames | no | empty - no hosts; `["*"]` is the wildcard sentinel |
 | `fileRead` | boolean OR null | **yes** | inherit baseline (default = `false`) |
 | `fileWrite` | boolean OR null | **yes** | inherit baseline (default = `false`) |
 | `fsBasePath` | string OR null | **yes** | inherit baseline path |
 
 Notes:
 
-- For `networkMode`, `fileRead`, `fileWrite`, `fsBasePath` the distinction between `null` (inherit) and an explicit value (override) is significant. Setting `fileRead: false` explicitly is different from omitting the field — explicit `false` MUST clear any baseline that would have granted read access.
+- For `networkMode`, `fileRead`, `fileWrite`, `fsBasePath` the distinction between `null` (inherit) and an explicit value (override) is significant. Setting `fileRead: false` explicitly is different from omitting the field - explicit `false` MUST clear any baseline that would have granted read access.
 - `addAllowClasses` ∩ `addDenyClasses` MUST be empty after merge with baseline. A resolver detecting overlap MUST raise a deterministic resolver error rather than silently picking one.
 - An empty `SandboxOverrides` block (all fields null/empty) is equivalent to no block at all; consumers MUST treat them interchangeably.
 
@@ -493,7 +506,7 @@ flowchart LR
 
     subgraph STEPS["Resolution"]
         direction TB
-        M1["1 · merge allow/deny<br/>(baseline ∪ add) − remove"]
+        M1["1 · merge allow/deny<br/>(baseline ∪ add) - remove"]
         M2["2 · disjointness check<br/>allow ∩ deny = ∅"]
         M3["3 · tristate coalesce<br/>networkMode · fileRead · fileWrite · fsBasePath"]
         M4["4 · resolve hosts<br/>(when networkMode = allowlist)"]
@@ -509,12 +522,12 @@ flowchart LR
 
 Pseudocode:
 
-```
+```text
 input:  overrides : SandboxOverrides
         baseline  : { allowClasses, denyClasses, fsBasePath, networkMode, allowedHosts, fileRead, fileWrite }
 
-step 1  effectiveAllow = (baseline.allow ∪ overrides.addAllow) − overrides.removeAllow
-step 2  effectiveDeny  = (baseline.deny  ∪ overrides.addDeny ) − overrides.removeDeny
+step 1  effectiveAllow = (baseline.allow ∪ overrides.addAllow) - overrides.removeAllow
+step 2  effectiveDeny  = (baseline.deny  ∪ overrides.addDeny ) - overrides.removeDeny
 step 3  if effectiveAllow ∩ effectiveDeny ≠ ∅ → reject (resolver error)
 step 4  effectiveNetwork = overrides.networkMode ?? baseline.networkMode      (tristate)
 step 5  effectiveHosts   = overrides.hostsAllow ∪ baseline.allowedHosts        when network=allowlist; else []
@@ -533,7 +546,7 @@ step 9  populate toolSafety = {
         }
 ```
 
-The algorithm is **monotonic with respect to risk**: nothing in `sandboxOverrides` can make the baseline *less* permissive than its already-allowed reach (that would be a no-op or a reduction). Removals from the baseline denylist are escalations; removals from the baseline allowlist are restrictions. See § 10.6 for how this drives Risk Level.
+The algorithm is **monotonic with respect to risk**: nothing in `sandboxOverrides` can make the baseline *less* permissive than its already-allowed reach (that would be a no-op or a reduction). Removals from the baseline denylist are escalations; removals from the baseline allowlist are restrictions. See Section 10.6 for how this drives Risk Level.
 
 ### 10.3 `toolSafety` shape
 
@@ -570,24 +583,24 @@ The algorithm is **monotonic with respect to risk**: nothing in `sandboxOverride
 | `runtime.helpers` | array of `"<namespace>/v<n>"` strings | Versioned helper surface the spec relies on |
 | `runtime.console` | boolean | Whether `console.log` is bound (output still passes env-var masking) |
 | `category.source` | string | `"builtin"` for catalog specs, `"user"` for Tool Studio specs, or a custom origin |
-| `category.id` | string | Resolved category (see § 9.1) |
-| `capabilities.network.mode` | enum (§ 10.4) | Resolved network mode |
+| `category.id` | string | Resolved category (see Section 9.1) |
+| `capabilities.network.mode` | enum (Section 10.4) | Resolved network mode |
 | `capabilities.network.hosts` | array of hostnames | Resolved egress allow list |
 | `capabilities.fileRead` | boolean | Resolved read capability |
 | `capabilities.fileWrite` | boolean | Resolved write capability |
 
 `toolSafety` is the auditable record of what the runtime is committed to enforce. The audit log records this block per invocation; downstream consumers SHOULD treat it as authoritative for "what posture was active at this call."
 
-> **Implementation note.** In the reference Spring AI Playground runtime (v0.2.x), `toolSafety` is written by Tool Studio at publish-time but is **not** re-derived on every load — the persisted block is the writer's last snapshot. Downstream consumers that need byte-fresh policy MUST re-run the resolver against `sandboxOverrides` rather than trusting `toolSafety` for enforcement decisions on a foreign spec.
+> **Implementation note.** In the reference Spring AI Playground runtime (v0.2.x), `toolSafety` is written by Tool Studio at publish-time but is **not** re-derived on every load - the persisted block is the writer's last snapshot. Downstream consumers that need byte-fresh policy MUST re-run the resolver against `sandboxOverrides` rather than trusting `toolSafety` for enforcement decisions on a foreign spec.
 
 ### 10.4 Network mode behavioral table
 
-`capabilities.network.mode` takes one of four values. Each defines a distinct `fetch` behavior; the SSRF four-layer guard (DNS pinning, IP-range filter, redirect-chain pinning, response-body size cap) is active in `strict` and `allowlist`, and bypassed in `open`:
+`capabilities.network.mode` takes one of four values. Each defines a distinct `fetch` behavior. The SSRF four-layer guard (DNS pinning, IP-range filter, redirect-chain pinning, response-body size cap) is active in `strict` only. `allowlist` enforces an explicit host allow-list - internal-network hosts may be included - but does **not** perform IP-range / DNS-rebind guarding; `open` bypasses everything. For a local single-user tool this is the right split: use `allowlist` for hosts you trust (vendor APIs, an internal service) and `strict` for untrusted public hosts:
 
 | Mode | `fetch` exposed? | Host gate | SSRF guard | When to use |
 |---|---|---|---|---|
-| `blocked` | no | n/a | n/a | Tool does no network — the safe default; the `fetch` global is not installed at all. |
-| `allowlist` | yes | only hosts in `capabilities.network.hosts` | active | Tool talks to one or more known vendor APIs. Recommended for catalog publication. |
+| `blocked` | no | n/a | n/a | Tool does no network - the safe default; the `fetch` global is not installed at all. |
+| `allowlist` | yes | only hosts in `capabilities.network.hosts` (internal-network hosts allowed) | off - host allow-list only, no IP/DNS-rebind guard | Tool talks to one or more **trusted** hosts (vendor APIs or an internal service). For untrusted public hosts use `strict`. |
 | `strict` | yes | any public host | active | Tool talks to arbitrary public hosts but the playground enforces SSRF guards on every request. |
 | `open` | yes | any host including private networks | **bypassed** | Strongly discouraged; should never appear in a published catalog spec. Authoring private tools on a trusted host only. |
 
@@ -608,7 +621,7 @@ The default at the *baseline* level is `blocked`. Authors who do not declare `ne
 
 `toolSafety` is human-readable; Risk Level is the UI-friendly distillation. Levels run from `L0` (no detected risk) to `L5` (escape-class allowed). The reference resolver computes Risk Level as a **monotonic max-merge**:
 
-```
+```text
 risk := L0
 if capabilities.network.mode == "allowlist":
     risk := max(risk, hosts contains "*" ? L4 : L3)
@@ -617,19 +630,44 @@ elif capabilities.network.mode == "open":    risk := max(risk, L4)
 if fileWrite:                                risk := max(risk, L4)
 elif fileRead:                               risk := max(risk, L3)
 
-for cls in (baseline.deny − sandboxOverrides.removeDenyClasses):
+for cls in (baseline.deny - sandboxOverrides.removeDenyClasses):
     if cls matches System|Runtime|Process|ProcessBuilder:  risk := max(risk, L5)
 if |removed-from-baseline-deny| ≥ 3:                       risk := max(risk, L4)
 elif |removed-from-baseline-deny| ≥ 1:                     risk := max(risk, L3)
 
-for cls in (sandboxOverrides.addAllowClasses − baseline.allow):
+for cls in (sandboxOverrides.addAllowClasses - baseline.allow):
     if cls is critical (System / Runtime / Process):       risk := max(risk, L5)
     elif cls is FileWrite-related:                         risk := max(risk, L5)
     elif cls is reflection / network / FileRead-related:   risk := max(risk, L4)
     else:                                                  risk := max(risk, L3)
 ```
 
-The Risk Level is computed for UI badging and audit-log decoration. Implementations MUST NOT store the computed level in `toolSafety` itself — Risk Level is a *view* on the posture, not a property of it. If the algorithm changes, recomputing yields a different answer from the same `toolSafety`; this is intentional.
+The Risk Level is computed for UI badging and audit-log decoration. Implementations MUST NOT store the computed level in `toolSafety` itself - Risk Level is a *view* on the posture, not a property of it. If the algorithm changes, recomputing yields a different answer from the same `toolSafety`; this is intentional.
+
+### 10.7 Human-in-the-loop approval { #human-in-the-loop }
+
+The optional `humanInTheLoop` block declares whether a tool call must be confirmed by a person **at call time**. It is independent of the sandbox (which decides *what* a tool may do) and of the Risk Level (which is observational): this block decides *whether a specific call runs at all*. Where the sandbox and risk score are evaluated before publication, this gate fires on every invocation.
+
+```json
+{
+  "humanInTheLoop": {
+    "mode": "REQUIRED",
+    "promptTemplate": "Allow '{toolName}' to run with {args}?"
+  }
+}
+```
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `mode` | enum | no | `DISABLED` · `REQUIRED`. Absent or the whole block `null` ⇒ `DISABLED`. |
+| `promptTemplate` | string \| null | no | Approval-prompt text. `{toolName}` and `{args}` are substituted at call time (flat substitution - `{args}` is the whole argument map; there is no dotted-path form like `{args.path}`). Null ⇒ a built-in default prompt. |
+
+The two modes:
+
+- **`REQUIRED`** - every call is gated. In Agentic Chat the user sees an approve/decline dialog; an external MCP client is asked through MCP `elicitation/create`. A decline (or timeout, or a client that cannot ask) means the tool does **not** run - approval is deny-by-default.
+- **`DISABLED`** - the tool runs without any approval step (the sandbox still applies).
+
+Enabling this block does **not** change the tool's computed Risk Level - the two are orthogonal. The runtime enforcement (the two gates, the loopback de-duplication, and the fail-safe behavior) is specified in **[Human-in-the-Loop Approval](hitl-architecture.md)**; this section only defines the on-disk shape.
 
 ## 11. Lifecycle
 
@@ -643,7 +681,7 @@ stateDiagram-v2
 
     DRAFT --> ACTIVE : Local Pass earned<br/>+ env vars resolved
     DRAFT --> MISSING_REQUIREMENTS : draft cleared<br/>but env vars missing
-    DRAFT --> TEST_FAILED : Local Pass attempted<br/>and failed *(reserved)*
+    DRAFT --> TEST_FAILED : Local Pass attempted<br/>and failed (reserved)
 
     MISSING_REQUIREMENTS --> ACTIVE : env vars set
     MISSING_REQUIREMENTS --> DRAFT : draft flag re-raised
@@ -666,17 +704,17 @@ stateDiagram-v2
 | `ACTIVE` | `draft == false` AND every env-var reference resolves | exposed via the built-in MCP server |
 | `TEST_FAILED` | reserved | not exposed |
 
-`TEST_FAILED` is reserved for future use; the reference resolver never returns it from the current calculator. Drafts MAY exist with arbitrary or empty `toolSafety` — the runtime does not enforce posture invariants until the spec is published.
+`TEST_FAILED` is reserved for future use; the reference resolver never returns it from the current calculator. Drafts MAY exist with arbitrary or empty `toolSafety` - the runtime does not enforce posture invariants until the spec is published.
 
 ### 11.2 Env-var requirement check
 
-Before publishing, the runtime walks every `staticVariables` value, extracts each `${VAR}` placeholder, and verifies the OS environment defines a non-blank value for it. The check uses the placeholder grammar from § 7.2.
+Before publishing, the runtime walks every `staticVariables` value, extracts each `${VAR}` placeholder, and verifies the OS environment defines a non-blank value for it. The check uses the placeholder grammar from Section 7.2.
 
 - Implementations MUST treat unset, empty, and whitespace-only environment values as **missing**.
 - Implementations MAY consult a project-local secret store before the OS env; the result of the lookup is what the requirement check inspects.
 - A spec with any missing requirement is transitioned to `MISSING_REQUIREMENTS` and is not exposed.
 
-### 11.3 Local Pass — the publish gate
+### 11.3 Local Pass - the publish gate
 
 `draft` flips from `true` to `false` only when the spec earns its **Local Pass**: a successful test run with the declared `testValue`s, executed in the same sandbox the published tool will run in, with the resolved `toolSafety` posture in effect.
 
@@ -691,7 +729,7 @@ Every invocation MUST record (at minimum):
 
 - `toolId`, `name`, `category.id`
 - Resolved `toolSafety` block (verbatim)
-- The Risk Level computed from § 10.6
+- The Risk Level computed from Section 10.6
 - Parameters as received (post-validation, pre-execution); secrets MUST be masked
 - Outcome: `OK` / `ERROR` with structured cause
 - Elapsed duration
@@ -704,7 +742,7 @@ The audit record is the source of truth for "what was actually enforced." Implem
 
 The reference implementation persists user-authored specs into a **single bundle file** under the playground's home directory:
 
-```
+```text
 ~/spring-ai-playground/tool/save/toolSpecsMcpSetting.json
 ```
 
@@ -717,7 +755,7 @@ The bundle file contains both the spec list and the MCP server settings:
 }
 ```
 
-Specs that originate from the bundled catalog (`src/main/resources/tool/default-tool-specs-*.json`) are excluded from the bundle on save — they are reloaded from the classpath on startup, with user overrides matched by `toolId` and merged on top.
+Specs that originate from the bundled catalog (`src/main/resources/tool/default-tool-specs-*.json`) are excluded from the bundle on save - they are reloaded from the classpath on startup, with user overrides matched by `toolId` and merged on top.
 
 Implementations are free to choose a different file layout (one file per spec, sharded by category, database-backed) as long as the round-trip JSON shape of each spec conforms to this specification.
 
@@ -728,7 +766,7 @@ Writers MUST commit changes atomically:
 1. Serialize the bundle to a sibling temp file (`toolSpecsMcpSetting.json.tmp`).
 2. `renameSync` the temp file over the target. POSIX rename guarantees atomicity within the same filesystem.
 
-Readers MUST read after the rename completes — a writer that crashes mid-rename leaves the previous bundle intact.
+Readers MUST read after the rename completes - a writer that crashes mid-rename leaves the previous bundle intact.
 
 `createTimestamp` is set once when the spec is first written; `updateTimestamp` is updated on every subsequent persist. Both are epoch milliseconds.
 
@@ -736,8 +774,8 @@ Readers MUST read after the rename completes — a writer that crashes mid-renam
 
 The Spring AI Playground build ships the catalog twice:
 
-- `src/main/resources/tool/default-tool-specs-*.json` — the JVM resource classpath
-- `electron/resources/catalog/default-tool-specs-*.json` — the Electron-bundled mirror
+- `src/main/resources/tool/default-tool-specs-*.json` - the JVM resource classpath
+- `electron/resources/catalog/default-tool-specs-*.json` - the Electron-bundled mirror
 
 The two MUST be byte-identical. The build is responsible for enforcing this (the reference build uses `prepare-resources.mjs`); the spec format itself is silent on it. Catalog publishers consuming this spec independently MAY omit the mirror requirement.
 
@@ -745,7 +783,7 @@ The two MUST be byte-identical. The build is responsible for enforcing this (the
 
 The version namespace lives in `toolSafety.version` (today: `"1.0"`). The bump rules:
 
-- **Patch** (`1.0 → 1.0.1`): editorial clarification, additional examples, new tag vocab entries, new category enum values. No behavioral change. Patch bumps are not visible in the version field — the field captures major + minor only.
+- **Patch** (`1.0 → 1.0.1`): editorial clarification, additional examples, new tag vocab entries, new category enum values. No behavioral change. Patch bumps are not visible in the version field - the field captures major + minor only.
 - **Minor** (`1.0 → 1.1`): backward-compatible additive change. New optional fields, new network mode values, new helper versions added to the vocabulary (e.g. `safety.http/v2` alongside `v1`). Existing conforming specs continue to parse and resolve identically.
 - **Major** (`1.0 → 2.0`): backward-incompatible change. Field renames, removed enum values, semantics changes to existing fields. Documents written against v1 MUST continue to be readable for at least one major-version transition window.
 
@@ -753,23 +791,23 @@ Helper-level versions (`safety.fs/v1` → `safety.fs/v2`) are independent of the
 
 ## 14. Extension points
 
-Unknown top-level fields MUST be preserved on round-trip. This is the dedicated extension surface — a future minor version can introduce new fields without invalidating today's documents.
+Unknown top-level fields MUST be preserved on round-trip. This is the dedicated extension surface - a future minor version can introduce new fields without invalidating today's documents.
 
 Implementations adding their own fields SHOULD:
 
 - Prefix custom field names with a vendor identifier (`x-acme-cost-cap`) to avoid collision with future standard fields.
 - Document the field's semantics in their own docs and link this spec for the surrounding shape.
-- Treat unknown vendor-prefixed fields with the same round-trip rule — do not strip them on save.
+- Treat unknown vendor-prefixed fields with the same round-trip rule - do not strip them on save.
 
-Custom additions inside `sandboxOverrides`, `toolSafety`, or `params[]` are out of scope for this version — those blocks have closed shapes today. Future minor versions may open named extension sub-objects within them.
+Custom additions inside `sandboxOverrides`, `toolSafety`, or `params[]` are out of scope for this version - those blocks have closed shapes today. Future minor versions may open named extension sub-objects within them.
 
 ## 15. Validation and error model
 
 Validation has three layers:
 
-1. **Document validation** — does the spec parse and conform to the JSON Schema (§ 16)?
-2. **Cross-field validation** — do the invariants in § 6 (`required` ⟹ `testValue` present), § 7 (env-var grammar), § 10.1 (allow/deny disjointness) hold?
-3. **Runtime validation** — does the resolver accept the spec, and does the Local Pass succeed?
+1. **Document validation** - does the spec parse and conform to the JSON Schema (Section 16)?
+2. **Cross-field validation** - do the invariants in Section 6 (`required` ⟹ `testValue` present), Section 7 (env-var grammar), Section 10.1 (allow/deny disjointness) hold?
+3. **Runtime validation** - does the resolver accept the spec, and does the Local Pass succeed?
 
 Validation errors SHOULD be reported with at least:
 
@@ -792,7 +830,7 @@ Validate any candidate spec by loading the schema and checking it with a 2020-12
 
 The bundled catalog ships every example variant below. Each is shown abbreviated; the full version is in `src/main/resources/tool/default-tool-specs-*.json`.
 
-### 17.1 Pure compute — `base64`
+### 17.1 Pure compute - `base64`
 
 No network, no filesystem, no env. The baseline `sandboxOverrides` (all-null) is sufficient.
 
@@ -822,7 +860,7 @@ No network, no filesystem, no env. The baseline `sandboxOverrides` (all-null) is
 
 Risk Level: **L0**.
 
-### 17.2 Single-host network — `getUpbitTicker`
+### 17.2 Single-host network - `getUpbitTicker`
 
 `allowlist` mode with one host. No env-backed secret; the upstream API is unauthenticated.
 
@@ -848,7 +886,7 @@ Risk Level: **L0**.
 
 Risk Level: **L3** (non-wildcard allowlist).
 
-### 17.3 Env-backed multi-secret — `searchNaver`
+### 17.3 Env-backed multi-secret - `searchNaver`
 
 Two env-backed credentials, allowlist mode.
 
@@ -872,9 +910,9 @@ Two env-backed credentials, allowlist mode.
 }
 ```
 
-Without both env vars set, the spec sits in `MISSING_REQUIREMENTS` and is not exposed (§ 11.2).
+Without both env vars set, the spec sits in `MISSING_REQUIREMENTS` and is not exposed (Section 11.2).
 
-### 17.4 Strict-mode external HTTP — `extractPageContent`
+### 17.4 Strict-mode external HTTP - `extractPageContent`
 
 Tool fetches arbitrary user-supplied URLs; SSRF guard runs in `strict` mode.
 
@@ -886,13 +924,17 @@ Tool fetches arbitrary user-supplied URLs; SSRF guard runs in `strict` mode.
   "params": [
     { "name": "url", "type": "STRING", "required": true, "testValue": "https://example.com" }
   ],
-  "sandboxOverrides": { "networkMode": "strict" }
+  "sandboxOverrides": { "networkMode": "strict" },
+  "humanInTheLoop": {
+    "mode": "REQUIRED",
+    "promptTemplate": "The assistant wants to fetch and read a web page. Allow '{toolName}' with {args}?"
+  }
 }
 ```
 
-Risk Level: **L3** (`strict`).
+Risk Level: **L3** (`strict`). This is the bundled `extractPageContent`, which ships `humanInTheLoop.mode = REQUIRED` - every call is confirmed before the fetch runs (Section 10.7).
 
-### 17.5 Filesystem read — `readTextFile`
+### 17.5 Filesystem read - `readTextFile`
 
 No network, scoped read access to the configured `fsBasePath`.
 
@@ -909,7 +951,7 @@ No network, scoped read access to the configured `fsBasePath`.
 
 Risk Level: **L3** (read only).
 
-### 17.6 Filesystem write — `writeTextFile`
+### 17.6 Filesystem write - `writeTextFile`
 
 Write access. Highest risk level the bundled catalog ships.
 
@@ -927,7 +969,7 @@ Write access. Highest risk level the bundled catalog ships.
 
 Risk Level: **L4** (write).
 
-### 17.7 Object-typed argument — `evalExpression`
+### 17.7 Object-typed argument - `evalExpression`
 
 Demonstrates `OBJECT` parameter type. Models that cannot pass nested JSON drop down to `STRING` and pre-serialize.
 
@@ -943,7 +985,7 @@ Demonstrates `OBJECT` parameter type. Models that cannot pass nested JSON drop d
 }
 ```
 
-### 17.8 Draft — unpublished
+### 17.8 Draft - unpublished
 
 A spec freshly imported from the catalog ships with `draft: true`. Until activation (by preset + rules), it remains invisible to MCP.
 
@@ -953,14 +995,15 @@ A spec freshly imported from the catalog ships with `draft: true`. Until activat
 
 ## 18. References
 
-- [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) — Key words for use in RFCs to Indicate Requirement Levels
-- [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174) — Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words
-- [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) — The JavaScript Object Notation (JSON) Data Interchange Format
-- [RFC 4122 § 4.3](https://www.rfc-editor.org/rfc/rfc4122#section-4.3) — UUID v5
+- [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) - Key words for use in RFCs to Indicate Requirement Levels
+- [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174) - Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words
+- [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) - The JavaScript Object Notation (JSON) Data Interchange Format
+- [RFC 4122 Section 4.3](https://www.rfc-editor.org/rfc/rfc4122#section-4.3) - UUID v5
 - [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/release-notes.html)
-- [Model Context Protocol](https://modelcontextprotocol.io) — `tools/list` and `tools/call`
-- [AI Agent Tool Safety Architecture](safety-architecture.md) — defense-in-depth, threat-to-layer mapping, known limitations
-- [Application Architecture § Safe Tool Spec](architecture.md#safe-tool-spec) — where the spec fits in the system
+- [Model Context Protocol](https://modelcontextprotocol.io) - `tools/list` and `tools/call`
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate that honors `humanInTheLoop`
+- [AI Agent Tool Safety](safety-architecture.md) - defense-in-depth, threat-to-layer mapping, known limitations
+- [Application Architecture → Safe Tool Spec](architecture.md#safe-tool-spec) - where the spec fits in the system
 
 ## 19. Document history
 

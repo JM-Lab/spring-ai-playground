@@ -10,14 +10,16 @@
     "description": "Read, search, and send Gmail messages, manage labels and drafts. Google Workspace MCP (Preview).\n\nDocs: https://developers.google.com/workspace/guides/configure-mcp-servers",
     "stability": "PREVIEW",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://gmailmcp.googleapis.com/mcp/v1",
       "auth": "OAUTH",
+      "requiredEnv": ["GMAIL_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/gmail.modify"]}
     }],
     "docsUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Outlook-Mail",
@@ -30,15 +32,16 @@
     "description": "Read, send, and organise Outlook mail across folders. Routed through Microsoft 365 Agent365 — requires your tenant ID (MS_TENANT_ID).\n\nDocs: https://github.com/microsoft/mcp",
     "stability": "GA",
     "tenantIdRequired": true,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://agent365.svc.cloud.microsoft/agents/tenants/${MS_TENANT_ID}/servers/mcp_MailTools",
       "auth": "OAUTH",
-      "requiredEnv": ["MS_TENANT_ID"],
+      "requiredEnv": ["MS_TENANT_ID", "OUTLOOK_MAIL_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0", "scopes": ["Mail.ReadWrite"]}
     }],
     "docsUrl": "https://github.com/microsoft/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Google-Calendar",
@@ -51,14 +54,16 @@
     "description": "Create, list, and manage Google Calendar events, attendees, reminders, and recurring schedules. Google Workspace MCP (Preview).\n\nDocs: https://developers.google.com/workspace/guides/configure-mcp-servers",
     "stability": "PREVIEW",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://calendarmcp.googleapis.com/mcp/v1",
       "auth": "OAUTH",
+      "requiredEnv": ["GOOGLE_CALENDAR_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/calendar"]}
     }],
     "docsUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Outlook-Calendar",
@@ -71,15 +76,16 @@
     "description": "Browse Outlook calendars, schedule and update meetings, manage availability via Microsoft 365 Agent365. Requires MS_TENANT_ID.\n\nDocs: https://github.com/microsoft/mcp",
     "stability": "GA",
     "tenantIdRequired": true,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://agent365.svc.cloud.microsoft/agents/tenants/${MS_TENANT_ID}/servers/mcp_CalendarTools",
       "auth": "OAUTH",
-      "requiredEnv": ["MS_TENANT_ID"],
+      "requiredEnv": ["MS_TENANT_ID", "OUTLOOK_CALENDAR_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0", "scopes": ["Calendars.ReadWrite"]}
     }],
     "docsUrl": "https://github.com/microsoft/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Notion",
@@ -92,14 +98,16 @@
     "description": "Browse, create, and edit Notion pages, databases, and properties. Vendor-hosted remote MCP with OAuth 2.1 + PKCE.\n\nDocs: https://developers.notion.com/guides/mcp/overview",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.notion.com/mcp",
       "auth": "OAUTH",
+      "requiredEnv": ["NOTION_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://api.notion.com", "scopes": []}
     }],
     "docsUrl": "https://developers.notion.com/guides/mcp/overview",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Kakao-PlayMCP",
@@ -109,17 +117,19 @@
     "tier": 1,
     "vendor": "Kakao",
     "vendorOfficial": true,
-    "description": "Kakao aggregator hub — KakaoTalk send-to-self, Talk Calendar, KakaoMap, Gift, Melon, plus 200+ third-party MCPs. KR-focused.\n\nDocs: https://playmcp.kakao.com/",
+    "description": "Kakao aggregator hub — KakaoTalk send-to-self, Talk Calendar, KakaoMap, Gift, Melon, plus 200+ third-party MCPs. KR-focused.\n\nPlayMCP does not support standard OAuth 2.1 (no redirect_uri, IP-gated DCR), so connect by Bearer header. Issue a One-Time Token (OTT) at https://playmcp.kakao.com/toolbox (OpenClaw Connect), exchange it for an access token, paste as KAKAO_PLAYMCP_TOKEN in the playground's Environment Variables, then activate this entry. Access token lasts 12 hours and the refresh token 90 days — manual refresh ritual.\n\nDocs: https://spring-ai-community.github.io/spring-ai-playground/features/default-mcp-catalog/productivity/#Kakao-PlayMCP",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://playmcp.kakao.com/mcp",
-      "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://kauth.kakao.com", "scopes": []}
+      "auth": "BEARER",
+      "requiredEnv": ["KAKAO_PLAYMCP_TOKEN"],
+      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${KAKAO_PLAYMCP_TOKEN}"}]
     }],
-    "docsUrl": "https://playmcp.kakao.com/",
-    "trustSignals": ["vendor-official"]
+    "docsUrl": "https://spring-ai-community.github.io/spring-ai-playground/features/default-mcp-catalog/productivity/#Kakao-PlayMCP",
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Google-Drive",
@@ -132,14 +142,16 @@
     "description": "List, read, and upload files in Google Drive, manage permissions, shared drives, and folder structure. Google Workspace MCP (Preview).\n\nDocs: https://developers.google.com/workspace/guides/configure-mcp-servers",
     "stability": "PREVIEW",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://drivemcp.googleapis.com/mcp/v1",
       "auth": "OAUTH",
+      "requiredEnv": ["GOOGLE_DRIVE_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/drive"]}
     }],
     "docsUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "OneDrive-SharePoint",
@@ -152,15 +164,16 @@
     "description": "Browse and edit OneDrive personal files and SharePoint sites, lists, document libraries via Microsoft 365 Agent365. Requires MS_TENANT_ID.\n\nDocs: https://github.com/microsoft/mcp",
     "stability": "GA",
     "tenantIdRequired": true,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://agent365.svc.cloud.microsoft/agents/tenants/${MS_TENANT_ID}/servers/mcp_ODSPRemoteServer",
       "auth": "OAUTH",
-      "requiredEnv": ["MS_TENANT_ID"],
+      "requiredEnv": ["MS_TENANT_ID", "ONEDRIVE_SHAREPOINT_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0", "scopes": ["Files.ReadWrite.All"]}
     }],
     "docsUrl": "https://github.com/microsoft/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Slack",
@@ -173,14 +186,16 @@
     "description": "Read and post Slack messages across channels and DMs, search the workspace, manage user/channel metadata. Slack's official remote MCP.\n\nDocs: https://docs.slack.dev/ai/slack-mcp-server/",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.slack.com/mcp",
       "auth": "OAUTH",
+      "requiredEnv": ["SLACK_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://slack.com", "scopes": ["channels:read", "chat:write"]}
     }],
     "docsUrl": "https://docs.slack.dev/ai/slack-mcp-server/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Microsoft-Teams",
@@ -193,15 +208,16 @@
     "description": "Send messages to Teams chats and channels, search conversations, manage meetings via Microsoft 365 Agent365. Requires MS_TENANT_ID.\n\nDocs: https://github.com/microsoft/mcp",
     "stability": "GA",
     "tenantIdRequired": true,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://agent365.svc.cloud.microsoft/agents/tenants/${MS_TENANT_ID}/servers/mcp_TeamsServer",
       "auth": "OAUTH",
-      "requiredEnv": ["MS_TENANT_ID"],
+      "requiredEnv": ["MS_TENANT_ID", "MICROSOFT_TEAMS_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://login.microsoftonline.com/${MS_TENANT_ID}/v2.0", "scopes": ["Chat.ReadWrite"]}
     }],
     "docsUrl": "https://github.com/microsoft/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Linear",
@@ -214,14 +230,16 @@
     "description": "Create, query, and update Linear issues, projects, cycles, and teams. Linear's official remote MCP with OAuth 2.1.\n\nDocs: https://linear.app/docs/mcp",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.linear.app/mcp",
       "auth": "OAUTH",
+      "requiredEnv": ["LINEAR_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://linear.app", "scopes": ["read", "write"]}
     }],
     "docsUrl": "https://linear.app/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Atlassian",
@@ -234,14 +252,16 @@
     "description": "Read and update Jira issues and Confluence pages via Atlassian's official Rovo MCP. Replaces legacy /v1/sse on 2026-06-30.\n\nDocs: https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.atlassian.com/v1/mcp/authv2",
       "auth": "OAUTH",
+      "requiredEnv": ["ATLASSIAN_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://auth.atlassian.com", "scopes": ["read:jira-work", "write:jira-work", "read:confluence-content.all"]}
     }],
     "docsUrl": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "GitHub",
@@ -254,15 +274,16 @@
     "description": "Search and manage GitHub repositories, issues, pull requests, code reviews, and Actions. Sign in via OAuth Device Flow or pass a personal access token (GITHUB_PERSONAL_ACCESS_TOKEN).\n\nDocs: https://github.com/github/github-mcp-server",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://api.githubcopilot.com/mcp/",
       "auth": "OAUTH_OR_PAT",
-      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"}],
-      "requiredEnv": ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+      "requiredEnv": ["GITHUB_PERSONAL_ACCESS_TOKEN", "GITHUB_OAUTH_CLIENT_ID"],
+      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"}]
     }],
     "docsUrl": "https://github.com/github/github-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Microsoft-Learn",
@@ -275,13 +296,14 @@
     "description": "Search the full Microsoft Learn documentation catalogue — Azure, .NET, Windows, Power Platform, Microsoft 365 and more. No authentication required, free to use.\n\nDocs: https://learn.microsoft.com/en-us/training/support/mcp",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://learn.microsoft.com/api/mcp",
       "auth": "NONE"
     }],
     "docsUrl": "https://learn.microsoft.com/en-us/training/support/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Sentry",
@@ -294,14 +316,16 @@
     "description": "Investigate Sentry issues and events across projects, query alert rules, releases, and performance data. OAuth with device-code flow.\n\nDocs: https://docs.sentry.io/product/sentry-mcp/",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.sentry.dev/mcp",
       "auth": "OAUTH",
+      "requiredEnv": ["SENTRY_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://sentry.io", "scopes": ["org:read", "project:read", "event:read"]}
     }],
     "docsUrl": "https://docs.sentry.io/product/sentry-mcp/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Tavily",
@@ -314,15 +338,16 @@
     "description": "AI-optimised web search and answer engine for grounding LLMs with up-to-date facts and sources. Requires TAVILY_API_KEY.\n\nDocs: https://docs.tavily.com/documentation/mcp",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.tavily.com/mcp",
       "auth": "API_KEY",
-      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${TAVILY_API_KEY}"}],
-      "requiredEnv": ["TAVILY_API_KEY"]
+      "requiredEnv": ["TAVILY_API_KEY"],
+      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${TAVILY_API_KEY}"}]
     }],
     "docsUrl": "https://docs.tavily.com/documentation/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Exa",
@@ -335,15 +360,16 @@
     "description": "Neural web search by Exa — semantic ranking, source-aware retrieval, and high-quality result snippets. Requires EXA_API_KEY (x-api-key header).\n\nDocs: https://exa.ai/docs/reference/exa-mcp",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.exa.ai/mcp",
       "auth": "API_KEY",
-      "requiredHeaders": [{"key": "x-api-key", "value": "${EXA_API_KEY}"}],
-      "requiredEnv": ["EXA_API_KEY"]
+      "requiredEnv": ["EXA_API_KEY"],
+      "requiredHeaders": [{"key": "x-api-key", "value": "${EXA_API_KEY}"}]
     }],
     "docsUrl": "https://exa.ai/docs/reference/exa-mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Firecrawl",
@@ -356,17 +382,17 @@
     "description": "Web scraping, crawling, and structured data extraction with anti-bot handling. Bearer-authenticated with FIRECRAWL_API_KEY.\n\nDocs: https://docs.firecrawl.dev/mcp-server",
     "stability": "GA",
     "tenantIdRequired": false,
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.firecrawl.dev/v2/mcp",
       "auth": "BEARER",
-      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${FIRECRAWL_API_KEY}"}],
-      "requiredEnv": ["FIRECRAWL_API_KEY"]
+      "requiredEnv": ["FIRECRAWL_API_KEY"],
+      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${FIRECRAWL_API_KEY}"}]
     }],
     "docsUrl": "https://docs.firecrawl.dev/mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
-
   {
     "id": "Asana",
     "displayName": "Asana",
@@ -377,10 +403,16 @@
     "vendorOfficial": true,
     "description": "Manage Asana tasks, projects, sections, and custom fields across workspaces. Asana's official OAuth MCP (SSE transport).\n\nDocs: https://developers.asana.com/docs/mcp",
     "stability": "GA",
-    "transports": [{"type": "SSE", "urlTemplate": "https://mcp.asana.com/v2/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://app.asana.com", "scopes": []}}],
+    "transports": [  {
+      "type": "SSE",
+      "urlTemplate": "https://mcp.asana.com/v2/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["ASANA_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://app.asana.com", "scopes": []}
+    }],
     "docsUrl": "https://developers.asana.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Azure-DevOps",
@@ -392,15 +424,16 @@
     "vendorOfficial": true,
     "description": "Query and update Azure DevOps repos, work items (Boards), pipelines, and pull requests within your organisation. Preview, requires AZURE_DEVOPS_ORG.\n\nDocs: https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server",
     "stability": "PREVIEW",
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.dev.azure.com/${AZURE_DEVOPS_ORG}",
       "auth": "OAUTH",
-      "requiredEnv": ["AZURE_DEVOPS_ORG"],
+      "requiredEnv": ["AZURE_DEVOPS_ORG", "AZURE_DEVOPS_OAUTH_CLIENT_ID"],
       "oauthDefaults": {"issuerUri": "https://login.microsoftonline.com/common/v2.0", "scopes": ["499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"]}
     }],
     "docsUrl": "https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "DeepWiki",
@@ -412,9 +445,14 @@
     "vendorOfficial": true,
     "description": "AI-generated, structured wikis for any public GitHub repository — architecture diagrams, module-level explanations, navigable source links, and a natural-language Q&A interface. Built by Cognition (the team behind the Devin agent); 50,000+ top public repos already indexed (from `modelcontextprotocol/...` to LangChain, React, Linux, etc.). Public repos require no account.\n\nMCP tools (public, free):\n  • read_wiki_structure — list documentation topics / sections for a repo\n  • read_wiki_contents — fetch the full generated wiki text for a repo\n  • ask_question — ask any natural-language question about a repo, get a grounded AI answer with source-file citations\n\nAdditional private-mode tools (require linked Devin account):\n  • list_available_repos, generate_wiki, devin_knowledge_manage,\n  • devin_playbook_manage, devin_schedule_manage, devin_session_*\n\nTips:\n  • URL trick — replace `github.com/<org>/<repo>` with `deepwiki.com/<org>/<repo>` to browse the wiki in your browser.\n  • To index your own public repo, visit https://deepwiki.com/ and paste the URL.\n  • Customise generated pages with `.devin/wiki.json` in your repo root.\n\nEndpoint (pre-filled): https://mcp.deepwiki.com/mcp\nWeb UI:  https://deepwiki.com/\nVendor:  https://cognition.ai/blog/deepwiki-mcp-server\nSource:  https://github.com/CognitionAI/deepwiki",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.deepwiki.com/mcp", "auth": "NONE"}],
-    "docsUrl": "https://deepwiki.com/",
-    "trustSignals": ["vendor-official"]
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.deepwiki.com/mcp",
+      "auth": "NONE"
+    }],
+    "docsUrl": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Context7",
@@ -426,9 +464,14 @@
     "vendorOfficial": true,
     "description": "Pull up-to-date library documentation and code examples by library name and version, designed to ground AI code generation. Free, no authentication.\n\nDocs: https://github.com/upstash/context7",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.context7.com/mcp", "auth": "NONE"}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.context7.com/mcp",
+      "auth": "NONE"
+    }],
     "docsUrl": "https://github.com/upstash/context7",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Jina-AI",
@@ -440,15 +483,16 @@
     "vendorOfficial": true,
     "description": "Jina AI Reader (URL-to-clean-markdown) and search APIs for LLM-grounded retrieval. Bearer-authenticated with JINA_API_KEY.\n\nDocs: https://github.com/jina-ai/MCP",
     "stability": "GA",
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.jina.ai/v1",
       "auth": "BEARER",
-      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${JINA_API_KEY}"}],
-      "requiredEnv": ["JINA_API_KEY"]
+      "requiredEnv": ["JINA_API_KEY"],
+      "requiredHeaders": [{"key": "Authorization", "value": "Bearer ${JINA_API_KEY}"}]
     }],
     "docsUrl": "https://github.com/jina-ai/MCP",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "SerpAPI",
@@ -460,14 +504,15 @@
     "vendorOfficial": true,
     "description": "Real-time Google, Bing, Baidu, DuckDuckGo, Naver and other SERP scraping with structured JSON. API key embedded in URL path (SERPAPI_API_KEY).\n\nDocs: https://github.com/serpapi/serpapi-mcp",
     "stability": "GA",
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://mcp.serpapi.com/${SERPAPI_API_KEY}/mcp",
       "auth": "API_KEY",
       "requiredEnv": ["SERPAPI_API_KEY"]
     }],
     "docsUrl": "https://github.com/serpapi/serpapi-mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Cloudflare",
@@ -479,10 +524,16 @@
     "vendorOfficial": true,
     "description": "Cloudflare umbrella covering Workers, R2, KV, D1, Workers AI, Browser Rendering, Hyperdrive, Queues, Logs, and observability.\n\nDocs: https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.cloudflare.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://dash.cloudflare.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.cloudflare.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["CLOUDFLARE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://dash.cloudflare.com", "scopes": []}
+    }],
     "docsUrl": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Vercel",
@@ -494,10 +545,16 @@
     "vendorOfficial": true,
     "description": "Inspect and manage Vercel projects, deployments, domains, environment variables, and observability via OAuth.\n\nDocs: https://vercel.com/docs/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.vercel.com", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://vercel.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.vercel.com",
+      "auth": "OAUTH",
+      "requiredEnv": ["VERCEL_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://vercel.com", "scopes": []}
+    }],
     "docsUrl": "https://vercel.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Netlify",
@@ -509,10 +566,16 @@
     "vendorOfficial": true,
     "description": "Manage Netlify sites, deploys, build hooks, edge functions, and form submissions via OAuth.\n\nDocs: https://docs.netlify.com/build/build-with-ai/mcp/",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://netlify-mcp.netlify.app/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://app.netlify.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://netlify-mcp.netlify.app/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["NETLIFY_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://app.netlify.com", "scopes": []}
+    }],
     "docsUrl": "https://docs.netlify.com/build/build-with-ai/mcp/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Heroku",
@@ -524,10 +587,16 @@
     "vendorOfficial": true,
     "description": "Inspect Heroku apps, dynos, releases, config vars, addons, and logs via OAuth.\n\nDocs: https://devcenter.heroku.com/articles/heroku-mcp-server",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.heroku.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://id.heroku.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.heroku.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["HEROKU_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://id.heroku.com", "scopes": []}
+    }],
     "docsUrl": "https://devcenter.heroku.com/articles/heroku-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Render",
@@ -539,10 +608,16 @@
     "vendorOfficial": true,
     "description": "Manage Render web services, background workers, cron jobs, and deploys via OAuth.\n\nDocs: https://render.com/docs/mcp-server",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.render.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://dashboard.render.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.render.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["RENDER_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://dashboard.render.com", "scopes": []}
+    }],
     "docsUrl": "https://render.com/docs/mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Google-Cloud-Run",
@@ -554,10 +629,16 @@
     "vendorOfficial": true,
     "description": "Deploy and manage Cloud Run services, revisions, traffic splits, and jobs. Uses Google OAuth with the cloud-platform scope.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://run.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/cloud-platform"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://run.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["GOOGLE_CLOUD_RUN_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/cloud-platform"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Google-Cloud-Storage",
@@ -569,10 +650,16 @@
     "vendorOfficial": true,
     "description": "Manage GCS buckets and objects — list, upload, download, IAM, lifecycle rules. Uses Google OAuth.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://storage.googleapis.com/storage/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/devstorage.read_write"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://storage.googleapis.com/storage/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["GOOGLE_CLOUD_STORAGE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/devstorage.read_write"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "BigQuery",
@@ -584,10 +671,16 @@
     "vendorOfficial": true,
     "description": "Query datasets, manage tables and views, and run jobs in Google BigQuery. Google OAuth with the bigquery scope.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://bigquery.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/bigquery"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://bigquery.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["BIGQUERY_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/bigquery"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Neon",
@@ -599,10 +692,16 @@
     "vendorOfficial": true,
     "description": "Provision and query Neon serverless Postgres — branches, roles, schema migrations, query analysis. OAuth.\n\nDocs: https://neon.tech/docs/ai/neon-mcp-server",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.neon.tech/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://console.neon.tech", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.neon.tech/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["NEON_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://console.neon.tech", "scopes": []}
+    }],
     "docsUrl": "https://neon.tech/docs/ai/neon-mcp-server",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Supabase",
@@ -614,10 +713,16 @@
     "vendorOfficial": true,
     "description": "Manage Supabase projects end-to-end — Postgres queries, Auth users, Storage buckets, Edge Functions. OAuth.\n\nDocs: https://supabase.com/docs/guides/getting-started/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.supabase.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://supabase.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.supabase.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["SUPABASE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://supabase.com", "scopes": []}
+    }],
     "docsUrl": "https://supabase.com/docs/guides/getting-started/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "PlanetScale",
@@ -629,10 +734,16 @@
     "vendorOfficial": true,
     "description": "Query PlanetScale MySQL databases, manage branches, deploy schema changes via OAuth.\n\nDocs: https://planetscale.com/docs/concepts/planetscale-mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.pscale.dev/mcp/planetscale", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://app.planetscale.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.pscale.dev/mcp/planetscale",
+      "auth": "OAUTH",
+      "requiredEnv": ["PLANETSCALE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://app.planetscale.com", "scopes": []}
+    }],
     "docsUrl": "https://planetscale.com/docs/concepts/planetscale-mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Cloud-SQL",
@@ -644,10 +755,16 @@
     "vendorOfficial": true,
     "description": "Administer Google Cloud SQL instances (MySQL, Postgres, SQL Server) — databases, users, backups, and queries.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://sqladmin.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/sqlservice.admin"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://sqladmin.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["CLOUD_SQL_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/sqlservice.admin"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Spanner",
@@ -659,10 +776,16 @@
     "vendorOfficial": true,
     "description": "Query Google Cloud Spanner instances and databases — globally distributed, strong consistency, SQL.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://spanner.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/spanner.data"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://spanner.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["SPANNER_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/spanner.data"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Firestore",
@@ -674,10 +797,16 @@
     "vendorOfficial": true,
     "description": "Query and manage Firestore documents, collections, composite indexes, and security rules via Google OAuth.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://firestore.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/datastore"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://firestore.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["FIRESTORE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/datastore"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Stripe",
@@ -689,10 +818,16 @@
     "vendorOfficial": true,
     "description": "Manage Stripe payments, customers, subscriptions, invoices, refunds, product catalogue, and Connect. OAuth.\n\nDocs: https://docs.stripe.com/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.stripe.com", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://stripe.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.stripe.com",
+      "auth": "OAUTH",
+      "requiredEnv": ["STRIPE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://stripe.com", "scopes": []}
+    }],
     "docsUrl": "https://docs.stripe.com/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "PayPal",
@@ -704,10 +839,16 @@
     "vendorOfficial": true,
     "description": "Manage PayPal orders, refunds, payouts, subscriptions, and invoicing through PayPal's official OAuth MCP (SSE).\n\nDocs: https://developer.paypal.com/tools/mcp-server/",
     "stability": "GA",
-    "transports": [{"type": "SSE", "urlTemplate": "https://mcp.paypal.com/sse", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://www.paypal.com", "scopes": []}}],
+    "transports": [  {
+      "type": "SSE",
+      "urlTemplate": "https://mcp.paypal.com/sse",
+      "auth": "OAUTH",
+      "requiredEnv": ["PAYPAL_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://www.paypal.com", "scopes": []}
+    }],
     "docsUrl": "https://developer.paypal.com/tools/mcp-server/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Square",
@@ -719,10 +860,16 @@
     "vendorOfficial": true,
     "description": "Square payments, catalogue, inventory, customers, and orders across locations. Beta program from Block.\n\nDocs: https://developer.squareup.com/docs/mcp",
     "stability": "BETA",
-    "transports": [{"type": "SSE", "urlTemplate": "https://mcp.squareup.com/sse", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://connect.squareup.com", "scopes": []}}],
+    "transports": [  {
+      "type": "SSE",
+      "urlTemplate": "https://mcp.squareup.com/sse",
+      "auth": "OAUTH",
+      "requiredEnv": ["SQUARE_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://connect.squareup.com", "scopes": []}
+    }],
     "docsUrl": "https://developer.squareup.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "HubSpot",
@@ -734,10 +881,16 @@
     "vendorOfficial": true,
     "description": "HubSpot CRM contacts, companies, deals, pipelines, lists, and engagements. OAuth 2.1 + PKCE.\n\nDocs: https://developers.hubspot.com/docs/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.hubspot.com", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://app.hubspot.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.hubspot.com",
+      "auth": "OAUTH",
+      "requiredEnv": ["HUBSPOT_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://app.hubspot.com", "scopes": []}
+    }],
     "docsUrl": "https://developers.hubspot.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Intercom",
@@ -749,11 +902,17 @@
     "vendorOfficial": true,
     "description": "Intercom conversations, contacts, tags, segments, and help-centre articles. US workspace region only.\n\nDocs: https://developers.intercom.com/docs/mcp",
     "stability": "GA",
-    "regionRestriction": "US-only",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.intercom.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://app.intercom.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.intercom.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["INTERCOM_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://app.intercom.com", "scopes": []}
+    }],
     "docsUrl": "https://developers.intercom.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true,
+    "regionRestriction": "US-only"
   },
   {
     "id": "Mixpanel",
@@ -765,10 +924,16 @@
     "vendorOfficial": true,
     "description": "Run Mixpanel product analytics queries — events, funnels, retention, cohorts, and user properties. OAuth.\n\nDocs: https://docs.mixpanel.com/docs/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.mixpanel.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://mixpanel.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.mixpanel.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["MIXPANEL_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://mixpanel.com", "scopes": []}
+    }],
     "docsUrl": "https://docs.mixpanel.com/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Figma",
@@ -780,10 +945,16 @@
     "vendorOfficial": true,
     "description": "Browse Figma files, frames, components, styles, comments, and design system tokens. OAuth.\n\nDocs: https://help.figma.com/hc/en-us/articles/mcp",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.figma.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://www.figma.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.figma.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["FIGMA_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://www.figma.com", "scopes": []}
+    }],
     "docsUrl": "https://help.figma.com/hc/en-us/articles/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Canva",
@@ -795,10 +966,16 @@
     "vendorOfficial": true,
     "description": "Manage Canva designs, brand kits, folders, templates, and assets through the official Canva Connect MCP.\n\nDocs: https://www.canva.dev/docs/connect/mcp/",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mcp.canva.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://www.canva.com", "scopes": []}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mcp.canva.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["CANVA_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://www.canva.com", "scopes": []}
+    }],
     "docsUrl": "https://www.canva.dev/docs/connect/mcp/",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Webflow",
@@ -810,10 +987,16 @@
     "vendorOfficial": true,
     "description": "Manage Webflow sites, CMS collections, items, and form submissions via OAuth (SSE).\n\nDocs: https://developers.webflow.com/data/docs/mcp",
     "stability": "GA",
-    "transports": [{"type": "SSE", "urlTemplate": "https://mcp.webflow.com/sse", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://webflow.com", "scopes": []}}],
+    "transports": [  {
+      "type": "SSE",
+      "urlTemplate": "https://mcp.webflow.com/sse",
+      "auth": "OAUTH",
+      "requiredEnv": ["WEBFLOW_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://webflow.com", "scopes": []}
+    }],
     "docsUrl": "https://developers.webflow.com/data/docs/mcp",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
   {
     "id": "Maps-Grounding",
@@ -825,12 +1008,17 @@
     "vendorOfficial": true,
     "description": "Google Maps Places, Directions, Distance Matrix, Geocoding, and Street View for grounding LLM responses with real-world geo data.\n\nDocs: https://docs.cloud.google.com/mcp/supported-products",
     "stability": "GA",
-    "transports": [{"type": "STREAMABLE_HTTP", "urlTemplate": "https://mapstools.googleapis.com/mcp", "auth": "OAUTH",
-      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/maps-platform"]}}],
+    "transports": [  {
+      "type": "STREAMABLE_HTTP",
+      "urlTemplate": "https://mapstools.googleapis.com/mcp",
+      "auth": "OAUTH",
+      "requiredEnv": ["MAPS_GROUNDING_OAUTH_CLIENT_ID"],
+      "oauthDefaults": {"issuerUri": "https://accounts.google.com", "scopes": ["https://www.googleapis.com/auth/maps-platform"]}
+    }],
     "docsUrl": "https://docs.cloud.google.com/mcp/supported-products",
-    "trustSignals": ["vendor-official"]
+    "trustSignals": ["vendor-official"],
+    "docsAdequate": true
   },
-
   {
     "id": "Korean-Law-MCP",
     "displayName": "Korean Law MCP",
@@ -841,12 +1029,13 @@
     "vendorOfficial": false,
     "description": "Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools — citation verification, time-travel diff, and impact graph.\n\n• Quick start — free remote endpoint (pre-filled below):\n  https://korean-law-mcp.fly.dev/mcp\n\n• Local STDIO install (npm):\n  npm install -g korean-law-mcp\n  korean-law-mcp --api-key <LAW_API_KEY>\n  Get the API key at https://open.law.go.kr\n\nRepo: https://github.com/chrisryugj/korean-law-mcp",
     "stability": "GA",
-    "transports": [{
+    "transports": [  {
       "type": "STREAMABLE_HTTP",
       "urlTemplate": "https://korean-law-mcp.fly.dev/mcp",
       "auth": "NONE"
     }],
     "docsUrl": "https://github.com/chrisryugj/korean-law-mcp",
-    "trustSignals": ["community"]
+    "trustSignals": ["community"],
+    "docsAdequate": true
   }
 ]

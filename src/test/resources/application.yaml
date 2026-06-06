@@ -34,8 +34,8 @@ spring:
         speech: none
         transcription: none
     playground:
-      default-tool-location: "classpath*:tool/default-tool-specs*.json"
       tool-studio:
+        spec-location: "classpath*:tool/default-tool-specs*.json"
         js-sandbox:
           allow-network-io: true
           allow-file-io: false
@@ -75,6 +75,8 @@ spring:
       user-home: ${java.io.tmpdir}
       chat:
         system-prompt:
+      built-in-mcp-server:
+        name: spring-ai-playground-test
     mcp:
       client:
         enabled: true
@@ -96,6 +98,7 @@ spring:
       #                - --spring.ai.mcp.server.stdio=true
       #                - --spring.main.web-application-type=none
       server:
+        name: ${spring.ai.playground.built-in-mcp-server.name}
         protocol: STREAMABLE
         type: SYNC
         request-timeout: 30

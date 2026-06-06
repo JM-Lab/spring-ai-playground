@@ -351,6 +351,12 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
 
         synchronized void addSpan(SpanRecord span, int maxSpans) {
             if (spans.size() >= maxSpans) return;
+            // streaming can re-finalize the same span; skip the dup so its tokens aren't double-counted
+            if (span.spanId() != null) {
+                for (SpanRecord existing : spans) {
+                    if (span.spanId().equals(existing.spanId())) return;
+                }
+            }
             spans.add(span);
         }
 

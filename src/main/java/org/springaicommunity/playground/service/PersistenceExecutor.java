@@ -17,9 +17,11 @@ package org.springaicommunity.playground.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,7 +45,22 @@ public class PersistenceExecutor {
             logger.warn("Persistence executor is shut down; skipping submitted task");
             return;
         }
-        this.executor.submit(task);
+        this.executor.submit(withMdc(task));
+    }
+
+    private static Runnable withMdc(Runnable task) {
+        Map<String, String> context = MDC.getCopyOfContextMap();
+        return () -> {
+            Map<String, String> previous = MDC.getCopyOfContextMap();
+            if (context == null) MDC.clear();
+            else MDC.setContextMap(context);
+            try {
+                task.run();
+            } finally {
+                if (previous == null) MDC.clear();
+                else MDC.setContextMap(previous);
+            }
+        };
     }
 
     public void awaitCompletion(Duration timeout) throws InterruptedException, TimeoutException {

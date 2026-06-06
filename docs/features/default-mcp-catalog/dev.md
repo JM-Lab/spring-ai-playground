@@ -1,19 +1,19 @@
-description: Default MCP Catalog — Dev & Project Management reference: 12 preset MCP connections with transport, auth, required env, and full description per card.
+description: Default MCP Servers - Dev & Project Management reference: 12 preset MCP connections with transport, auth, required env, and full description per card.
 
-# Default MCP Catalog — Dev & Project Management
+# Default MCP Servers - Dev & Project Management
 
 Code hosting, issue trackers, code-quality monitors, learning content, and local repo helpers. Mixes vendor-official remote entries (GitHub, Linear, Atlassian Rovo, Sentry, Asana, Azure DevOps, Microsoft Learn, Context7, Korean Law) with community stdio entries from `modelcontextprotocol/servers` (Git, Puppeteer, Playwright).
 
 ## Entries (12)
 
-Click any card to expand the full spec inline — transport (Streamable HTTP / STDIO), authentication shape (OAuth 2.1 / API key / Bearer / none), required environment variables, vendor URL or stdio command, and the upstream docs link.
+Click any card to expand the full spec inline - transport (Streamable HTTP / STDIO), authentication shape (OAuth 2.1 / API key / Bearer / none), required environment variables, vendor URL or stdio command, and the upstream docs link.
 
 <div class="tcg-grid" markdown>
 
 <div class="tcg-card tcg-card--clickable" id="Linear" data-tool-id="Linear" data-tool-title="Linear" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Linear</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Linear](https://cdn.simpleicons.org/linear){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Create, query, and update Linear issues, projects, cycles, and teams. Linear's official remote MCP with OAuth 2.1.
 </div>
@@ -24,28 +24,30 @@ Create, query, and update Linear issues, projects, cycles, and teams. Linear's o
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Linear (vendor-official (Tier 1))
+**Vendor** - Linear (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.linear.app/mcp`
+**URL** - `https://mcp.linear.app/mcp`
 
-**Auth** — OAuth 2.1
+**Auth** - OAuth 2.1
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 1
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — —
+**Stability** - GA · **Tier** - Tier 1
 
-**Tags** — global
+**Required env** - -
+
+**Tags** - global
+
+**Tools** - published by the vendor and discovered live on connect; its [MCP docs](https://linear.app/docs/mcp) don't enumerate tool names, so open the [Inspector](../mcp-server/inspector.md#tools) after Save & Connect for the live tools and their recomputed levels.
 
 **Description**
 
 Create, query, and update Linear issues, projects, cycles, and teams. Linear's official remote MCP with OAuth 2.1.
 
-Docs: https://linear.app/docs/mcp
 
-**Docs** — [https://linear.app/docs/mcp](https://linear.app/docs/mcp)
+**Docs** - [https://linear.app/docs/mcp](https://linear.app/docs/mcp)
 
 </div>
 </div>
@@ -53,7 +55,7 @@ Docs: https://linear.app/docs/mcp
 <div class="tcg-card tcg-card--clickable" id="Atlassian" data-tool-id="Atlassian" data-tool-title="Atlassian Rovo (Jira + Confluence)" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Atlassian Rovo (Jira + Confluence)</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Atlassian Rovo (Jira + Confluence)](https://cdn.simpleicons.org/atlassian){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Read and update Jira issues and Confluence pages via Atlassian's official Rovo MCP. Replaces legacy /v1/sse on 2026-06-30.
 </div>
@@ -64,28 +66,42 @@ Read and update Jira issues and Confluence pages via Atlassian's official Rovo M
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Atlassian (vendor-official (Tier 1))
+**Vendor** - Atlassian (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.atlassian.com/v1/mcp/authv2`
+**URL** - `https://mcp.atlassian.com/v1/mcp/authv2`
 
-**Auth** — OAuth 2.1
+**Auth** - OAuth 2.1
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 1
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — —
+**Stability** - GA · **Tier** - Tier 1
 
-**Tags** — global
+**Required env** - -
+
+**Tags** - global
+
+**Tools** - 68 tools published by the vendor (per its [MCP docs](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10 of 68) - getJiraIssue · createJiraIssue · editJiraIssue · searchJiraIssuesUsingJql · transitionJiraIssue · getConfluencePage · createConfluencePage · searchConfluenceUsingCql · searchAtlassian · atlassianUserInfo"
+    - `getJiraIssue`
+    - `createJiraIssue`
+    - `editJiraIssue`
+    - `searchJiraIssuesUsingJql`
+    - `transitionJiraIssue`
+    - `getConfluencePage`
+    - `createConfluencePage`
+    - `searchConfluenceUsingCql`
+    - `searchAtlassian`
+    - `atlassianUserInfo`
 
 **Description**
 
 Read and update Jira issues and Confluence pages via Atlassian's official Rovo MCP. Replaces legacy /v1/sse on 2026-06-30.
 
-Docs: https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/
 
-**Docs** — [https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/)
+**Docs** - [https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/)
 
 </div>
 </div>
@@ -93,7 +109,7 @@ Docs: https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-start
 <div class="tcg-card tcg-card--clickable t-github" id="GitHub" data-tool-id="GitHub" data-tool-title="GitHub" markdown>
 <div class="tcg-name"><span class="tcg-name__text">GitHub</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![GitHub](https://cdn.simpleicons.org/github){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">dev · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Search and manage GitHub repositories, issues, pull requests, code reviews, and Actions. Sign in via OAuth Device Flow or pass a personal access token (GITHUB_PERSONAL_ACCESS_TOKEN).
 </div>
@@ -104,28 +120,42 @@ Search and manage GitHub repositories, issues, pull requests, code reviews, and 
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — GitHub (vendor-official (Tier 1))
+**Vendor** - GitHub (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://api.githubcopilot.com/mcp/`
+**URL** - `https://api.githubcopilot.com/mcp/`
 
-**Auth** — OAuth 2.1 / PAT
+**Auth** - OAuth 2.1 / PAT
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 1
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — `GITHUB_PERSONAL_ACCESS_TOKEN`
+**Stability** - GA · **Tier** - Tier 1
 
-**Tags** — global
+**Required env** - `GITHUB_PERSONAL_ACCESS_TOKEN`
+
+**Tags** - global
+
+**Tools** - 108 tools published by the vendor (per its [MCP docs](https://github.com/github/github-mcp-server)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools). 108 tools across 19 toolsets.
+
+??? note "Tools (10 of 108) - get_file_contents · create_or_update_file · push_files · search_code · list_commits · issue_read · issue_write · create_pull_request · merge_pull_request · actions_run_trigger"
+    - `get_file_contents`
+    - `create_or_update_file`
+    - `push_files`
+    - `search_code`
+    - `list_commits`
+    - `issue_read`
+    - `issue_write`
+    - `create_pull_request`
+    - `merge_pull_request`
+    - `actions_run_trigger`
 
 **Description**
 
 Search and manage GitHub repositories, issues, pull requests, code reviews, and Actions. Sign in via OAuth Device Flow or pass a personal access token (GITHUB_PERSONAL_ACCESS_TOKEN).
 
-Docs: https://github.com/github/github-mcp-server
 
-**Docs** — [https://github.com/github/github-mcp-server](https://github.com/github/github-mcp-server)
+**Docs** - [https://github.com/github/github-mcp-server](https://github.com/github/github-mcp-server)
 
 </div>
 </div>
@@ -133,9 +163,9 @@ Docs: https://github.com/github/github-mcp-server
 <div class="tcg-card tcg-card--clickable t-microsoft" id="Microsoft-Learn" data-tool-id="Microsoft-Learn" data-tool-title="Microsoft Learn" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Microsoft Learn</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-school-outline:</div>
-<div class="tcg-type">dev · global · free-tier <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global · free-tier <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
-Search the full Microsoft Learn documentation catalogue — Azure, .NET, Windows, Power Platform, Microsoft 365 and more. No authentication required, free to use.
+Search the full Microsoft Learn documentation catalogue - Azure, .NET, Windows, Power Platform, Microsoft 365 and more. No authentication required, free to use.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; Microsoft · T1 vendor</div>
@@ -144,27 +174,33 @@ Search the full Microsoft Learn documentation catalogue — Azure, .NET, Windows
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Microsoft (vendor-official (Tier 1))
+**Vendor** - Microsoft (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://learn.microsoft.com/api/mcp`
+**URL** - `https://learn.microsoft.com/api/mcp`
 
-**Auth** — None
+**Auth** - None
 
-**Stability** — GA · **Tier** — Tier 1
+**Stability** - GA · **Tier** - Tier 1
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global · free-tier
+**Tags** - global · free-tier
+
+**Tools** - 3 tools published by the vendor (per its [MCP docs](https://learn.microsoft.com/en-us/training/support/mcp-developer-reference)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (3) - microsoft_docs_search · microsoft_docs_fetch · microsoft_code_sample_search"
+    - `microsoft_docs_search`
+    - `microsoft_docs_fetch`
+    - `microsoft_code_sample_search`
 
 **Description**
 
-Search the full Microsoft Learn documentation catalogue — Azure, .NET, Windows, Power Platform, Microsoft 365 and more. No authentication required, free to use.
+Search the full Microsoft Learn documentation catalogue - Azure, .NET, Windows, Power Platform, Microsoft 365 and more. No authentication required, free to use.
 
-Docs: https://learn.microsoft.com/en-us/training/support/mcp
 
-**Docs** — [https://learn.microsoft.com/en-us/training/support/mcp](https://learn.microsoft.com/en-us/training/support/mcp)
+**Docs** - [https://learn.microsoft.com/en-us/training/support/mcp](https://learn.microsoft.com/en-us/training/support/mcp)
 
 </div>
 </div>
@@ -172,7 +208,7 @@ Docs: https://learn.microsoft.com/en-us/training/support/mcp
 <div class="tcg-card tcg-card--clickable" id="Sentry" data-tool-id="Sentry" data-tool-title="Sentry" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Sentry</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Sentry](https://cdn.simpleicons.org/sentry){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">dev · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Investigate Sentry issues and events across projects, query alert rules, releases, and performance data. OAuth with device-code flow.
 </div>
@@ -183,28 +219,42 @@ Investigate Sentry issues and events across projects, query alert rules, release
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Sentry (vendor-official (Tier 1))
+**Vendor** - Sentry (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.sentry.dev/mcp`
+**URL** - `https://mcp.sentry.dev/mcp`
 
-**Auth** — OAuth 2.1
+**Auth** - OAuth 2.1
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 1
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — —
+**Stability** - GA · **Tier** - Tier 1
 
-**Tags** — global
+**Required env** - -
+
+**Tags** - global
+
+**Tools** - 26 tools published by the vendor (per its [MCP docs](https://github.com/getsentry/sentry-mcp)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10 of 26) - whoami · find_projects · find_releases · search_events · search_issues · get_issue_details · update_issue · analyze_issue_with_seer · get_trace_details · search_docs"
+    - `whoami`
+    - `find_projects`
+    - `find_releases`
+    - `search_events`
+    - `search_issues`
+    - `get_issue_details`
+    - `update_issue`
+    - `analyze_issue_with_seer`
+    - `get_trace_details`
+    - `search_docs`
 
 **Description**
 
 Investigate Sentry issues and events across projects, query alert rules, releases, and performance data. OAuth with device-code flow.
 
-Docs: https://docs.sentry.io/product/sentry-mcp/
 
-**Docs** — [https://docs.sentry.io/product/sentry-mcp/](https://docs.sentry.io/product/sentry-mcp/)
+**Docs** - [https://docs.sentry.io/product/sentry-mcp/](https://docs.sentry.io/product/sentry-mcp/)
 
 </div>
 </div>
@@ -212,7 +262,7 @@ Docs: https://docs.sentry.io/product/sentry-mcp/
 <div class="tcg-card tcg-card--clickable" id="Asana" data-tool-id="Asana" data-tool-title="Asana" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Asana</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Asana](https://cdn.simpleicons.org/asana){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">project_mgmt · global <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Manage Asana tasks, projects, sections, and custom fields across workspaces. Asana's official OAuth MCP (SSE transport).
 </div>
@@ -223,28 +273,42 @@ Manage Asana tasks, projects, sections, and custom fields across workspaces. Asa
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Asana (vendor-official (Tier 1))
+**Vendor** - Asana (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - SSE
 
-**URL** — `https://mcp.asana.com/v2/mcp`
+**URL** - `https://mcp.asana.com/v2/mcp`
 
-**Auth** — OAuth 2.1
+**Auth** - OAuth 2.1
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — GA · **Tier** — Tier 2
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — —
+**Stability** - GA · **Tier** - Tier 2
 
-**Tags** — global
+**Required env** - -
+
+**Tags** - global
+
+**Tools** - 25 tools published by the vendor (per its [MCP docs](https://developers.asana.com/docs/mcp-tools-reference)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10 of 25) - search_objects · get_task · get_my_tasks · search_tasks · get_project · create_tasks · update_tasks · add_comment · create_project_status_update · get_me"
+    - `search_objects`
+    - `get_task`
+    - `get_my_tasks`
+    - `search_tasks`
+    - `get_project`
+    - `create_tasks`
+    - `update_tasks`
+    - `add_comment`
+    - `create_project_status_update`
+    - `get_me`
 
 **Description**
 
 Manage Asana tasks, projects, sections, and custom fields across workspaces. Asana's official OAuth MCP (SSE transport).
 
-Docs: https://developers.asana.com/docs/mcp
 
-**Docs** — [https://developers.asana.com/docs/mcp](https://developers.asana.com/docs/mcp)
+**Docs** - [https://developers.asana.com/docs/mcp](https://developers.asana.com/docs/mcp)
 
 </div>
 </div>
@@ -252,7 +316,7 @@ Docs: https://developers.asana.com/docs/mcp
 <div class="tcg-card tcg-card--clickable t-microsoft" id="Azure-DevOps" data-tool-id="Azure-DevOps" data-tool-title="Azure DevOps" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Azure DevOps</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>:material-microsoft-azure-devops:</div>
-<div class="tcg-type">dev · global · preview <span class="risk risk-l3">preview</span></div>
+<div class="tcg-type">dev · global · preview <span class="risk risk-l3">preview</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Query and update Azure DevOps repos, work items (Boards), pipelines, and pull requests within your organisation. Preview, requires AZURE_DEVOPS_ORG.
 </div>
@@ -263,28 +327,42 @@ Query and update Azure DevOps repos, work items (Boards), pipelines, and pull re
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Microsoft (vendor-official (Tier 1))
+**Vendor** - Microsoft (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.dev.azure.com/${AZURE_DEVOPS_ORG}`
+**URL** - `https://mcp.dev.azure.com/${AZURE_DEVOPS_ORG}`
 
-**Auth** — OAuth 2.1
+**Auth** - OAuth 2.1
 
-**OAuth 2.1** — runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
-**Stability** — PREVIEW · **Tier** — Tier 2
+**OAuth 2.1** - runs the [Authorization Code flow](../mcp-server/index.md#oauth-21-authorization-code) on Save & Connect → **Authorize**.
 
-**Required env** — `AZURE_DEVOPS_ORG`
+**Stability** - PREVIEW · **Tier** - Tier 2
 
-**Tags** — global · preview
+**Required env** - `AZURE_DEVOPS_ORG`
+
+**Tags** - global · preview
+
+**Tools** - 10 tools published by the vendor (per its [MCP docs](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools). grouped dispatcher tools across repos/wit/pipelines/wiki/work/testplan toolsets.
+
+??? note "Tools (10) - core_list_projects · wit_work_item · wit_query · repo_pull_request · repo_file · pipelines_build · pipelines_run · wiki · work · search_code"
+    - `core_list_projects`
+    - `wit_work_item`
+    - `wit_query`
+    - `repo_pull_request`
+    - `repo_file`
+    - `pipelines_build`
+    - `pipelines_run`
+    - `wiki`
+    - `work`
+    - `search_code`
 
 **Description**
 
 Query and update Azure DevOps repos, work items (Boards), pipelines, and pull requests within your organisation. Preview, requires AZURE_DEVOPS_ORG.
 
-Docs: https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server
 
-**Docs** — [https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server)
+**Docs** - [https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server)
 
 </div>
 </div>
@@ -292,7 +370,7 @@ Docs: https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-serve
 <div class="tcg-card tcg-card--clickable" id="Context7" data-tool-id="Context7" data-tool-title="Context7" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Context7</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>![Context7](https://cdn.simpleicons.org/upstash){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">dev · global · free-tier <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global · free-tier <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
 Pull up-to-date library documentation and code examples by library name and version, designed to ground AI code generation. Free, no authentication.
 </div>
@@ -303,27 +381,32 @@ Pull up-to-date library documentation and code examples by library name and vers
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Upstash (vendor-official (Tier 1))
+**Vendor** - Upstash (vendor-official)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://mcp.context7.com/mcp`
+**URL** - `https://mcp.context7.com/mcp`
 
-**Auth** — None
+**Auth** - None
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global · free-tier
+**Tags** - global · free-tier
+
+**Tools** - 2 tools published by the vendor (per its [MCP docs](https://github.com/upstash/context7)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (2) - resolve-library-id · query-docs"
+    - `resolve-library-id`
+    - `query-docs`
 
 **Description**
 
 Pull up-to-date library documentation and code examples by library name and version, designed to ground AI code generation. Free, no authentication.
 
-Docs: https://github.com/upstash/context7
 
-**Docs** — [https://github.com/upstash/context7](https://github.com/upstash/context7)
+**Docs** - [https://github.com/upstash/context7](https://github.com/upstash/context7)
 
 </div>
 </div>
@@ -331,9 +414,9 @@ Docs: https://github.com/upstash/context7
 <div class="tcg-card tcg-card--clickable" id="Korean-Law-MCP" data-tool-id="Korean-Law-MCP" data-tool-title="Korean Law MCP" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Korean Law MCP</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-scale-balance:</div>
-<div class="tcg-type">dev · korea · legal <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · korea · legal <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools — citation…
+Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools - citation...
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; chrisryugj · T2 community</div>
@@ -342,25 +425,39 @@ Search Korean law, court precedents, Constitutional Court decisions, ordinances,
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — chrisryugj (community-maintained)
+**Vendor** - chrisryugj (community-maintained)
 
-**Transport** — Streamable HTTP
+**Transport** - Streamable HTTP
 
-**URL** — `https://korean-law-mcp.fly.dev/mcp`
+**URL** - `https://korean-law-mcp.fly.dev/mcp`
 
-**Auth** — None
+**Auth** - None
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — korea · legal
+**Tags** - korea · legal
+
+**Tools** - 93 tools published by the vendor (per its [MCP docs](https://github.com/chrisryugj/korean-law-mcp)); no static per-tool levels - the live set varies by plan / scopes / release, so confirm it and the recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10 of 93) - search_law · get_law_text · get_article_detail · search_precedents · get_precedent_text · verify_citations · impact_map · chain_full_research · search_constitutional_decisions · discover_tools"
+    - `search_law`
+    - `get_law_text`
+    - `get_article_detail`
+    - `search_precedents`
+    - `get_precedent_text`
+    - `verify_citations`
+    - `impact_map`
+    - `chain_full_research`
+    - `search_constitutional_decisions`
+    - `discover_tools`
 
 **Description**
 
-Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools — citation verification, time-travel diff, and impact graph.
+Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools - citation verification, time-travel diff, and impact graph.
 
-• Quick start — free remote endpoint (pre-filled below):
+• Quick start - free remote endpoint (pre-filled below):
   https://korean-law-mcp.fly.dev/mcp
 
 • Local STDIO install (npm):
@@ -370,7 +467,7 @@ Search Korean law, court precedents, Constitutional Court decisions, ordinances,
 
 Repo: https://github.com/chrisryugj/korean-law-mcp
 
-**Docs** — [https://github.com/chrisryugj/korean-law-mcp](https://github.com/chrisryugj/korean-law-mcp)
+**Docs** - [https://github.com/chrisryugj/korean-law-mcp](https://github.com/chrisryugj/korean-law-mcp)
 
 </div>
 </div>
@@ -378,9 +475,9 @@ Repo: https://github.com/chrisryugj/korean-law-mcp
 <div class="tcg-card tcg-card--clickable" id="Git" data-tool-id="Git" data-tool-title="Git" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Git</span> <span class="cost">🛠</span></div>
 <div class="tcg-art" markdown>![Git](https://cdn.simpleicons.org/git){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
-[macOS] Local Git repository operations — log, diff, status, blame, show. Read-only by default. The activated form is pre-filled to run: uvx mcp-server-git --repository .
+[macOS] Local Git repository operations - log, diff, status, blame, show. Read-only by default. The activated form is pre-filled to run: uvx mcp-server-git --repository .
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; modelcontextprotocol/servers · T2 community</div>
@@ -389,27 +486,43 @@ Repo: https://github.com/chrisryugj/korean-law-mcp
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — modelcontextprotocol/servers (community-maintained)
+**Vendor** - modelcontextprotocol/servers (community-maintained)
 
-**Transport** — STDIO
+**Transport** - STDIO
 
-**Command** — `uvx`
+**Command** - `uvx`
 
-**Args** — `mcp-server-git --repository .`
+**Args** - `mcp-server-git --repository .`
 
-**OS variants** — mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
+**OS variants** - mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
 
-**Auth** — STDIO
+**Auth** - STDIO
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global · community
+**Tags** - global · community
+
+**Tools** - discovered on connect; this community-trust STDIO entry ships without per-tool descriptors, so each tool composes its *community* trust with a baseline action score and lands at <span class="rl rl-l3">L3 - Moderate</span> on its own connection's [Inspector](../mcp-server/inspector.md#tools) (read-only by default - write tools like `git_commit` only touch the local checkout):
+
+??? abstract "Tools (12) - git_status · git_diff_unstaged · git_diff_staged · git_diff · git_commit · git_add · git_reset · git_log · git_create_branch · git_checkout · git_show · git_branch"
+    - **`git_status`** - show the working-tree status. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_diff_unstaged`** - show unstaged working-directory changes. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_diff_staged`** - show changes staged for commit. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_diff`** - diff between branches or commits. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_commit`** - record staged changes to the repository. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_add`** - stage file contents. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_reset`** - unstage all staged changes. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_log`** - show commit history (optional date filtering). <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_create_branch`** - create a new branch. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_checkout`** - switch branches. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_show`** - show the contents of a commit. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`git_branch`** - list branches (local / remote / all). <span class="rl rl-l3">L3 - Moderate</span>
 
 **Description**
 
-[macOS] Local Git repository operations — log, diff, status, blame, show. Read-only by default.
+[macOS] Local Git repository operations - log, diff, status, blame, show. Read-only by default.
 
 Prereq: install uv on macOS.
   brew install uv
@@ -419,9 +532,8 @@ The activated form is pre-filled to run:
 
 Note: change '.' to the absolute path of the repo you want to inspect.
 
-Docs: https://github.com/modelcontextprotocol/servers/tree/main/src/git
 
-**Docs** — [https://github.com/modelcontextprotocol/servers/tree/main/src/git](https://github.com/modelcontextprotocol/servers/tree/main/src/git)
+**Docs** - [https://github.com/modelcontextprotocol/servers/tree/main/src/git](https://github.com/modelcontextprotocol/servers/tree/main/src/git)
 
 </div>
 </div>
@@ -429,9 +541,9 @@ Docs: https://github.com/modelcontextprotocol/servers/tree/main/src/git
 <div class="tcg-card tcg-card--clickable" id="Puppeteer" data-tool-id="Puppeteer" data-tool-title="Puppeteer" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Puppeteer</span> <span class="cost">🛠</span></div>
 <div class="tcg-art" markdown>![Puppeteer](https://cdn.simpleicons.org/puppeteer){ width="40" .tcg-favicon }</div>
-<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
-[macOS] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page. The activated form is pre-filled to run: npx -y @modelcontextprotocol/server-puppeteer…
+[macOS] Headless Chrome automation - navigate, click, fill forms, screenshot, evaluate JavaScript in-page. The activated form is pre-filled to run: npx -y @modelcontextprotocol/server-puppeteer...
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; modelcontextprotocol/servers · T2 community</div>
@@ -440,42 +552,52 @@ Docs: https://github.com/modelcontextprotocol/servers/tree/main/src/git
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — modelcontextprotocol/servers (community-maintained)
+**Vendor** - modelcontextprotocol/servers (community-maintained)
 
-**Transport** — STDIO
+**Transport** - STDIO
 
-**Command** — `npx`
+**Command** - `npx`
 
-**Args** — `-y @modelcontextprotocol/server-puppeteer`
+**Args** - `-y @modelcontextprotocol/server-puppeteer`
 
-**OS variants** — mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
+**OS variants** - mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
 
-**Auth** — STDIO
+**Auth** - STDIO
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global · community
+**Tags** - global · community
+
+**Tools** - discovered on connect; community-trust STDIO with no per-tool descriptors, so each tool composes to <span class="rl rl-l3">L3 - Moderate</span> on its own connection's [Inspector](../mcp-server/inspector.md#tools) (it drives a real headless Chrome - treat `puppeteer_navigate` / `puppeteer_evaluate` as live network access and in-page code execution):
+
+??? abstract "Tools (7) - puppeteer_navigate · puppeteer_screenshot · puppeteer_click · puppeteer_hover · puppeteer_fill · puppeteer_select · puppeteer_evaluate"
+    - **`puppeteer_navigate`** - open a URL in the browser. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_screenshot`** - capture a page or element screenshot. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_click`** - click an element. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_hover`** - hover an element. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_fill`** - fill an input field. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_select`** - choose an option in a `<select>` element. <span class="rl rl-l3">L3 - Moderate</span>
+    - **`puppeteer_evaluate`** - run JavaScript in the page context. <span class="rl rl-l3">L3 - Moderate</span>
 
 **Description**
 
-[macOS] Headless Chrome automation — navigate, click, fill forms, screenshot, evaluate JavaScript in-page.
+[macOS] Headless Chrome automation - navigate, click, fill forms, screenshot, evaluate JavaScript in-page.
 
 Prereq: Node.js 18+ on macOS. First run downloads ~170 MB Chromium under ~/Library/Caches/Puppeteer.
 
 The activated form is pre-filled to run:
   npx -y @modelcontextprotocol/server-puppeteer
 
-Optional — set in the env section:
-  PUPPETEER_LAUNCH_OPTIONS — JSON launch options, e.g. {"executablePath":"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
-  ALLOW_DANGEROUS — set to true to enable --no-sandbox
+Optional - set in the env section:
+  PUPPETEER_LAUNCH_OPTIONS - JSON launch options, e.g. {"executablePath":"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
+  ALLOW_DANGEROUS - set to true to enable --no-sandbox
 
-Security: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.
+Security: visits arbitrary URLs as instructed by the agent - review prompts before granting net access.
 
-Docs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer
 
-**Docs** — [https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer](https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer)
+**Docs** - [https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer](https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer)
 
 </div>
 </div>
@@ -483,38 +605,53 @@ Docs: https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer
 <div class="tcg-card tcg-card--clickable t-microsoft" id="Playwright" data-tool-id="Playwright" data-tool-title="Playwright" markdown>
 <div class="tcg-name"><span class="tcg-name__text">Playwright</span> <span class="cost">🛠</span></div>
 <div class="tcg-art" markdown>:material-script-text-play-outline:</div>
-<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span></div>
+<div class="tcg-type">dev · global · community <span class="risk risk-l0">ga</span> <span class="rl rl-l2">L2</span></div>
 <div class="tcg-body" markdown>
-[macOS] Microsoft's accessibility-snapshot browser automation — successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models. The activated form is pre-filled…
+[macOS] Microsoft's accessibility-snapshot browser automation - successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models. The activated form is pre-filled...
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Vendor** &nbsp; Microsoft · T1 vendor</div>
+<div class="tcg-stats__line" markdown>**Vendor** &nbsp; Microsoft · T2 vendor</div>
 <div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;STDIO</div>
 </div>
 <div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
 <div class="tcg-detail-template" hidden markdown>
 
-**Vendor** — Microsoft (vendor-official)
+**Vendor** - Microsoft (vendor-official)
 
-**Transport** — STDIO
+**Transport** - STDIO
 
-**Command** — `npx`
+**Command** - `npx`
 
-**Args** — `-y @playwright/mcp@latest`
+**Args** - `-y @playwright/mcp@latest`
 
-**OS variants** — mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
+**OS variants** - mac · linux · win (catalog picks the entry matching the host OS automatically; macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`).
 
-**Auth** — STDIO
+**Auth** - STDIO
 
-**Stability** — GA · **Tier** — Tier 2
+**Stability** - GA · **Tier** - Tier 2
 
-**Required env** — —
+**Required env** - -
 
-**Tags** — global · community
+**Tags** - global · community
+
+**Tools** - discovered on connect. The pre-filled command runs `@playwright/mcp@latest` with no `--caps` flags, so only the **core snapshot-interaction set** loads; optional groups (`vision`, `pdf`, `storage`, `network`, `devtools`, `testing`) appear only when you append the matching `--caps=` flag. As a vendor-official STDIO server it composes to <span class="rl rl-l2">L2 - Low</span> for every tool - the exact set tracks the upstream release, so confirm it live in the [Inspector](../mcp-server/inspector.md#tools):
+
+??? abstract "Tools (core ~23) - browser_navigate · browser_click · browser_type · browser_fill_form · browser_snapshot · browser_take_screenshot · browser_evaluate · browser_tabs · ..."
+    - **`browser_navigate`** / **`browser_navigate_back`** - open a URL / go back one page. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_click`** · **`browser_hover`** · **`browser_drag`** · **`browser_drop`** - pointer interactions. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_type`** · **`browser_press_key`** · **`browser_fill_form`** · **`browser_select_option`** - text and form entry. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_file_upload`** - upload one or more files. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_snapshot`** - capture the page's accessibility tree. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_take_screenshot`** - screenshot the page or an element. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_evaluate`** - evaluate JavaScript on the page or an element. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_run_code_unsafe`** - run arbitrary Playwright code; the name carries no irreversible-verb token, so it still composes to <span class="rl rl-l2">L2 - Low</span> - treat it with the caution its name implies.
+    - **`browser_console_messages`** · **`browser_network_request`** · **`browser_network_requests`** - read console output and network activity. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_handle_dialog`** · **`browser_wait_for`** · **`browser_resize`** · **`browser_close`** - dialogs, waiting, viewport, page lifecycle. <span class="rl rl-l2">L2 - Low</span>
+    - **`browser_tabs`** - list / open / close / select tabs. <span class="rl rl-l2">L2 - Low</span>
 
 **Description**
 
-[macOS] Microsoft's accessibility-snapshot browser automation — successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models.
+[macOS] Microsoft's accessibility-snapshot browser automation - successor to the Puppeteer reference. Drives Chromium/Firefox/WebKit without screenshot vision models.
 
 Prereq: Node.js 18+ on macOS (Homebrew, nvm, or installer). First run downloads ~300 MB browser binaries under ~/Library/Caches/ms-playwright.
 
@@ -525,11 +662,10 @@ Optional flags:
   --browser firefox|webkit          # default chromium
   --port 8931                       # serve over HTTP instead of stdio
 
-Security: visits arbitrary URLs as instructed by the agent — review prompts before granting net access.
+Security: visits arbitrary URLs as instructed by the agent - review prompts before granting net access.
 
-Docs: https://github.com/microsoft/playwright-mcp
 
-**Docs** — [https://github.com/microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
+**Docs** - [https://github.com/microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
 
 </div>
 </div>
@@ -540,34 +676,34 @@ Docs: https://github.com/microsoft/playwright-mcp
 
 This page mixes remote (vendor-official) DevOps surfaces with community-published stdio dev helpers. Common combinations:
 
-- **PR review pipeline** — `GitHub` + `Sentry` + `Linear`. The agent reads a PR, checks the latest issues in Sentry, and adds a Linear ticket if it spots a regression — all in one turn.
-- **Ticket-driven coding** — `Linear` (issue body) + `Context7` (look up the right SDK fragment) + `Git` stdio (apply patches against a local checkout). The stdio entry keeps PR drafts local until you push.
-- **Docs grounding for unfamiliar APIs** — `Microsoft Learn` + `Context7`. Both are free, no-auth, and explicitly designed to ground AI code generation; chain them as a fallback when GitHub README content isn't enough.
-- **Headless browser automation** — `Puppeteer` *or* `Playwright` stdio. They cover the same surface — pick Puppeteer for lightweight scraping, Playwright when you need cross-browser parity.
-- **Legal-grounded answers (KR)** — `Korean Law MCP` as a single-source grounding service for Korean-statute lookups.
+- **PR review pipeline** - `GitHub` + `Sentry` + `Linear`. The agent reads a PR, checks the latest issues in Sentry, and adds a Linear ticket if it spots a regression - all in one turn.
+- **Ticket-driven coding** - `Linear` (issue body) + `Context7` (look up the right SDK fragment) + `Git` stdio (apply patches against a local checkout). The stdio entry keeps PR drafts local until you push.
+- **Docs grounding for unfamiliar APIs** - `Microsoft Learn` + `Context7`. Both are free, no-auth, and explicitly designed to ground AI code generation; chain them as a fallback when GitHub README content isn't enough.
+- **Headless browser automation** - `Puppeteer` *or* `Playwright` stdio. They cover the same surface - pick Puppeteer for lightweight scraping, Playwright when you need cross-browser parity.
+- **Legal-grounded answers (KR)** - `Korean Law MCP` as a single-source grounding service for Korean-statute lookups.
 
 ## Auth & secrets { #auth-secrets }
 
-Mixed-auth page — OAuth for remote vendor surfaces, none for the community stdio helpers, and one entry (Korean Law) that's free and unauthenticated:
+Mixed-auth page - OAuth for remote vendor surfaces, none for the community stdio helpers, and one entry (Korean Law) that's free and unauthenticated:
 
 | Connection | Auth | Extra env / prereq |
 |---|---|---|
-| GitHub | OAuth 2.1 *or* Personal Access Token | — (PAT goes in headers as `${GITHUB_TOKEN}`) |
-| Linear | Linear OAuth | — |
-| Atlassian Rovo (Jira + Confluence) | Atlassian OAuth | — |
-| Sentry | Sentry OAuth | — |
-| Asana | Asana OAuth | — |
+| GitHub | OAuth 2.1 *or* Personal Access Token | - (PAT goes in headers as `${GITHUB_PERSONAL_ACCESS_TOKEN}`) |
+| Linear | Linear OAuth | - |
+| Atlassian Rovo (Jira + Confluence) | Atlassian OAuth | - |
+| Sentry | Sentry OAuth | - |
+| Asana | Asana OAuth | - |
 | Azure DevOps | Microsoft OAuth (preview) | `MS_TENANT_ID` for `dev.azure.com` orgs scoped to a tenant |
-| Microsoft Learn | None (free) | — |
-| Context7 | None (free) | — |
-| Korean Law MCP | None (free) | — |
+| Microsoft Learn | None (free) | - |
+| Context7 | None (free) | - |
+| Korean Law MCP | None (free) | - |
 | Git (stdio) | None | Node.js 18+ for `npx` (macOS / Linux) or `npx.cmd` (Windows) |
-| Puppeteer (stdio) | None | Node.js 18+ — first run downloads a Chromium |
-| Playwright (stdio) | None | Node.js 18+ — first run downloads browser binaries |
+| Puppeteer (stdio) | None | Node.js 18+ - first run downloads a Chromium |
+| Playwright (stdio) | None | Node.js 18+ - first run downloads browser binaries |
 
 ## Picking guide { #picking-guide }
 
-| If you need… | Reach for |
+| If you need... | Reach for |
 |---|---|
 | Code hosting + PR / Actions context | `GitHub` |
 | Linear-style fast issue trackers | `Linear` |

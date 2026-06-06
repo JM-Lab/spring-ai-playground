@@ -1,11 +1,11 @@
 // Sidebar nav UX:
 //   1. Default: depth-1 nested sections (Tool Studio, MCP Server, Observability)
-//      are expanded; depth-2+ sections (Default Tools, AI Usage, AI Stack, …)
+//      are expanded; depth-2+ sections (Default Tools, AI Usage, AI Stack, ...)
 //      stay collapsed until clicked.
 //   2. Persistence: any expand/collapse the user performs is remembered in
 //      localStorage so navigating to another page keeps their layout.
 //   3. The path to the current page is always force-expanded so the active
-//      entry is visible — even if the user previously collapsed that section.
+//      entry is visible - even if the user previously collapsed that section.
 //      (Their saved choice for OTHER pages is unaffected; we only override the
 //       active branch.)
 //
@@ -17,7 +17,7 @@
 // navigating, for the case where the user wants to inspect the sidebar without
 // switching pages.
 //
-// Toggle IDs (__nav_4, __nav_4_3, …) are deterministic from nav position so
+// Toggle IDs (__nav_4, __nav_4_3, ...) are deterministic from nav position so
 // the same key works on every page.
 (function () {
   var STORAGE_KEY = 'sap-nav-toggle-state';
@@ -34,7 +34,7 @@
   function saveState(state) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) { /* quota / private mode — ignore */ }
+    } catch (e) { /* quota / private mode - ignore */ }
   }
 
   function applyDefaultsOverridesAndActivePath() {
@@ -91,7 +91,7 @@
     anchor.dataset.sapHubToggle = '1';
     anchor.addEventListener('click', function () {
       // Walk up to the nested <li> that this hub link belongs to and flip its
-      // toggle. The chevron <label>'s own click is unaffected — Material still
+      // toggle. The chevron <label>'s own click is unaffected - Material still
       // toggles the input via the for=... association, so clicking the chevron
       // continues to expand/collapse without navigating.
       var item = anchor.closest('.md-nav__item--nested');
@@ -104,7 +104,7 @@
   }
 
   function run() {
-    // Suspend Material's .md-nav transitions while we apply state — otherwise
+    // Suspend Material's .md-nav transitions while we apply state - otherwise
     // setting input.checked here would animate the new sidebar from server
     // state to localStorage state, visible as a 0.25 s scrollbar flicker on
     // every instant-nav swap.
