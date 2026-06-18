@@ -145,7 +145,7 @@ public class VectorStoreService {
                         .filter(name -> name.contains("EmbeddingProperties")).findFirst()
                         .map(applicationContext::getBean).map(o -> {
                             try {
-                                return o.getClass().getMethod("getOptions").invoke(o);
+                                return o.getClass().getMethod("toOptions").invoke(o);
                             } catch (Exception e) {
                                 throw new RuntimeException(e);
                             }

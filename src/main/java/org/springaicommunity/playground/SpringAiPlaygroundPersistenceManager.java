@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import tools.jackson.core.JacksonException;
+
 import java.io.IOException;
 
 @ConditionalOnProperty(prefix = "spring.ai.playground", name = "persistence", havingValue = "true", matchIfMissing = true)
@@ -47,7 +49,7 @@ public class SpringAiPlaygroundPersistenceManager {
         for (PersistenceServiceInterface persistenceService : persistenceServices) {
             try {
                 persistenceService.onStart();
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 persistenceService.getLogger().error("Failed to start persistence service.", e);
             }
         }

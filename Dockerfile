@@ -49,7 +49,9 @@ RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
 FROM ghcr.io/graalvm/jdk-community:21 AS layers
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
+# Boot 4 removed the layertools jarmode; tools + --launcher reproduces the same
+# exploded layer layout that JarLauncher consumes in the runner stage below.
+RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted
 
 # -------------------------------------------------------------------
 # 3. Custom JRE via jlink (GraalVM JDK 21, with Truffle/JS support intact)
@@ -100,10 +102,10 @@ ENV JAVA_HOME=/opt/jre-min
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=jre-builder /opt/jre-min ${JAVA_HOME}
 
-COPY --from=layers /app/dependencies/ ./
-COPY --from=layers /app/spring-boot-loader/ ./
-COPY --from=layers /app/snapshot-dependencies/ ./
-COPY --from=layers /app/application/ ./
+COPY --from=layers /app/extracted/dependencies/ ./
+COPY --from=layers /app/extracted/spring-boot-loader/ ./
+COPY --from=layers /app/extracted/snapshot-dependencies/ ./
+COPY --from=layers /app/extracted/application/ ./
 
 # OCI standard + MCP Registry ownership labels.
 # `io.modelcontextprotocol.server.name` matches the `name` field in server.json

@@ -31,19 +31,22 @@ public record McpCatalogEntry(
         Set<String> tags,
         int tier,
         String vendor,
-        boolean vendorOfficial,
+        Boolean vendorOfficial,
         String description,
         String stability,
         String regionRestriction,
-        boolean tenantIdRequired,
+        Boolean tenantIdRequired,
         List<TransportSpec> transports,
         String docsUrl,
-        boolean docsAdequate,
+        Boolean docsAdequate,
         Set<String> trustSignals,
         List<McpToolDescriptor> tools,
         String curator) {
 
     public McpCatalogEntry {
+        if (vendorOfficial == null) vendorOfficial = false;
+        if (tenantIdRequired == null) tenantIdRequired = false;
+        if (docsAdequate == null) docsAdequate = false;
         tags = tags == null ? Set.of() : Set.copyOf(tags);
         trustSignals = trustSignals == null ? Set.of() : Set.copyOf(trustSignals);
         transports = transports == null ? List.of() : List.copyOf(transports);

@@ -71,6 +71,7 @@ nav:
       - getting-started/index.md
       - "Desktop App": getting-started/desktop.md
       - "Alternative Runtimes": getting-started/alternative-runtimes.md
+      - "External Connections": getting-started/external-connections.md
       - "Configuration": getting-started/configuration.md
   - "Architecture":
       - "Application": architecture.md
@@ -79,6 +80,7 @@ nav:
       - "MCP Server Safety": mcp-server-safety.md
       - "Human-in-the-Loop Approval": hitl-architecture.md
       - "AI Agent Observability": observability-architecture.md
+      - "Context Engineering": context-engineering-architecture.md
   - "Features":
       - features/index.md
       - "Tool Studio":
@@ -103,7 +105,10 @@ nav:
           - "MCP Inspector": features/mcp-server/inspector.md
           - "MCP Server Proxy": features/mcp-server/proxy.md
       - "Vector Database": features/vector-database.md
-      - "Agentic Chat": features/agentic-chat.md
+      - "Agentic Chat":
+          - features/agentic-chat/index.md
+          - "Prompt Templates": features/agentic-chat/prompt-templates.md
+          - "Prompt Presets": features/agentic-chat/prompt-presets.md
       - "Human-in-the-Loop": features/human-in-the-loop.md
       - "Observability":
           - features/observability/index.md

@@ -50,7 +50,7 @@ The observability layer makes a clean separation between what comes from upstrea
 | Leveraged from upstream | Built in this project |
 |---|---|
 | Spring AI Observation API - the `spring.ai.*` and `gen_ai.*` span names, their lifecycle, the low / high-cardinality `KeyValue` attribute conventions | `ObservabilityCollector` - the `ObservationHandler` that consumes those events and assembles whole traces |
-| OpenTelemetry GenAI semantic conventions - `gen_ai.system`, `gen_ai.response.model`, `gen_ai.usage.*`, `gen_ai.response.finish_reasons`, `db.vector.query.*` | Storage tiers - ring buffer, on-demand time series, JSONL persistence with daily partitioning and retention cron |
+| OpenTelemetry GenAI semantic conventions - `gen_ai.system`, `gen_ai.response.model`, `gen_ai.usage.*`, `gen_ai.response.finish_reasons`, `db.vector.query.*` | Storage tiers - ring buffer, on-demand time series, JSON persistence with daily partitioning and retention cron |
 | Micrometer `Tracer` - trace / span ID propagation (Brave or OpenTelemetry implementation) | MDC bridge in `ChatService` - `conversationId` / `userMessageId` correlation across reactive and sync paths |
 | Spring Boot Actuator `MeterRegistry` - JVM, OS, HTTP, Tomcat, Logback gauges | `SystemMetricsCollector` + `SystemMetricsRingBuffer` + `SystemMetricsTimeSeries` - periodic capture of the curated MeterRegistry subset into a parallel time-series pipeline, surfaced on the Host and Web Application tabs |
 | Apache ECharts 5.6 - chart rendering | All twelve dashboard tabs and two modal dialogs - KPI cards, chart compositions, live trace stream, log tail, Trace Detail dialog, Conversation Thread dialog |
@@ -129,7 +129,7 @@ flowchart LR
     RING["RingBuffer<br/>2000 traces"]
     TS["TimeSeries<br/>1-min buckets"]
     LIVE["Live stream<br/>Sinks.Many"]
-    PERSIST["Persistence<br/>JSONL · 14d"]
+    PERSIST["Persistence<br/>JSON · 30d"]
     DASH["Dashboards<br/>+ Traces tab"]
 
     SRC --> COLL --> RING
@@ -224,7 +224,7 @@ Three tiers serve three access patterns:
 |---|---|---|---|
 | **Ring buffer** | `ObservabilityRingBuffer` (`ConcurrentLinkedDeque` + `Sinks.Many`) | Fast point-in-time snapshots + live push | `ring-buffer-capacity` (default 2000 traces) - FIFO eviction |
 | **Time series** | `ObservabilityTimeSeries` (computed on demand) | Bucketed aggregates for charts | Window length (max `LAST_3H` = 180 buckets); recomputed on every UI tick |
-| **Persistence** | `ObservabilityPersistenceService` (JSONL on disk) | Survives restart, hosts the historical lookback | `retain-days` (default 30) - daily cron at 04:00 |
+| **Persistence** | `ObservabilityPersistenceService` (JSON on disk) | Survives restart, hosts the historical lookback | `retain-days` (default 30) - daily cron at 04:00 |
 
 **Ring buffer.** The hot path. Every finalized `TraceRecord` is enqueued and the oldest evicted when capacity is reached. Reads are non-blocking snapshots (`new ArrayList<>(buffer)`) so the UI can iterate freely without contending with the writer. The same buffer drives the live stream via `Sinks.Many.multicast().directBestEffort()` - multiple subscribers fan out, and a slow subscriber drops rather than blocks the producer (the Traces tab samples at 500 ms, so dropped frames are silently coalesced). On add, the ring buffer also scans the most recent 12 entries for a near-duplicate trace - matched by `traceId`, `userMessageId`, or `conversationId` within a 200 ms window - and merges spans into the existing record rather than appending a new one. This dedup pass handles overlapping observations from advisor pipelines without producing a separate "phantom" trace for each.
 
@@ -367,14 +367,14 @@ Detailed user-facing reference (the dialog walk-through, worked examples, paid-v
 
 ## What this data could support
 
-Observability here is the visibility arm of the project's safety model - the complement to the sandbox's prevention arm. The in-app dashboards are the primary consumer of the trace data, and the shape of that data was chosen with that purpose in mind. A live `Sinks.Many` stream, daily-partitioned JSONL persistence, per-tool / per-MCP attribution, conversation-scoped correlation IDs - each of those is necessary for the dashboards, and each is also sufficient for downstream policy layers if they are ever built. That alignment is deliberate, not incidental.
+Observability here is the visibility arm of the project's safety model - the complement to the sandbox's prevention arm. The in-app dashboards are the primary consumer of the trace data, and the shape of that data was chosen with that purpose in mind. A live `Sinks.Many` stream, daily-partitioned JSON persistence, per-tool / per-MCP attribution, conversation-scoped correlation IDs - each of those is necessary for the dashboards, and each is also sufficient for downstream policy layers if they are ever built. That alignment is deliberate, not incidental.
 
 Examples of the kind of policy layer the trace stream documented above could support: rate limits per tool, operator-initiated kill switches on a misbehaving MCP server, anomaly checks against rolling baselines, replays of historical traces against a candidate rule. There is a loose analogy with the Web Application Firewall - a layer that reads observed traffic and applies operator policy. An equivalent for agent tool and MCP traffic would read from this layer's traces, not from anything new. These are illustrations of *what the data could support*, not commitments. This document does not design any of them; the milestone shipping this layer does not ship any of them.
 
 Three bridges connect the safety layers to this observability layer - two shipped, the third a wired-but-NOOP seam:
 
 - **`SandboxGuardMetrics`** - a Micrometer counter (`sandbox.guard.blocked`) tagged by `category` and `reason`. The sandbox increments it every time it blocks an unsafe action; operators see policy enforcement as a time series in the in-app dashboard, and external observability stacks scrape the same counter via `/actuator/prometheus`. Every prevention decision is observable - this is the *visibility* side of the Sandbox-Observability pairing, already shipped.
-- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate logs `hitl.approved` / `hitl.declined` (no counter today). The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus`; it is not yet surfaced on an in-app dashboard tab.
+- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate records the **same** `mcp.hitl.decision` counter, tagged `side` = chat. The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus`; it is not yet surfaced on an in-app dashboard tab.
 - **`McpRiskSignalSink`** - the seam for risk-signal events (external-server / re-exposed-tool risk computation, floor override, fingerprint mismatch, composition-lifecycle change). It is currently wired to a NO-OP default (`McpRiskSignalSink.NOOP`), so these events are not yet emitted as scrapable metrics - wiring a metric-publishing sink is the planned visibility side of the [MCP Server Safety](mcp-server-safety.md) risk engine.
 
 Anything else, if it ships, will be documented under [Features → Observability](features/observability/index.md) by the milestone that ships it. Sandbox layers ([Safety Architecture](safety-architecture.md)) prevent unsafe *actions* at the boundary of a single call. The observability layer documented here records what those calls were. Whether the two are ever combined into a behavioural layer that catches unsafe *patterns* across calls is a question for later milestones, not for this document.

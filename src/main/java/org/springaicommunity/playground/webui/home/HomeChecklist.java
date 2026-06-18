@@ -232,9 +232,8 @@ class HomeChecklist extends Div {
         if (chatModel == null) return false;
         String className = chatModel.getClass().getSimpleName().toLowerCase();
         if (className.contains("openai")) {
-            String k1 = environment.getProperty("spring.ai.openai.api-key", "");
-            String k2 = environment.getProperty("spring.ai.openai-sdk.api-key", "");
-            return (k1 != null && !k1.isBlank()) || (k2 != null && !k2.isBlank());
+            String apiKey = environment.getProperty("spring.ai.openai.api-key", "");
+            return apiKey != null && !apiKey.isBlank();
         }
         return true;
     }

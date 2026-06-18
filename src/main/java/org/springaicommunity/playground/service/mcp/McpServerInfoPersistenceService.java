@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
+import tools.jackson.core.JacksonException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +58,7 @@ public class McpServerInfoPersistenceService implements PersistenceServiceInterf
         this.persistenceExecutor.submit(() -> {
             try {
                 save(mcpServerInfo);
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Async save failed for MCP server info {}", mcpServerInfo.serverName(), e);
             }
         });

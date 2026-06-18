@@ -10,7 +10,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Local speech-to-text mic in Agentic Chat — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
-- **MCP safety observability** — a new `McpRiskSignalSink` taps the MCP risk pipeline (server / tool risk scoring, risk-floor overrides, hash-ledger mismatches, composition lifecycle, and tool-poisoning hits) and a default `McpRiskSignalLogger` (`@Component`, replacing the prior NOOP sink) fans each event out to structured logs, Micrometer metrics, and a bounded `McpRiskEventRingBuffer`. A new **Safety** tab in the Observability dashboards surfaces the live risk-event feed, making the integrity verifier, poisoning scanner, and risk calculators observable at runtime.
+
+## [0.2.0-M9]
+
+### Added
+
+- **Agentic Chat overhaul** — provider-aware request options (`ChatRequestOptionsFactory`), a per-request **reasoning / think** toggle, reusable **system-prompt presets** (`ChatSystemPromptPresetCatalog` / `ChatSystemPromptPresetService`), and a **Prompt Library** of example prompts and `{{variable}}` templates rendered by `ChatSystemPromptTemplateRenderer`. Message bubbles gain a hover toolbar (copy, show raw, collapse, read aloud, cite, Export) and an always-visible **meta row** — elapsed time, token in/out, model, and tool / RAG chips. Rich rendering adds code syntax highlighting, KaTeX math, and Mermaid diagrams, and a shared categorized tool selector scopes which tools a conversation may call (`feat(chat,tools)`).
+- **Per-chat memory window with full local history** — a decorator splits the LLM context window from the on-disk archive: a new `LlmWindowChatMemory` feeds only the last N messages to the advisor, while the full store (safety cap 2,000) keeps the entire conversation for the screen and disk. Tunable globally (`memory-max-messages` / `history-max-messages`) and per chat via a memory-window field in the chat settings drawer (`feat(chat)`).
+- **Apple Silicon MLX auto-select** — `AppleSiliconMlxActivator` turns on an `mlx` Spring profile on Apple Silicon and auto-selects MLX-quantized model tags for markedly faster local inference; the Electron launcher maps MLX models accordingly (`feat(electron,config)`).
+- **MCP safety observability** — a new `McpRiskSignalSink` taps the MCP risk pipeline (server / tool risk scoring, risk-floor overrides, hash-ledger mismatches, composition lifecycle, and tool-poisoning hits) and a default `McpRiskSignalLogger` (`@Component`, replacing the prior NOOP sink) fans each event out to structured logs, Micrometer metrics, and a bounded `McpRiskEventRingBuffer`. A new **Safety** tab in the Observability dashboards surfaces the live risk-event feed, making the integrity verifier, poisoning scanner, and risk calculators observable at runtime (`feat(mcp)`).
+
+### Changed
+
+- **Migrated to Spring AI 2.0 / Spring Boot 4.1 / Vaadin 25** — a full platform upgrade: Spring Boot `3.5 → 4.1`, Spring AI `1.1 → 2.0`, Vaadin `24 → 25`, Jackson `2 → 3` (`tools.jackson`), Spring Security `7`, and the desktop Electron shell `28 → 42` (Chromium 136, required for the Vaadin 25 webview to render). The codebase is adapted to the changed APIs: builder-based immutable chat options, the `ToolCallingAdvisor` / `.tools()` tool-calling surface, Jackson 3's unchecked `JacksonException` / `ValueDeserializer` / immutable-mapper model (with corrupt-file boot resilience restored), Vaadin 25 navigation access control and explicit `@StyleSheet(Lumo.STYLESHEET)` theming, and the `openai` (was `openai-sdk`) model starter. The vendored `OllamaChatModel` patch is dropped (`build(deps)`).
+
+### Fixed
+
+- **Repaired dead built-in tools** — `convertCurrency` (now key-gated) and `getCountryInfo` (allowlist redirect) work again, and oversized tool results are capped and clipped before they overflow the model context (`fix(tools)`).
+- **Chat exposed-tool combos repopulate on attach; restored-message timestamp null-guarded** so returning to a conversation no longer shows empty tool selectors or throws on history without a timestamp (`fix(chat)`).
+- **Desktop Docker image builds on Spring Boot 4** — the container layer-extraction step switched from the removed `layertools` jarmode to `tools ... extract --layers --launcher`, which Boot 4 dropped (`build(deps)`).
+- **Electron download and launcher UX** — per-task download cancel button, throttled download progress, debounced window-fit, config-editor text fixes, and `chmod 600` on the persisted secrets file (`fix(electron)`).
+- **Chat settings hardening** — the model-download gate follows the active provider (the download UI stays off for non-Ollama models), stop sequences are validated against the provider cap (OpenAI allows up to 4) and block Apply when exceeded, numeric fields gain bounds and step buttons under a new **Context** section, and the generating indicator keeps pulsing through think / tool / RAG phases (`fix(chat,tools)`).
+- **Chat preset apply resets built-in tool exposure** — Apply & New Chat re-exposes exactly the preset's ready (key-less) tools on the built-in MCP server behind a confirmation dialog and persists them so a restart rebuilds the same set, with Tool Studio re-reading exposure on attach (`fix(chat,tools)`).
+- **Vector Database and workspace header robustness** — the vector grid degrades to an empty state and a toast when the embedding provider is unreachable instead of aborting navigation, and long content-header titles truncate instead of overflowing (`fix(chat,tools)`).
+
+### Documentation
+
+- **Agentic Chat & context-engineering guides** — new `docs/features/agentic-chat/` pages (guide, Prompt Library, prompt presets / templates) and `docs/context-engineering-architecture.md`, captured against the reworked chat.
+- **Integration diagram & External Connections** — a home-page "how it all connects" diagram, a new External Connections page (client config files + model configuration), and safety-architecture scope corrections.
+- **Desktop launcher recapture** — refreshed launcher screenshots and walkthrough with Apple Silicon MLX and Download Tasks (cancel) coverage.
+- **Aligned with Spring AI 2.0** — `openai-sdk → openai` text and screenshots, refreshed observability captures, mobile-overflow and stale-endpoint fixes, and "composed tools" naming (`fix(docs)`).
+
+### Build / Tooling
+
+- **Dependency upgrade** — Spring Boot 4.1.0, Spring AI 2.0.0, Vaadin 25.1.8, testcontainers 1.21.4, Electron 42, electron-builder 26.15.3 (`build(deps)` / `build(electron)`).
+- **Version bump to 0.2.0-M9** (`build(pom)`).
 
 ## [0.2.0-M8]
 

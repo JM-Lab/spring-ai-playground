@@ -58,6 +58,6 @@ All dashboards share the [Observability global settings](../index.md#global-sett
 
 ## Cross-references
 
-- [Agentic Chat (feature)](../../agentic-chat.md) - the chat UI that produces these traces
+- [Agentic Chat (feature)](../../agentic-chat/index.md) - the chat UI that produces these traces
 - [Traces](../runtime/traces.md) - raw per-turn view; Agentic Chat is the aggregated view
 - [Observability Architecture → Conversation-level views](../../../observability-architecture.md#trace-assembly) - `ConversationAggregator` and `ConversationMessageExtractor` design

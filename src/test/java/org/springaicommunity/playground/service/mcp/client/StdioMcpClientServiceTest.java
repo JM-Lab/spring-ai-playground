@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStdioClientProperties;
@@ -45,7 +45,7 @@ class StdioMcpClientServiceTest implements McpClientServiceTest {
     }
 
     @Test
-    void fullCycleWithStdioTransport() throws JsonProcessingException {
+    void fullCycleWithStdioTransport() throws JacksonException {
         McpStdioClientProperties.Parameters parameters = new McpStdioClientProperties.Parameters("docker", List.of(
                 "run", "-i",
                 "--name", CONTAINER_NAME,

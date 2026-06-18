@@ -1,4 +1,4 @@
-description: Runtime configuration reference for Spring AI Playground - every knob (server, AI providers & keys, telemetry, MCP exposure, observability, sandbox, data dirs) and how to set it from the desktop app, Docker, or a source build.
+description: Runtime configuration reference - server, AI providers and keys, MCP exposure, observability, sandbox, and data dirs, set from the desktop app, Docker, or source.
 
 # Runtime Configuration
 
@@ -10,7 +10,7 @@ This page is the single reference for those knobs. The task pages - [Desktop App
 
 **Precedence**, lowest to highest (a later source overrides an earlier one):
 
-1. The bundled `application.yaml` (and active profile, e.g. `application-ollama.yaml`) - the defaults.
+1. The bundled `application.yaml` (including the active profile section, `ollama` by default - the `ollama` / `openai` / `mlx` profiles are defined inline) - the defaults.
 2. An external `application.yaml` next to the runtime or under the app config directory.
 3. OS **environment variables**.
 4. JVM **system properties** (`-Dkey=value`).
@@ -35,8 +35,11 @@ The default active profile is **`ollama`** (`spring.profiles.default: ollama`). 
 | `ollama` *(default)* | Local Ollama chat + embedding models. |
 | `openai` | OpenAI chat + embedding (needs `OPENAI_API_KEY`). |
 | `mcp-stdio` | Switches the built-in MCP server transport from Streamable HTTP to **STDIO** (see [below](#mcp-stdio-profile)). |
+| `mlx` *(auto)* | MLX-optimized Ollama model defaults for Apple Silicon. **Auto-activated**, not set by hand - see the note below. |
 
 Activate with `SPRING_PROFILES_ACTIVE=openai`, layer with `SPRING_PROFILES_INCLUDE=mcp-stdio`, or use `--spring.profiles.active=` / `-Dspring.profiles.active=`.
+
+On an **Apple Silicon Mac** the `mlx` profile is layered onto `ollama` automatically (default chat model `qwen3.5:4b-mlx` plus a `-mlx` model menu). An `EnvironmentPostProcessor` gates it on `spring.ai.playground.ollama.mlx-auto-select` (default `true`) and the OS/arch check, so it never activates on Intel, Windows, Linux, or Docker. Pass `--spring.ai.playground.ollama.mlx-auto-select=false` to opt out. The desktop launcher disables this and resolves MLX builds itself - see [Alternative Runtimes → Apple Silicon and MLX models](alternative-runtimes.md#apple-silicon-mlx).
 
 ## Server & web { #server }
 
@@ -55,7 +58,7 @@ Provider selection (which Spring AI model backs each capability):
 
 | Property | Default | Notes |
 |---|---|---|
-| `spring.ai.model.chat` | `ollama` | `openai` profile flips this to `openai-sdk`. |
+| `spring.ai.model.chat` | `ollama` | Set to `openai` by the `openai` Spring profile. |
 | `spring.ai.model.embedding` | `ollama` | Used by the Vector Database. |
 | `spring.ai.model.image` / `moderation` / `audio.speech` / `audio.transcription` | `none` | Opt-in capabilities. |
 
@@ -68,14 +71,15 @@ Provider selection (which Spring AI model backs each capability):
 | `spring.ai.ollama.chat.options.model` | `qwen3.5:2b` | Default chat model. |
 | `spring.ai.ollama.embedding.options.model` | `qwen3-embedding:0.6b` | Default embedding model. |
 | `spring.ai.playground.chat.models` | `qwen3.5:2b, qwen3.5:9b, qwen3.6:35b, gemma4:e4b, gpt-oss:20b, deepseek-r1:8b` | The model menu shown in the chat UI. |
+| `spring.ai.playground.ollama.mlx-auto-select` | `true` | On Apple Silicon, auto-activate the [`mlx` profile](#profiles) (MLX model defaults). Set `false` to keep the generic model names. |
 
 **OpenAI profile** (`openai`):
 
 | Property | Env | Default | Notes |
 |---|---|---|---|
-| `spring.ai.openai-sdk.api-key` | `OPENAI_API_KEY` | *(required)* | Set as an env var; never commit it. |
-| `spring.ai.openai-sdk.chat.options.model` | - | `gpt-5.4-mini` | Default chat model. |
-| `spring.ai.openai-sdk.embedding.options.model` | - | `text-embedding-3-small` | Default embedding model. |
+| `spring.ai.openai.api-key` | `OPENAI_API_KEY` | *(required)* | Set as an env var; never commit it. |
+| `spring.ai.openai.chat.options.model` | - | `gpt-5.4-mini` | Default chat model. |
+| `spring.ai.openai.embedding.options.model` | - | `text-embedding-3-small` | Default embedding model. |
 | `spring.ai.playground.chat.models` | - | `gpt-5.4, gpt-5.4-mini, gpt-5.4-nano, gpt-5.2` | Chat model menu. |
 
 Tool / MCP-server API keys (GitHub PAT, `BRAVE_API_KEY`, `MS_TENANT_ID`, Google keys, ...) are documented per surface on the [Default Tools](../features/default-tools/index.md) and [Default MCP Servers](../features/default-mcp-catalog/index.md) pages - they are supplied the same way (env var or the launcher's env editor).
@@ -98,7 +102,10 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 | `spring.ai.playground.mcp-server.composed-tools-max-risk` | relaxed-binding env | `L5` | Caps which composed tools are published (`L1`-`L5`). |
 | `spring.ai.playground.mcp-server.composed-tools` | relaxed-binding env | `[]` | Declarative list of composed (proxied) external tools - see [Configure exposure via YAML](../features/mcp-server/proxy.md#yaml-exposure). |
 | `spring.ai.mcp.server.protocol` | relaxed-binding env | `STREAMABLE` | `SSE` · `STREAMABLE` · `STATELESS`. |
-| `spring.ai.mcp.server.request-timeout` | relaxed-binding env | `30` | Seconds. |
+| `spring.ai.playground.chat.tool-result-max-chars` | relaxed-binding env | `12000` | Caps the characters of any single tool result before it returns to the model in the [Agentic Chat](../features/agentic-chat/index.md) loop - built-in, authored, or external. Oversized results are truncated (with a marker) so one verbose tool call cannot blow up the context window. `0` disables the cap. |
+| `spring.ai.playground.chat.memory-max-messages` | relaxed-binding env | `10` | How many recent messages are sent to the model each turn - the conversation **memory window**. Overridable per chat from the settings drawer's **Recent messages** field. See [Context Engineering → Conversation memory](../context-engineering-architecture.md#conversation-memory). |
+| `spring.ai.playground.chat.history-max-messages` | relaxed-binding env | `2000` | Safety cap on the **full local conversation store** that the screen and on-disk history read from; messages beyond this are dropped. The memory window above is what the model actually sees. |
+| `spring.ai.mcp.server.request-timeout` | relaxed-binding env | `150` | Seconds. |
 
 ## Observability { #observability }
 
@@ -107,7 +114,7 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 | Property | Short env | Default | Notes |
 |---|---|---|---|
 | `...observability.ring-buffer-capacity` | `OBS_RING_CAPACITY` | `2000` | Trace events held in memory. |
-| `...observability.persist` | `OBS_PERSIST` | `true` | Write traces to disk (JSONL). |
+| `...observability.persist` | `OBS_PERSIST` | `true` | Write traces to disk (one JSON file per trace). |
 | `...observability.retain-days` | `OBS_RETAIN_DAYS` | `30` | Days of persisted traces to keep. |
 | `...observability.max-spans-per-trace` | `OBS_MAX_SPANS` | `200` | Span cap per trace. |
 | `...observability.capture-prompt-content` | relaxed-binding env | `true` | Capture prompt/response text in spans. |

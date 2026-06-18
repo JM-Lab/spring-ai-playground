@@ -49,7 +49,7 @@ public class ElicitationRequestPrimitive extends Div {
         String title = req.message() == null ? "Elicitation request" : req.message();
         add(PrimitiveCardLayout.titleRow(VaadinIcon.QUESTION_CIRCLE_O.create(), title));
 
-        Map<String, Object> schema = req.requestedSchema();
+        Map<String, Object> schema = req instanceof McpSchema.ElicitFormRequest form ? form.requestedSchema() : null;
         List<String> required = schema != null && schema.get("required") instanceof List<?> rl
                 ? rl.stream().map(String::valueOf).toList() : List.of();
         Object propertiesObj = schema == null ? null : schema.get("properties");

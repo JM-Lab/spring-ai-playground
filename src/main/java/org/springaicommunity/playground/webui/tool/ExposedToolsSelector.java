@@ -37,46 +37,54 @@ public final class ExposedToolsSelector {
     private ExposedToolsSelector() {
     }
 
-    public static MultiSelectComboBox<ToolSpec> newCustomSelector(Function<ToolSpec, String> riskLevelFn) {
-        MultiSelectComboBox<ToolSpec> selector = new MultiSelectComboBox<>();
-        selector.setLabel("Custom tools to expose");
-        selector.setHelperText("Tools you built in Tool Studio.");
-        selector.setItemLabelGenerator(ToolSpec::name);
-        selector.setRenderer(toolSpecRenderer(riskLevelFn));
-        selector.setWidthFull();
-        selector.setClearButtonVisible(true);
-        return selector;
+    public static MultiSelectComboBox<ToolSpec> newCustomSelector(Function<ToolSpec, String> riskLevelFn,
+            Function<ToolSpec, String> categoryFn) {
+        return newCategorizedSelector("Custom tools to expose", "Tools you built in Tool Studio.",
+                riskLevelFn, categoryFn);
     }
 
-    public static MultiSelectComboBox<ToolSpec> newComposedSelector(Function<ToolSpec, String> riskLevelFn) {
-        MultiSelectComboBox<ToolSpec> selector = new MultiSelectComboBox<>();
-        selector.setLabel("Composed external tools");
-        selector.setHelperText("Tools re-exposed from connected external MCP servers — risk and HITL governed.");
-        selector.setItemLabelGenerator(ToolSpec::name);
-        selector.setRenderer(toolSpecRenderer(riskLevelFn));
-        selector.setWidthFull();
-        selector.setClearButtonVisible(true);
-        return selector;
+    public static MultiSelectComboBox<ToolSpec> newComposedSelector(Function<ToolSpec, String> riskLevelFn,
+            Function<ToolSpec, String> categoryFn) {
+        return newCategorizedSelector("Composed external tools",
+                "Tools re-exposed from connected external MCP servers — risk and HITL governed.",
+                riskLevelFn, categoryFn);
     }
 
-    public static MultiSelectComboBox<ToolSpec> newBuiltinSelector(Function<ToolSpec, String> riskLevelFn) {
+    public static MultiSelectComboBox<ToolSpec> newBuiltinSelector(Function<ToolSpec, String> riskLevelFn,
+            Function<ToolSpec, String> categoryFn) {
+        return newCategorizedSelector("Built-in tools to expose",
+                "Local-Passed built-in tools — tick which to expose.", riskLevelFn, categoryFn);
+    }
+
+    // The one tool-selector renderer used everywhere: name + faint category label + risk badge + description
+    // tooltip. The dropdown can't show real category headers, so callers sort items by category to keep a
+    // category's tools adjacent under its shared label.
+    public static MultiSelectComboBox<ToolSpec> newCategorizedSelector(String label, String helperText,
+            Function<ToolSpec, String> riskLevelFn, Function<ToolSpec, String> categoryFn) {
         MultiSelectComboBox<ToolSpec> selector = new MultiSelectComboBox<>();
-        selector.setLabel("Built-in tools to expose");
-        selector.setHelperText("Local-Passed built-in tools — tick which to expose.");
+        selector.setLabel(label);
+        selector.setHelperText(helperText);
         selector.setItemLabelGenerator(ToolSpec::name);
-        selector.setRenderer(toolSpecRenderer(riskLevelFn));
+        selector.setRenderer(toolSpecRenderer(riskLevelFn, categoryFn));
         selector.setWidthFull();
         selector.setClearButtonVisible(true);
         return selector;
     }
 
     private static ComponentRenderer<HorizontalLayout, ToolSpec> toolSpecRenderer(
-            Function<ToolSpec, String> riskLevelFn) {
+            Function<ToolSpec, String> riskLevelFn, Function<ToolSpec, String> categoryFn) {
         return new ComponentRenderer<>(spec -> {
             Span name = new Span(spec.name());
             name.getStyle().set("flex", "1 1 auto").set("overflow", "hidden").set("text-overflow", "ellipsis");
-            Span badge = riskBadge(riskLevelFn.apply(spec));
-            HorizontalLayout row = new HorizontalLayout(name, badge);
+            HorizontalLayout row = new HorizontalLayout(name);
+            if (categoryFn != null) {
+                Span category = new Span(categoryFn.apply(spec));
+                category.getStyle().set("font-size", "var(--lumo-font-size-xxs)")
+                        .set("color", "var(--lumo-secondary-text-color)").set("flex", "0 0 auto")
+                        .set("white-space", "nowrap");
+                row.add(category);
+            }
+            row.add(riskBadge(riskLevelFn.apply(spec)));
             row.setAlignItems(FlexComponent.Alignment.CENTER);
             row.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
             row.setWidthFull();

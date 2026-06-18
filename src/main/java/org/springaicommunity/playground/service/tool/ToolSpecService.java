@@ -15,9 +15,9 @@
  */
 package org.springaicommunity.playground.service.tool;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.McpAsyncServer;
@@ -115,6 +115,7 @@ public class ToolSpecService {
     private final SandboxPostureCalculator postureCalculator;
     private final ObservationRegistry observationRegistry;
     private final DefaultIntegrityVerifier integrityVerifier;
+    private final ToolCategoryCatalog categoryCatalog;
     private final ThreadLocal<Boolean> skipPersist = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private final Map<String, ToolSpec> externalToolSpecs = new ConcurrentHashMap<>();
     private final Map<String, String> externalToolRiskLevels = new ConcurrentHashMap<>();
@@ -129,7 +130,7 @@ public class ToolSpecService {
             SpringAiPlaygroundOptions playgroundOptions, EffectivePolicyResolver policyResolver,
             SandboxPostureCalculator postureCalculator,
             ObservationRegistry observationRegistry,
-            DefaultIntegrityVerifier integrityVerifier)
+            DefaultIntegrityVerifier integrityVerifier, ToolCategoryCatalog categoryCatalog)
             throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
@@ -144,6 +145,7 @@ public class ToolSpecService {
         this.postureCalculator = postureCalculator;
         this.observationRegistry = observationRegistry;
         this.integrityVerifier = integrityVerifier;
+        this.categoryCatalog = categoryCatalog;
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
                 this.sandboxBaseline, playgroundOptions.toolStudio().fs());
     }
@@ -198,7 +200,9 @@ public class ToolSpecService {
             }
         } else if (!currentlyExposed
                 && this.toolMcpServerSetting.autoAdd()
-                && !excluded.contains(spec.toolId())) {
+                && !excluded.contains(spec.toolId())
+                && !isDefaultTool(spec.toolId())) {
+            // Auto-expose covers user-authored tools only; built-in exposure is derived from the preset at boot.
             addMcpTool(spec);
             HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
             ids.add(spec.toolId());
@@ -208,6 +212,12 @@ public class ToolSpecService {
         if (changed) {
             persistAsync();
         }
+    }
+
+    private boolean isDefaultTool(String toolId) {
+        ToolSpecPersistenceService persistenceService =
+                this.toolSpecPersistenceServiceProvider.getIfAvailable();
+        return persistenceService != null && persistenceService.getDefaultToolIds().contains(toolId);
     }
 
     public ToolSpec update(String toolId, String toolName, String toolDescription,
@@ -468,6 +478,11 @@ public class ToolSpecService {
             if (external != null) return external;
         }
         return riskLevelFor(spec == null ? null : spec.sandboxOverrides());
+    }
+
+    // Display name of the tool's category (sibling to riskLevelOf), so tool selectors share one source.
+    public String categoryOf(ToolSpec spec) {
+        return this.categoryCatalog.resolveOrFallback(spec == null ? null : spec.category()).displayName();
     }
 
     public boolean requiresApproval(ToolSpec spec) {

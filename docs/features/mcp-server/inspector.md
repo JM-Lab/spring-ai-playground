@@ -50,7 +50,7 @@ Every card also carries its own **risk chip** next to the tool name. On the Deep
 
 **What it is** - A prompt is a named, parameterised message template the server can render for the client. The spec defines `prompts/list` (discovery, returns `name` + optional `description` + optional argument schema) and `prompts/get` (render with supplied arguments → returns a list of `messages` ready to feed a model). Argument schemas can flag completion support, which causes the client to call `completion/complete` for auto-suggest as the user types. Spring AI's `McpSyncClient.listPrompts` / `getPrompt` covers the consumer side.
 
-**How the playground surfaces it** - `PromptPrimitive.java` renders one card per prompt. Argument-less prompts collapse to name + description + **Preview**. Prompts with arguments expose typed inputs per the prompt's argument schema; arguments declared as completable trigger MCP `completion/complete` calls as you type. Clicking **Preview** calls `prompts/get` and lands the rendered messages inline so you can see exactly what the server would hand a downstream model.
+**How the playground surfaces it** - `PromptPrimitive.java` renders one card per prompt. Argument-less prompts collapse to name + description + **Get prompt**. Prompts with arguments expose typed inputs per the prompt's argument schema; arguments declared as completable trigger MCP `completion/complete` calls as you type. Clicking **Get prompt** calls `prompts/get` and lands the rendered messages inline so you can see exactly what the server would hand a downstream model.
 
 ![Excerpt of the Prompts tab - Simple Prompt (description: "A prompt with no arguments"), Arguments Prompt below it ("A prompt with two arguments, one required and one optional") with city / state inputs and helper hints](../../assets/images/mcp-inspector/inspector-03-prompts.png)
 
@@ -72,7 +72,7 @@ Every card also carries its own **risk chip** next to the tool name. On the Deep
 
 **How the playground surfaces it** - `NotificationsTab.java` is a live feed. Each incoming notification appears as a row with a timestamp, the notification method, and the (pretty-printed) payload. The feed accumulates while the tab is open and resets when the sidebar selection changes. This is the **only place chat doesn't surface** server push notifications, so it's the canonical way to verify that an external server actually emits the change events it claims to.
 
-![Excerpt of the Notifications tab - empty feed area on a connection whose server hasn't pushed anything yet; entries appear here the moment the server emits one](../../assets/images/mcp-inspector/inspector-05-notifications.png)
+![Excerpt of the Notifications tab - a logging-level selector and Clear button above a live feed showing three TOOLS_CHANGED "Tools list changed (15)" rows, each timestamped, that MCP Everything emitted on connect](../../assets/images/mcp-inspector/inspector-05-notifications.png)
 
 *On MCP Everything specifically, invoking the `Toggle Subscriber Updates` tool on the Tools tab kicks the server into periodically pushing `notifications/resources/updated` - which is when entries start landing in this feed.*
 
@@ -94,7 +94,7 @@ These three are **inverted**: the server initiates the call and the playground (
 
 **What it is** - *Sampling* is the server asking the client to run a model turn on its behalf. The spec endpoint is `sampling/createMessage` - the server sends a conversation (`messages`), optional `modelPreferences` (cost / speed / intelligence hints), a system prompt, max tokens, temperature, and stop sequences; the client returns the assistant message. This is how a server-side agent loop can recurse into the user's model **without bringing its own credentials**. Spring AI's `SyncSamplingProvider` is the contract.
 
-**How the playground surfaces it** - `SamplingTab.java` is a feed of pending sampling requests. Each request lands as a `SamplingRequestPrimitive` card carrying the conversation messages, the model preferences, and **Approve** / **Reject** buttons. Approved requests run through the playground's configured chat model (the same `ChatClient` Agentic Chat uses) and the resulting assistant message is returned to the server. Rejected requests return an MCP-spec error so the server can react.
+**How the playground surfaces it** - `SamplingTab.java` is a feed of pending sampling requests. Each request lands as a `SamplingRequestPrimitive` card carrying the conversation messages, the model preferences, and **Send** / **Decline** buttons. Sending runs the request through the playground's configured chat model (the same `ChatClient` Agentic Chat uses) and the resulting assistant message is returned to the server. Declining returns an MCP-spec error so the server can react.
 
 ![Excerpt of the Sampling tab - empty pending-request list; cards appear here the moment a server calls sampling/createMessage back into the playground](../../assets/images/mcp-inspector/inspector-07-sampling.png)
 
@@ -104,7 +104,7 @@ These three are **inverted**: the server initiates the call and the playground (
 
 **What it is** - *Elicitation* is the server asking the *user* a question mid-conversation. The spec endpoint is `elicitation/create` - the server sends a `prompt` text plus a `requestedSchema` (a JSON Schema describing what answer it expects); the client renders the form, the human fills it in, the client returns the answer. This is how a server can pull "which calendar should I write this event to?" out of the user without the host model having to know to ask. Spring AI's `SyncElicitationProvider` is the contract.
 
-**How the playground surfaces it** - `ElicitationTab.java` is a feed of pending elicitation requests. Each request lands as an `ElicitationRequestPrimitive` card carrying the prompt text, a form rendered per the server's `requestedSchema` (same JSON-Schema-typed inputs the Tools tab uses), and **Submit** / **Cancel** buttons. Submitting ships the answer back; cancelling returns an error. The card stays in the feed afterwards as a record so you can audit what was asked.
+**How the playground surfaces it** - `ElicitationTab.java` is a feed of pending elicitation requests. Each request lands as an `ElicitationRequestPrimitive` card carrying the prompt text, a form rendered per the server's `requestedSchema` (same JSON-Schema-typed inputs the Tools tab uses), and **Accept** / **Decline** / **Cancel** buttons. Accepting ships the answer back; declining or cancelling returns an error. The card stays in the feed afterwards as a record so you can audit what was asked.
 
 ![Excerpt of the Elicitation tab - empty pending-request list; cards appear here the moment a server calls elicitation/create back into the playground](../../assets/images/mcp-inspector/inspector-08-elicitation.png)
 

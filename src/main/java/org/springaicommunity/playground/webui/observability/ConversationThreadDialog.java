@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.observability;
 
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -48,7 +49,7 @@ public class ConversationThreadDialog extends Dialog {
             String focusTraceId) {
         setWidth("960px");
         setHeight("760px");
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setDraggable(true);
         setResizable(true);
         setHeaderTitle("Conversation " + shorten(conversationId, 16));

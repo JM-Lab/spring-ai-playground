@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,11 +25,13 @@ import org.springaicommunity.playground.service.mcp.catalog.McpToolDescriptor;
 import org.junit.jupiter.api.AfterEach;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -45,13 +47,14 @@ class McpToolHashLedgerTest {
     private PersistenceExecutor executor;
     private AtomicReference<McpRiskEvents.HashLedgerMismatch> captured;
     private ObjectMapper objectMapper;
+    private McpRiskSignalSink sink;
 
     @BeforeEach
     void setUp() throws IOException {
         this.objectMapper = new ObjectMapper();
         this.executor = new PersistenceExecutor();
         this.captured = new AtomicReference<>();
-        McpRiskSignalSink sink = new McpRiskSignalSink() {
+        this.sink = new McpRiskSignalSink() {
             @Override public void onServerRiskComputed(McpRiskEvents.ServerRiskComputed event) {}
             @Override public void onToolPublishRiskComputed(McpRiskEvents.ToolPublishRiskComputed event) {}
             @Override public void onFloorOverrideTriggered(McpRiskEvents.FloorOverrideTriggered event) {}
@@ -67,6 +70,16 @@ class McpToolHashLedgerTest {
     @AfterEach
     void drainPersistence() throws InterruptedException, TimeoutException {
         executor.awaitCompletion(Duration.ofSeconds(5));
+    }
+
+    @Test
+    void corruptLedgerFileStartsEmptyInsteadOfCrashing() throws IOException {
+        Path ledgerFile = tempHome.resolve("mcp").resolve("risk").resolve("ledger.json");
+        Files.createDirectories(ledgerFile.getParent());
+        Files.writeString(ledgerFile, "{ not a fingerprint array ]]]");
+        McpToolHashLedger recovered = assertDoesNotThrow(
+                () -> new McpToolHashLedger(tempHome, objectMapper, executor, sink));
+        assertTrue(recovered.get("github", "list_repos").isEmpty());
     }
 
     @Test

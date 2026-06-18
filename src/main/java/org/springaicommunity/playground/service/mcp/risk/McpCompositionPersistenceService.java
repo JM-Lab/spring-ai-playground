@@ -15,9 +15,10 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.PersistenceExecutor;
@@ -45,7 +46,7 @@ public class McpCompositionPersistenceService {
         Path baseDir = springAiPlaygroundHomeDir.resolve("mcp").resolve("risk");
         Files.createDirectories(baseDir);
         this.filePath = baseDir.resolve(FILE);
-        this.objectMapper = objectMapper.copy().enable(SerializationFeature.INDENT_OUTPUT);
+        this.objectMapper = objectMapper.rebuild().enable(SerializationFeature.INDENT_OUTPUT).build();
         this.persistenceExecutor = persistenceExecutor;
     }
 
@@ -55,7 +56,7 @@ public class McpCompositionPersistenceService {
             byte[] bytes = Files.readAllBytes(this.filePath);
             if (bytes.length == 0) return List.of();
             return this.objectMapper.readValue(bytes, new TypeReference<List<McpComposition>>() {});
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             logger.warn("Failed to load compositions from {} — starting empty", this.filePath, e);
             return List.of();
         }
@@ -66,7 +67,7 @@ public class McpCompositionPersistenceService {
         this.persistenceExecutor.submit(() -> {
             try {
                 writeAtomically(snapshot);
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Failed to persist compositions", e);
             }
         });

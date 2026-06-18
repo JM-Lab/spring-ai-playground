@@ -232,17 +232,17 @@ A *root* is a file or URI the playground (acting as the MCP client) advertises t
 
 1. Go back to **Tools** and click **Run tool** on the **Trigger Sampling Request Tool** card (no inputs).
 2. Switch to the **Sampling** tab. A `SamplingRequestPrimitive` card lands in the feed carrying the conversation messages the server wants the playground to send to a model, plus `modelPreferences` (cost / speed / intelligence hints).
-3. Click **Approve**. The playground runs the conversation through the same `ChatClient` Agentic Chat uses (the model picked in **Agentic Chat → Settings → Model**) and returns the assistant message to the server. The card updates with the response that was sent back.
-4. Optionally trigger sampling again and click **Reject** instead - the server gets an MCP-spec error response so it can branch its agent loop accordingly.
+3. Click **Send**. The playground runs the conversation through the same `ChatClient` Agentic Chat uses (the model picked in **Agentic Chat → Settings → Model**) and returns the assistant message to the server. The card updates with the response that was sent back.
+4. Optionally trigger sampling again and click **Decline** instead - the server gets an MCP-spec error response so it can branch its agent loop accordingly.
 
 ![Sampling tab showing the PENDING SAMPLING REQUESTS panel where request cards land](../assets/images/tutorials/9-mcp-everything/12-sampling-elicitation.png)
-*The Sampling tab is where the two inverted primitives surface - incoming `sampling/createMessage` requests render as cards with Approve / Reject. Elicitation has the same shape under the **Elicitation** tab, except the response area is a JSON-Schema-typed form instead of a model turn.*
+*The Sampling tab is where the two inverted primitives surface - incoming `sampling/createMessage` requests render as cards with Send / Decline. Elicitation has the same shape under the **Elicitation** tab, except the response area is a JSON-Schema-typed form instead of a model turn.*
 
 !!! note "Sampling and Elicitation routing"
     The playground's MCP client must advertise the `sampling` and `elicitation` capabilities during `initialize` for the server-side trigger to actually deliver a card here. Like roots, capability advertisement is on the roadmap; the tab + protocol path is wired and the trigger fires, but the round-trip to a Pending-card depends on the same negotiation pass.
 
 !!! warning "Sampling is a human-in-the-loop gate"
-    Approving a sampling request runs the server's chosen prompt against *your* configured model - it costs tokens and produces a response the server then acts on. Approve only what you would have approved if you had typed the prompt yourself.
+    Sending a sampling request runs the server's chosen prompt against *your* configured model - it costs tokens and produces a response the server then acts on. Send only what you would have run if you had typed the prompt yourself.
 
 ## 9. Elicitation - answer a question the server asks the user
 
@@ -250,7 +250,7 @@ A *root* is a file or URI the playground (acting as the MCP client) advertises t
 
 1. From **Tools**, click **Run** on the **Trigger Elicitation Request Tool** card.
 2. Switch to the **Elicitation** tab. An `ElicitationRequestPrimitive` card lands carrying the prompt text and a form rendered from the server's `requestedSchema` (same JSON-Schema-typed inputs the Tools tab uses).
-3. Fill the form and click **Submit**. The answer ships back to the server; the card updates to show the response that was sent.
+3. Fill the form and click **Accept**. The answer ships back to the server; the card updates to show the response that was sent.
 4. Optionally trigger elicitation again and click **Cancel** to return the spec-defined error instead.
 
 The card stays in the feed afterwards as an audit record of what was asked and what was answered.

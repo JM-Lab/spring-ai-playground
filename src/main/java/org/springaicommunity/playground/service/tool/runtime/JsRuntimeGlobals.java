@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.tool.runtime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -536,8 +536,6 @@ public final class JsRuntimeGlobals {
         bindings.putMember("crypto", ProxyObject.fromMap(crypto));
     }
 
-    // === URL / URLSearchParams ===
-
     static Object newUrl(Value[] args) {
         if (args.length == 0 || args[0] == null || args[0].isNull()) {
             throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "URL", "missing-input",
@@ -694,8 +692,6 @@ public final class JsRuntimeGlobals {
         return ProxyObject.fromMap(m);
     }
 
-    // === atob / btoa ===
-
     static Object btoa(Value[] args) {
         if (args.length == 0 || args[0] == null || args[0].isNull()) {
             throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "btoa", "missing-input",
@@ -731,8 +727,6 @@ public final class JsRuntimeGlobals {
         for (byte b : bytes) sb.append((char) (b & 0xFF));
         return sb.toString();
     }
-
-    // === crypto ===
 
     private static Object cryptoDigest(Value[] args) {
         if (args.length < 2) {

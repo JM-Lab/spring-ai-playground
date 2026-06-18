@@ -64,7 +64,7 @@ Once Spring AI Playground is running through any of the three paths above, the *
 ![Getting started checklist on the Home screen](../assets/images/home-getting-started.png)
 
 1. **Configure a model provider** - Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider - recheck the launcher config or env vars.
-2. **Start a chat** - Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 86-tool bundled catalog you can opt into through Tool Studio's **Built-in MCP Server Native Tools** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
+2. **Start a chat** - Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 85-tool bundled catalog you can opt into through Tool Studio's **Built-in MCP Server Native Tools** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
 3. **Upload a document for RAG** - Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
 4. **Create your first tool** - Open Tool Studio, write a small JavaScript function, and define its sample arguments. A new tool starts as a **Draft** - invisible to MCP and to chat. Run it locally: if the test passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
 5. **Try an agentic workflow** - Ask the assistant: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
@@ -113,177 +113,11 @@ If you switch to the `OpenAI` setting, Ollama is not required at startup. In tha
 
 For `OpenAI-Compatible` settings, whether Ollama is still required depends on the selected backend and whether embeddings still use Ollama.
 
-The actual launch command for OpenAI depends on your install path - see [Switching to OpenAI](#switching-to-openai) below for cross-references.
+The actual launch command for OpenAI depends on your install path - see [External Connections -> Connect model providers](external-connections.md#connect-model-providers).
 
 ## Model Configuration
 
-Spring AI Playground is provider-agnostic, but the runtime defaults are intentionally optimized for a local-first Ollama experience.
-
-### Auto-configuration
-
-Spring AI Playground uses Ollama by default for local chat and embedding models. No API key is required for that default setup, which makes the initial local-first experience straightforward.
-
-### Support for Major AI Model Providers
-
-Spring AI as a framework supports many providers, including Ollama, OpenAI, Anthropic, Microsoft, Amazon, Google, and other integrations.
-
-For the broader list of officially supported chat model integrations, see the [Spring AI Chat Models Reference Documentation](https://docs.spring.io/spring-ai/reference/api/chatmodel.html#_available_implementations).
-
-Spring AI Playground itself is currently centered on these runtime paths:
-
-- Ollama
-- OpenAI
-- OpenAI-compatible servers
-
-In the desktop app, OpenAI-compatible support is mainly provided through starter templates and YAML override configuration rather than a larger first-class provider matrix.
-
-If you want to use other Spring AI provider integrations, that is not part of the default desktop app flow. In practice, you would need to modify the source dependencies and configuration, then build and run your own customized version.
-
-### Selecting and Configuring Ollama Models
-
-The default profile is `ollama`, and the default setup uses Ollama for both chat and embeddings.
-
-The current default model choices are:
-
-- chat model: `qwen3.5:2b`
-- embedding model: `qwen3-embedding:0.6b`
-- selectable chat models: `qwen3.5:2b`, `qwen3.5:9b`, `qwen3.6:35b`, `gemma4:e4b`, `gpt-oss:20b`, `deepseek-r1:8b`
-
-Important notes:
-
-- missing Ollama models are automatically pulled when needed
-- the selectable chat model list controls what appears in the Playground model selector
-- changing the chat or embedding model changes the runtime defaults used by the application
-
-### Switching to OpenAI
-
-To switch to OpenAI:
-
-1. provide `OPENAI_API_KEY`
-2. activate the `openai` profile (or pick the OpenAI setting in the desktop launcher)
-3. launch the application
-
-The actual launch command depends on your install path:
-
-- **Desktop App**: set `OPENAI_API_KEY` in the launcher's [Environment Variables section](desktop.md#7-use-environment-variables-for-keys-and-secrets), then pick the `OpenAI` config type and click `Save and Launch`.
-- **Docker / From Source**: see [Alternative Runtimes → Switching to OpenAI](alternative-runtimes.md#switching-to-openai) for the `docker run -e ...` and `mvn` snippets.
-
-If you want a broader overview of supported Spring AI provider options beyond the default Playground flows, see the main [Spring AI Documentation](https://spring.io/projects/spring-ai).
-
-### Switching to OpenAI-Compatible Servers
-
-You can also connect to OpenAI-compatible servers such as `llama.cpp`, `TabbyAPI`, `LM Studio`, `vLLM`, `Ollama`, or others that expose OpenAI-compatible endpoints.
-
-Typical configuration points are:
-
-- `api-key`: a real key if the server requires authentication, otherwise a placeholder like `not-used`
-- `base-url`: the server root endpoint, often including `/v1`
-- `model`: the exact model name registered on that server
-- `completions-path`: only override this if the server does not follow the standard OpenAI chat completions path
-- `extra-body`: optional provider-specific parameters
-- `http-headers`: optional custom authentication or transport headers
-- streaming support: works when the target server supports OpenAI-style streaming responses
-- token controls: use `maxTokens` for standard models or `maxCompletionTokens` for reasoning-style models, but avoid setting both
-
-Quick example using Ollama in OpenAI-compatible mode:
-
-```yaml
-spring:
-  ai:
-    model:
-      chat: openai-sdk
-      embedding: ollama
-    openai-sdk:
-      api-key: "not-used"
-      base-url: "http://localhost:11434/v1"
-      chat:
-        options:
-          model: "llama3.2"
-```
-
-`llama.cpp`
-
-```yaml
-spring:
-  ai:
-    model:
-      chat: openai-sdk
-      embedding: ollama
-    openai-sdk:
-      api-key: "not-used"
-      base-url: "http://localhost:8080/v1"
-      chat:
-        options:
-          model: "your-model-name"
-          extra-body:
-            top_k: 40
-            repetition_penalty: 1.1
-```
-
-`TabbyAPI`
-
-```yaml
-spring:
-  ai:
-    model:
-      chat: openai-sdk
-      embedding: ollama
-    openai-sdk:
-      api-key: "your-tabby-key"
-      base-url: "http://localhost:5000/v1"
-      chat:
-        options:
-          model: "your-exllama-model"
-          extra-body:
-            top_p: 0.95
-```
-
-`LM Studio`
-
-```yaml
-spring:
-  ai:
-    model:
-      chat: openai-sdk
-      embedding: ollama
-    openai-sdk:
-      api-key: "not-used"
-      base-url: "http://localhost:1234/v1"
-      chat:
-        options:
-          model: "your-loaded-model"
-          extra-body:
-            num_predict: 100
-```
-
-`vLLM`
-
-```yaml
-spring:
-  ai:
-    model:
-      chat: openai-sdk
-      embedding: ollama
-    openai-sdk:
-      api-key: "not-used"
-      base-url: "http://localhost:8000/v1"
-      chat:
-        options:
-          model: "meta-llama/Llama-3-8B-Instruct"
-          extra-body:
-            top_p: 0.95
-            repetition_penalty: 1.1
-```
-
-For best compatibility, make sure the target server supports OpenAI-style endpoints and model listing.
-
-In practice, it is worth testing the target with a `/v1/models` request first so you can confirm the exact model names and endpoint shape before launching the app against it.
-
-For the complete Spring AI OpenAI chat configuration model, see the [Spring AI OpenAI Chat Documentation](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html).
-
-### Important RAG Note
-
-If you change the embedding model after documents have already been indexed, existing vector data can become inconsistent. Re-import or rebuild the vector database before trusting retrieval results again.
+Spring AI Playground is provider-agnostic with a local-first **Ollama** default (no API key needed). Choosing Ollama models, switching to **OpenAI**, and connecting **OpenAI-compatible** servers (LM Studio, vLLM, llama.cpp, TabbyAPI) are all covered on the [External Connections -> Connect model providers](external-connections.md#connect-model-providers) page.
 
 ## Verify Your Download
 

@@ -16,19 +16,24 @@
 package org.springaicommunity.playground;
 
 import com.vaadin.flow.component.dependency.JavaScript;
+import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Inline;
 import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.component.page.TargetElement;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
+import com.vaadin.flow.theme.lumo.Lumo;
 import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springaicommunity.playground.service.mcp.HitlToolCallAdvisor;
+import org.springaicommunity.playground.service.chat.ChatHistoryService;
+import org.springaicommunity.playground.service.chat.LlmWindowChatMemory;
 import org.springaicommunity.playground.service.mcp.McpToolCallingManager;
+import org.springaicommunity.playground.webui.GoogleAnalyticsNavigationListener;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
@@ -37,6 +42,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -52,6 +58,8 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+@StyleSheet(Lumo.STYLESHEET)
+@StyleSheet(Lumo.UTILITY_STYLESHEET)
 @Push
 @PWA(name = "Spring AI Playground", shortName = "Playground", offlinePath = "offline.html")
 @JavaScript("./playground/pwa-installer.js")
@@ -69,7 +77,8 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     public void configurePage(AppShellSettings settings) {
         if (!isTelemetryEnabled()) {
             settings.addInlineWithContents(Inline.Position.PREPEND,
-                    "window['ga-disable-G-52TGT1G9B3'] = true;", Inline.Wrapping.JAVASCRIPT);
+                    "window['ga-disable-" + GoogleAnalyticsNavigationListener.MEASUREMENT_ID + "'] = true;",
+                    Inline.Wrapping.JAVASCRIPT);
             return;
         }
         String gtmContainerId = "GTM-PVX8227Q";
@@ -95,6 +104,18 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
                 "<noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=%s\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript>",
                 gtmContainerId);
         settings.addInlineWithContents(TargetElement.BODY, Inline.Position.PREPEND, gtmNoscript, Inline.Wrapping.NONE);
+
+        // send_page_view is off: GoogleAnalyticsNavigationListener emits one page_view per navigation (no double count).
+        String ga4Snippet = String.format("""
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
+                gtag('js', new Date());
+                gtag('config', '%1$s', { send_page_view: false });
+                (function(d){var s=d.createElement('script');s.async=true;\
+                s.src='https://www.googletagmanager.com/gtag/js?id=%1$s';\
+                d.head.appendChild(s);})(document);
+                """, GoogleAnalyticsNavigationListener.MEASUREMENT_ID);
+        settings.addInlineWithContents(Inline.Position.PREPEND, ga4Snippet, Inline.Wrapping.JAVASCRIPT);
     }
 
     private static boolean isTelemetryEnabled() {
@@ -121,14 +142,17 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Bean
     @ConditionalOnMissingBean(ChatMemory.class)
-    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
-        return MessageWindowChatMemory.builder().chatMemoryRepository(chatMemoryRepository).maxMessages(10).build();
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository, SpringAiPlaygroundOptions options) {
+        return MessageWindowChatMemory.builder().chatMemoryRepository(chatMemoryRepository)
+                .maxMessages(options.chat().historyMaxMessages()).build();
     }
 
     @Bean
     @ConditionalOnMissingBean(MessageChatMemoryAdvisor.class)
-    public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
-        return MessageChatMemoryAdvisor.builder(chatMemory).build();
+    public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory, SpringAiPlaygroundOptions options,
+            ObjectProvider<ChatHistoryService> chatHistoryServiceProvider) {
+        return MessageChatMemoryAdvisor.builder(new LlmWindowChatMemory(chatMemory,
+                options.chat().memoryMaxMessages(), chatHistoryServiceProvider)).build();
     }
 
     @Bean
@@ -146,10 +170,10 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
                 .filter(name -> name.contains("EmbeddingProperties")).findFirst()
                 .map(applicationContext::getBean).map(o -> {
                     try {
-                        return o.getClass().getMethod("getOptions").invoke(o);
+                        return o.getClass().getMethod("toOptions").invoke(o);
                     } catch (ReflectiveOperationException e) {
                         throw new IllegalStateException(
-                                "Failed to invoke getOptions() on " + o.getClass().getName(), e);
+                                "Failed to invoke toOptions() on " + o.getClass().getName(), e);
                     }
                 }).map(o -> (EmbeddingOptions) o);
     }
@@ -160,8 +184,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     }
 
     @Bean
-    public HitlToolCallAdvisor hitlToolCallAdvisor(McpToolCallingManager mcpToolCallingManager) {
-        return new HitlToolCallAdvisor(mcpToolCallingManager);
+    public ToolCallingAdvisor toolCallingAdvisor(McpToolCallingManager mcpToolCallingManager) {
+        return ToolCallingAdvisor.builder()
+                .toolCallingManager(mcpToolCallingManager)
+                .conversationHistoryEnabled(false) // MessageChatMemoryAdvisor already owns history
+                .build();
     }
 
     @Bean

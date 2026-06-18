@@ -18,6 +18,7 @@ package org.springaicommunity.playground.service.mcp;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.MDC;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.config.MdcIdentityFilter;
 import org.springaicommunity.playground.service.tool.HumanQuestion;
 import org.springaicommunity.playground.service.tool.HumanQuestionHandler;
@@ -64,19 +65,23 @@ public class McpToolCallingManager implements ToolCallingManager {
     private final ToolCallingManager toolCallingManager;
     private final ObjectProvider<ToolSpecService> toolSpecServiceProvider;
     private final MeterRegistry meterRegistry;
+    private final int toolResultMaxChars;
 
     @Autowired
     public McpToolCallingManager(ObservationRegistry observationRegistry,
-            ObjectProvider<ToolSpecService> toolSpecServiceProvider, MeterRegistry meterRegistry) {
+            ObjectProvider<ToolSpecService> toolSpecServiceProvider, MeterRegistry meterRegistry,
+            SpringAiPlaygroundOptions options) {
         this(ToolCallingManager.builder().observationRegistry(observationRegistry).build(),
-                toolSpecServiceProvider, meterRegistry);
+                toolSpecServiceProvider, meterRegistry,
+                options.chat() == null ? 12_000 : options.chat().toolResultMaxChars());
     }
 
     McpToolCallingManager(ToolCallingManager delegate, ObjectProvider<ToolSpecService> toolSpecServiceProvider,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry, int toolResultMaxChars) {
         this.toolCallingManager = delegate;
         this.toolSpecServiceProvider = toolSpecServiceProvider;
         this.meterRegistry = meterRegistry;
+        this.toolResultMaxChars = toolResultMaxChars;
     }
 
     @Override
@@ -103,19 +108,53 @@ public class McpToolCallingManager implements ToolCallingManager {
                 toolCallingChatOptions.getToolContext());
         // Restore identity so the per-tool observation keeps user/session after the reactive chain cleared MDC.
         Map<String, String> previousIdentity = pushIdentity(toolCallingChatOptions.getToolContext());
-        ToolExecutionResult result;
+        ToolExecutionResult rawResult;
         try {
-            result = declinedToolCallIds.isEmpty()
+            rawResult = declinedToolCallIds.isEmpty()
                     ? toolCallingManager.executeToolCalls(prompt, chatResponse)
                     : executeWithDeclined(prompt, chatResponse, declinedToolCallIds);
         } finally {
             popIdentity(previousIdentity);
         }
+        ToolExecutionResult result = truncateOversizedResponses(rawResult);
         mcpProcessMessageConsumerAsOpt.ifPresent(consumer -> {
             consumer.accept(formatToolResultForMcp(result.conversationHistory().getLast()));
             consumer.accept(MCP_TOOL_EXECUTION_COMPLETED_MESSAGE);
         });
         return result;
+    }
+
+    // One enforcement point for every tool (built-in, custom, external MCP): an oversized response would
+    // otherwise be re-prefilled whole on each following round, which is what froze the heavy presets.
+    private ToolExecutionResult truncateOversizedResponses(ToolExecutionResult result) {
+        if (this.toolResultMaxChars <= 0 || result.conversationHistory().isEmpty()) return result;
+        if (!(result.conversationHistory().getLast() instanceof ToolResponseMessage toolResponseMessage))
+            return result;
+        boolean changed = false;
+        List<ToolResponseMessage.ToolResponse> capped = new ArrayList<>();
+        for (ToolResponseMessage.ToolResponse response : toolResponseMessage.getResponses()) {
+            String data = response.responseData();
+            if (data == null || data.length() <= this.toolResultMaxChars) {
+                capped.add(response);
+                continue;
+            }
+            changed = true;
+            logger.info("tool.result.truncated tool={} chars={} max={}", response.name(), data.length(),
+                    this.toolResultMaxChars);
+            capped.add(new ToolResponseMessage.ToolResponse(response.id(), response.name(),
+                    truncate(data, this.toolResultMaxChars)));
+        }
+        if (!changed) return result;
+        List<Message> history = new ArrayList<>(result.conversationHistory());
+        history.set(history.size() - 1, ToolResponseMessage.builder().responses(capped).build());
+        return ToolExecutionResult.builder().conversationHistory(history)
+                .returnDirect(result.returnDirect()).build();
+    }
+
+    // Same marker the clipped built-in tools emit, so the model reads a single convention everywhere.
+    private static String truncate(String data, int max) {
+        return data.substring(0, max) + "\n...[truncated " + (data.length() - max) + " of " + data.length()
+                + " chars]";
     }
 
     private static Map<String, String> pushIdentity(Map<String, Object> toolContext) {

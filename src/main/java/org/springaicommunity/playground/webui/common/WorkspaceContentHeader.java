@@ -44,6 +44,7 @@ public class WorkspaceContentHeader extends HorizontalLayout {
         this.actionSlot.setPadding(false);
         this.actionSlot.setMargin(false);
         this.actionSlot.setAlignItems(FlexComponent.Alignment.CENTER);
+        this.actionSlot.getStyle().set("flex-shrink", "0");
 
         this.centerSlot = new HorizontalLayout();
         this.centerSlot.setPadding(false);
@@ -51,10 +52,12 @@ public class WorkspaceContentHeader extends HorizontalLayout {
         this.centerSlot.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         this.centerSlot.setAlignItems(FlexComponent.Alignment.CENTER);
         this.centerSlot.setWidthFull();
+        this.centerSlot.getStyle().set("min-width", "0").set("overflow", "hidden");
 
         this.endMenuBar = new MenuBar();
         this.endMenuBar.addThemeVariants(MenuBarVariant.LUMO_END_ALIGNED,
                 MenuBarVariant.LUMO_TERTIARY_INLINE);
+        this.endMenuBar.getStyle().set("flex-shrink", "0");
 
         add(this.actionSlot, this.centerSlot, this.endMenuBar);
     }
@@ -76,7 +79,8 @@ public class WorkspaceContentHeader extends HorizontalLayout {
 
     public void setLabel(String text) {
         H4 heading = new H4(text);
-        heading.getStyle().set("white-space", "nowrap").set("margin", "0");
+        heading.getStyle().set("white-space", "nowrap").set("margin", "0")
+                .set("overflow", "hidden").set("text-overflow", "ellipsis").set("max-width", "100%");
         Div wrapper = new Div(heading);
         wrapper.getStyle().set("display", "flex")
                 .set("justify-content", "center")

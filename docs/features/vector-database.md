@@ -55,4 +55,4 @@ Hands-on RAG paths:
 - [Tutorial 5 - Chat with RAG](../tutorials/5-chat-rag.md) - consume the indexed corpus from Agentic Chat
 - [Tutorial 6 - Tools and RAG](../tutorials/6-tools-and-rag.md) - combine RAG with MCP-driven tool calls in one chat turn
 
-Embedding-model setup (Ollama / OpenAI) is configured at launch time - see [Desktop App → Recommended First-Launch Flow](../getting-started/desktop.md#9-recommended-first-launch-flow). Changing the embedding model after indexing invalidates vector dimensionality, which is why the launcher surfaces a warning.
+Embedding-model setup (Ollama / OpenAI) is configured at launch time - see [Desktop App → Recommended First-Launch Flow](../getting-started/desktop.md#11-recommended-first-launch-flow). Changing the embedding model after indexing invalidates vector dimensionality, which is why the launcher surfaces a warning.

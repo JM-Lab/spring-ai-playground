@@ -130,12 +130,12 @@
     }
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^26.3.3"
+    "electron": "^42.0.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "ace-builds": "^1.43.2",
-    "js-yaml": "^4.1.1",
+    "ace-builds": "^1.44.0",
+    "js-yaml": "^4.2.0",
     "ollama": "^0.6.3",
     "tree-kill": "^1.2.2"
   }

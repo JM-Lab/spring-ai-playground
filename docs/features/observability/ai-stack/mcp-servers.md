@@ -21,7 +21,7 @@ description: External MCP server health and traffic - latency by transport, OAut
 
 `spring.ai.tool` spans where `mcp.transport` is present and not `in-process`.
 
-Each such span is enriched by `McpToolObservationFilter` with **risk and composition dimensions** lifted from the call's MDC context: `mcp.origin` (`internal_js` / `wrapped_external`), `mcp.composition.id` / `.name`, `mcp.tool.exposed_alias`, `mcp.upstream.server` / `.tool` / `.transport`, the three risk levels `mcp.risk.final` / `.server` / `.publish`, and `mcp.risk.floor_trigger` when a floor rule tripped. So a tool re-exposed through [composition](../../mcp-server/index.md#expose-external-tools) is traceable back to its upstream server and its computed risk - not just its exposed alias.
+Each such span is enriched by `McpToolObservationFilter` with **risk and composition dimensions** lifted from the call's MDC context: `mcp.origin` (`internal_js` / `wrapped_external`), `mcp.composition.id` / `.name`, `mcp.tool.exposed_alias`, `mcp.server` (the upstream server name), the three risk levels `mcp.risk.final` / `.server` / `.publish`, and `mcp.risk.floor_trigger` when a floor rule tripped. So a tool re-exposed through [composition](../../mcp-server/index.md#expose-external-tools) is traceable back to its upstream server and its computed risk - not just its exposed alias.
 
 ## Controls
 

@@ -233,7 +233,7 @@ public class SandboxCapabilitiesView extends Details {
         updatePostureBadge();
 
         setSummary(summary);
-        setContent(body);
+        add(body);
         setOpened(false);
         setWidthFull();
     }

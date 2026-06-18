@@ -37,7 +37,7 @@ Spring AI Playground treats the local test-run as a gate, not a polish step. Thi
 
 In practice this means the act of publishing is the act of testing. You never produce a tool whose first execution happens in front of an agent.
 
-Every one of the 86 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
+Every one of the 85 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
 
 ## Built-in MCP Server
 
@@ -76,7 +76,7 @@ The JS-on-JVM design is what lets every tool in this app - both the bundled defa
 Concretely:
 
 - One artifact runs on all three OSes - the same JAR is repackaged into the Docker image and the Electron-packaged desktop launcher, all from one `pom.xml`. See [Getting Started](../../getting-started/index.md) for the platform-specific launchers.
-- All 86 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
+- All 85 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
 - Every cross-bridged helper resolves to a Java standard library or well-known JVM library, so platform quirks are handled at the JVM layer:
     - `safety.fs` rides on `java.nio.file.Path` / `Files` - `/` vs `\` and case folding are normalised before any I/O.
     - `fetch` uses the JDK `HttpClient` - same TLS stack, same redirect handling, same connection pool everywhere.
@@ -104,7 +104,7 @@ Tools call a small set of capability-scoped helpers instead of raw Java. These a
 | `safety.parser.csv` | Apache Commons CSV - optional `header` and `delimiter` opts. |
 | `console.log` | Captured into the Tool Studio debug pane and into the chat's tool-call trace. Environment-backed static variables are masked by substring replacement when their full resolved value appears in output. Only anchored full-string `$ENV_VAR` references are auto-collected as secrets - substring-inlined env vars are not. Log entries are capped at 1000 per execution. `console.error` is **not** installed in the current build. |
 
-Every helper above is exercised by one or more of the 86 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
+Every helper above is exercised by one or more of the 85 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
 
 ## Sandbox & Capabilities
 
@@ -403,7 +403,7 @@ You can keep many tools in your workspace, expose only a controlled subset, vali
 
 </div>
 
-The app ships with a bundled catalog of **86 default tools** across five JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
+The app ships with a bundled catalog of **85 default tools** across six JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
 
 **Not all of them are Local-Passed (active) by default.** A **preset** decides the starting Local-Passed subset, and **include / exclude rules** layer per-tool tweaks on top. Each preset stands on its own - `Dev Essentials`, `Korea Toolkit`, and `File Toolkit` do **not** automatically inherit Starter 5 (only `getCurrentTime` and `evalExpression` carry through deliberately).
 
@@ -413,8 +413,7 @@ The app ships with a bundled catalog of **86 default tools** across five JSON so
 | `Dev Essentials` | `getCurrentTime`, `evalExpression`, `uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract` | Everyday local utilities |
 | `Korea Toolkit (free)` | `getCurrentTime`, `evalExpression`, `getUpbitTicker`, `getBithumbTicker`, `searchKpopOnItunes`, `searchKBeautyProducts` | Free Korean services |
 | `File Toolkit` | `getCurrentTime`, `evalExpression`, `readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields` | Filesystem pipeline - set `TOOL_STUDIO_FS_BASE` (or rely on the `${user.home}/spring-ai-playground/fs-tool-workspace` default) |
-| `Everything` | All 86 default tools | Heavy MCP catalog |
-| `Custom` | None initially | Active when you only want the include/exclude rules to decide what gets exposed |
+| `Everything` | All 85 default tools | Heavy MCP catalog |
 
 Per-tool **include / exclude rules** layer on top: name-add → tag-add → category-add → name-remove → tag-remove → category-remove. These rules are configured at setup - the desktop launcher's **Default MCP Tools** card (include-by-tag / -category / -name, exclude-by-tag / -name) or CLI / yaml; `exclude.categories` is data-supported but currently only reachable via CLI / yaml override.
 

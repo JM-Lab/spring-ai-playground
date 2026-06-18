@@ -15,7 +15,8 @@
  */
 package org.springaicommunity.playground.service.chat;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         this.persistenceExecutor.submit(() -> {
             try {
                 save(chatHistory);
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Async save failed for chat history {}", chatHistory.conversationId(), e);
             }
         });
@@ -94,6 +95,15 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         return chatHistory.conversationId();
     }
 
+    // Only conversation files (named after the "Chat-" conversationId) are chat histories. Other JSON in
+    // chat/save — notably system-prompt-presets.json (a JSON array) — must be skipped, otherwise loads()
+    // throws on the first non-chat file and drops every conversation.
+    @Override
+    public boolean shouldLoadFile(Path path) {
+        String name = path.getFileName().toString();
+        return name.endsWith(".json") && name.regionMatches(true, 0, "Chat-", 0, 5);
+    }
+
     @Override
     public ChatHistory convertTo(Map<String, Object> saveObjectMap) {
         String conversationId = saveObjectMap.get(CONVERSATION_ID).toString();
@@ -103,8 +113,16 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         String systemPrompt = saveObjectMap.computeIfAbsent("systemPrompt", s -> "").toString();
         DefaultChatOptions chatOptions =
                 OBJECT_MAPPER.convertValue(saveObjectMap.get("chatOptions"), DefaultChatOptions.class);
+        Object extraOptionsRaw = saveObjectMap.get("extraOptions");
+        ChatExtraOptions extraOptions = extraOptionsRaw == null ? ChatExtraOptions.defaults()
+                : OBJECT_MAPPER.convertValue(extraOptionsRaw, ChatExtraOptions.class);
+        String provider = Objects.toString(saveObjectMap.get("provider"), null);
+        Object toolPreferencesRaw = saveObjectMap.get("toolPreferences");
+        ChatToolPreferences toolPreferences = toolPreferencesRaw == null ? ChatToolPreferences.defaults()
+                : OBJECT_MAPPER.convertValue(toolPreferencesRaw, ChatToolPreferences.class);
         List<Map<String, Object>> messageMapList = (List<Map<String, Object>>) saveObjectMap.get(MESSAGE_LIST);
         return new ChatHistory(conversationId, title, createTimestamp, updateTimestamp, systemPrompt, chatOptions,
+                extraOptions, provider, toolPreferences,
                 () -> messageMapList.stream().map(this::convertToMessage).toList());
     }
 

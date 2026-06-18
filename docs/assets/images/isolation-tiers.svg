@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img" aria-label="Spring AI Playground isolation tiers">
+  <defs>
+    <style>
+      .band { stroke: #c9d3e0; stroke-width: 1; }
+      .band-opt { stroke: #aab6c6; stroke-width: 1; stroke-dasharray: 6 4; }
+      .t-host { fill: #f3f4f6; }
+      .t-2 { fill: #fbeef1; }
+      .t-1 { fill: #fdf6ec; }
+      .t-0 { fill: #eef9f1; }
+      .t-sbx { fill: #eef5ff; }
+      .tier-title { font: 600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; }
+      .tier-sub { font: 400 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; }
+      .box { fill: #ffffff; stroke: #7c93af; stroke-width: 1; }
+      .box-label { font: 600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; text-anchor: middle; }
+      .box-sub { font: 400 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- Host machine -->
+  <rect class="t-host band" x="10" y="10" width="940" height="620" rx="10" ry="10"/>
+  <text class="tier-title" x="30" y="34">Host machine</text>
+  <text class="tier-sub" x="30" y="52">Physical or virtual host - the machine everything inside runs on</text>
+
+  <!-- Tier 2 (optional) -->
+  <rect class="t-2 band-opt" x="40" y="72" width="880" height="542" rx="10" ry="10"/>
+  <text class="tier-title" x="60" y="96">Tier 2 (optional) - microVM / gVisor / Kata</text>
+  <text class="tier-sub" x="60" y="114">User-space kernel or VM boundary - for untrusted or multi-tenant tool code</text>
+
+  <!-- Tier 1 (optional) -->
+  <rect class="t-1 band-opt" x="70" y="136" width="820" height="462" rx="10" ry="10"/>
+  <text class="tier-title" x="90" y="160">Tier 1 (optional) - Docker container</text>
+  <text class="tier-sub" x="90" y="178">Linux namespaces and cgroups - host filesystem isolation, resource caps</text>
+
+  <!-- Tier 0 (always on) -->
+  <rect class="t-0 band" x="100" y="200" width="760" height="382" rx="10" ry="10"/>
+  <text class="tier-title" x="120" y="224">Tier 0 (always on) - OS process + JVM</text>
+  <text class="tier-sub" x="120" y="242">Default for the desktop app and from-source runs</text>
+
+  <!-- In-process JS sandbox (the three-layer model) -->
+  <rect class="t-sbx band" x="130" y="264" width="700" height="302" rx="10" ry="10"/>
+  <text class="tier-title" x="150" y="288">In-process JS sandbox - the three-layer model above</text>
+
+  <rect class="box" x="150" y="302" width="660" height="74" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="332">Layer 1 - Java sandbox (always on)</text>
+  <text class="box-sub" x="480" y="352">class allow / deny · resource limits · helpers gateway · output masking</text>
+
+  <rect class="box" x="150" y="386" width="660" height="74" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="416">Layer 2 - Per-tool overrides → Risk Level (L0-L5)</text>
+  <text class="box-sub" x="480" y="436">SandboxOverrides · posture calculator · risk badge</text>
+
+  <rect class="box" x="150" y="470" width="660" height="74" rx="6" ry="6"/>
+  <text class="box-label" x="480" y="500">Layer 3 - MCP transport (/mcp, /sse)</text>
+  <text class="box-sub" x="480" y="520">unauthenticated by default (permitAll) · add Spring Security to gate</text>
+</svg>

@@ -1,14 +1,14 @@
-description: Default Tools - Global reference. 22 tools that call public HTTPS APIs - GitHub, Wikipedia, weather, finance, geo, search.
+description: Default Tools - Global reference. 21 tools that call public HTTPS APIs - GitHub, Wikipedia, weather, finance, geo, search.
 
 # Default Tools - Global
 
-The 22 tools in `default-tool-specs-network.json` call **public global HTTPS endpoints** - most of them anonymous, all of them outside Korea. Categories span code (GitHub), encyclopedia (Wikipedia), forum (Hacker News, Stack Overflow, Reddit), finance (CoinGecko, exchangerate.host), geo (ipapi.co, restcountries, Nominatim, sunrise-sunset, USGS), weather (Open-Meteo), and government data (Nager.Date public holidays).
+The 21 tools in `default-tool-specs-network.json` call **public global HTTPS endpoints** - most of them anonymous, all of them outside Korea. Categories span code (GitHub), encyclopedia (Wikipedia), forum (Hacker News, Stack Overflow), finance (CoinGecko, open.er-api.com), geo (ipapi.co, mledoze/countries, Nominatim, sunrise-sunset, USGS), weather (Open-Meteo), and government data (Nager.Date public holidays).
 
 None of them need an API key - they live entirely off the providers' anonymous rate-limit tiers. Tool actions execute with host-`allowlist` egress, so every fetch goes through [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) regardless of whether the destination is a literal IP or a DNS host.
 
 The grouping below mirrors the `tags` axis each tool carries - the same axis you can filter by in the Tool Studio tool list.
 
-## Browse the 22 global APIs { #browse-the-global-apis }
+## Browse the 21 global APIs { #browse-the-global-apis }
 
 All run with host-`allowlist` egress (SSRF four-layer guard) at sandbox **L3**. Tag chips: `github` · `search` · `finance` · `geo` · `weather`.
 
@@ -41,7 +41,8 @@ Returns: { fullName, description, stars, forks, openIssues, language, license, d
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -85,6 +86,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -115,7 +118,8 @@ Returns: { title, description, extract (plain-text summary), thumbnail, pageUrl 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `en.wikipedia.org`, `ko.wikipedia.org`, `ja.wikipedia.org`, `es.wikipedia.org`, `de.wikipedia.org`, `fr.wikipedia.org`, `zh.wikipedia.org` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -152,6 +156,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -183,7 +189,8 @@ Returns up to `hits` results, each as: { id, title, url, points, author, comment
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `hn.algolia.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -222,6 +229,8 @@ return (data.hits || []).map(h => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -254,7 +263,8 @@ Returns up to `pageSize` results sorted by `sort` (relevance | activity | votes 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.stackexchange.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -299,6 +309,8 @@ return (data.items || []).map(q => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -328,7 +340,8 @@ Returns: { login, type, name, company, blog, location, bio, publicRepos, publicG
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -363,6 +376,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -396,7 +411,8 @@ Returns up to `perPage` issues, each as: { number, title, state, author, labels,
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -435,6 +451,8 @@ return (issues || []).filter(i => !i.pull_request).map(i => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -466,7 +484,8 @@ Returns: [{ tag, name, draft, prerelease, publishedAt, htmlUrl, body }].
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -496,6 +515,8 @@ return (resp.json() || []).map(r => ({
 }));
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -527,7 +548,8 @@ Returns: { tag, name, publishedAt, htmlUrl, body, assets: [{ name, downloadUrl, 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -559,6 +581,8 @@ return {
 };
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -592,7 +616,8 @@ For directories this returns a listing instead: [{ name, type, path }]. Files ov
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -637,6 +662,8 @@ return { name: data.name, path: data.path, size: data.size, sha: data.sha,
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -668,7 +695,8 @@ Returns up to `perPage` results: [{ fullName, description, stars, forks, languag
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -703,6 +731,8 @@ return (data.items || []).map(r => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -734,7 +764,8 @@ Returns: [{ login, contributions, htmlUrl, avatarUrl }] sorted by commit count d
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.github.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -761,6 +792,8 @@ return (resp.json() || []).map(c => ({
 }));
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -792,7 +825,8 @@ Returns: { <coinId>: { <currency>: price, ... }, ... }
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.coingecko.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -820,6 +854,8 @@ return resp.json();
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -828,7 +864,7 @@ return resp.json();
 <div class="tcg-art" markdown>:material-currency-usd:</div>
 <div class="tcg-type">web · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Converts between fiat currencies using exchangerate.host (no key, no rate limit listed).
+Converts between fiat currencies using open.er-api.com daily reference rates (no key).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `from` · `to` · `amount`</div>
@@ -849,17 +885,19 @@ Returns: { from, to, amount, rate, result, date }.
 | `to` | `STRING` | ✓ | Target currency code (ISO 4217, e.g. KRW) |
 | `amount` | `NUMBER` |  | Amount in the source currency (default 1) |
 
-**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.exchangerate.host` (SSRF-guarded); no filesystem.
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `open.er-api.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
- * Currency conversion via exchangerate.host public API.
+ * Currency conversion via the open.er-api.com daily rates API (no key).
+ * (api.exchangerate.host started requiring an access key in 2026, so the tool moved off it.)
  *
- * GET https://api.exchangerate.host/convert?from=USD&to=KRW&amount=100
+ * GET https://open.er-api.com/v6/latest/{from}
  *
- * Returns the canonical ECB-derived rate plus the converted amount.
+ * One request fetches every rate for the source currency; the conversion is computed locally.
  */
 
 if (from == null || from === '') throw new Error('from required');
@@ -867,27 +905,30 @@ if (to   == null || to   === '') throw new Error('to required');
 const amt = (amount == null || amount === '') ? 1 : Number(amount);
 if (!Number.isFinite(amt)) throw new Error('amount must be a finite number');
 
-const url = 'https://api.exchangerate.host/convert'
-  + '?from=' + encodeURIComponent(from)
-  + '&to='   + encodeURIComponent(to)
-  + '&amount=' + amt;
+const base  = String(from).trim().toUpperCase();
+const quote = String(to).trim().toUpperCase();
 
-const resp = await fetch(url, {
+const resp = await fetch('https://open.er-api.com/v6/latest/' + encodeURIComponent(base), {
   headers: { 'Accept': 'application/json' },
   maxLength: 200_000,
 });
 if (!resp.ok) return { success: false, status: resp.status, message: resp.text() };
 const d = resp.json();
+if (d.result !== 'success') return { success: false, message: d['error-type'] || 'unexpected response' };
+const rate = d.rates && d.rates[quote];
+if (rate == null) throw new Error('unknown currency code: ' + quote);
 return {
-  from:   d.query && d.query.from,
-  to:     d.query && d.query.to,
-  amount: d.query && d.query.amount,
-  rate:   d.info && d.info.rate,
-  result: d.result,
-  date:   d.date,
+  from:   base,
+  to:     quote,
+  amount: amt,
+  rate:   rate,
+  result: amt * rate,
+  date:   d.time_last_update_utc,
 };
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -918,7 +959,8 @@ Returns: { ip, city, region, country, countryName, latitude, longitude, timezone
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `ipapi.co` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -953,6 +995,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -961,7 +1005,7 @@ return {
 <div class="tcg-art" markdown>:material-earth:</div>
 <div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Fetches country information from restcountries.com (no auth) by partial or full name.
+Fetches country information from the open mledoze/countries dataset (via the jsDelivr CDN, no key) by partial or full name.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `name`</div>
@@ -972,7 +1016,7 @@ Fetches country information from restcountries.com (no auth) by partial or full 
 
 **More detail**
 
-Returns an array of matches, each: { name, officialName, capital, region, subregion, population, area, languages, currencies, callingCode, flagEmoji, latlng }.
+Returns an array of matches (capped at 10), each: { name, officialName, capital, region, subregion, area, languages, currencies, callingCode, flagEmoji, latlng }.
 
 **Parameters**
 
@@ -980,35 +1024,41 @@ Returns an array of matches, each: { name, officialName, capital, region, subreg
 |---|---|---|---|
 | `name` | `STRING` | ✓ | Country name (partial match - e.g. 'korea', 'germany') |
 
-**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `restcountries.com` (SSRF-guarded); no filesystem.
+**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `cdn.jsdelivr.net` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
- * Country metadata from restcountries.com (no key).
+ * Country metadata from the open mledoze/countries dataset, served by the jsDelivr CDN (no key).
+ * (restcountries.com moved behind API keys in 2026, so the tool ships its own open data source.)
  *
- * GET https://restcountries.com/v3.1/name/{name}
+ * GET https://cdn.jsdelivr.net/gh/mledoze/countries@master/countries.json
  *
- * Partial matches are supported (e.g. "korea" returns both Koreas).
- * The API returns extremely chatty objects - we project to the most useful fields.
+ * Partial matches are supported (e.g. "korea" returns both Koreas); results are capped at 10.
  */
 
 if (name == null || name === '') throw new Error('name required');
-const resp = await fetch('https://restcountries.com/v3.1/name/' + encodeURIComponent(name), {
+const resp = await fetch('https://cdn.jsdelivr.net/gh/mledoze/countries@master/countries.json', {
   headers: { 'Accept': 'application/json' },
   maxLength: 5_000_000,
 });
-if (resp.status === 404) return [];
 if (!resp.ok) return { success: false, status: resp.status, message: resp.text() };
 
-return (resp.json() || []).map(c => ({
+const needle = String(name).trim().toLowerCase();
+const matches = (resp.json() || []).filter(c => {
+  const common   = (c.name && c.name.common)   || '';
+  const official = (c.name && c.name.official) || '';
+  return common.toLowerCase().includes(needle) || official.toLowerCase().includes(needle);
+});
+
+return matches.slice(0, 10).map(c => ({
   name:         c.name && c.name.common,
   officialName: c.name && c.name.official,
   capital:      c.capital,
   region:       c.region,
   subregion:    c.subregion,
-  population:   c.population,
   area:         c.area,
   languages:    c.languages ? Object.values(c.languages) : [],
   currencies:   c.currencies ? Object.keys(c.currencies) : [],
@@ -1020,6 +1070,8 @@ return (resp.json() || []).map(c => ({
 }));
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -1052,7 +1104,8 @@ Returns up to `max` entries, each: { id, title, summary, authors, published, upd
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `export.arxiv.org` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1125,6 +1178,8 @@ return entries.map(e => {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1155,7 +1210,8 @@ Returns: [{ date, localName, name, fixed, global, types }]. Country codes are 2-
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `date.nager.at` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1189,87 +1245,7 @@ return (resp.json() || []).map(h => ({
 
 ```
 
-</div>
-</div>
-
-<div class="tcg-card t-reddit tcg-card--clickable" id="searchReddit" data-tool-id="searchReddit" data-tool-title="searchReddit" markdown>
-<div class="tcg-name"><span class="tcg-name__text">searchReddit</span> <span class="cost">🆓</span></div>
-<div class="tcg-art" markdown>:simple-reddit:</div>
-<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
-<div class="tcg-body" markdown>
-Searches a public subreddit via Reddit's JSON API (no auth, but rate-limited and User-Agent required).
-</div>
-<div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `subreddit` · `query` · `limit` · `sort`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
-</div>
-<div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
-<div class="tcg-detail-template" hidden markdown>
-
-**More detail**
-
-Returns up to `limit` posts: [{ title, author, score, numComments, createdUtc, subreddit, permalink, url, selftext }]. Subreddit can be 'all' for site-wide search.
-
-**Parameters**
-
-| Param | Type | Req | Description |
-|---|---|---|---|
-| `subreddit` | `STRING` | ✓ | Subreddit name (without /r/, or 'all') |
-| `query` | `STRING` | ✓ | Search query string |
-| `limit` | `INTEGER` |  | Max posts (1-25, default 5) |
-| `sort` | `STRING` |  | relevance \| hot \| top \| new \| comments |
-
-**Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.reddit.com` (SSRF-guarded); no filesystem.
-
-**JS source**
-
-```javascript
-/**
- * Reddit JSON search endpoint.
- *
- * GET https://www.reddit.com/r/{subreddit}/search.json?q=...&restrict_sr=1&limit=...
- *
- * No authentication needed for read access. Reddit BANS empty / generic User-Agent
- * strings - we pass a descriptive one. Rate limit: ~60 req/min/IP.
- */
-
-if (subreddit == null || subreddit === '') throw new Error('subreddit required');
-if (query == null || query === '') throw new Error('query required');
-const n = (Number.isInteger(limit) && limit > 0 && limit <= 25) ? limit : 5;
-const sortValid = (sort === 'hot' || sort === 'top' || sort === 'new' || sort === 'comments');
-const s = sortValid ? sort : 'relevance';
-
-const sub = String(subreddit).replace(/^r\//, '');
-const restrict = (sub.toLowerCase() === 'all') ? '' : '&restrict_sr=1';
-const url = 'https://www.reddit.com/r/' + encodeURIComponent(sub) + '/search.json'
-  + '?q=' + encodeURIComponent(query)
-  + restrict
-  + '&limit=' + n + '&sort=' + s;
-
-const resp = await fetch(url, {
-  headers: { 'Accept': 'application/json',
-             'User-Agent': 'spring-ai-playground/0.2 (by /u/local-tool)' },
-  maxLength: 5_000_000,
-});
-if (!resp.ok) return { success: false, status: resp.status, message: resp.text() };
-const data = resp.json();
-const children = (data.data && data.data.children) || [];
-return children.map(c => {
-  const d = c.data || {};
-  return {
-    title:       d.title,
-    author:      d.author,
-    score:       d.score,
-    numComments: d.num_comments,
-    createdUtc:  d.created_utc,
-    subreddit:   d.subreddit,
-    permalink:   'https://www.reddit.com' + d.permalink,
-    url:         d.url,
-    selftext:    d.selftext,
-  };
-});
-
-```
+</details>
 
 </div>
 </div>
@@ -1303,7 +1279,8 @@ Returns: { latitude, longitude, timezone, daily: { time, temperatureMax, tempera
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.open-meteo.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1363,6 +1340,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1393,7 +1372,8 @@ Returns up to `limit` matches: [{ displayName, latitude, longitude, country, cit
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `nominatim.openstreetmap.org` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1429,6 +1409,8 @@ return (resp.json() || []).map(r => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1461,7 +1443,8 @@ Returns: { sunrise, sunset, solarNoon, dayLength, civilTwilightBegin, civilTwili
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.sunrise-sunset.org` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1519,6 +1502,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1550,7 +1535,8 @@ Returns up to `limit` events: [{ time, place, magnitude, type, latitude, longitu
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `earthquake.usgs.gov` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1599,6 +1585,8 @@ return (data.features || []).map(f => {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1627,7 +1615,7 @@ All 22 run anonymously off rate-limit tiers, so they are the cheapest tools to c
 | ipapi.co | 1 000 req / day |
 | Open-Meteo | 10 000 req / day (non-commercial) |
 | Nominatim (OpenStreetMap) | 1 req / s + descriptive User-Agent required (both honoured by the helper) |
-| Wikipedia / HN Algolia / arXiv / restcountries / Nager.Date / USGS / exchangerate.host / CoinGecko / sunrise-sunset | generous (no published per-day cap) |
+| Wikipedia / HN Algolia / arXiv / mledoze/countries / Nager.Date / USGS / open.er-api.com / CoinGecko / sunrise-sunset | generous (no published per-day cap) |
 
 If you need higher quotas you can fork a tool and add a vendor key - the same `${ENV_VAR}` static-variable mechanism the [Examples](examples.md) tools use.
 

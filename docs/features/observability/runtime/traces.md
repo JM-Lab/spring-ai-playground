@@ -1,5 +1,5 @@
 title: Traces
-description: The raw trace stream - every other dashboard tab aggregates from this view; Traces shows it without rollup. Filters by model, status, conv id; click any row to open the Trace Detail dialog.
+description: The raw trace stream every other dashboard aggregates from, shown without rollup. Filter by model, status, or conversation, and open any row's Trace Detail.
 
 # Traces
 
@@ -12,7 +12,7 @@ description: The raw trace stream - every other dashboard tab aggregates from th
 ## When to look here
 
 - *"Show me everything that just happened"* - open the tab, watch the live stream.
-- *"I have a trace ID from a log line - find it"* - Conv id contains filter (works for trace IDs and conversation IDs).
+- *"I have a trace ID from a log line - find it"* - Conv id contains filter (conversation id only; for a trace ID, use the Logs tab Jump to trace).
 - *"What's in this trace's span tree?"* - click any row → Trace Detail dialog.
 - *"Filter to a specific model"* - Model dropdown.
 - *"Find every errored trace"* - Status filter → ERROR.
@@ -25,7 +25,7 @@ Reactor `ObservabilityRingBuffer.liveStream()` (multicast `Sinks.Many.directBest
 
 - **Model** dropdown - `ALL` plus distinct model names auto-populated from the ring buffer
 - **Status** dropdown - `ALL`, `OK`, `ERROR`, `CANCELLED`
-- **Conv id contains** text field - substring match on either trace ID or conversation ID
+- **Conv id contains** text field - substring match on conversation id
 
 The [Observability global refresh interval](../index.md#global-settings) is honored, but Traces also subscribes to the live `Sinks.Many` stream so new rows appear without polling. The manual refresh button re-applies the filter to a static snapshot.
 
@@ -90,5 +90,5 @@ Where Trace Detail is per-turn (one `TraceRecord`), Conversation Thread is per-c
 
 - [Logs](logs.md) - drill from a log line to the trace it came from
 - [Agentic Chat](../ai-stack/agentic-chat.md) - aggregated per-conversation view (one row per conversation, not per trace)
-- [Observability Architecture → Storage tiers](../../../observability-architecture.md#storage-tiers) - `ObservabilityRingBuffer` design + the JSONL persistence shape used by *Show raw JSON*
+- [Observability Architecture → Storage tiers](../../../observability-architecture.md#storage-tiers) - `ObservabilityRingBuffer` design + the JSON persistence shape used by *Show raw JSON*
 - [Observability Architecture → Live stream](../../../observability-architecture.md#live-stream) - the Reactor `Sinks.Many` and 500 ms sampling

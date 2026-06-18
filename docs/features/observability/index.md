@@ -1,5 +1,5 @@
 title: Observability
-description: Twelve in-app dashboards that surface what a Spring AI Playground agent did - token economics, tool and MCP behaviour, RAG quality, host runtime, live trace tail. The user-facing complement to the safety architecture.
+description: Twelve in-app dashboards surfacing what a Spring AI Playground agent did - token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail.
 
 # Observability
 
@@ -163,6 +163,6 @@ So clicking through MCP Inspector primitives, running a Tool Studio test, or upl
 
 - [AI Agent Observability Architecture](../../observability-architecture.md) - pipeline, storage tiers, configuration, external export
 - [AI Agent Tool Safety Architecture](../../safety-architecture.md) - the sandbox the observability layer makes auditable
-- [Agentic Chat (feature)](../agentic-chat.md) - the feature that produces the traces these dashboards consume
+- [Agentic Chat (feature)](../agentic-chat/index.md) - the feature that produces the traces these dashboards consume
 - [Tool Studio (feature)](../tool-studio/index.md) - where in-process tools (visible in the Tool Studio dashboard) are authored
 - [MCP Server (feature)](../mcp-server/index.md) - built-in and external MCP servers (visible in MCP Servers and MCP Inspector dashboards)

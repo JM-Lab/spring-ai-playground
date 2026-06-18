@@ -31,13 +31,13 @@ import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springaicommunity.playground.webui.chat.ChatView;
 import org.springaicommunity.playground.webui.home.HomeView;
 import org.springaicommunity.playground.webui.mcp.McpServerView;
 import org.springaicommunity.playground.webui.observability.ObservabilityView;
 import org.springaicommunity.playground.webui.tool.ToolStudioView;
 import org.springaicommunity.playground.webui.vectorstore.VectorStoreView;
-import org.vaadin.googleanalytics.tracking.EnableGoogleAnalytics;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -51,7 +51,8 @@ import java.util.Map;
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-combo-box")
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-multi-select-combo-box")
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-select")
-@EnableGoogleAnalytics("G-52TGT1G9B3")
+// The parent layout must allow access at least as broadly as its views, or navigation is denied.
+@AnonymousAllowed
 public class SpringAiPlaygroundAppLayout extends AppLayout
         implements BeforeEnterObserver {
 

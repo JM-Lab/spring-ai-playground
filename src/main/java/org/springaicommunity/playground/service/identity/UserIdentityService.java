@@ -16,8 +16,9 @@
 package org.springaicommunity.playground.service.identity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -48,7 +49,7 @@ public class UserIdentityService {
         Path baseDir = springAiPlaygroundHomeDir.resolve("identity");
         Files.createDirectories(baseDir);
         this.filePath = baseDir.resolve(FILE);
-        this.objectMapper = objectMapper.copy().enable(SerializationFeature.INDENT_OUTPUT);
+        this.objectMapper = objectMapper.rebuild().enable(SerializationFeature.INDENT_OUTPUT).build();
         this.deviceId = loadOrSeed(deviceIdProvider);
         logger.info("User identity ready: deviceId={}", this.deviceId);
     }
@@ -83,7 +84,7 @@ public class UserIdentityService {
             byte[] bytes = Files.readAllBytes(this.filePath);
             if (bytes.length == 0) return Optional.empty();
             return Optional.of(this.objectMapper.readValue(bytes, Installation.class));
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             logger.warn("Failed to read {} — reseeding identity", this.filePath, e);
             return Optional.empty();
         }

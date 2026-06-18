@@ -82,4 +82,14 @@ class PersistenceServiceInterfaceTest {
 
         assertThat(loaded).singleElement().extracting(m -> m.get("k")).isEqualTo("v");
     }
+
+    @Test
+    void loadsSkipsCorruptJsonInsteadOfThrowing() throws IOException {
+        Files.writeString(saveDir.resolve("good.json"), "{\"k\":\"v\"}");
+        Files.writeString(saveDir.resolve("broken.json"), "{ not valid json ]]");
+
+        List<Map<String, Object>> loaded = newService().loads();
+
+        assertThat(loaded).singleElement().extracting(m -> m.get("k")).isEqualTo("v");
+    }
 }

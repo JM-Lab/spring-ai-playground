@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.junit.jupiter.api.AfterEach;
@@ -55,7 +55,7 @@ class StreamableMcpClientServiceTest implements McpClientServiceTest {
     }
 
     @Test
-    void fullCycleWithSseTransport() throws JsonProcessingException {
+    void fullCycleWithSseTransport() throws JacksonException {
         String baseUrl = "http://" + mockMcpContainer.getHost() + ":" + mockMcpContainer.getMappedPort(MCP_PORT);
 
         NamedClientMcpTransport transport =

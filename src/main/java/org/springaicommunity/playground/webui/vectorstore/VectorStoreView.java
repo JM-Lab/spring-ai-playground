@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.webui.vectorstore;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dependency.CssImport;
@@ -164,7 +165,7 @@ public class VectorStoreView extends ContentWorkspaceView {
 
             Dialog confirmationDialog = VaadinUtils.headerDialog(
                     String.format("Chunk Summary - %d chunks successfully extracted", chunks.size()));
-            confirmationDialog.setModal(false);
+            confirmationDialog.setModality(ModalityMode.MODELESS);
             Button confirmButton = new Button("Embed and Insert Confirm");
             confirmationDialog.add(confirmButton, documentListBox);
             confirmationDialog.open();

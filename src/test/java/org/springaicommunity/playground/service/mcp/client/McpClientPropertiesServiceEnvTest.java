@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

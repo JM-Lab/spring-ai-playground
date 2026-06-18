@@ -167,8 +167,8 @@ public class McpServerHitlToolGate {
     }
 
     private static ElicitRequest elicitRequest(String promptTemplate, CallToolRequest request) {
-        return new ElicitRequest(renderPrompt(promptTemplate, request.name(), request.arguments()),
-                CONFIRMATION_SCHEMA);
+        return ElicitRequest.builder(renderPrompt(promptTemplate, request.name(), request.arguments()),
+                CONFIRMATION_SCHEMA).build();
     }
 
     static String renderPrompt(String promptTemplate, String toolName, Map<String, Object> arguments) {
@@ -179,8 +179,10 @@ public class McpServerHitlToolGate {
     }
 
     private static CallToolResult denied(String toolName) {
-        return new CallToolResult(
-                "Tool '" + toolName + "' was not run: human-in-the-loop approval was not granted.", true);
+        return CallToolResult.builder()
+                .addTextContent("Tool '" + toolName + "' was not run: human-in-the-loop approval was not granted.")
+                .isError(true)
+                .build();
     }
 
     private void countDecision(String outcome) {

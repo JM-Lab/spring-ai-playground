@@ -160,6 +160,15 @@
    the scroll-attachment shadow), so wrapping tables show no false affordance. */
 .md-typeset .md-typeset__table {
   overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Code blocks must clip + scroll within the viewport, not spill the page on
+   narrow screens: the inner <code> scroll alone still lets the .highlight
+   wrapper extend the document, so constrain and scroll at the wrapper too. */
+.md-typeset .highlight {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .md-typeset table:not([class]) {
@@ -840,6 +849,64 @@ body.dl-confirm-open {
   font-size: 0.8em;
 }
 
+/* Per-preset baked-in system prompt - collapsible verbatim text (works in card or cloned detail-row) */
+details.tcg-sysprompt {
+  margin: 0 0 0.9em;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.3rem;
+  background: var(--md-code-bg-color);
+}
+details.tcg-sysprompt > summary {
+  padding: 0.45em 0.7em;
+  font-size: 0.76em;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--md-default-fg-color--light);
+  user-select: none;
+  list-style: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+details.tcg-sysprompt > summary::-webkit-details-marker { display: none; }
+details.tcg-sysprompt[open] > summary { border-bottom: 1px solid var(--md-default-fg-color--lightest); }
+/* Material draws the disclosure icon and chevron as absolutely-positioned pseudo-elements sized for full
+   admonitions; in this compact summary they land too low and oversized, so re-center and scale them to the text. */
+.md-typeset details.tcg-sysprompt > summary { padding-left: 2.4em; }
+.md-typeset details.tcg-sysprompt > summary::before,
+.md-typeset details.tcg-sysprompt > summary::after {
+  top: 50%;
+  bottom: auto;
+  margin-top: 0;
+  transform: translateY(-50%);
+  width: 1.15em;
+  height: 1.15em;
+}
+.md-typeset details.tcg-sysprompt > summary::before { left: 0.7em; }
+.md-typeset details.tcg-sysprompt > summary::after { right: 0.6em; }
+details.tcg-sysprompt > pre {
+  margin: 0;
+  padding: 0.6em 0.75em;
+  font-size: 0.72em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: transparent;
+  color: var(--md-default-fg-color);
+  overflow: visible;
+}
+details.tcg-sysprompt > .highlight {
+  margin: 0;
+  border-radius: 0 0 0.3rem 0.3rem;
+  font-size: 0.72em;
+}
+details.tcg-sysprompt > .highlight pre,
+details.tcg-sysprompt > .highlight code {
+  margin: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
 /* Vendor tints - left-ribbon + faint art-panel glow only */
 .tcg-card.t-openai   { --tint: #10A37F; }
 .tcg-card.t-slack    { --tint: #611f69; }
@@ -1256,4 +1323,16 @@ body.dl-confirm-open {
 }
 .home-spotlight-cta a {
   font-weight: 600;
+}
+
+/* Provider / client icons in the External connections tables (monochrome marks) */
+.provider-icon {
+  width: 1.2em;
+  height: 1.2em;
+  object-fit: contain;
+  vertical-align: -0.25em;
+  margin-right: 0.4em;
+}
+[data-md-color-scheme="slate"] .provider-icon {
+  filter: invert(1) brightness(1.7);
 }

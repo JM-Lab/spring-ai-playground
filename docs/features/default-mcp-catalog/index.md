@@ -24,7 +24,7 @@ Click a card to jump to its full reference (with transport / auth defaults / req
 <span class="tool-directory__chip-label">Tag</span> <button class="tool-directory__chip" data-group="tag" data-value="aggregator" aria-pressed="false">aggregator</button> <button class="tool-directory__chip" data-group="tag" data-value="beta" aria-pressed="false">beta</button> <button class="tool-directory__chip" data-group="tag" data-value="community" aria-pressed="false">community</button> <button class="tool-directory__chip" data-group="tag" data-value="free-tier" aria-pressed="false">free-tier</button> <button class="tool-directory__chip" data-group="tag" data-value="geo" aria-pressed="false">geo</button> <button class="tool-directory__chip" data-group="tag" data-value="global" aria-pressed="false">global</button> <button class="tool-directory__chip" data-group="tag" data-value="korea" aria-pressed="false">korea</button> <button class="tool-directory__chip" data-group="tag" data-value="legal" aria-pressed="false">legal</button> <button class="tool-directory__chip" data-group="tag" data-value="pipeline" aria-pressed="false">pipeline</button> <button class="tool-directory__chip" data-group="tag" data-value="preview" aria-pressed="false">preview</button> <button class="tool-directory__chip" data-group="tag" data-value="us" aria-pressed="false">us</button>
 </div>
 <div class="tool-directory__chips">
-<span class="tool-directory__chip-label">Transport</span> <button class="tool-directory__chip" data-group="transport" data-value="streamable-http" aria-pressed="false">Streamable HTTP</button> <button class="tool-directory__chip" data-group="transport" data-value="stdio" aria-pressed="false">STDIO</button>
+<span class="tool-directory__chip-label">Transport</span> <button class="tool-directory__chip" data-group="transport" data-value="streamable-http" aria-pressed="false">Streamable HTTP</button> <button class="tool-directory__chip" data-group="transport" data-value="stdio" aria-pressed="false">STDIO</button> <button class="tool-directory__chip" data-group="transport" data-value="sse" aria-pressed="false">SSE</button>
 </div>
 </div>
 <div class="tool-directory__count">Showing 57 of 57 entries</div>
@@ -117,7 +117,7 @@ Kakao aggregator hub - KakaoTalk send-to-self, Talk Calendar, KakaoMap, Gift, Me
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; Kakao · T1 vendor</div>
-<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;OAuth 2.1</div>
+<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;Bearer (OTT-derived)</div>
 </div>
 <div class="tcg-page">→ Productivity & Communication</div>
 </div>
@@ -227,7 +227,7 @@ Investigate Sentry issues and events across projects, query alert rules, release
 <div class="tcg-page">→ Dev & Project Management</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="asana" data-desc="manage asana tasks, projects, sections, and custom fields across workspaces. asana's official oauth mcp (sse transport)." data-category="project_mgmt" data-tags="global" data-transport="streamable-http" markdown>
+<div class="tcg-card tcg-card--directory" data-name="asana" data-desc="manage asana tasks, projects, sections, and custom fields across workspaces. asana's official oauth mcp (sse transport)." data-category="project_mgmt" data-tags="global" data-transport="sse" markdown>
 <a class="tcg-stretched-link" href="dev/#Asana" aria-label="Open Asana">Asana</a>
 <div class="tcg-name"><span class="tcg-name__text">Asana</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Asana](https://cdn.simpleicons.org/asana){ width="40" .tcg-favicon }</div>
@@ -602,7 +602,7 @@ Manage Stripe payments, customers, subscriptions, invoices, refunds, product cat
 <div class="tcg-page">→ Business</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="paypal" data-desc="manage paypal orders, refunds, payouts, subscriptions, and invoicing through paypal's official oauth mcp (sse)." data-category="finance" data-tags="global" data-transport="streamable-http" markdown>
+<div class="tcg-card tcg-card--directory" data-name="paypal" data-desc="manage paypal orders, refunds, payouts, subscriptions, and invoicing through paypal's official oauth mcp (sse)." data-category="finance" data-tags="global" data-transport="sse" markdown>
 <a class="tcg-stretched-link" href="business/#PayPal" aria-label="Open PayPal">PayPal</a>
 <div class="tcg-name"><span class="tcg-name__text">PayPal</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![PayPal](https://cdn.simpleicons.org/paypal){ width="40" .tcg-favicon }</div>
@@ -617,7 +617,7 @@ Manage PayPal orders, refunds, payouts, subscriptions, and invoicing through Pay
 <div class="tcg-page">→ Business</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="square" data-desc="square payments, catalogue, inventory, customers, and orders across locations. beta program from block." data-category="finance" data-tags="global,beta" data-transport="streamable-http" markdown>
+<div class="tcg-card tcg-card--directory" data-name="square" data-desc="square payments, catalogue, inventory, customers, and orders across locations. beta program from block." data-category="finance" data-tags="global,beta" data-transport="sse" markdown>
 <a class="tcg-stretched-link" href="business/#Square" aria-label="Open Square">Square</a>
 <div class="tcg-name"><span class="tcg-name__text">Square</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Block](https://cdn.simpleicons.org/cashapp){ width="40" .tcg-favicon }</div>
@@ -707,7 +707,7 @@ Manage Canva designs, brand kits, folders, templates, and assets through the off
 <div class="tcg-page">→ Business</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="webflow" data-desc="manage webflow sites, cms collections, items, and form submissions via oauth (sse)." data-category="design" data-tags="global" data-transport="streamable-http" markdown>
+<div class="tcg-card tcg-card--directory" data-name="webflow" data-desc="manage webflow sites, cms collections, items, and form submissions via oauth (sse)." data-category="design" data-tags="global" data-transport="sse" markdown>
 <a class="tcg-stretched-link" href="business/#Webflow" aria-label="Open Webflow">Webflow</a>
 <div class="tcg-name"><span class="tcg-name__text">Webflow</span> <span class="cost">🔐</span></div>
 <div class="tcg-art" markdown>![Webflow](https://cdn.simpleicons.org/webflow){ width="40" .tcg-favicon }</div>
@@ -938,7 +938,7 @@ Fill in only what's local to you (an API key, a tenant ID, the OAuth **Authorize
 - → [MCP Server: Catalog & Sidebar Filtering](../mcp-server/index.md#catalog-sidebar-filtering) - 3-layer sidebar · filter bar · activation
 - → [MCP Server: OAuth 2.1 Authorization Code](../mcp-server/index.md#oauth-21-authorization-code) - for the OAuth entries (Gmail, Outlook, Notion, Linear, Atlassian, ...)
 - → [MCP Server: MCP Inspector](../mcp-server/index.md#mcp-inspector) - exercise tools, resources, prompts before relying on the connection from chat
-- → [Agentic Chat](../agentic-chat.md) - call them from a model conversation
+- → [Agentic Chat](../agentic-chat/index.md) - call them from a model conversation
 - → [Tutorial 2 - Connect an External MCP Server](../../tutorials/2-external-mcp.md) - first-time activation walkthrough
 
 ### Compose with custom servers and authored tools
@@ -946,7 +946,7 @@ Fill in only what's local to you (an API key, a tenant ID, the OAuth **Authorize
 The deeper mode - combine multiple catalog connections with your own custom servers and Tool Studio-authored tools in one chat. Agentic Chat picks any subset of active MCP servers per turn, so an agent can read your Notion + look up a Linear ticket + write a Slack reply in the same conversation. The catalog is the **fastest path** to that composition because it skips the URL-typing / OAuth-discovery / requiredEnv guesswork for the most common vendors.
 
 - → [Tool Studio: Key Tool Studio Capabilities](../tool-studio/index.md#key-tool-studio-capabilities) - author and publish custom tools that ride alongside catalog connections
-- → [Default Tools directory](../default-tools/index.md) - the parallel 86-tool JavaScript inventory the built-in MCP server publishes
+- → [Default Tools directory](../default-tools/index.md) - the parallel 85-tool JavaScript inventory the built-in MCP server publishes
 
 ## End-to-end flow
 
@@ -975,7 +975,7 @@ The deeper mode - combine multiple catalog connections with your own custom serv
 The catalog only changes step 1 (entry selection + form pre-fill). Everything after - Test Connection, OAuth Authorize, Inspector, Agentic Chat - is the same path a custom server takes. The catalog is sugar on top of the connection management surface, not a separate runtime.
 
 !!! info "Re-publishing external tools to external clients"
-    Through the [Expose Tools drawer](../mcp-server/index.md#expose-external-tools) you re-publish the external tools you select - individually or with **Select all**, across one or several active connections - on the built-in MCP server, each wrapped with a risk level, optional HITL, and logging. They join the **Default Tools** on one endpoint (`http://localhost:8282/mcp`), callable by Agentic Chat and any external `/mcp` client. See [Default Tools → Expose and call](../default-tools/index.md#expose-and-call).
+    Through the [Composed Tools drawer](../mcp-server/index.md#expose-external-tools) you re-publish the external tools you select - individually or with **Select all**, across one or several active connections - on the built-in MCP server, each wrapped with a risk level, optional HITL, and logging. They join the **Default Tools** on one endpoint (`http://localhost:8282/mcp`), callable by Agentic Chat and any external `/mcp` client. See [Default Tools → Expose and call](../default-tools/index.md#expose-and-call).
 
 ## Why a built-in catalog matters
 

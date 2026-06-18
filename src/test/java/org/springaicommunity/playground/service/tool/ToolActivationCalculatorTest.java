@@ -16,13 +16,13 @@
 package org.springaicommunity.playground.service.tool;
 
 import org.junit.jupiter.api.Test;
-import org.springaicommunity.playground.service.tool.ToolSpec;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ToolActivationCalculatorTest {
@@ -120,6 +120,29 @@ class ToolActivationCalculatorTest {
     }
 
     @Test
+    void hasMissingEnvVarsTrueWhenAnyDeclaredVarUnset() {
+        ToolActivationCalculator c = calc(Map.of("GOOGLE_API_KEY", "k1"));
+        ToolSpec tool = toolWith(List.of(
+                Map.entry("googleApiKey", "${GOOGLE_API_KEY}"),
+                Map.entry("pseId", "${PSE_ID}")));
+        assertTrue(c.hasMissingEnvVars(tool));
+    }
+
+    @Test
+    void hasMissingEnvVarsFalseWhenAllSetOrNoneDeclared() {
+        ToolActivationCalculator c = calc(Map.of("OPENAI_API_KEY", "sk-test"));
+        assertFalse(c.hasMissingEnvVars(toolWith(List.of(Map.entry("apiKey", "${OPENAI_API_KEY}")))));
+        assertFalse(c.hasMissingEnvVars(toolWith(List.of())));
+    }
+
+    @Test
+    void hasMissingEnvVarsIgnoresDraftFlag() {
+        ToolActivationCalculator c = calc(Map.of());
+        ToolSpec tool = toolWith(List.of(Map.entry("apiKey", "${OPENAI_API_KEY}"))).withDraft(true);
+        assertTrue(c.hasMissingEnvVars(tool), "env availability is independent of the draft flag");
+    }
+
+    @Test
     void declaredEnvVarsAreDeduplicated() {
         ToolActivationCalculator c = calc(Map.of());
         ToolSpec tool = toolWith(List.of(
@@ -130,8 +153,9 @@ class ToolActivationCalculatorTest {
 
     @Test
     void enumHasFourStates() {
-        assertEquals(4, ToolActivationCalculator.State.values().length);
-        assertEquals(ToolActivationCalculator.State.ACTIVE, ToolActivationCalculator.State.values()[0]);
-        assertTrue(ToolActivationCalculator.State.values()[ToolActivationCalculator.State.values().length - 1] == ToolActivationCalculator.State.DRAFT);
+        ToolActivationCalculator.State[] states = ToolActivationCalculator.State.values();
+        assertEquals(4, states.length);
+        assertEquals(ToolActivationCalculator.State.ACTIVE, states[0]);
+        assertEquals(ToolActivationCalculator.State.DRAFT, states[states.length - 1]);
     }
 }

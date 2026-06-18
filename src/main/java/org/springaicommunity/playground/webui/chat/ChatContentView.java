@@ -15,11 +15,11 @@
  */
 package org.springaicommunity.playground.webui.chat;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.KeyModifier;
-import com.vaadin.flow.component.ScrollOptions;
+import com.vaadin.flow.component.ScrollIntoViewOption;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -31,19 +31,27 @@ import com.vaadin.flow.component.details.DetailsVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.contextmenu.ContextMenu;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverPosition;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.internal.Pair;
 import org.springaicommunity.playground.service.SpringAiPlaygroundRagAdvisor;
+import org.springaicommunity.playground.service.chat.ChatExportService;
+import org.springaicommunity.playground.service.chat.ChatExtraOptions;
 import org.springaicommunity.playground.service.chat.ChatHistory;
 import org.springaicommunity.playground.service.chat.ChatHistoryPersistenceService;
+import org.springaicommunity.playground.service.chat.ChatHistoryService;
+import org.springaicommunity.playground.service.chat.ChatProvider;
 import org.springaicommunity.playground.service.chat.ChatService;
+import org.springaicommunity.playground.service.chat.ChatToolPreferences;
+import org.springaicommunity.playground.service.chat.ReasoningEffort;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.McpToolCallingManager;
@@ -54,12 +62,14 @@ import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
-import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SttMicButton;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.tool.ExposedToolsSelector;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -80,6 +90,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -87,16 +98,9 @@ import java.util.stream.Collectors;
 
 @JsModule("./playground/chat-stt.js")
 public class ChatContentView extends VerticalLayout {
-    private static final String LAST_SELECTED_RAG_DOC_INFO_IDS = "lastSelectedRagDocInfoIds";
-    private static final String LAST_SELECTED_MCP_CONNECTION_INFOS = "lastSelectedMcpConnectionInfos";
-    private static final String USE_BUILTIN_MCP = "useBuiltinMcp";
-    private static final String CHAT_TOOL_SELECTION = "chatBuiltinToolSelection";
 
-    private static final ScrollOptions DefaultScrollOptions = new ScrollOptions();
-    static {
-        DefaultScrollOptions.setBlock(ScrollOptions.Alignment.END);
-        DefaultScrollOptions.setInline(ScrollOptions.Alignment.NEAREST);
-    }
+    private static final ScrollIntoViewOption[] DefaultScrollOptions =
+            {ScrollIntoViewOption.Block.END, ScrollIntoViewOption.Inline.NEAREST};
 
     private static final int PROMPT_TOP_MARGIN_PX = 20;
 
@@ -107,39 +111,48 @@ public class ChatContentView extends VerticalLayout {
     private final MultiSelectComboBox<VectorStoreDocumentInfo> documentsComboBox;
     private final MultiSelectComboBox<McpServerInfo> mcpToolProviderComboBox;
     private final ChatService chatService;
+    private final ChatHistoryService chatHistoryService;
     private final Consumer<ChatHistory> completeChatHistoryConsumer;
-    private final PersistentUiDataStorage persistentUiDataStorage;
-    private final ChatHistory chatHistory;
+    private ChatHistory chatHistory;
     private final McpClientService mcpClientService;
     private final ToolSpecService toolSpecService;
     private final ToolSpecPersistenceService toolSpecPersistenceService;
     private final ToolActivationCalculator toolActivationCalculator;
     private final McpServerInfoService mcpServerInfoService;
+    private final ChatExportService chatExportService;
     private final MultiSelectComboBox<ToolSpec> customToolsComboBox;
     private final MultiSelectComboBox<ToolSpec> builtinToolsComboBox;
     private final MultiSelectComboBox<ToolSpec> composedToolsComboBox;
     private final MultiSelectComboBox<ToolSpec> exposedToolsDisplayBox;
+    private final Select<ReasoningEffort> reasoningSelect = new Select<>();
+    private Button submitButton;
+    private Button micButton;
     private final Checkbox useBuiltinMcpCheckbox = new Checkbox("Use built-in MCP server in this chat");
     private Disposable currentStream;
 
-    public ChatContentView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
-            ChatHistory chatHistory, Consumer<ChatHistory> completeChatHistoryConsumer,
+    public ChatContentView(ChatService chatService,
+            ChatHistoryService chatHistoryService, ChatHistory chatHistory,
+            Consumer<ChatHistory> completeChatHistoryConsumer,
             McpClientService mcpClientService, ToolSpecService toolSpecService,
             ToolSpecPersistenceService toolSpecPersistenceService,
             ToolActivationCalculator toolActivationCalculator,
-            McpServerInfoService mcpServerInfoService) {
-        this.persistentUiDataStorage = persistentUiDataStorage;
+            McpServerInfoService mcpServerInfoService, ChatExportService chatExportService) {
         this.chatHistory = chatHistory;
         this.chatService = chatService;
+        this.chatHistoryService = chatHistoryService;
         this.completeChatHistoryConsumer = completeChatHistoryConsumer;
         this.mcpClientService = mcpClientService;
         this.toolSpecService = toolSpecService;
         this.toolSpecPersistenceService = toolSpecPersistenceService;
         this.toolActivationCalculator = toolActivationCalculator;
         this.mcpServerInfoService = mcpServerInfoService;
-        this.customToolsComboBox = ExposedToolsSelector.newCustomSelector(toolSpecService::riskLevelOf);
-        this.builtinToolsComboBox = ExposedToolsSelector.newBuiltinSelector(toolSpecService::riskLevelOf);
-        this.composedToolsComboBox = ExposedToolsSelector.newComposedSelector(toolSpecService::riskLevelOf);
+        this.chatExportService = chatExportService;
+        this.customToolsComboBox = ExposedToolsSelector.newCustomSelector(
+                toolSpecService::riskLevelOf, toolSpecService::categoryOf);
+        this.builtinToolsComboBox = ExposedToolsSelector.newBuiltinSelector(
+                toolSpecService::riskLevelOf, toolSpecService::categoryOf);
+        this.composedToolsComboBox = ExposedToolsSelector.newComposedSelector(
+                toolSpecService::riskLevelOf, toolSpecService::categoryOf);
         this.customToolsComboBox.setWidthFull();
         this.builtinToolsComboBox.setWidthFull();
         this.composedToolsComboBox.setWidthFull();
@@ -192,6 +205,9 @@ public class ChatContentView extends VerticalLayout {
         this.mcpToolProviderComboBox.setItemLabelGenerator(
                 mcpServerInfo -> mcpServerInfo.serverName() + "(" + mcpServerInfo.mcpTransportType() + ")");
         this.mcpToolProviderComboBox.setItems(externalMcpServerInfos());
+        this.mcpToolProviderComboBox.addValueChangeListener(e -> {
+            if (e.isFromClient()) persistToolPreferences();
+        });
 
         this.documentsComboBox = new MultiSelectComboBox<>();
         this.documentsComboBox.setPlaceholder("No documents for RAG");
@@ -200,6 +216,9 @@ public class ChatContentView extends VerticalLayout {
         this.documentsComboBox.setSelectedItemsOnTop(true);
         this.documentsComboBox.setItemLabelGenerator(VectorStoreDocumentInfo::title);
         this.documentsComboBox.setItems(this.chatService.getExistDocumentInfoList());
+        this.documentsComboBox.addValueChangeListener(e -> {
+            if (e.isFromClient()) persistToolPreferences();
+        });
 
         this.userPromptTextArea = new TextArea();
         this.userPromptTextArea.setPlaceholder("Ask Spring AI Playground");
@@ -213,13 +232,19 @@ public class ChatContentView extends VerticalLayout {
         CompletableFuture<ZoneId> zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
         this.userPromptTextArea.setId("sttTextArea");
 
-        Button micButton = new SttMicButton(this.userPromptTextArea);
+        String savedProvider = this.chatHistory.provider();
+        String currentProvider = this.chatService.getChatModelProvider();
+        final boolean providerMismatch = savedProvider != null && !savedProvider.isBlank()
+                && !savedProvider.equalsIgnoreCase(currentProvider);
+
+        this.micButton = new SttMicButton(this.userPromptTextArea);
         Icon submitIcon = VaadinUtils.styledLargeIcon(VaadinIcon.ARROW_CIRCLE_UP.create());
-        Button submitButton = new Button(submitIcon);
+        this.submitButton = new Button(submitIcon);
         submitButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         submitButton.setTooltipText("Submit");
 
         submitButton.addClickListener(e -> {
+            if (providerMismatch) return;
             if (this.currentStream != null && !this.currentStream.isDisposed()) {
                 this.currentStream.dispose();
                 this.currentStream = null;
@@ -275,19 +300,19 @@ public class ChatContentView extends VerticalLayout {
         populateExposedToolsCombos();
         this.customToolsComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) {
-                saveChatToolSelection();
+                persistToolPreferences();
                 refreshExposedToolsDisplay();
             }
         });
         this.builtinToolsComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) {
-                saveChatToolSelection();
+                persistToolPreferences();
                 refreshExposedToolsDisplay();
             }
         });
         this.composedToolsComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) {
-                saveChatToolSelection();
+                persistToolPreferences();
                 refreshExposedToolsDisplay();
             }
         });
@@ -296,20 +321,13 @@ public class ChatContentView extends VerticalLayout {
         toolStudioIcon.setTooltipText("Built-in tools used in this chat");
         toolStudioIcon.getStyle().set("margin-right", "0px");
 
-        this.useBuiltinMcpCheckbox.setValue(false);
+        this.useBuiltinMcpCheckbox.setValue(this.chatHistory.toolPreferences().useBuiltinMcp());
         this.useBuiltinMcpCheckbox.addValueChangeListener(e -> {
             if (e.isFromClient()) {
-                this.persistentUiDataStorage.saveData(USE_BUILTIN_MCP, e.getValue());
+                persistToolPreferences();
                 refreshExposedToolsDisplay();
             }
         });
-        this.persistentUiDataStorage.loadData(USE_BUILTIN_MCP, new TypeReference<Boolean>() {},
-                stored -> {
-                    if (stored != null) {
-                        this.useBuiltinMcpCheckbox.setValue(stored);
-                        refreshExposedToolsDisplay();
-                    }
-                });
 
         VerticalLayout exposedToolsPopoverBody = new VerticalLayout(
                 this.useBuiltinMcpCheckbox, this.customToolsComboBox, this.builtinToolsComboBox,
@@ -333,8 +351,21 @@ public class ChatContentView extends VerticalLayout {
         exposedToolsLayout.getStyle().set("gap", "5px");
         exposedToolsLayout.add(exposedToolsPopover);
 
+        ChatProvider chatProvider = this.chatService.getChatProvider();
+        this.reasoningSelect.setItems(ReasoningEffort.values());
+        this.reasoningSelect.setItemLabelGenerator(ChatContentView::reasoningLabel);
+        this.reasoningSelect.setValue(this.chatHistory.toolPreferences().reasoningEffort());
+        this.reasoningSelect.setVisible(chatProvider.supportsReasoning());
+        this.reasoningSelect.setTooltipText(chatProvider.reasoningLabel());
+        this.reasoningSelect.setWidth("150px");
+        this.reasoningSelect.setPrefixComponent(VaadinIcon.LIGHTBULB.create());
+        this.reasoningSelect.addValueChangeListener(event -> {
+            if (event.isFromClient() && Objects.nonNull(event.getValue()))
+                persistToolPreferences();
+        });
+
         HorizontalLayout userInputMenuLayout = new HorizontalLayout(
-                exposedToolsLayout, toolLayout, ragLayout);
+                this.reasoningSelect, exposedToolsLayout, toolLayout, ragLayout);
         userInputMenuLayout.getStyle().set("flex-wrap", "wrap");
 
         VerticalLayout userInputLayout = new VerticalLayout(userInputMenuLayout, this.userPromptTextArea);
@@ -343,6 +374,24 @@ public class ChatContentView extends VerticalLayout {
         userInputLayout.setSpacing(false);
         userInputLayout.setPadding(false);
         add(messageScroller, userInputLayout);
+
+        if (providerMismatch) {
+            this.userPromptTextArea.setReadOnly(true);
+            this.userPromptTextArea.setEnabled(false);
+            submitButton.setEnabled(false);
+            micButton.setEnabled(false);
+            Span providerLockBanner = new Span("This conversation was created with " + savedProvider
+                    + " but the app is now running " + currentProvider
+                    + ". It is read-only - start a new chat to continue.");
+            providerLockBanner.getStyle().set("display", "block")
+                    .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                    .set("margin-bottom", "var(--lumo-space-xs)")
+                    .set("border-radius", "var(--lumo-border-radius-m)")
+                    .set("background-color", "var(--lumo-error-color-10pct)")
+                    .set("color", "var(--lumo-error-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)");
+            userInputLayout.addComponentAsFirst(providerLockBanner);
+        }
         setSizeFull();
         setMargin(false);
         setSpacing(false);
@@ -361,44 +410,22 @@ public class ChatContentView extends VerticalLayout {
 
         this.messageListLayout.getChildren().filter(c -> c != this.scrollSpacer).reduce((a, b) -> b)
                 .ifPresent(last -> last.scrollIntoView(DefaultScrollOptions));
-        this.persistentUiDataStorage.loadData(LAST_SELECTED_RAG_DOC_INFO_IDS, new TypeReference<Set<String>>() {},
-                docInfoIds -> {
-                    if (docInfoIds != null && !docInfoIds.isEmpty()) {
-                        this.documentsComboBox.select(this.chatService.getExistDocumentInfoList().stream()
-                                .filter(vectorStoreDocumentInfo -> docInfoIds.contains(
-                                        vectorStoreDocumentInfo.docInfoId())).toList());
-                    }
-                });
-        this.persistentUiDataStorage.loadData(LAST_SELECTED_MCP_CONNECTION_INFOS,
-                new TypeReference<Map<McpTransportType, Set<String>>>() {},
-                typeServerNameMap -> {
-                    if (typeServerNameMap != null && !typeServerNameMap.isEmpty()) {
-                        List<McpServerInfo> mcpServerInfos = externalMcpServerInfos().stream()
-                                .filter(mcpServerInfo -> Optional.ofNullable(
-                                                typeServerNameMap.get(mcpServerInfo.mcpTransportType()))
-                                        .filter(serverNameSet -> serverNameSet.contains(mcpServerInfo.serverName()))
-                                        .isPresent()).toList();
-                        this.mcpToolProviderComboBox.select(mcpServerInfos);
-                    }
-                });
-        this.persistentUiDataStorage.loadData(CHAT_TOOL_SELECTION, new TypeReference<Set<String>>() {},
-                selectedToolIds -> {
-                    if (selectedToolIds != null) {
-                        this.customToolsComboBox.deselectAll();
-                        this.builtinToolsComboBox.deselectAll();
-                        this.composedToolsComboBox.deselectAll();
-                        this.customToolsComboBox.getListDataView().getItems()
-                                .filter(spec -> selectedToolIds.contains(spec.toolId())).toList()
-                                .forEach(this.customToolsComboBox::select);
-                        this.builtinToolsComboBox.getListDataView().getItems()
-                                .filter(spec -> selectedToolIds.contains(spec.toolId())).toList()
-                                .forEach(this.builtinToolsComboBox::select);
-                        this.composedToolsComboBox.getListDataView().getItems()
-                                .filter(spec -> selectedToolIds.contains(spec.toolId())).toList()
-                                .forEach(this.composedToolsComboBox::select);
-                        refreshExposedToolsDisplay();
-                    }
-                });
+        ChatToolPreferences preferences = this.chatHistory.toolPreferences();
+        List<String> ragDocInfoIds = preferences.ragDocInfoIds();
+        if (!ragDocInfoIds.isEmpty()) {
+            this.documentsComboBox.select(this.chatService.getExistDocumentInfoList().stream()
+                    .filter(vectorStoreDocumentInfo -> ragDocInfoIds.contains(
+                            vectorStoreDocumentInfo.docInfoId())).toList());
+        }
+        Map<McpTransportType, List<String>> mcpServerNames = preferences.mcpServerNames();
+        if (!mcpServerNames.isEmpty()) {
+            List<McpServerInfo> mcpServerInfos = externalMcpServerInfos().stream()
+                    .filter(mcpServerInfo -> Optional.ofNullable(mcpServerNames.get(mcpServerInfo.mcpTransportType()))
+                            .filter(serverNames -> serverNames.contains(mcpServerInfo.serverName()))
+                            .isPresent()).toList();
+            this.mcpToolProviderComboBox.select(mcpServerInfos);
+        }
+        applyStoredChatToolSelection();
     }
 
     private List<McpServerInfo> externalMcpServerInfos() {
@@ -420,7 +447,12 @@ public class ChatContentView extends VerticalLayout {
                 .exposableBuiltinsFrom(all, defaultIds, this.toolActivationCalculator).stream()
                 .filter(spec -> exposedIds.contains(spec.toolId())).toList();
         List<ToolSpec> exposedComposed = this.toolSpecService.getExternalToolSpecs();
-
+        // setItems clears the selection, so carry the user's current picks across the refresh; only a chat
+        // with no picks at all (first open, nothing saved) defaults to everything exposed.
+        Set<String> previouslySelected = new LinkedHashSet<>();
+        this.customToolsComboBox.getSelectedItems().forEach(spec -> previouslySelected.add(spec.toolId()));
+        this.builtinToolsComboBox.getSelectedItems().forEach(spec -> previouslySelected.add(spec.toolId()));
+        this.composedToolsComboBox.getSelectedItems().forEach(spec -> previouslySelected.add(spec.toolId()));
         this.customToolsComboBox.setItems(exposedCustoms);
         this.builtinToolsComboBox.setItems(exposedBuiltins);
         this.composedToolsComboBox.setItems(exposedComposed);
@@ -432,13 +464,46 @@ public class ChatContentView extends VerticalLayout {
         ExposedToolsSelector.applyEmptyState(this.composedToolsComboBox, exposedComposed.isEmpty(),
                 "No external tools re-exposed", "Composed external tools for this chat");
 
-        exposedCustoms.forEach(this.customToolsComboBox::select);
-        exposedBuiltins.forEach(this.builtinToolsComboBox::select);
+        if (previouslySelected.isEmpty()) {
+            exposedCustoms.forEach(this.customToolsComboBox::select);
+            exposedBuiltins.forEach(this.builtinToolsComboBox::select);
+        } else {
+            selectByToolIds(this.customToolsComboBox, previouslySelected);
+            selectByToolIds(this.builtinToolsComboBox, previouslySelected);
+            selectByToolIds(this.composedToolsComboBox, previouslySelected);
+        }
 
         List<ToolSpec> displayItems = new ArrayList<>(exposedCustoms);
         displayItems.addAll(exposedBuiltins);
         this.exposedToolsDisplayBox.setItems(displayItems);
         refreshExposedToolsDisplay();
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        // Tool exposure (custom, built-in, re-exposed external) is edited in the cog drawer without notifying
+        // chat, so re-read all three combos and restore the saved per-chat selection each time the chat is
+        // shown. Otherwise newly exposed tools (and their HITL marking) never appear.
+        populateExposedToolsCombos();
+        applyStoredChatToolSelection();
+    }
+
+    private void applyStoredChatToolSelection() {
+        Set<String> selectedToolIds = this.chatHistory.toolPreferences().exposedToolIds();
+        this.customToolsComboBox.deselectAll();
+        this.builtinToolsComboBox.deselectAll();
+        this.composedToolsComboBox.deselectAll();
+        selectByToolIds(this.customToolsComboBox, selectedToolIds);
+        selectByToolIds(this.builtinToolsComboBox, selectedToolIds);
+        selectByToolIds(this.composedToolsComboBox, selectedToolIds);
+        refreshExposedToolsDisplay();
+    }
+
+    private static void selectByToolIds(MultiSelectComboBox<ToolSpec> combo, Set<String> toolIds) {
+        combo.getListDataView().getItems()
+                .filter(spec -> toolIds.contains(spec.toolId())).toList()
+                .forEach(combo::select);
     }
 
     private void refreshExposedToolsDisplay() {
@@ -460,12 +525,29 @@ public class ChatContentView extends VerticalLayout {
         this.exposedToolsDisplayBox.setReadOnly(true);
     }
 
-    private void saveChatToolSelection() {
-        Set<String> selectedIds = new LinkedHashSet<>();
-        this.customToolsComboBox.getSelectedItems().forEach(spec -> selectedIds.add(spec.toolId()));
-        this.builtinToolsComboBox.getSelectedItems().forEach(spec -> selectedIds.add(spec.toolId()));
-        this.composedToolsComboBox.getSelectedItems().forEach(spec -> selectedIds.add(spec.toolId()));
-        this.persistentUiDataStorage.saveData(CHAT_TOOL_SELECTION, selectedIds);
+    // Snapshot the current input-bar selections and persist them onto this conversation. Only a chat that is
+    // already registered (has been sent to at least once) is saved immediately; an empty new chat keeps them in
+    // memory and they ride along when the first send registers it via completeChatHistoryConsumer.
+    private void persistToolPreferences() {
+        this.chatHistory = this.chatHistory.withToolPreferences(currentToolPreferences());
+        if (Objects.nonNull(this.chatHistoryService.getChatHistory(this.chatHistory.conversationId()))) {
+            this.chatHistoryService.updateChatHistory(this.chatHistory);
+        }
+    }
+
+    private ChatToolPreferences currentToolPreferences() {
+        Set<String> exposedToolIds = new LinkedHashSet<>();
+        this.customToolsComboBox.getSelectedItems().forEach(spec -> exposedToolIds.add(spec.toolId()));
+        this.builtinToolsComboBox.getSelectedItems().forEach(spec -> exposedToolIds.add(spec.toolId()));
+        this.composedToolsComboBox.getSelectedItems().forEach(spec -> exposedToolIds.add(spec.toolId()));
+        List<String> ragDocInfoIds = this.documentsComboBox.getSelectedItems().stream()
+                .map(VectorStoreDocumentInfo::docInfoId).toList();
+        Map<McpTransportType, List<String>> mcpServerNames = this.mcpToolProviderComboBox.getSelectedItems().stream()
+                .collect(Collectors.groupingBy(McpServerInfo::mcpTransportType,
+                        Collectors.mapping(McpServerInfo::serverName, Collectors.toList())));
+        ReasoningEffort reasoning = Objects.requireNonNullElse(this.reasoningSelect.getValue(), ReasoningEffort.OFF);
+        return new ChatToolPreferences(this.useBuiltinMcpCheckbox.getValue(), exposedToolIds, ragDocInfoIds,
+                mcpServerNames, reasoning);
     }
 
     private Set<String> selectedChatToolNames() {
@@ -477,12 +559,16 @@ public class ChatContentView extends VerticalLayout {
     }
 
     private Disposable inputEvent(CompletableFuture<ZoneId> zoneIdFuture, String userPrompt) {
+        // Bake the current input-bar selections onto this conversation and register it before streaming: a
+        // stream that dies mid-flight (push drop, error, JVM kill) must not take the conversation with it.
+        // The async save usually already sees the user turn; completion-time saves catch up regardless.
+        this.chatHistory = this.chatHistory.withToolPreferences(currentToolPreferences());
+        this.chatHistoryService.updateChatHistory(this.chatHistory);
         ChatContentManager chatContentManager = new ChatContentManager(this.messageListLayout, userPrompt, zoneIdFuture,
                 this.chatHistory);
 
         List<String> selectedDocInfoIds =
                 this.documentsComboBox.getSelectedItems().stream().map(VectorStoreDocumentInfo::docInfoId).toList();
-        this.persistentUiDataStorage.saveData(LAST_SELECTED_RAG_DOC_INFO_IDS, selectedDocInfoIds);
         Set<McpServerInfo> selectedItems = this.mcpToolProviderComboBox.getSelectedItems();
         UI ui = VaadinUtils.getUi(this);
         List<ToolCallback> toolCallbacks = new ArrayList<>(selectedItems.stream()
@@ -499,32 +585,51 @@ public class ChatContentView extends VerticalLayout {
                         .forEach(toolCallbacks::add);
             }
         }
-        this.persistentUiDataStorage.saveData(LAST_SELECTED_MCP_CONNECTION_INFOS,
-                selectedItems.stream().collect(Collectors.groupingBy(McpServerInfo::mcpTransportType,
-                        Collectors.mapping(McpServerInfo::serverName, Collectors.toList()))));
 
+        // The send-time save races the memory advisor, so it may snapshot an empty conversation; the first
+        // model activity proves the user turn reached chat memory and re-saves it once, covering streams
+        // that wedge or die before any terminal signal.
+        AtomicBoolean liveSaved = new AtomicBoolean();
+        Runnable saveOnFirstActivity = () -> {
+            if (liveSaved.compareAndSet(false, true))
+                this.chatHistoryService.updateChatHistory(this.chatHistory);
+        };
         return this.chatService.stream(this.chatHistory, userPrompt,
                         this.chatService.buildFilterExpression(selectedDocInfoIds), this.completeChatHistoryConsumer,
-                        toolCallbacks, o -> ui.access(() -> chatContentManager.appendMcpToolProcessMessage(o)),
+                        toolCallbacks, o -> {
+                            saveOnFirstActivity.run();
+                            ui.access(() -> chatContentManager.appendMcpToolProcessMessage(o));
+                        },
                         o -> ui.access(() -> chatContentManager.appendRagProcessMessage(o)),
-                        o -> ui.access(() -> chatContentManager.appendBotThinkProcessMessage(o)),
+                        o -> {
+                            saveOnFirstActivity.run();
+                            ui.access(() -> chatContentManager.appendBotThinkProcessMessage(o));
+                        },
+                        round -> ui.access(() -> chatContentManager.applyRoundUsage(round)),
                         signalType -> ui.access(() -> {
                             if (reactor.core.publisher.SignalType.CANCEL.equals(signalType))
                                 chatContentManager.markStopped();
                             doFinally(chatContentManager);
-                        }), new ChatHumanQuestionHandler(ui))
+                        }), new ChatHumanQuestionHandler(ui), this.reasoningSelect.getValue())
                 .doOnError(throwable -> ui.access(() -> {
                     chatContentManager.markError(throwable);
                     VaadinUtils.showErrorNotification(throwable.getMessage());
                     doFinally(chatContentManager);
                 }))
-                .subscribe(content -> ui.access(() -> chatContentManager.append(content)));
+                .subscribe(content -> {
+                    saveOnFirstActivity.run();
+                    ui.access(() -> chatContentManager.append(content));
+                });
     }
 
     private void doFinally(ChatContentManager chatContentManager) {
         chatContentManager.doFinally();
         this.userPromptTextArea.setReadOnly(false);
         this.userPromptTextArea.setEnabled(true);
+        // normal completion must reset these too, else the button stays on stop and the mic stays disabled.
+        this.submitButton.setIcon(VaadinUtils.styledLargeIcon(VaadinIcon.ARROW_CIRCLE_UP.create()));
+        this.submitButton.setTooltipText("Submit");
+        this.micButton.setEnabled(true);
         if (this.currentStream != null) {
             this.currentStream.dispose();
             this.currentStream = null;
@@ -569,12 +674,56 @@ public class ChatContentView extends VerticalLayout {
         return this.chatHistory.chatOptions();
     }
 
+    public ChatExtraOptions getExtraOptions() {
+        return this.chatHistory.extraOptions();
+    }
+
     public String getSystemPrompt() {
         return this.chatHistory.systemPrompt();
     }
 
     public String getConversationId() {
         return this.chatHistory.conversationId();
+    }
+
+    private static String reasoningLabel(ReasoningEffort effort) {
+        return switch (effort) {
+            case OFF -> "Off";
+            case LOW -> "Low";
+            case MEDIUM -> "Medium";
+            case HIGH -> "High";
+        };
+    }
+
+    public void exportConversation(String format) {
+        String base = "chat-" + getConversationId();
+        switch (format) {
+            case "md" -> triggerDownload(base + ".md", "text/markdown",
+                    this.chatExportService.conversationToMarkdown(this.chatHistory));
+            case "txt" -> triggerDownload(base + ".txt", "text/plain",
+                    this.chatExportService.conversationToPlainText(this.chatHistory));
+            case "json" -> triggerDownload(base + ".json", "application/json",
+                    this.chatExportService.conversationToJson(this.chatHistory));
+            case "pdf" -> getElement().executeJs(
+                    "window.Saip && window.Saip.chatMarkdown && window.Saip.chatMarkdown.printContainer(this)");
+            default -> { }
+        }
+    }
+
+    // Client-side download: build a Blob from the content and click a transient anchor. No server round-trip,
+    // nothing leaves the device. Shared by per-message and whole-conversation Export.
+    private void triggerDownload(String filename, String mime, String content) {
+        getElement().executeJs("""
+                const blob = new Blob([$1], {type: $2});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = $0;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+                """, filename, content, mime);
     }
 
     private final class ChatContentManager {
@@ -588,15 +737,24 @@ public class ChatContentView extends VerticalLayout {
         private static final String THINK_PROCESS_TIMESTAMP = "thinkProcessTimestamp";
         private static final String THINK_PROCESS_END_TIMESTAMP = "thinkProcessEndTimestamp";
         private static final String THINK_PROCESS_MESSAGES = "thinkProcessMessages";
+        private static final String THINK_PROCESS_PROMPT_TOKENS = "thinkProcessPromptTokens";
+        private static final String THINK_PROCESS_COMPLETION_TOKENS = "thinkProcessCompletionTokens";
         private static final String MCP_TOOL_PROCESS = "MCP TOOLS";
         private static final String MCP_TOOL_PROCESS_TIMESTAMP = "mcpToolProcessTimestamp";
         private static final String MCP_TOOL_PROCESS_END_TIMESTAMP = "mcpToolProcessEndTimestamp";
         private static final String MCP_TOOL_PROCESS_MESSAGES = "mcpToolProcessMessages";
         private static final String MCP_TOOL_PROCESS_CALL_COUNT = "mcpToolProcessCallCount";
         private static final String MCP_TOOL_PROCESS_TOOL_NAMES = "mcpToolProcessToolNames";
+        private static final String MCP_TOOL_PROCESS_PROMPT_TOKENS = "mcpToolProcessPromptTokens";
+        private static final String MCP_TOOL_PROCESS_COMPLETION_TOKENS = "mcpToolProcessCompletionTokens";
         private static final String STREAM_STATUS = "streamStatus";
         private static final String STREAM_STATUS_STAGE = "streamStatusStage";
         private static final String STREAM_STATUS_MESSAGE = "streamStatusMessage";
+        private static final String RESPONSE_DURATION_MS = "responseDurationMs";
+        private static final String RESPONSE_PROMPT_TOKENS = "responsePromptTokens";
+        private static final String RESPONSE_COMPLETION_TOKENS = "responseCompletionTokens";
+        private static final String RESPONSE_TOTAL_TOKENS = "responseTotalTokens";
+        private static final String RESPONSE_MODEL = "responseModel";
         private static final String STAGE_STARTING = "STARTING";
         private static final String STAGE_RAG = "RAG DOCUMENTS";
         private static final String STAGE_THINK = "THINK";
@@ -632,6 +790,16 @@ public class ChatContentView extends VerticalLayout {
         private final LinkedHashSet<String> mcpToolNames = new LinkedHashSet<>();
         private Details mcpToolProcessDetails;
         private StringBuilder mcpToolProcessMessagesBuilder;
+        private long turnPromptTokens;
+        private long turnCompletionTokens;
+        private long turnTotalTokens;
+        private boolean turnUsageSeen;
+        private long thinkPromptTokens;
+        private long thinkCompletionTokens;
+        private boolean thinkUsageSeen;
+        private long mcpPromptTokens;
+        private long mcpCompletionTokens;
+        private boolean mcpUsageSeen;
         private String currentStage = STAGE_STARTING;
         private String streamStatus;
         private String streamStatusMessage;
@@ -648,6 +816,8 @@ public class ChatContentView extends VerticalLayout {
             this.userMessage = buildMessage(userPrompt, MessageType.USER, startTimestamp);
             this.processListLayout = buildProcessListLayout();
             this.botResponse = buildMessage(null, MessageType.ASSISTANT, System.currentTimeMillis());
+            // Streamed reply: enhance once in doFinally instead of on every settle while chunks arrive.
+            this.botResponse.disableAutoEnhance();
             this.botResponse.addClassName("blink");
             this.isFirstAssistantResponse = true;
             this.messageListLayout.remove(ChatContentView.this.scrollSpacer);
@@ -692,6 +862,7 @@ public class ChatContentView extends VerticalLayout {
 
         public void appendRagProcessMessage(Object content) {
             this.currentStage = STAGE_RAG;
+            markGenerating();
             if (content instanceof SpringAiPlaygroundRagAdvisor.RagRetrievedDocumentsInfo info) {
                 this.ragRetrievedDocCount = info.count();
                 this.ragRetrievedDocTitles.addAll(info.titles());
@@ -725,6 +896,7 @@ public class ChatContentView extends VerticalLayout {
 
         public void appendMcpToolProcessMessage(Object content) {
             this.currentStage = STAGE_MCP;
+            markGenerating();
             long timestamp = System.currentTimeMillis();
             String contentStr = content.toString();
             String markdownSnippet = getLocalDateTime(timestamp) + " : " + contentStr + "\n\n";
@@ -743,7 +915,7 @@ public class ChatContentView extends VerticalLayout {
                 collapseProcessDetails(this.mcpToolProcessDetails);
                 updateDetailsSummary(this.mcpToolProcessDetails, MCP_TOOL_PROCESS, this.mcpToolProcessTimestamp,
                         this.mcpToolProcessEndTimestamp,
-                        formatMcpExtra(this.mcpToolCallCount, this.mcpToolNames));
+                        joinExtra(formatMcpExtra(this.mcpToolCallCount, this.mcpToolNames), mcpTokensExtra()));
             } else if (Objects.nonNull(this.mcpToolProcessDetails))
                 this.mcpToolProcessDetails.setOpened(true);
         }
@@ -760,6 +932,7 @@ public class ChatContentView extends VerticalLayout {
 
         public void appendBotThinkProcessMessage(Object content) {
             this.currentStage = STAGE_THINK;
+            markGenerating();
             long timestamp = System.currentTimeMillis();
             String markdownSnippet = content.toString();
             getBotThinkResponse(timestamp).appendMarkdown(markdownSnippet);
@@ -777,6 +950,39 @@ public class ChatContentView extends VerticalLayout {
             return this.botThinkResponse;
         }
 
+        // Every round adds to the turn total shown in the assistant header. A tool-call round's tokens go to
+        // the THINK panel when the model streamed thinking (the round's output is mostly reasoning) and to the
+        // MCP TOOLS panel otherwise; the final answer round is represented by the header total alone.
+        public void applyRoundUsage(ChatService.RoundUsage round) {
+            this.turnPromptTokens += round.promptTokens();
+            this.turnCompletionTokens += round.completionTokens();
+            this.turnTotalTokens += round.totalTokens();
+            this.turnUsageSeen = true;
+            if (!round.toolCallRound()) return;
+            if (round.thinkRound()) {
+                this.thinkPromptTokens += round.promptTokens();
+                this.thinkCompletionTokens += round.completionTokens();
+                this.thinkUsageSeen = true;
+                updateDetailsSummary(this.thinkDetails, THINK_PROCESS, this.botThinkTimestamp,
+                        this.botThinkEndTimestamp, thinkTokensExtra());
+            } else {
+                this.mcpPromptTokens += round.promptTokens();
+                this.mcpCompletionTokens += round.completionTokens();
+                this.mcpUsageSeen = true;
+                updateDetailsSummary(this.mcpToolProcessDetails, MCP_TOOL_PROCESS, this.mcpToolProcessTimestamp,
+                        this.mcpToolProcessEndTimestamp,
+                        joinExtra(formatMcpExtra(this.mcpToolCallCount, this.mcpToolNames), mcpTokensExtra()));
+            }
+        }
+
+        private String thinkTokensExtra() {
+            return this.thinkUsageSeen ? formatTokens(this.thinkPromptTokens, this.thinkCompletionTokens) : null;
+        }
+
+        private String mcpTokensExtra() {
+            return this.mcpUsageSeen ? formatTokens(this.mcpPromptTokens, this.mcpCompletionTokens) : null;
+        }
+
         private static Details buildProcessDetails(String title, Details details, ChatMessage markdownMessage) {
             details.setSummary(buildDetailsSummary(title, 0L, 0L, null));
             details.add(markdownMessage);
@@ -787,12 +993,8 @@ public class ChatContentView extends VerticalLayout {
 
         private static Span buildDetailsSummary(String title, long startMs, long endMs, String extraInfo) {
             StringBuilder sb = new StringBuilder(title);
-            if (startMs > 0 && endMs > startMs) {
-                long durationMs = endMs - startMs;
-                String duration = durationMs < 1000 ? durationMs + "ms"
-                        : String.format(Locale.ROOT, "%.1fs", durationMs / 1000.0);
-                sb.append(" · ").append(duration);
-            }
+            if (startMs > 0 && endMs > startMs)
+                sb.append(" · ").append(formatDuration(endMs - startMs));
             if (Objects.nonNull(extraInfo) && !extraInfo.isEmpty())
                 sb.append(" · ").append(extraInfo);
             Span span = new Span(sb.toString());
@@ -805,6 +1007,53 @@ public class ChatContentView extends VerticalLayout {
                 String extraInfo) {
             if (Objects.nonNull(details))
                 details.setSummary(buildDetailsSummary(title, startMs, endMs, extraInfo));
+        }
+
+        private static String formatDuration(long durationMs) {
+            return durationMs < 1000 ? durationMs + "ms"
+                    : String.format(Locale.ROOT, "%.1fs", durationMs / 1000.0);
+        }
+
+        private static String formatTokens(long promptTokens, long completionTokens) {
+            return String.format(Locale.US, "%,d tokens (in %,d · out %,d)", promptTokens + completionTokens,
+                    promptTokens, completionTokens);
+        }
+
+        private static String joinExtra(String left, String right) {
+            if (Objects.isNull(left) || left.isEmpty()) return right;
+            if (Objects.isNull(right) || right.isEmpty()) return left;
+            return left + " · " + right;
+        }
+
+        private static String tokensExtraOf(Map<String, Object> metadata, String promptKey, String completionKey) {
+            if (metadata.get(promptKey) instanceof Number in && metadata.get(completionKey) instanceof Number out)
+                return formatTokens(in.longValue(), out.longValue());
+            return null;
+        }
+
+        // Persisted into the assistant message metadata so the header metrics re-render after a reload.
+        // Tokens prefer the per-round accumulation (covers every LLM round of a tool loop); ChatMeta only
+        // carries the last round, so it is just the fallback.
+        private void persistResponseMeta(Map<String, Object> metadata, long durationMs,
+                ChatService.ChatMeta chatMeta) {
+            metadata.put(RESPONSE_DURATION_MS, durationMs);
+            if (Objects.nonNull(chatMeta) && Objects.nonNull(chatMeta.model()) && !chatMeta.model().isBlank())
+                metadata.put(RESPONSE_MODEL, chatMeta.model());
+            if (this.turnUsageSeen) {
+                metadata.put(RESPONSE_PROMPT_TOKENS, this.turnPromptTokens);
+                metadata.put(RESPONSE_COMPLETION_TOKENS, this.turnCompletionTokens);
+                metadata.put(RESPONSE_TOTAL_TOKENS, this.turnTotalTokens);
+                return;
+            }
+            Usage usage = Objects.nonNull(chatMeta) ? chatMeta.usage() : null;
+            if (Objects.isNull(usage)) return;
+            putIfPresent(metadata, RESPONSE_PROMPT_TOKENS, usage.getPromptTokens());
+            putIfPresent(metadata, RESPONSE_COMPLETION_TOKENS, usage.getCompletionTokens());
+            putIfPresent(metadata, RESPONSE_TOTAL_TOKENS, usage.getTotalTokens());
+        }
+
+        private static void putIfPresent(Map<String, Object> metadata, String key, Integer value) {
+            if (Objects.nonNull(value)) metadata.put(key, value);
         }
 
         private static String formatRagExtra(int docCount, Collection<String> titles) {
@@ -843,6 +1092,12 @@ public class ChatContentView extends VerticalLayout {
 
         private void initMarkdownMessage(VerticalLayout messageListLayout, Message message, MessageType messageType) {
             String text = message.getText();
+            // Tool-loop bookkeeping (TOOL responses, blank assistant rounds that only carried tool calls)
+            // feeds the LLM but never rendered live; the MCP TOOLS panel already summarizes it, so skip it
+            // on reload too instead of drawing empty epoch-time bubbles.
+            if (MessageType.TOOL.equals(messageType)) return;
+            if (message instanceof AssistantMessage assistantMessage && !assistantMessage.getToolCalls().isEmpty()
+                    && (Objects.isNull(text) || text.isBlank())) return;
             Map<String, Object> metadata = message.getMetadata();
 
             List<Pair<Long, Component>> components = new ArrayList<>();
@@ -871,7 +1126,8 @@ public class ChatContentView extends VerticalLayout {
                 Details details = ChatContentManager.buildProcessDetails(THINK_PROCESS, new Details(),
                         buildMessage(thinkProcessMessages, THINK_PROCESS, thinkProcessTimestamp));
                 updateDetailsSummary(details, THINK_PROCESS, thinkProcessTimestamp,
-                        Objects.nonNull(thinkEnd) ? thinkEnd : 0L, null);
+                        Objects.nonNull(thinkEnd) ? thinkEnd : 0L,
+                        tokensExtraOf(metadata, THINK_PROCESS_PROMPT_TOKENS, THINK_PROCESS_COMPLETION_TOKENS));
                 details.setOpened(false);
                 components.add(new Pair<>(thinkProcessTimestamp, details));
             }
@@ -888,18 +1144,22 @@ public class ChatContentView extends VerticalLayout {
                         buildMessage(mcpToolProcessMessages, MCP_TOOL_PROCESS, mcpToolProcessTimestamp));
                 updateDetailsSummary(details, MCP_TOOL_PROCESS, mcpToolProcessTimestamp,
                         Objects.nonNull(mcpEnd) ? mcpEnd : 0L,
-                        formatMcpExtra(Objects.nonNull(mcpCallCount) ? mcpCallCount : 0, mcpNames));
+                        joinExtra(formatMcpExtra(Objects.nonNull(mcpCallCount) ? mcpCallCount : 0, mcpNames),
+                                tokensExtraOf(metadata, MCP_TOOL_PROCESS_PROMPT_TOKENS,
+                                        MCP_TOOL_PROCESS_COMPLETION_TOKENS)));
                 details.setOpened(false);
                 components.add(new Pair<>(mcpToolProcessTimestamp, details));
             }
+            long messageTimestamp = timestampOf(metadata);
             if (MessageType.USER.equals(messageType))
-                messageListLayout.add(
-                        buildMessage(text, messageType, Long.parseLong(metadata.get(ChatHistory.TIMESTAMP).toString())));
+                messageListLayout.add(buildMessage(text, messageType, messageTimestamp));
             components.stream().sorted(Comparator.comparing(Pair::getFirst)).map(Pair::getSecond)
                     .forEach(messageListLayout::add);
-            if (!MessageType.USER.equals(messageType))
-                messageListLayout.add(
-                        buildMessage(text, messageType, Long.parseLong(metadata.get(ChatHistory.TIMESTAMP).toString())));
+            if (!MessageType.USER.equals(messageType)) {
+                ChatMessage assistant = buildMessage(text, messageType, messageTimestamp);
+                messageListLayout.add(assistant);
+                fillResponseMetrics(assistant, metadata);
+            }
             String streamStatus = (String) metadata.get(STREAM_STATUS);
             if (Objects.nonNull(streamStatus)) {
                 Span indicator = buildStreamStatusIndicator(streamStatus, (String) metadata.get(STREAM_STATUS_STAGE),
@@ -908,13 +1168,129 @@ public class ChatContentView extends VerticalLayout {
             }
         }
 
-        private ChatMessage buildMessage(String message, MessageType messageType, long epochMillis) {
-            return buildMessage(message, messageType.getValue().toUpperCase(), messageType.ordinal(),
-                    epochMillis);
+        private static long timestampOf(Map<String, Object> metadata) {
+            Object timestamp = metadata.get(ChatHistory.TIMESTAMP);
+            return timestamp == null ? 0L : Long.parseLong(timestamp.toString());
         }
 
+        private ChatMessage buildMessage(String message, MessageType messageType, long epochMillis) {
+            ChatMessage chatMessage = buildMessage(message, messageType.getValue().toUpperCase(),
+                    messageType.ordinal(), epochMillis);
+            if (MessageType.USER.equals(messageType)) chatMessage.usePlainText();
+            chatMessage.addActionBar(buildMessageActionBar(chatMessage, messageType));
+            return chatMessage;
+        }
+
+        // A hover-revealed action row under each message, collapse first. Response metrics are not here:
+        // they ride the message header next to the time, mirroring the process panel summaries.
+        private HorizontalLayout buildMessageActionBar(ChatMessage chatMessage, MessageType messageType) {
+            HorizontalLayout actions = new HorizontalLayout();
+            actions.addClassName("chat-message-actions");
+            actions.setSpacing(false);
+            actions.setPadding(false);
+            actions.setAlignItems(FlexComponent.Alignment.CENTER);
+            actions.getStyle().set("gap", "var(--lumo-space-s)")
+                    .set("margin-left", "calc(var(--lumo-space-l) * 2)").set("margin-top", "2px");
+            Button collapse = new Button(VaadinIcon.CHEVRON_UP.create());
+            collapse.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
+            collapse.setTooltipText("Collapse");
+            collapse.addClickListener(event -> {
+                boolean next = !chatMessage.isCollapsed();
+                chatMessage.setCollapsed(next);
+                collapse.setIcon((next ? VaadinIcon.CHEVRON_DOWN : VaadinIcon.CHEVRON_UP).create());
+                collapse.setTooltipText(next ? "Expand" : "Collapse");
+            });
+            Button copy = new Button(VaadinIcon.COPY_O.create(), event -> chatMessage.getElement()
+                    .executeJs("navigator.clipboard.writeText($0)", chatMessage.getRawMarkdown()));
+            copy.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
+            copy.setTooltipText("Copy");
+            // User bubbles already show the literal input, so the rendered/raw toggle applies to replies only.
+            Button rawToggle = null;
+            if (!MessageType.USER.equals(messageType)) {
+                rawToggle = new Button(VaadinIcon.CODE.create());
+                rawToggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
+                        ButtonVariant.LUMO_ICON);
+                rawToggle.setTooltipText("Show raw");
+                Button toggleRef = rawToggle;
+                rawToggle.addClickListener(event -> {
+                    boolean raw = !chatMessage.isShowingRaw();
+                    chatMessage.setShowRaw(raw);
+                    toggleRef.setIcon((raw ? VaadinIcon.FILE_TEXT_O : VaadinIcon.CODE).create());
+                    toggleRef.setTooltipText(raw ? "Show rendered" : "Show raw");
+                });
+            }
+            Button read = new Button(VaadinIcon.VOLUME_UP.create(), event -> chatMessage.getElement().executeJs("""
+                    if (!window.speechSynthesis) return;
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance($0));
+                    """, chatMessage.getRawMarkdown()));
+            read.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
+            read.setTooltipText("Read aloud");
+            Button quote = new Button(VaadinIcon.QUOTE_RIGHT.create(),
+                    event -> quoteToInput(chatMessage.getRawMarkdown()));
+            quote.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
+            quote.setTooltipText("Quote in prompt");
+            // A plain icon button + ContextMenu rather than a single-item MenuBar: a standalone MenuBar mis-measures
+            // its height and overflows the message row. ContextMenu has no such layout machinery.
+            Button exportButton = new Button(VaadinIcon.DOWNLOAD.create());
+            exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
+                    ButtonVariant.LUMO_ICON);
+            exportButton.setTooltipText("Export");
+            ContextMenu exportMenu = new ContextMenu(exportButton);
+            exportMenu.setOpenOnClick(true);
+            exportMenu.addItem("Markdown (.md)", event -> ChatContentView.this.triggerDownload("message.md",
+                    "text/markdown", ChatContentView.this.chatExportService.messageToMarkdown(
+                            messageOf(messageType, chatMessage.getRawMarkdown()))));
+            exportMenu.addItem("Plain text (.txt)", event -> ChatContentView.this.triggerDownload("message.txt",
+                    "text/plain", ChatContentView.this.chatExportService.messageToPlainText(
+                            messageOf(messageType, chatMessage.getRawMarkdown()))));
+            exportMenu.addItem("JSON (.json)", event -> ChatContentView.this.triggerDownload("message.json",
+                    "application/json", ChatContentView.this.chatExportService.messageToJson(
+                            messageOf(messageType, chatMessage.getRawMarkdown()))));
+            exportMenu.addItem("PDF (print)", event -> chatMessage.getElement().executeJs(
+                    "window.Saip && window.Saip.chatMarkdown && window.Saip.chatMarkdown.printMessage(this)"));
+            actions.add(collapse, copy);
+            if (Objects.nonNull(rawToggle)) actions.add(rawToggle);
+            actions.add(read, quote, exportButton);
+            return actions;
+        }
+
+        // Append elapsed - turn-total tokens (in/out) next to the header time; per-stage tokens and tool/RAG
+        // usage live on their own process panel summaries, and the model is persisted but not displayed.
+        private void fillResponseMetrics(ChatMessage chatMessage, Map<String, Object> metadata) {
+            List<String> parts = new ArrayList<>();
+            if (metadata.get(RESPONSE_DURATION_MS) instanceof Number duration)
+                parts.add(formatDuration(duration.longValue()));
+            if (metadata.get(RESPONSE_TOTAL_TOKENS) instanceof Number total) {
+                StringBuilder tokens = new StringBuilder(String.format(Locale.US, "%,d tokens", total.longValue()));
+                if (metadata.get(RESPONSE_PROMPT_TOKENS) instanceof Number in
+                        && metadata.get(RESPONSE_COMPLETION_TOKENS) instanceof Number out)
+                    tokens.append(String.format(Locale.US, " (in %,d · out %,d)", in.longValue(), out.longValue()));
+                parts.add(tokens.toString());
+            }
+            if (!parts.isEmpty()) chatMessage.setTimeDetail(String.join(" · ", parts));
+        }
+
+        private static Message messageOf(MessageType type, String raw) {
+            String text = raw == null ? "" : raw;
+            return type == MessageType.ASSISTANT ? new AssistantMessage(text) : new UserMessage(text);
+        }
+
+        private void quoteToInput(String text) {
+            if (Objects.isNull(text) || text.isBlank()) return;
+            String quoted = "> " + text.strip().replace("\n", "\n> ") + "\n\n";
+            String existing = ChatContentView.this.userPromptTextArea.getValue();
+            ChatContentView.this.userPromptTextArea.setValue(
+                    Objects.isNull(existing) || existing.isBlank() ? quoted : existing + "\n" + quoted);
+            ChatContentView.this.userPromptTextArea.focus();
+        }
+
+        // Process panels (think/tools/rag) render plain markdown only: their content is transient logging,
+        // so the highlight/math/diagram pass is skipped to keep streaming free of re-render flicker.
         private ChatMessage buildMessage(String message, String name, long epochMillis) {
-            return buildMessage(message, name, -1, epochMillis);
+            ChatMessage chatMessage = buildMessage(message, name, -1, epochMillis);
+            chatMessage.disableAutoEnhance();
+            return chatMessage;
         }
 
         private ChatMessage buildMessage(String message, String name, int colorIndex, long epochMillis) {
@@ -948,10 +1324,14 @@ public class ChatContentView extends VerticalLayout {
                 collapseProcessDetails(this.ragProcessDetails);
                 collapseProcessDetails(this.thinkDetails);
                 updateDetailsSummary(this.thinkDetails, THINK_PROCESS, this.botThinkTimestamp,
-                        this.botThinkEndTimestamp, null);
+                        this.botThinkEndTimestamp, thinkTokensExtra());
             }
             this.botResponse.removeClassName("blink");
             this.botResponse.appendMarkdown(content);
+        }
+
+        private void markGenerating() {
+            if (Objects.nonNull(this.botResponse)) this.botResponse.addClassName("blink");
         }
 
         private void initBotResponse(long epochMillis) {
@@ -989,10 +1369,13 @@ public class ChatContentView extends VerticalLayout {
 
         public void doFinally() {
             Optional<List<Message>> messageList =
-                    Optional.of(this.messagesSupplier.get()).filter(Predicate.not(List::isEmpty))
-                            .map(list -> list.subList(Math.max(0, list.size() - 2), list.size()));
-            messageList.map(List::getFirst).filter(message -> MessageType.USER.equals(message.getMessageType()))
-                    .map(Message::getMetadata).ifPresent(metadata -> updateMetadata(metadata, this.startTimestamp));
+                    Optional.of(this.messagesSupplier.get()).filter(Predicate.not(List::isEmpty));
+            // A tool loop appends ASSISTANT/TOOL messages after the user turn, so the user message (where
+            // ChatService parks ChatMeta) must be searched for, not assumed to sit next to the tail.
+            Optional<Map<String, Object>> lastUserMetadata = messageList.flatMap(list -> list.reversed().stream()
+                    .filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst())
+                    .map(Message::getMetadata);
+            lastUserMetadata.ifPresent(metadata -> updateMetadata(metadata, this.startTimestamp));
             Optional<Map<String, Object>> metadataAsOpt = messageList.map(List::getLast).map(Message::getMetadata);
 
             if (this.isFirstAssistantResponse) {
@@ -1034,6 +1417,10 @@ public class ChatContentView extends VerticalLayout {
                     metadata.put(THINK_PROCESS_TIMESTAMP, this.botThinkTimestamp);
                     metadata.put(THINK_PROCESS_END_TIMESTAMP, this.botThinkEndTimestamp);
                     metadata.put(THINK_PROCESS_MESSAGES, this.thinkProcessMessageBuilder.toString());
+                    if (this.thinkUsageSeen) {
+                        metadata.put(THINK_PROCESS_PROMPT_TOKENS, this.thinkPromptTokens);
+                        metadata.put(THINK_PROCESS_COMPLETION_TOKENS, this.thinkCompletionTokens);
+                    }
                 });
                 this.thinkDetails = null;
                 this.botThinkResponse = null;
@@ -1049,6 +1436,10 @@ public class ChatContentView extends VerticalLayout {
                     if (!this.mcpToolNames.isEmpty())
                         metadata.put(MCP_TOOL_PROCESS_TOOL_NAMES, new ArrayList<>(this.mcpToolNames));
                     metadata.put(MCP_TOOL_PROCESS_MESSAGES, this.mcpToolProcessMessagesBuilder.toString());
+                    if (this.mcpUsageSeen) {
+                        metadata.put(MCP_TOOL_PROCESS_PROMPT_TOKENS, this.mcpPromptTokens);
+                        metadata.put(MCP_TOOL_PROCESS_COMPLETION_TOKENS, this.mcpCompletionTokens);
+                    }
                 });
                 this.mcpToolProcessDetails = null;
                 this.mcpToolProcessMessage = null;
@@ -1057,6 +1448,15 @@ public class ChatContentView extends VerticalLayout {
             long completedTimestamp = this.responseTimestamp > 0 ? this.responseTimestamp : System.currentTimeMillis();
             metadataAsOpt.ifPresent(metadata -> updateMetadata(metadata, completedTimestamp));
             this.botResponse.removeClassName("blink");
+            this.botResponse.enhanceNow();
+            if (!this.isFirstAssistantResponse) {
+                ChatService.ChatMeta chatMeta = lastUserMetadata.map(map -> map.get(ChatService.CHAT_META))
+                        .filter(ChatService.ChatMeta.class::isInstance)
+                        .map(ChatService.ChatMeta.class::cast).orElse(null);
+                long durationMs = Math.max(0, System.currentTimeMillis() - this.startTimestamp);
+                metadataAsOpt.ifPresent(metadata -> persistResponseMeta(metadata, durationMs, chatMeta));
+                metadataAsOpt.ifPresent(metadata -> fillResponseMetrics(this.botResponse, metadata));
+            }
             saveAndRenderStreamStatus(metadataAsOpt);
         }
 

@@ -15,9 +15,9 @@
  */
 package org.springaicommunity.playground.webui.tool;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.hilerio.ace.AceEditor;
 import com.hilerio.ace.AceMode;
 import com.hilerio.ace.AceTheme;
@@ -340,7 +340,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         );
     }
 
-    private Object convertValueForType(Object testValue, JsonSchemaType type) throws JsonProcessingException {
+    private Object convertValueForType(Object testValue, JsonSchemaType type) throws JacksonException {
         if (Objects.nonNull(testValue) && testValue instanceof String strValue && !strValue.isBlank()) {
             return switch (type) {
                 case STRING -> strValue;
@@ -487,7 +487,7 @@ public class JavascriptToolPlaygroundView extends VerticalLayout {
         String globalsJson;
         try {
             globalsJson = this.objectMapper.writeValueAsString(globals);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             return;
         }
         this.ace.getElement().executeJs(

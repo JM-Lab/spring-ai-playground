@@ -63,7 +63,7 @@ public class LogsTab extends BaseDashboardTab {
                     + "\\[(?<thread>[^\\]]+)\\]\\s+"
                     + "(?<level>[A-Z]+)\\s+"
                     + "(?<logger>\\S+)\\s+"
-                    + "\\[conv=(?<conv>[^ ]*) msg=(?<msg>[^ ]*) traceId=(?<traceId>[^ ]*) spanId=(?<spanId>[^\\]]*)\\]\\s+-\\s+"
+                    + "\\[(?:user=[^ ]* sid=[^ ]* )?conv=(?<conv>[^ ]*) msg=(?<msg>[^ ]*) traceId=(?<traceId>[^ ]*) spanId=(?<spanId>[^\\]]*)\\]\\s+-\\s+"
                     + "(?<rest>.*)$");
 
     private final Path logFile;

@@ -62,5 +62,5 @@ The tool does **not** run. Instead the model is told you declined approval and t
 
 ## Next steps
 
-- Re-expose an **external** tool with approval: [Tutorial 10 - Proxy an MCP Server](10-proxy-external-tool.md) + the [Approval column](../features/human-in-the-loop.md#expose).
+- Re-expose an **external** tool with approval: [Tutorial 10 - Proxy an MCP Server](10-proxy-external-tool.md) + the [HITL column](../features/human-in-the-loop.md#expose).
 - Understand the two gates and loopback de-duplication: [Human-in-the-Loop architecture](../hitl-architecture.md).

@@ -1,5 +1,5 @@
 title: Logs
-description: Live log search with structured MDC extraction - Logback pattern injects conv, msg, traceId, spanId MDC keys into every line so log search is anchored to the trace it came from.
+description: Live log search with structured MDC extraction - conv, msg, traceId, and spanId are injected into every line, anchoring each log to the trace it came from.
 
 # Logs
 
@@ -46,7 +46,15 @@ The Logs tab parses each line into: `time · thread · level · logger · conv �
 
 ## Drilldown - Log line dialog
 
-Click any row to open a modal with the full parsed fields plus a *"Jump to trace"* button that navigates to the [Traces tab](traces.md) filtered by the row's `traceId`.
+Click any row to open the **Log line** dialog. The header shows the line's level and timestamp; the body lists the MDC fields parsed from the line - **Logger**, **Conv**, **UserMessageId**, **TraceId**, **SpanId** (each rendered as `-` when the line did not carry that key) - followed by the full raw line in a scrollable block.
+
+![Log line dialog - header reading Log line - INFO and the timestamp, a field list (Logger, Conv, UserMessageId, TraceId, SpanId), the full raw line in a monospace block, and a footer with Copy raw line, Open trace, and Close buttons](../../../assets/images/observability/logs-detail.png){ width="900" }
+
+The footer carries three actions:
+
+- **Copy raw line** - copies the unparsed line to the clipboard.
+- **Open trace** - navigates to the [Traces tab](traces.md) filtered by this line's `traceId`, the bridge from a single log line to the full span tree of the request that produced it. If the line has no `traceId`, it reports that instead.
+- **Close** - dismisses the dialog.
 
 ## Cross-references
 

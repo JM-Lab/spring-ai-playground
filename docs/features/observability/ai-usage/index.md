@@ -1,5 +1,5 @@
 title: AI Usage
-description: Two dashboards that answer what the agent spent in token and economic terms - Tokens & Cost rolls up by money, AI Models rolls up by model identity, provider, and streaming latency.
+description: Two dashboards on what the agent spent: Tokens & Cost rolls up by money, AI Models rolls up by model, provider, and streaming latency.
 
 # AI Usage
 

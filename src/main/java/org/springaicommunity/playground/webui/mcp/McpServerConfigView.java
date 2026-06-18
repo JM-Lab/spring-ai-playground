@@ -15,11 +15,11 @@
  */
 package org.springaicommunity.playground.webui.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -850,7 +850,7 @@ public class McpServerConfigView extends VerticalLayout {
                     obj.remove(type == McpTransportType.SSE ? "sse-endpoint" : "endpoint");
                     editorJson = FORM_OBJECT_MAPPER.writeValueAsString(obj);
                 }
-            } catch (JsonProcessingException ignore) {
+            } catch (JacksonException ignore) {
                 resetExtras();
                 resetHttpUrl();
             }
@@ -862,7 +862,7 @@ public class McpServerConfigView extends VerticalLayout {
                     populateStdio((ObjectNode) root);
                     editorJson = "{}";
                 }
-            } catch (JsonProcessingException ignore) {
+            } catch (JacksonException ignore) {
                 resetStdio();
             }
             resetExtras();
@@ -939,7 +939,7 @@ public class McpServerConfigView extends VerticalLayout {
         envContainer.removeAll();
         JsonNode envNode = obj.get("env");
         if (envNode != null && envNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> it = envNode.fields();
+            Iterator<Map.Entry<String, JsonNode>> it = envNode.properties().iterator();
             while (it.hasNext()) {
                 Map.Entry<String, JsonNode> e = it.next();
                 String v = e.getValue().isNull() ? "" : e.getValue().asText("");
@@ -988,7 +988,7 @@ public class McpServerConfigView extends VerticalLayout {
             }
 
             return FORM_OBJECT_MAPPER.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return "{}";
         }
     }
@@ -1020,7 +1020,7 @@ public class McpServerConfigView extends VerticalLayout {
             oauthSubForm.populate(oauth);
             oauthEnabledCheckbox.setValue(true);
             oauthSubForm.setVisible(true);
-        } catch (JsonProcessingException ignore) {
+        } catch (JacksonException ignore) {
             oauthSubForm.clearFields();
             oauthEnabledCheckbox.setValue(false);
             oauthSubForm.setVisible(false);
@@ -1030,7 +1030,7 @@ public class McpServerConfigView extends VerticalLayout {
     private static Map<String, String> readHeaders(JsonNode node) {
         if (node == null || !node.isObject()) return new LinkedHashMap<>();
         Map<String, String> out = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> it = node.fields();
+        Iterator<Map.Entry<String, JsonNode>> it = node.properties().iterator();
         while (it.hasNext()) {
             Map.Entry<String, JsonNode> e = it.next();
             out.put(e.getKey(), e.getValue().isNull() ? null : e.getValue().asText(null));
@@ -1181,7 +1181,7 @@ public class McpServerConfigView extends VerticalLayout {
             }
 
             return FORM_OBJECT_MAPPER.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return editorJson;
         }
     }

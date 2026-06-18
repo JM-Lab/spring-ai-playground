@@ -27,7 +27,7 @@ The cross-platform property carries through - all five recipes use only JVM-back
 
 **What we're building** - a tool that takes a `query` ("AI", "TypeScript", "Rust", ...), pulls the top Hacker News stories from the last 24 h, and asks the OpenAI Responses API to summarise the chatter in five bullet points. The most universally useful "morning brief" recipe.
 
-**Sandbox** - `networkMode: strict` (default).
+**Sandbox** - `networkMode: strict`.
 
 **Static variable required** - `openaiApiKey = ${OPENAI_API_KEY}`.
 
@@ -264,7 +264,7 @@ const outPath = params.outPath || dir + '/errors-summary.txt';
 const entries = safety.fs.list(dir);
 const logs = entries.filter(n => n.endsWith('.log'));
 if (logs.length === 0) return { ok: false, reason: 'no .log files under ' + dir };
-const withMtime = logs.map(n => ({ n, mtime: safety.fs.stat(dir + '/' + n).lastModified }));
+const withMtime = logs.map(n => ({ n, mtime: safety.fs.stat(dir + '/' + n).mtime }));
 withMtime.sort((a, b) => b.mtime - a.mtime);
 const latest = dir + '/' + withMtime[0].n;
 

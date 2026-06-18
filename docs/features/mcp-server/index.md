@@ -1,4 +1,4 @@
-description: MCP Server - sidebar catalog + manual connections, multi-transport runtime, OAuth 2.1, live connection risk scoring, tool exposure (composition), and Inspector for tools, resources, prompts, client primitives.
+description: MCP Server - catalog and manual connections, multi-transport runtime, OAuth 2.1, live connection risk scoring, tool composition, and an Inspector for primitives.
 
 # MCP Server
 
@@ -153,7 +153,7 @@ See the [MCP Inspector sub-page](inspector.md) for the full per-tab walkthrough,
 
 ## Expose external tools - the MCP Server Proxy { #expose-external-tools }
 
-The **gear icon** on the MCP Server Info header opens the **Expose Tools** drawer, which **re-publishes selected tools from your external connections through the built-in server** (`spring-ai-playground-built-in-mcp`) - so they're callable from Agentic Chat *and* external `/mcp` clients, each wrapped with a risk level, optional HITL approval, logging, and secret masking.
+The **gear icon** on the MCP Server Info header opens the **Composed Tools** drawer, which **re-publishes selected tools from your external connections through the built-in server** (`spring-ai-playground-built-in-mcp`) - so they're callable from Agentic Chat *and* external `/mcp` clients, each wrapped with a risk level, optional HITL approval, logging, and secret masking.
 
 This is the **MCP Server Proxy**. Its dedicated page covers the full walkthrough - the per-composition risk cap, per-tool HITL and alias/description overrides, the safe-wrapping contract, the poisoning/shadowing guards, and how external clients reach the proxied tools:
 
@@ -167,7 +167,7 @@ This is the **MCP Server Proxy**. Its dedicated page covers the full walkthrough
 4. **Save & Connect** - the row moves into the **Active MCP** sidebar layer; the status dot turns green when the playground gets a successful ping.
 5. **For OAuth-protected servers** - complete the **Authorize** browser handoff once; the AWAITING_AUTHORIZATION counter on Home tracks half-finished flows.
 6. **Inspect the live connection** - exercise tools, resources, prompts, ping, notifications, roots, sampling, elicitation in the [MCP Inspector](inspector.md).
-7. **(Optional) Expose its tools on the built-in server** - open the **[Expose Tools](#expose-external-tools)** gear drawer to merge selected upstream tools into `spring-ai-playground-built-in-mcp`, with a per-composition risk cap and per-tool HITL.
+7. **(Optional) Expose its tools on the built-in server** - open the **[Composed Tools](#expose-external-tools)** gear drawer to merge selected upstream tools into `spring-ai-playground-built-in-mcp`, with a per-composition risk cap and per-tool HITL.
 8. **Use it from chat** - the validated connection is now available to Agentic Chat as a tool / resource source.
 
 ## Relationship to Tool Studio

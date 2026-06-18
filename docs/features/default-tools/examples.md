@@ -39,7 +39,8 @@ Returns JSON: { title, content (with [n] link markers), links: [{index, text, ur
 
 **Sandbox** - **L3** (Scoped widening) - `strict` egress - `fetch` to any host (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 const resp = await fetch(pageUrl, {
@@ -99,6 +100,8 @@ return JSON.stringify({ title, content: main.text().trim(), links });
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -124,7 +127,8 @@ Returns the current time in ISO 8601 format. If the user specifies a city, count
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -186,6 +190,8 @@ return (
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -226,7 +232,8 @@ before passing them to this tool.
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -282,6 +289,8 @@ return base + '&' + params.join('&');
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -307,7 +316,8 @@ Free public weather lookup via wttr.in (no API key). Returns a small JSON summar
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `wttr.in` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 const path = encodeURIComponent((location || '').trim().replace(/ +/g, '+'));
@@ -328,6 +338,8 @@ return {
 };
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -363,7 +375,8 @@ Setup:
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.googleapis.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 const url = 'https://www.googleapis.com/customsearch/v1'
@@ -379,6 +392,8 @@ if (!resp.ok) {
 return resp.json();
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -412,7 +427,8 @@ Setup:
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.openai.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 const resp = await fetch('https://api.openai.com/v1/responses', {
@@ -446,6 +462,8 @@ return { content, reasoning };
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -478,7 +496,8 @@ Setup:
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `hooks.slack.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 const resp = await fetch(slackWebhookUrl, {
@@ -490,6 +509,8 @@ if (!resp.ok) return { success: false, status: resp.status, message: resp.text()
 return { status: 'ok' };
 
 ```
+
+</details>
 
 </div>
 </div>

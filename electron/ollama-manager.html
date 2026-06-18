@@ -691,11 +691,12 @@
 
   function scheduleWindowFit() {
     for (const timer of fitWindowTimers) clearTimeout(timer);
-    fitWindowTimers = [0, 80, 220].map((delay) => setTimeout(() => {
+    // debounce progress bursts into one resize; a setContentSize flood blanks the window white
+    fitWindowTimers = [setTimeout(() => {
       window.ollamaManagerAPI.invoke('ollama-manager:fit-window').catch(() => {
         // Keep UI responsive even if the host window can't be resized right now.
       });
-    }, delay));
+    }, 200)];
   }
 
   function initWindowFitObservers() {
@@ -958,10 +959,13 @@
 
   function renderDownloadsPanel() {
     const downloads = Array.isArray(state.downloads) ? state.downloads : [];
+    // avoid a window resize on every progress tick
+    const countChanged = downloads.length !== state.lastDownloadsCount;
+    state.lastDownloadsCount = downloads.length;
     downloadsSection.style.display = downloads.length ? 'grid' : 'none';
     if (!downloads.length) {
       downloadsPanel.innerHTML = '';
-      scheduleWindowFit();
+      if (countChanged) scheduleWindowFit();
       return;
     }
     downloadsPanel.innerHTML = downloads.map((task) => {
@@ -990,6 +994,7 @@
             <div class="model-actions">
               <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
               ${task.total ? `<span class="size-pill">${escapeHtml(formatBytes(task.total))}</span>` : ''}
+              ${['queued', 'starting', 'running'].includes(task.status) ? `<button class="secondary icon-button tooltip-button" data-action="cancel-download" data-task-id="${task.id}" data-model="${escapeHtml(task.model)}" type="button" title="Cancel download" data-tooltip="Cancel download" aria-label="Cancel download">${iconSvg('close')}</button>` : ''}
               ${task.status === 'failed' ? `<button class="secondary icon-button tooltip-button" data-action="retry-download" data-model="${escapeHtml(task.model)}" type="button" title="Retry download" data-tooltip="Retry download" aria-label="Retry download">${iconSvg('download')}</button>` : ''}
             </div>
           </div>
@@ -1003,7 +1008,7 @@
         </div>
       `;
     }).join('');
-    scheduleWindowFit();
+    if (countChanged) scheduleWindowFit();
   }
 
   async function refreshEnvironment() {
@@ -1081,6 +1086,18 @@
       downloadsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       setFooter(`Queued ${targetModel} for download.`);
       showToast(`${targetModel} was added to the download queue.`);
+    } catch (error) {
+      setFooter(error.message || String(error), true);
+      showToast(error.message || String(error), true);
+    }
+  }
+
+  async function cancelDownload(taskId, model) {
+    if (!Number.isFinite(taskId)) return;
+    try {
+      setFooter(`Canceling ${model || 'download'}...`);
+      await window.ollamaManagerAPI.invoke('ollama-manager:cancel-download', { taskId });
+      await refreshDownloadQueue();
     } catch (error) {
       setFooter(error.message || String(error), true);
       showToast(error.message || String(error), true);
@@ -1180,6 +1197,10 @@
     event.preventDefault();
     event.stopPropagation();
     if (button.disabled) return;
+    if (button.dataset.action === 'cancel-download') {
+      await cancelDownload(Number(button.dataset.taskId), button.dataset.model);
+      return;
+    }
     await handleAction(button.dataset.action, button.dataset.model);
   });
 

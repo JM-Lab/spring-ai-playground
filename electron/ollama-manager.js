@@ -123,10 +123,10 @@ function getOllamaSection(doc = {}) {
   );
 }
 
-function getOpenAiSdkSection(doc = {}) {
+function getOpenAiSection(doc = {}) {
   return deepMerge(
-    isPlainObject(getLegacySpringDoc(doc)?.['openai-sdk']) ? { ...getLegacySpringDoc(doc)['openai-sdk'] } : {},
-    isPlainObject(getSpringAiDoc(doc)?.['openai-sdk']) ? getSpringAiDoc(doc)['openai-sdk'] : {},
+    isPlainObject(getLegacySpringDoc(doc)?.['openai']) ? { ...getLegacySpringDoc(doc)['openai'] } : {},
+    isPlainObject(getSpringAiDoc(doc)?.['openai']) ? getSpringAiDoc(doc)['openai'] : {},
   );
 }
 
@@ -153,14 +153,14 @@ function detectProviderType(yamlText = '') {
 function detectProviderTypeFromDoc(doc = {}) {
   const modelSection = getModelSection(doc);
   const ollamaSection = getOllamaSection(doc);
-  const openAiSdkSection = getOpenAiSdkSection(doc);
+  const openAiSection = getOpenAiSection(doc);
   const chatModel = modelSection?.chat;
-  const openaiBaseUrl = openAiSdkSection?.['base-url'];
+  const openaiBaseUrl = openAiSection?.['base-url'];
   const embeddingModel = modelSection?.embedding;
   const hasOllamaEmbedding = embeddingModel === 'ollama' || !!ollamaSection?.embedding;
   const usesCompatibleBaseUrl = Boolean(openaiBaseUrl) && !isOfficialOpenAiBaseUrl(openaiBaseUrl);
-  if (chatModel === 'openai-sdk' && (usesCompatibleBaseUrl || hasOllamaEmbedding)) return 'openai-compatible';
-  if (chatModel === 'openai-sdk' || Object.keys(openAiSdkSection).length) return 'openai';
+  if (chatModel === 'openai' && (usesCompatibleBaseUrl || hasOllamaEmbedding)) return 'openai-compatible';
+  if (chatModel === 'openai' || Object.keys(openAiSection).length) return 'openai';
   if (chatModel === 'ollama' || Object.keys(ollamaSection).length) return 'ollama';
   return 'custom';
 }
@@ -182,10 +182,10 @@ function hasEmbeddingModelConfig(yamlText = '') {
 function hasEmbeddingModelConfigFromDoc(doc = {}) {
   const modelSection = getModelSection(doc);
   const ollamaSection = getOllamaSection(doc);
-  const openAiSdkSection = getOpenAiSdkSection(doc);
+  const openAiSection = getOpenAiSection(doc);
   return !!modelSection?.embedding ||
     !!ollamaSection?.embedding?.options?.model ||
-    !!openAiSdkSection?.embedding?.options?.model;
+    !!openAiSection?.embedding?.options?.model;
 }
 
 function isOllamaRequired(yamlText = '') {
@@ -207,7 +207,7 @@ function parseOllamaBaseUrl(yamlText = '') {
 function parseOllamaBaseUrlFromDoc(doc = {}) {
   const explicitOllamaBaseUrl = getOllamaSection(doc)?.['base-url'];
   if (explicitOllamaBaseUrl) return String(explicitOllamaBaseUrl);
-  const compatibleUrl = getOpenAiSdkSection(doc)?.['base-url'];
+  const compatibleUrl = getOpenAiSection(doc)?.['base-url'];
   if (compatibleUrl && String(compatibleUrl).includes('11434')) return String(compatibleUrl).replace(/\/v1\/?$/i, '');
   return 'http://127.0.0.1:11434';
 }
@@ -221,7 +221,7 @@ function getConfiguredChatModelInfoFromDoc(doc = {}) {
   const provider = getModelSection(doc)?.chat || null;
   let model = null;
   if (provider === 'ollama') model = getOllamaSection(doc)?.chat?.options?.model || null;
-  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.chat?.options?.model || null;
+  if (provider === 'openai') model = getOpenAiSection(doc)?.chat?.options?.model || null;
   return { provider, model };
 }
 
@@ -234,7 +234,7 @@ function getConfiguredEmbeddingModelInfoFromDoc(doc = {}) {
   const provider = getModelSection(doc)?.embedding || null;
   let model = null;
   if (provider === 'ollama') model = getOllamaSection(doc)?.embedding?.options?.model || null;
-  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.embedding?.options?.model || null;
+  if (provider === 'openai') model = getOpenAiSection(doc)?.embedding?.options?.model || null;
   return { provider, model };
 }
 

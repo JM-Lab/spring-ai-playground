@@ -16,8 +16,9 @@
 package org.springaicommunity.playground.observability.pricing;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,7 @@ public class CurrencyService {
             } else {
                 Files.createDirectories(file.getParent());
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             logger.warn("Failed to load currency state from {} — falling back to defaults", file, e);
         }
         // Always ensure defaults are present (so the user can opt-in to extra
@@ -189,7 +190,7 @@ public class CurrencyService {
             try {
                 Files.createDirectories(file.getParent());
                 MAPPER.writeValue(file.toFile(), state);
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Failed to save currency state to {}", file, e);
             }
         });

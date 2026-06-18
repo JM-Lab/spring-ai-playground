@@ -1,5 +1,5 @@
 title: Overview
-description: The Observability landing dashboard - eight KPI cards, fifteen charts across six sections (LLM · Tokens & Cost · Tools/MCP · Vector/RAG · System · Logs), and a live activity grid. The single page that summarises every other tab's headline number.
+description: The Observability landing dashboard - eight KPI cards, fifteen charts across six sections, and a live activity grid summarising every other tab's headline number.
 
 # Overview
 
@@ -48,7 +48,7 @@ Each section maps to one dedicated tab.
 | Request rate | Line, calls / min - drag to zoom | Bursts indicate batch workloads or runaway loops |
 | Latency p50 / p95 / p99 | Multi-line, ms | p95 - p50 gap widening means tail-latency regression |
 | Provider mix | Donut, by call count | Sanity check that the configured provider is actually receiving traffic |
-| Top models | Horizontal bar (top 8) | Spot accidental model drift if an unfamiliar model appears |
+| Top models | Horizontal bar (top 6) | Spot accidental model drift if an unfamiliar model appears |
 
 ### Tokens & Cost section → [Tokens & Cost](ai-usage/tokens-cost.md)
 

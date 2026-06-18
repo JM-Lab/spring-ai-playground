@@ -34,11 +34,13 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain mcpClientSecurityFilterChain(HttpSecurity http) throws Exception {
+        // Single-user desktop app with no authentication.
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/mcp", "/mcp/**", "/sse", "/sse/**", "/actuator/**",
                         "/oauth2/authorization/**", "/login/oauth2/code/**",
                         "/ace-builds/**")
-                .permitAll());
+                .permitAll()
+                .anyRequest().permitAll());
 
         http.csrf(csrf -> csrf.disable());
 
@@ -46,8 +48,7 @@ public class SecurityConfig {
 
         http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
             configurer.enableCsrfConfiguration(false);
-            // No login view: this desktop app has no user authentication.
-            // All Vaadin @Route views must carry @AnonymousAllowed.
+            configurer.enableAuthorizedRequestsConfiguration(false);
         });
 
         return http.build();

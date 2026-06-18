@@ -92,7 +92,7 @@ class ObservabilityTimeSeriesTest {
                     10, 20, "OK", "stop", false, false));
         }
         for (int i = 0; i < 2; i++) {
-            buffer.add(trace(now - i * 60_000, 100, "openai-sdk", "gpt-5.4-mini",
+            buffer.add(trace(now - i * 60_000, 100, "openai", "gpt-5.4-mini",
                     8, 16, "OK", "stop", false, false));
         }
 
@@ -101,7 +101,7 @@ class ObservabilityTimeSeriesTest {
         assertThat(s.totalCallsByModel()).containsEntry("qwen3.5:9b", 3L);
         assertThat(s.totalCallsByModel()).containsEntry("gpt-5.4-mini", 2L);
         assertThat(s.totalCallsByProvider()).containsEntry("ollama", 3L);
-        assertThat(s.totalCallsByProvider()).containsEntry("openai-sdk", 2L);
+        assertThat(s.totalCallsByProvider()).containsEntry("openai", 2L);
         assertThat(s.totalTokensByModel()).containsEntry("qwen3.5:9b", 90L);
         assertThat(s.totalTokensByModel()).containsEntry("gpt-5.4-mini", 48L);
     }

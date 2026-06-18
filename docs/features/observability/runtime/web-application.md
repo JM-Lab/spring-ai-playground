@@ -1,5 +1,5 @@
 title: Web Application
-description: Servlet container, HTTP traffic, logback level counts, live Spring AI in-flight operations - direct MeterRegistry reads showing operational traffic signals (not resource consumption).
+description: Servlet container, HTTP traffic, log-level counts, and live Spring AI in-flight operations - direct MeterRegistry reads of operational traffic signals.
 
 # Web Application
 

@@ -15,8 +15,8 @@
  */
 package org.springaicommunity.playground.service.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
@@ -34,7 +34,7 @@ import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServ
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.boot.web.context.WebServerInitializedEvent;
+import org.springframework.boot.web.server.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -151,13 +151,13 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
             Set<String> tags = entry.<Set<String>>map(McpCatalogEntry::tags).orElseGet(Set::of);
             return new McpServerInfo(transportType, serverName, description,
                     timestamp, timestamp, transformAsJson(connection), category, tags);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException(
                     "Failed to serialize default MCP server connection for " + serverName, e);
         }
     }
 
-    private String transformAsJson(Object value) throws JsonProcessingException {
+    private String transformAsJson(Object value) throws JacksonException {
         return this.objectMapper.writeValueAsString(value);
     }
 
@@ -246,7 +246,7 @@ public class McpServerInfoService implements SharedDataReader<List<McpServerInfo
     }
 
     private HttpConnectionParametersWithExtras.OAuth parseOAuthConfig(McpServerInfo server)
-            throws JsonProcessingException {
+            throws JacksonException {
         if (server.connectionAsJson() == null || server.connectionAsJson().isBlank()) return null;
         return switch (server.mcpTransportType()) {
             case STREAMABLE_HTTP -> objectMapper.readValue(server.connectionAsJson(),

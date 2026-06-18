@@ -15,9 +15,9 @@
  */
 package org.springaicommunity.playground.service.tool;
 
-import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,18 +50,23 @@ public class ToolActivationCalculator {
     public State calculate(ToolSpec tool) {
         if (Objects.isNull(tool)) return State.DRAFT;
         if (tool.draft()) return State.DRAFT;
+        if (hasMissingEnvVars(tool)) return State.MISSING_REQUIREMENTS;
+        return State.ACTIVE;
+    }
+
+    public boolean hasMissingEnvVars(ToolSpec tool) {
         for (String envVar : declaredEnvVars(tool)) {
             String value = envLookup.apply(envVar);
             if (value == null || value.isBlank()) {
-                return State.MISSING_REQUIREMENTS;
+                return true;
             }
         }
-        return State.ACTIVE;
+        return false;
     }
 
     public List<String> declaredEnvVars(ToolSpec tool) {
         if (tool == null || tool.staticVariables() == null) return List.of();
-        java.util.LinkedHashSet<String> envVars = new java.util.LinkedHashSet<>();
+        LinkedHashSet<String> envVars = new LinkedHashSet<>();
         for (Map.Entry<String, String> entry : tool.staticVariables()) {
             String value = entry.getValue();
             if (value == null) continue;

@@ -17,6 +17,7 @@ package org.springaicommunity.playground.service.chat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
@@ -48,7 +49,7 @@ class ChatServiceWithOllamaIT {
                 now,
                 now,
                 chatService.getSystemPrompt(),
-                new DefaultChatOptions(),
+                (DefaultChatOptions) ChatOptions.builder().build(),
                 List::of
         );
 

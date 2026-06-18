@@ -1,5 +1,5 @@
 title: MCP Server Safety
-description: How Spring AI Playground vets external MCP servers and the tools it re-exposes - L0-L5 connection risk, tool poisoning scan, fingerprint ledger, composition shadowing rules, and HITL mitigation.
+description: How Spring AI Playground vets external MCP servers and re-exposed tools - L0-L5 risk, poisoning scan, fingerprint ledger, shadowing rules, and HITL mitigation.
 
 # MCP Server Safety
 
@@ -100,7 +100,7 @@ The MCP risk model reuses the `RiskLevel` enum (`L0`-`L5`) that the [sandbox](sa
 | <span class="rl rl-l4">L4 - High</span> | Admin-scope, exec capability, or irreversible actions |
 | <span class="rl rl-l5">L5 - Critical</span> | A **floor rule** tripped, or an unverified / unauthenticated server |
 
-The chip surfaces in three places - the [connection risk preview](features/mcp-server/index.md#connection-risk-preview) on the config form, the per-server and per-tool chips in the [Expose Tools drawer](features/mcp-server/index.md#expose-external-tools), and beside each tool in the [Inspector Tools tab](features/mcp-server/inspector.md#tools). Every computation is also emitted as a structured event - `ServerRiskComputed`, `ToolPublishRiskComputed`, `FloorOverrideTriggered`, `PoisoningHit`, `HashLedgerMismatch`, `CompositionLifecycle` - and MCP tool-call spans are tagged with the resolved risk (see [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md)).
+The chip surfaces in three places - the [connection risk preview](features/mcp-server/index.md#connection-risk-preview) on the config form, the per-server and per-tool chips in the [Composed Tools drawer](features/mcp-server/index.md#expose-external-tools), and beside each tool in the [Inspector Tools tab](features/mcp-server/inspector.md#tools). Every computation is also emitted as a structured event - `ServerRiskComputed`, `ToolPublishRiskComputed`, `FloorOverrideTriggered`, `PoisoningHit`, `HashLedgerMismatch`, `CompositionLifecycle` - and MCP tool-call spans are tagged with the resolved risk (see [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md)).
 
 ## Server risk - four axes plus floor overrides { #server-risk }
 
@@ -125,7 +125,7 @@ These states are visible live as you edit the connection form - a catalog vendor
 
 ## Tool risk - base action plus documentation penalty { #tool-risk }
 
-[`McpToolPublishRiskCalculator`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPublishRiskCalculator.java) scores an individual upstream tool on two axes (same bucketing as the server). The **base-action** axis reads the MCP tool annotations - `readOnlyHint` absent/false `+1`, `destructiveHint` `+2`, `openWorldHint` `+1`, `idempotentHint` `-1`, side-effect scope `REMOTE_WRITE +1` / `REMOTE_ADMIN +2`, sends-user-data `+1` (floored at 0). The **doc-penalty** axis (capped at 3) adds gaps for a missing/short/boilerplate description, an absent input schema, under-50%-described properties, and unspecified annotations.
+[`McpToolPublishRiskCalculator`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPublishRiskCalculator.java) scores an individual upstream tool on two axes (same bucketing as the server). The **base-action** axis reads the MCP tool annotations - `readOnlyHint` absent/false `+1`, `destructiveHint` `+2`, `openWorldHint` `+1`, `idempotentHint` `-1`, side-effect scope `REMOTE_WRITE +1` / `REMOTE_ADMIN +2`, sends-user-data `+1` (floored at 0). The **doc-penalty** axis (capped at 3) adds gaps for a missing/short/boilerplate description, an absent input schema, under-50%-described properties, unspecified annotations, and unfilled curator-checklist fields (side-effect type, external data flow, reversibility).
 
 Three tool **floor overrides**: an irreversible verb in the tool name (`delete_`, `drop_`, `purge_`, `wipe_`, `remove_`, `force_push`) → L5; `destructiveHint` without `idempotentHint` → L5; a description *and* annotations both entirely missing → L4.
 
@@ -138,7 +138,7 @@ When an upstream tool is re-exposed on the built-in server, [`McpToolRiskCompose
 
 This is why exposing `read_wiki_structure` with HITL shows `L1 - Safe` with a `HITL -1` annotation while its un-gated siblings stay `L2 - Low`:
 
-![DeepWiki expanded in the Expose Tools drawer - read_wiki_structure shows L1 - Safe with a HITL -1 mitigation badge and a ticked HITL box; read_wiki_contents and ask_question stay L2 - Low](assets/images/mcp-server/expose-tools-expanded.png){ loading=lazy }
+![DeepWiki expanded in the Composed Tools drawer - read_wiki_structure shows L1 - Safe with a HITL -1 mitigation badge and a ticked HITL box; read_wiki_contents and ask_question stay L2 - Low](assets/images/mcp-server/expose-tools-expanded.png){ loading=lazy }
 
 ## The safe-wrapping contract { #wrapping-contract }
 
@@ -157,7 +157,7 @@ This is what makes *"any-language MCP server → wrap → safe"* concrete: a too
 
 ## Tool-description poisoning scan { #poisoning-scan }
 
-A tool description is attacker-controlled text that the model reads as instructions. [`McpToolPoisoningScanner`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPoisoningScanner.java) scans every name and description for nine injection signatures. A hit surfaces a **poisoning warning chip** on the tool in the MCP Inspector and the Expose Tools drawer, so a tampered description is visible before you re-expose it. (The scanner exposes a `shouldBlockPublish()` helper, but the current runtime treats the scan as advisory - it warns rather than hard-blocking, and emits no separate risk-signal event for a hit.)
+A tool description is attacker-controlled text that the model reads as instructions. [`McpToolPoisoningScanner`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPoisoningScanner.java) scans every name and description for nine injection signatures. A hit surfaces a **poisoning warning chip** on the tool in the MCP Inspector and the Composed Tools drawer, so a tampered description is visible before you re-expose it. (The scanner exposes a `shouldBlockPublish()` helper, but the current runtime treats the scan as advisory - it warns rather than hard-blocking, and emits no separate risk-signal event for a hit.)
 
 | Pattern | Catches |
 |---|---|
@@ -173,7 +173,7 @@ A tool description is attacker-controlled text that the model reads as instructi
 
 ## Tool fingerprint ledger - change detection { #fingerprint-ledger }
 
-[`McpToolHashLedger`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolHashLedger.java) stores a SHA-256 of each tool's canonical content (name + description + input schema; the live composition path does not include upstream annotations, so an annotation-only redefinition is a known blind spot). A re-check returns `NEW` (first sight), `UNCHANGED` (hash matches), or `MISMATCH` - a silently redefined upstream tool flips the fingerprint status to `AWAITING_REREVIEW` and emits `HashLedgerMismatch`, so a "rug-pull" redefinition cannot ride in on a prior approval. Fingerprint lifecycle states are `ACTIVE` / `AWAITING_REREVIEW` / `REVOKED`.
+[`McpToolHashLedger`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolHashLedger.java) stores a SHA-256 of each tool's canonical content (name + description + input schema; the live composition path does not include upstream annotations, so an annotation-only redefinition is a known blind spot). A re-check returns `NEW` (first sight), `UNCHANGED` (hash matches), or `MISMATCH` - a silently redefined upstream tool flips the fingerprint status to `AWAITING_REREVIEW` and emits `HashLedgerMismatch`, so a "rug-pull" redefinition cannot ride in on a prior approval. Fingerprint lifecycle states are `ACTIVE` / `AWAITING_REREVIEW` / `REVOKED` (the last reserved - the live path sets only the first two).
 
 ## Composition shadowing rules { #shadowing-rules }
 
@@ -188,7 +188,7 @@ Before a composition is enabled, [`McpCompositionShadowingRules`](https://github
 | Surface | What the chip/scan shows | Page |
 |---|---|---|
 | Connection form | Live server risk chip as you type / pick an entry | [MCP Server → Connection risk preview](features/mcp-server/index.md#connection-risk-preview) |
-| Expose Tools drawer | Per-server + per-tool chips, max-risk cap, HITL `-1` | [MCP Server → Expose external tools](features/mcp-server/index.md#expose-external-tools) |
+| Composed Tools drawer | Per-server + per-tool chips, max-risk cap, HITL `-1` | [MCP Server → Expose external tools](features/mcp-server/index.md#expose-external-tools) |
 | Inspector Tools tab | Per-tool risk chip beside each tool card | [MCP Inspector → Tools](features/mcp-server/inspector.md#tools) |
 | Observability | `mcp.risk.*` / `mcp.composition.*` span tags | [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md) |
 

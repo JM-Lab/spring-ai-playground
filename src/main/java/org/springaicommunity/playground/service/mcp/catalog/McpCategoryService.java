@@ -15,8 +15,9 @@
  */
 package org.springaicommunity.playground.service.mcp.catalog;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -63,7 +64,7 @@ public class McpCategoryService {
                 byId.put(d.id(), new CategoryDef(d.id(), d.displayName(), d.order(), d.icon(), d.description(), true));
             }
             return Collections.unmodifiableMap(byId);
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new IllegalStateException("Failed to load built-in MCP categories from " + DEFAULT_RESOURCE, e);
         }
     }

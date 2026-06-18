@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.vectorstore;
 
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -97,7 +98,7 @@ public class VectorStoreDocumentView extends WorkspaceSidebar implements BeforeE
                 selectedItems.stream().sorted(Comparator.comparingLong(VectorStoreDocumentInfo::updateTimestamp))
                         .toList().getFirst();
         Dialog dialog = VaadinUtils.headerDialog("Rename: " + documentInfo.title());
-        dialog.setModal(true);
+        dialog.setModality(ModalityMode.STRICT);
         dialog.setResizable(true);
         dialog.addThemeVariants(DialogVariant.LUMO_NO_PADDING);
         VerticalLayout dialogLayout = new VerticalLayout();
@@ -135,7 +136,7 @@ public class VectorStoreDocumentView extends WorkspaceSidebar implements BeforeE
                 selectedItems.stream().map(VectorStoreDocumentInfo::documentListSupplier).map(Supplier::get)
                         .mapToInt(List::size).sum());
         Dialog dialog = VaadinUtils.headerDialog(headerTitle);
-        dialog.setModal(true);
+        dialog.setModality(ModalityMode.STRICT);
         dialog.add("Are you sure you want to delete this permanently?");
 
         Button deleteButton = new Button("Delete", e -> {

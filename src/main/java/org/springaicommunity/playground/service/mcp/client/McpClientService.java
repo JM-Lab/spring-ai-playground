@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.modelcontextprotocol.client.McpAsyncClient;

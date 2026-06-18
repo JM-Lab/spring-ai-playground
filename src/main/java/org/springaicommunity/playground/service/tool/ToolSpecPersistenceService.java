@@ -15,14 +15,14 @@
  */
 package org.springaicommunity.playground.service.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
 import org.springaicommunity.playground.service.tool.ToolSpecService.ToolMcpServerSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.context.WebServerInitializedEvent;
+import org.springframework.boot.web.server.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -34,8 +34,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -63,13 +65,15 @@ public class ToolSpecPersistenceService implements
     private final Set<String> defaultToolIds;
     private final DefaultToolsPreferenceService preferenceService;
     private final DefaultToolsPreferenceResolver preferenceResolver;
+    private final ToolActivationCalculator activationCalculator;
 
     public ToolSpecPersistenceService(Path springAiPlaygroundHomeDir, ToolSpecService toolSpecService,
             @Value("${spring.ai.playground.tool-studio.spec-location:}")
             String defaultToolSpecsLocation, ObjectMapper objectMapper, ResourceLoader resourceLoader,
             PersistenceExecutor persistenceExecutor,
             DefaultToolsPreferenceService preferenceService,
-            DefaultToolsPreferenceResolver preferenceResolver) throws IOException {
+            DefaultToolsPreferenceResolver preferenceResolver,
+            ToolActivationCalculator activationCalculator) throws IOException {
         this.saveDir = springAiPlaygroundHomeDir.resolve("tool").resolve("save");
         Files.createDirectories(this.saveDir);
         this.toolSpecService = toolSpecService;
@@ -80,6 +84,7 @@ public class ToolSpecPersistenceService implements
                 .filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
         this.preferenceService = preferenceService;
         this.preferenceResolver = preferenceResolver;
+        this.activationCalculator = activationCalculator;
         archiveLegacyOverridesFile();
     }
 
@@ -90,8 +95,11 @@ public class ToolSpecPersistenceService implements
                 ? new PathMatchingResourcePatternResolver(resourceLoader).getResources(location)
                 : new Resource[] { resourceLoader.getResource(location) };
         Arrays.sort(resources, Comparator.comparing(r -> {
-            try { return r.getFilename() == null ? "" : r.getFilename(); }
-            catch (Exception e) { return ""; }
+            try {
+                return r.getFilename() == null ? "" : r.getFilename();
+            } catch (Exception e) {
+                return "";
+            }
         }));
         List<ToolSpec> merged = new ArrayList<>();
         Set<String> seenIds = new HashSet<>();
@@ -182,13 +190,51 @@ public class ToolSpecPersistenceService implements
     public void onApplicationEvent(WebServerInitializedEvent event) {
         DefaultToolsPreference preference = preferenceService.current();
         Set<String> active = preferenceResolver.resolveActiveNames(preference, defaultToolSpecs);
+        // Local Pass is the pool of usable built-ins: pre-verified tools are published unless a declared
+        // env var (API key) is absent. This is independent of the preset — the preset only picks what to
+        // expose, not what is usable.
         for (ToolSpec spec : this.defaultToolSpecs) {
-            spec.withDraft(!active.contains(spec.name()));
+            spec.withDraft(this.activationCalculator.hasMissingEnvVars(spec));
         }
+        applyPresetDrivenBuiltinExposure(active);
         this.toolSpecService.loadAll(() -> Stream.concat(defaultToolSpecs.stream(),
                         toolSpecsMcpServerSettings.stream().map(ToolSpecsMcpServerSetting::toolSpecs)
                                 .filter(Objects::nonNull).flatMap(List::stream))
                 .forEach(toolSpecService::update));
         this.toolSpecService.reconcileNativeExposure();
+    }
+
+    // The preset is authoritative for built-in exposure: only its tools are exposed (active set), rebuilt
+    // on every boot (replace, not merge) so a preset switch drops stale entries. Draft (env-gated) tools are
+    // skipped, drawer un-checks (excludedToolIds) are honored, and user-authored selections are preserved.
+    private void applyPresetDrivenBuiltinExposure(Set<String> active) {
+        ToolMcpServerSetting setting = this.toolSpecService.getToolMcpServerSetting();
+        this.toolSpecService.setToolMcpServerSetting(new ToolMcpServerSetting(setting.autoAdd(),
+                computePresetDrivenExposure(active, setting), setting.excludedToolIds()));
+    }
+
+    private Set<String> computePresetDrivenExposure(Set<String> active, ToolMcpServerSetting setting) {
+        Set<String> exposed = new HashSet<>();
+        for (ToolSpec spec : this.defaultToolSpecs) {
+            String toolId = spec.toolId();
+            if (active.contains(spec.name()) && !spec.draft() && Objects.nonNull(toolId)
+                    && !setting.excludedToolIds().contains(toolId)) {
+                exposed.add(toolId);
+            }
+        }
+        setting.exposedToolIds().stream()
+                .filter(toolId -> !this.defaultToolIds.contains(toolId)).forEach(exposed::add);
+        return exposed;
+    }
+
+    public void exposeBuiltinToolsAsPreference(Collection<String> toolNames) {
+        this.preferenceService.update(new DefaultToolsPreference(3, null,
+                new DefaultToolsPreference.Rule(new LinkedHashSet<>(toolNames), Set.of(), Set.of()),
+                DefaultToolsPreference.Rule.empty()));
+        Set<String> active = this.preferenceResolver.resolveActiveNames(
+                this.preferenceService.current(), this.defaultToolSpecs);
+        ToolMcpServerSetting setting = this.toolSpecService.getToolMcpServerSetting();
+        this.toolSpecService.updateToolMcpServerSetting(new ToolMcpServerSetting(setting.autoAdd(),
+                computePresetDrivenExposure(active, setting), setting.excludedToolIds()));
     }
 }

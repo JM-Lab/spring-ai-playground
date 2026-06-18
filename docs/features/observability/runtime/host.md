@@ -1,5 +1,5 @@
 title: Host
-description: Operational JVM and OS health - heap, GC, threads, classes, CPU, load, uptime, disk, file descriptors, buffer pools. Fed by the parallel SystemMetricsCollector pipeline independent of trace traffic.
+description: Operational JVM and OS health - heap, GC, threads, CPU, load, uptime, disk, and file descriptors, fed by a metrics pipeline independent of trace traffic.
 
 # Host
 

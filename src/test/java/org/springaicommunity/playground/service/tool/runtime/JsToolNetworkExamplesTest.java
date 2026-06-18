@@ -15,8 +15,8 @@
  */
 package org.springaicommunity.playground.service.tool.runtime;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -57,7 +57,7 @@ class JsToolNetworkExamplesTest {
         server.createContext("/users/", JsToolNetworkExamplesTest::githubUserHandler);
         server.createContext("/search/repositories", JsToolNetworkExamplesTest::githubSearchReposHandler);
         server.createContext("/api/v3/simple/price", JsToolNetworkExamplesTest::coingeckoHandler);
-        server.createContext("/convert", JsToolNetworkExamplesTest::exchangerateHandler);
+        server.createContext("/v6/latest/", JsToolNetworkExamplesTest::erApiHandler);
         server.createContext("/v1/ticker", JsToolNetworkExamplesTest::upbitHandler);
         server.createContext("/v1/orderbook", JsToolNetworkExamplesTest::upbitOrderbookHandler);
         server.createContext("/v1/candles/", JsToolNetworkExamplesTest::upbitCandlesHandler);
@@ -65,7 +65,7 @@ class JsToolNetworkExamplesTest {
         server.createContext("/public/ticker/", JsToolNetworkExamplesTest::bithumbHandler);
         server.createContext("/public/orderbook/", JsToolNetworkExamplesTest::bithumbOrderbookHandler);
         server.createContext("/8.8.8.8/json/", JsToolNetworkExamplesTest::ipapiHandler);
-        server.createContext("/v3.1/name/", JsToolNetworkExamplesTest::countriesHandler);
+        server.createContext("/gh/mledoze/", JsToolNetworkExamplesTest::countriesHandler);
         server.createContext("/api/query", JsToolNetworkExamplesTest::arxivHandler);
         server.createContext("/api/v3/PublicHolidays/", JsToolNetworkExamplesTest::nagerHandler);
         server.createContext("/r/", JsToolNetworkExamplesTest::redditHandler);
@@ -413,7 +413,7 @@ class JsToolNetworkExamplesTest {
     void convertCurrencyReturnsRateAndResult() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("from", "USD", "to", "KRW", "amount", 100.0),
-                        code("convertCurrency").replace("https://api.exchangerate.host", baseUrl), declaredNamesFor("convertCurrency")),
+                        code("convertCurrency").replace("https://open.er-api.com", baseUrl), declaredNamesFor("convertCurrency")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
@@ -1200,7 +1200,7 @@ class JsToolNetworkExamplesTest {
     void getCountryInfoProjectsToCompactFields() {
         JsExecutionResult r = executor.execute(
                 new JsExecutionParams(Map.of("name", "korea"),
-                        code("getCountryInfo").replace("https://restcountries.com", baseUrl), declaredNamesFor("getCountryInfo")),
+                        code("getCountryInfo").replace("https://cdn.jsdelivr.net", baseUrl), declaredNamesFor("getCountryInfo")),
                 allowlist("127.0.0.1"));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
         @SuppressWarnings("unchecked")
@@ -1240,22 +1240,6 @@ class JsToolNetworkExamplesTest {
         assertThat(holidays).hasSize(2);
         assertThat(holidays.getFirst().get("date")).isEqualTo("2026-01-01");
         assertThat(holidays.getFirst().get("localName")).isEqualTo("새해 첫날");
-    }
-
-    @Test
-    void searchRedditFiltersByPattern() {
-        JsExecutionResult r = executor.execute(
-                new JsExecutionParams(
-                        Map.of("subreddit", "programming", "query", "spring ai",
-                               "limit", 5L, "sort", "relevance"),
-                        code("searchReddit").replace("https://www.reddit.com", baseUrl), declaredNamesFor("searchReddit")),
-                allowlist("127.0.0.1"));
-        assertThat(r.isOk()).as("%s", r.error()).isTrue();
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> posts = (List<Map<String, Object>>) r.result();
-        assertThat(posts).hasSize(2);
-        assertThat(posts.getFirst().get("title")).isEqualTo("Spring AI thread");
-        assertThat(posts.getFirst().get("permalink").toString()).contains("/r/programming/");
     }
 
     @Test
@@ -1438,12 +1422,10 @@ class JsToolNetworkExamplesTest {
         respondJson(x, 200, body);
     }
 
-    private static void exchangerateHandler(com.sun.net.httpserver.HttpExchange x) throws IOException {
-        String body = "{\"success\":true," +
-                "\"query\":{\"from\":\"USD\",\"to\":\"KRW\",\"amount\":100}," +
-                "\"info\":{\"rate\":1300}," +
-                "\"result\":130000," +
-                "\"date\":\"2026-05-13\"}";
+    private static void erApiHandler(com.sun.net.httpserver.HttpExchange x) throws IOException {
+        String body = "{\"result\":\"success\"," +
+                "\"time_last_update_utc\":\"Fri, 12 Jun 2026 00:02:31 +0000\"," +
+                "\"rates\":{\"USD\":1,\"KRW\":1300}}";
         respondJson(x, 200, body);
     }
 
@@ -1607,15 +1589,24 @@ class JsToolNetworkExamplesTest {
         respondJson(x, 200, body);
     }
 
+    // Full-dataset shape (mledoze/countries): the tool downloads every country and filters locally,
+    // so the stub carries a non-matching entry to prove the name filter works.
     private static void countriesHandler(com.sun.net.httpserver.HttpExchange x) throws IOException {
         String body = "[" +
                 "{\"name\":{\"common\":\"South Korea\",\"official\":\"Republic of Korea\"}," +
                 "\"capital\":[\"Seoul\"],\"region\":\"Asia\",\"subregion\":\"Eastern Asia\"," +
-                "\"population\":51780579,\"area\":100210," +
+                "\"area\":100210," +
                 "\"languages\":{\"kor\":\"Korean\"}," +
                 "\"currencies\":{\"KRW\":{\"name\":\"South Korean won\",\"symbol\":\"₩\"}}," +
                 "\"idd\":{\"root\":\"+8\",\"suffixes\":[\"2\"]}," +
-                "\"flag\":\"🇰🇷\",\"latlng\":[37.0,127.5]}" +
+                "\"flag\":\"🇰🇷\",\"latlng\":[37.0,127.5]}," +
+                "{\"name\":{\"common\":\"Japan\",\"official\":\"Japan\"}," +
+                "\"capital\":[\"Tokyo\"],\"region\":\"Asia\",\"subregion\":\"Eastern Asia\"," +
+                "\"area\":377930," +
+                "\"languages\":{\"jpn\":\"Japanese\"}," +
+                "\"currencies\":{\"JPY\":{\"name\":\"Japanese yen\",\"symbol\":\"¥\"}}," +
+                "\"idd\":{\"root\":\"+8\",\"suffixes\":[\"1\"]}," +
+                "\"flag\":\"🇯🇵\",\"latlng\":[36.0,138.0]}" +
                 "]";
         respondJson(x, 200, body);
     }

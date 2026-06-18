@@ -41,7 +41,6 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.model.tool.DefaultToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -55,6 +54,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -81,7 +81,13 @@ public class ChatService {
 
     public record ChatMeta(String model, Usage usage, List<Document> retrievedDocuments) {}
 
+    // One LLM round inside a streamed turn (a tool loop runs several); flags tell the UI which process
+    // stage the round's tokens belong to.
+    public record RoundUsage(int promptTokens, int completionTokens, int totalTokens,
+            boolean toolCallRound, boolean thinkRound) {}
+
     private final String systemPrompt;
+    private final int defaultMemoryWindow;
     private final List<String> models;
     private final ChatModel chatModel;
     private final ChatOptions chatOptions;
@@ -89,20 +95,25 @@ public class ChatService {
     private final ChatMemory chatMemory;
     private final SharedDataReader<List<VectorStoreDocumentInfo>> vectorStoreDocumentsReader;
     private final SharedDataReader<List<McpServerInfo>> mcpServerInfosReader;
+    private final ChatRequestOptionsFactory chatRequestOptionsFactory;
 
     public ChatService(ChatModel chatModel, ChatClient chatClient, ChatMemory chatMemory,
             SpringAiPlaygroundOptions playgroundOptions,
             SharedDataReader<List<VectorStoreDocumentInfo>> vectorStoreDocumentsReader,
-            SharedDataReader<List<McpServerInfo>> mcpServerInfosReader) {
+            SharedDataReader<List<McpServerInfo>> mcpServerInfosReader,
+            ChatRequestOptionsFactory chatRequestOptionsFactory) {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
+        this.defaultMemoryWindow = playgroundOptions.chat().memoryMaxMessages();
         this.models = playgroundOptions.chat().models();
         this.chatModel = chatModel;
-        this.chatOptions = Optional.ofNullable((ChatOptions) playgroundOptions.chat().chatOptions())
-                .orElseGet(chatModel::getDefaultOptions);
+        this.chatOptions = Optional.ofNullable(playgroundOptions.chat().chatOptions())
+                .map(ChatService::toChatOptions)
+                .orElseGet(chatModel::getOptions);
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.vectorStoreDocumentsReader = vectorStoreDocumentsReader;
         this.mcpServerInfosReader = mcpServerInfosReader;
+        this.chatRequestOptionsFactory = chatRequestOptionsFactory;
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
@@ -110,24 +121,30 @@ public class ChatService {
             Consumer<Object> mcpToolProcessMessageConsumer, Consumer<Object> ragProcessMessageConsumer,
             Consumer<Object> thinkProcessMessageConsumer) {
         return stream(chatHistory, prompt, filterExpression, completeChatHistoryConsumer, toolCallbacks,
-                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, thinkProcessMessageConsumer, null, null);
+                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, thinkProcessMessageConsumer, null, null,
+                null, null);
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
             Consumer<ChatHistory> completeChatHistoryConsumer, List<ToolCallback> toolCallbacks,
             Consumer<Object> mcpToolProcessMessageConsumer, Consumer<Object> ragProcessMessageConsumer,
-            Consumer<Object> thinkProcessMessageConsumer, Consumer<SignalType> beforeHistoryCommit,
-            HumanQuestionHandler humanQuestionHandler) {
+            Consumer<Object> thinkProcessMessageConsumer, Consumer<RoundUsage> roundUsageConsumer,
+            Consumer<SignalType> beforeHistoryCommit, HumanQuestionHandler humanQuestionHandler,
+            ReasoningEffort reasoning) {
         return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer,
-                ragProcessMessageConsumer, thinkProcessMessageConsumer, humanQuestionHandler).map(
-                        Generation::getOutput)
+                ragProcessMessageConsumer, thinkProcessMessageConsumer, roundUsageConsumer, humanQuestionHandler,
+                reasoning).map(Generation::getOutput)
                 .map(assistantMessage -> Optional.ofNullable(assistantMessage.getText()).orElse(""))
                 .doFinally(signalType -> {
-                    if (SignalType.ON_COMPLETE.equals(signalType) || SignalType.CANCEL.equals(signalType)) {
-                        if (Objects.nonNull(beforeHistoryCommit)) beforeHistoryCommit.accept(signalType);
-                        if (Objects.nonNull(completeChatHistoryConsumer))
-                            completeChatHistoryConsumer.accept(chatHistory);
-                    }
+                    boolean finished = SignalType.ON_COMPLETE.equals(signalType)
+                            || SignalType.CANCEL.equals(signalType);
+                    if (finished && Objects.nonNull(beforeHistoryCommit)) beforeHistoryCommit.accept(signalType);
+                    // An errored stream still owns the user turn (plus any partial text committed upstream);
+                    // persist it so a failure cannot lose the conversation. UI finalization already ran via
+                    // the caller's doOnError, so beforeHistoryCommit stays complete/cancel-only.
+                    if ((finished || SignalType.ON_ERROR.equals(signalType))
+                            && Objects.nonNull(completeChatHistoryConsumer))
+                        completeChatHistoryConsumer.accept(chatHistory);
                 });
     }
 
@@ -135,27 +152,37 @@ public class ChatService {
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
             Consumer<Object> ragProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer) {
         return streamWithRaw(chatHistory, prompt, filterExpression, toolCallbacks, mcpToolProcessMessageConsumer,
-                ragProcessMessageConsumer, thinkProcessMessageConsumer, null);
+                ragProcessMessageConsumer, thinkProcessMessageConsumer, null, null, null);
     }
 
     public Flux<Generation> streamWithRaw(ChatHistory chatHistory, String prompt, String filterExpression,
             List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
             Consumer<Object> ragProcessMessageConsumer, Consumer<Object> thinkProcessMessageConsumer,
-            HumanQuestionHandler humanQuestionHandler) {
+            Consumer<RoundUsage> roundUsageConsumer, HumanQuestionHandler humanQuestionHandler,
+            ReasoningEffort reasoning) {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         StringBuilder accumulatedText = new StringBuilder();
         String userMessageId = UUID.randomUUID().toString();
         // Captured on the servlet thread (MdcIdentityFilter set it) to propagate into the reactive chain below.
         String userId = MDC.get(MdcIdentityFilter.USER_ID);
         String sessionId = MDC.get(MdcIdentityFilter.SESSION_ID);
+        AtomicBoolean roundHadToolCalls = new AtomicBoolean();
+        AtomicBoolean roundHadThinking = new AtomicBoolean();
         return getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, humanQuestionHandler)
+                mcpToolProcessMessageConsumer, ragProcessMessageConsumer, humanQuestionHandler, reasoning)
                 .stream().chatClientResponse().map(
                         chatClientResponse -> {
-                    if (Objects.nonNull(thinkProcessMessageConsumer)) {
+                    if (Objects.nonNull(thinkProcessMessageConsumer) || Objects.nonNull(roundUsageConsumer)) {
                         Generation generation = chatClientResponse.chatResponse().getResult();
-                        extractThinking(generation).ifPresent(thinkProcessMessageConsumer);
+                        extractThinking(generation).ifPresent(thinking -> {
+                            roundHadThinking.set(true);
+                            if (Objects.nonNull(thinkProcessMessageConsumer))
+                                thinkProcessMessageConsumer.accept(thinking);
+                        });
+                        if (Objects.nonNull(generation) && !generation.getOutput().getToolCalls().isEmpty())
+                            roundHadToolCalls.set(true);
                     }
+                    emitRoundUsage(chatClientResponse, roundUsageConsumer, roundHadToolCalls, roundHadThinking);
                     return chatClientResponse;
                 }).filter(chatClientResponse -> {
                     String text = chatClientResponse.chatResponse().getResult().getOutput().getText();
@@ -181,10 +208,14 @@ public class ChatService {
                 })
                 .doFinally(signalType -> {
                     try {
-                        if ((SignalType.ON_COMPLETE.equals(signalType) || SignalType.CANCEL.equals(signalType)) &&
+                        // ON_ERROR is treated like CANCEL: keep the streamed-so-far text and usage metadata
+                        // instead of dropping the round on a mid-stream failure.
+                        boolean interrupted = SignalType.CANCEL.equals(signalType)
+                                || SignalType.ON_ERROR.equals(signalType);
+                        if ((SignalType.ON_COMPLETE.equals(signalType) || interrupted) &&
                                 Objects.nonNull(lastChatResponse.get()))
                             applyChatResponseMetadataToLastUserMessage(chatHistory, lastChatResponse.get());
-                        if (SignalType.CANCEL.equals(signalType) && accumulatedText.length() > 0)
+                        if (interrupted && accumulatedText.length() > 0)
                             commitPartialAssistantMessage(chatHistory, accumulatedText.toString());
                     } finally {
                         MDC.remove(MDC_CONVERSATION_ID);
@@ -193,6 +224,21 @@ public class ChatService {
                         if (sessionId != null) MDC.remove(MdcIdentityFilter.SESSION_ID);
                     }
                 });
+    }
+
+    // A non-zero usage chunk marks the end of one LLM round inside the stream (tool loops produce several);
+    // the flags are consumed-and-reset so each round is classified by what it actually streamed.
+    private static void emitRoundUsage(ChatClientResponse chatClientResponse,
+            Consumer<RoundUsage> roundUsageConsumer, AtomicBoolean roundHadToolCalls,
+            AtomicBoolean roundHadThinking) {
+        if (Objects.isNull(roundUsageConsumer)) return;
+        Usage usage = chatClientResponse.chatResponse().getMetadata().getUsage();
+        if (Objects.isNull(usage)) return;
+        int totalTokens = Objects.requireNonNullElse(usage.getTotalTokens(), 0);
+        if (totalTokens <= 0) return;
+        roundUsageConsumer.accept(new RoundUsage(Objects.requireNonNullElse(usage.getPromptTokens(), 0),
+                Objects.requireNonNullElse(usage.getCompletionTokens(), 0), totalTokens,
+                roundHadToolCalls.getAndSet(false), roundHadThinking.getAndSet(false)));
     }
 
     private void commitPartialAssistantMessage(ChatHistory chatHistory, String text) {
@@ -204,14 +250,12 @@ public class ChatService {
 
     private ChatClient.ChatClientRequestSpec getChatClientRequestSpec(ChatHistory chatHistory, String prompt,
             String filterExpression, List<ToolCallback> toolCallbacks, Consumer<Object> mcpToolProcessMessageConsumer,
-            Consumer<Object> ragProcessMessageConsumer, HumanQuestionHandler humanQuestionHandler) {
+            Consumer<Object> ragProcessMessageConsumer, HumanQuestionHandler humanQuestionHandler,
+            ReasoningEffort reasoning) {
         DefaultChatOptions chatOptions = chatHistory.chatOptions();
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = this.chatClient.prompt().user(prompt).options(
-                        DefaultToolCallingChatOptions.builder().frequencyPenalty(chatOptions.getFrequencyPenalty())
-                                .maxTokens(chatOptions.getMaxTokens())
-                                .model(chatOptions.getModel()).presencePenalty(chatOptions.getPresencePenalty())
-                                .temperature(chatOptions.getTemperature())
-                                .topP(chatOptions.getTopP()).build())
+                        this.chatRequestOptionsFactory.build(this.chatModel, chatOptions, chatHistory.extraOptions(),
+                                reasoning).mutate())
                 .advisors(advisor -> {
                     advisor.param(CONVERSATION_ID, chatHistory.conversationId());
                     if (StringUtils.hasText(filterExpression)) {
@@ -229,7 +273,7 @@ public class ChatService {
             // Carry identity via tool context so McpToolCallingManager can restore it on the tool-exec thread.
             putIfPresent(toolContext, TOOL_CONTEXT_USER_ID, MDC.get(MdcIdentityFilter.USER_ID));
             putIfPresent(toolContext, TOOL_CONTEXT_SESSION_ID, MDC.get(MdcIdentityFilter.SESSION_ID));
-            chatClientRequestSpec.toolCallbacks(toolCallbacks).toolContext(toolContext);
+            chatClientRequestSpec.tools((Object[]) toolCallbacks.toArray(new ToolCallback[0])).toolContext(toolContext);
         }
         return Optional.ofNullable(chatHistory.systemPrompt()).filter(Predicate.not(String::isBlank))
                 .map(chatClientRequestSpec::system).orElse(chatClientRequestSpec);
@@ -253,7 +297,7 @@ public class ChatService {
         try {
             return applyChatResponseMetadataToLastUserMessage(chatHistory,
                     getChatClientRequestSpec(chatHistory, prompt, filterExpression, toolCallbacks,
-                            mcpToolProcessMessageConsumer, null, null).call()
+                            mcpToolProcessMessageConsumer, null, null, null).call()
                             .chatClientResponse()).getResult();
         } finally {
             MDC.remove(MDC_CONVERSATION_ID);
@@ -280,8 +324,25 @@ public class ChatService {
         return this.chatOptions;
     }
 
+    private static ChatOptions toChatOptions(SpringAiPlaygroundOptions.ChatOptionsConfig config) {
+        ChatOptions.Builder<?> builder = ChatOptions.builder();
+        if (config.model() != null) builder.model(config.model());
+        if (config.temperature() != null) builder.temperature(config.temperature());
+        if (config.maxTokens() != null) builder.maxTokens(config.maxTokens());
+        if (config.topP() != null) builder.topP(config.topP());
+        if (config.topK() != null) builder.topK(config.topK());
+        if (config.frequencyPenalty() != null) builder.frequencyPenalty(config.frequencyPenalty());
+        if (config.presencePenalty() != null) builder.presencePenalty(config.presencePenalty());
+        if (config.stopSequences() != null) builder.stopSequences(config.stopSequences());
+        return builder.build();
+    }
+
     public String getSystemPrompt() {
         return this.systemPrompt;
+    }
+
+    public int getDefaultMemoryWindow() {
+        return this.defaultMemoryWindow;
     }
 
     public List<String> getModels() {
@@ -290,6 +351,10 @@ public class ChatService {
 
     public String getChatModelProvider() {
         return this.chatModel.getClass().getSimpleName().replace("ChatModel", "");
+    }
+
+    public ChatProvider getChatProvider() {
+        return ChatProvider.from(this.chatModel);
     }
 
     public String buildFilterExpression(List<String> docInfoIds) {

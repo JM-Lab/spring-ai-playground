@@ -89,7 +89,7 @@ The `-v spring-ai-playground:/root` named volume keeps authored tools, saved too
 
 Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel - the web UI runs in the same process either way; the port mapping just exposes it. Pick a different host port (e.g. `-p 9000:8282`) if 8282 is in use.
 
-The container ships with the gateway and authoring UI on. The **Starter 5** preset has no required credentials and works out of the box; other presets and individual catalog tools stay dormant until you supply the matching environment variables. Pass them with `-e NAME=value` flags on the same `docker run` line - the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_PSE_ID`, `SLACK_WEBHOOK_URL`, ...) are listed in [Desktop App → Use Environment Variables for Keys and Secrets](desktop.md#7-use-environment-variables-for-keys-and-secrets). The File Toolkit preset additionally honors `TOOL_STUDIO_FS_BASE` to set the base path for `safety.fs`; if unset it defaults to `$HOME/spring-ai-playground/fs-tool-workspace` inside the container (typically `/root/spring-ai-playground/fs-tool-workspace`).
+The container ships with the gateway and authoring UI on. The **Starter 5** preset has no required credentials and works out of the box; other presets and individual catalog tools stay dormant until you supply the matching environment variables. Pass them with `-e NAME=value` flags on the same `docker run` line - the typical entries (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_PSE_ID`, `SLACK_WEBHOOK_URL`, ...) are listed in [Desktop App → Use Environment Variables for Keys and Secrets](desktop.md#9-use-environment-variables-for-keys-and-secrets). The File Toolkit preset additionally honors `TOOL_STUDIO_FS_BASE` to set the base path for `safety.fs`; if unset it defaults to `$HOME/spring-ai-playground/fs-tool-workspace` inside the container (typically `/root/spring-ai-playground/fs-tool-workspace`).
 
 The `mcp-stdio` profile silences the CONSOLE log appender so stdout stays a clean JSON-RPC channel; rolling-file logs at `~/spring-ai-playground/logs/` are unaffected.
 
@@ -107,6 +107,24 @@ cd spring-ai-playground
 ```
 
 Then open `http://localhost:8282`.
+
+### Apple Silicon and MLX models { #apple-silicon-mlx }
+
+On an Apple Silicon Mac (`arm64`), a source or `java -jar` run automatically layers a bundled **`mlx`** profile on top of the default `ollama` profile. The chat defaults and the chat model menu switch to Apple's MLX-optimized Ollama builds, which run noticeably faster on M-series hardware: the default chat model becomes `qwen3.5:4b-mlx` and `spring.ai.playground.chat.models` lists the `-mlx` builds.
+
+An `EnvironmentPostProcessor` makes this decision at startup, gated on the OS (`mac`) and architecture (`arm64`). Intel Macs, Windows, Linux, and **Docker containers - which run Linux even on an Apple Silicon host** - are unaffected and use the generic model names as-is. You still pull the `-mlx` builds into Ollama yourself; `spring.ai.ollama.init.pull-model-strategy: when_missing` pulls the configured chat and embedding models on first start.
+
+To keep the generic model names, opt out with `spring.ai.playground.ollama.mlx-auto-select=false`:
+
+```bash
+# fat JAR
+java -jar spring-ai-playground-*.jar --spring.ai.playground.ollama.mlx-auto-select=false
+
+# source run
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.ai.playground.ollama.mlx-auto-select=false"
+```
+
+The desktop launcher sets this same flag and resolves the MLX build a different way - it only upgrades to an `-mlx` build that is already installed locally. See [Desktop App → Apple Silicon and MLX models](desktop.md#apple-silicon-and-mlx-models).
 
 ### Use as an MCP server from the fat JAR
 
@@ -154,7 +172,7 @@ Notes:
 
 ## Switching to OpenAI
 
-To switch from the default Ollama profile to OpenAI on the alternative runtimes, provide `OPENAI_API_KEY` and activate the `openai` profile. The desktop launcher path is documented separately under [Desktop App → Use Environment Variables for Keys and Secrets](desktop.md#7-use-environment-variables-for-keys-and-secrets).
+To switch from the default Ollama profile to OpenAI on the alternative runtimes, provide `OPENAI_API_KEY` and activate the `openai` profile. The desktop launcher path is documented separately under [Desktop App → Use Environment Variables for Keys and Secrets](desktop.md#9-use-environment-variables-for-keys-and-secrets).
 
 ### Docker
 
@@ -181,7 +199,7 @@ set OPENAI_API_KEY=your-openai-api-key
 ./mvnw spring-boot:run --spring.profiles.active=openai
 ```
 
-For OpenAI-compatible servers and the YAML overrides each one expects, see [Getting Started → Switching to OpenAI-Compatible Servers](index.md#switching-to-openai-compatible-servers).
+For OpenAI-compatible servers and the YAML overrides each one expects, see [External Connections → OpenAI-compatible servers](external-connections.md#switching-to-openai-compatible-servers).
 
 ## Further Reading
 

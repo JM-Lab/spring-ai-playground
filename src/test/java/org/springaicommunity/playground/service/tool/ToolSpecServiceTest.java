@@ -59,6 +59,9 @@ class ToolSpecServiceTest {
     ToolSpecService toolSpecService;
 
     @Autowired
+    ToolSpecPersistenceService toolSpecPersistenceService;
+
+    @Autowired
     ObservationRegistry observationRegistry;
 
     @MockitoBean
@@ -527,5 +530,23 @@ class ToolSpecServiceTest {
                 "noObsTool", List.<Map.Entry<String, String>>of(),
                 "return 1;", Map.of());
         assertThat(result.isOk()).isTrue();
+    }
+
+    @Test
+    void autoAddExposesPublishedCustomToolsButNotDefaults() {
+        toolSpecService.setToolMcpServerSetting(new ToolSpecService.ToolMcpServerSetting(true, Set.of()));
+        String defaultId = toolSpecPersistenceService.getDefaultToolIds().iterator().next();
+
+        toolSpecService.update(new ToolSpec(defaultId, "defaultLikeTool", "a default-catalog id",
+                List.of(), List.of(), "return 1;", CodeType.Javascript, null));
+        assertThat(toolSpecService.getToolMcpServerSetting().exposedToolIds())
+                .as("built-in tools must not be auto-exposed on publish")
+                .doesNotContain(defaultId);
+
+        toolSpecService.update(new ToolSpec("custom-auto-1", "customAutoTool", "a user-authored tool",
+                List.of(), List.of(), "return 1;", CodeType.Javascript, null));
+        assertThat(toolSpecService.getToolMcpServerSetting().exposedToolIds())
+                .as("user-authored tools keep the auto-expose behavior")
+                .contains("custom-auto-1");
     }
 }

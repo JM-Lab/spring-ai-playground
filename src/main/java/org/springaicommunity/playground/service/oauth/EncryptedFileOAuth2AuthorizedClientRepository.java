@@ -15,7 +15,8 @@
  */
 package org.springaicommunity.playground.service.oauth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
@@ -64,8 +65,8 @@ public class EncryptedFileOAuth2AuthorizedClientRepository
         this.encryptor = encryptor;
         this.persistenceExecutor = persistenceExecutor;
         this.eventPublisher = eventPublisher;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModules(SecurityJackson2Modules.getModules(getClass().getClassLoader()));
+        this.objectMapper = JsonMapper.builder()
+                .addModules(SecurityJacksonModules.getModules(getClass().getClassLoader())).build();
         loadAllFromDisk();
     }
 

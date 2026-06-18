@@ -15,9 +15,9 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springframework.stereotype.Component;
@@ -40,9 +40,10 @@ public class CanonicalHasher {
     private final ObjectMapper mapper;
 
     public CanonicalHasher(ObjectMapper objectMapper) {
-        this.mapper = objectMapper.copy()
+        this.mapper = objectMapper.rebuild()
                 .disable(SerializationFeature.INDENT_OUTPUT)
-                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+                .build();
     }
 
     public String hashTool(ToolSpec spec) {
@@ -122,7 +123,7 @@ public class CanonicalHasher {
         if (connectionAsJson == null || connectionAsJson.isBlank()) return "";
         try {
             return this.mapper.readValue(connectionAsJson, Object.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return connectionAsJson;
         }
     }
@@ -130,7 +131,7 @@ public class CanonicalHasher {
     private String hash(Object canonical) {
         try {
             return sha256Hex(this.mapper.writeValueAsBytes(canonical));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to canonicalize content for hashing", e);
         }
     }

@@ -15,7 +15,8 @@
  */
 package org.springaicommunity.playground.service.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.slf4j.Logger;
@@ -93,7 +94,7 @@ public class DefaultToolsPreferenceService {
                     objectMapper.readValue(preferenceFile.toFile(), DefaultToolsPreference.class);
             logger.info("Loaded default-tools preference from {} (preset={})", preferenceFile, loaded.preset());
             return loaded;
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             logger.error("Failed to read {} — falling back to default preset", preferenceFile, e);
             return DefaultToolsPreference.forPreset(presetCatalog.defaultPreset().id());
         }
@@ -120,7 +121,7 @@ public class DefaultToolsPreferenceService {
                 } catch (AtomicMoveNotSupportedException e) {
                     Files.move(tmp, preferenceFile, StandardCopyOption.REPLACE_EXISTING);
                 }
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Failed to save default-tools preference", e);
             }
         });

@@ -271,7 +271,7 @@ class SystemMetricsSnapshotTest {
         MeterRegistry registry = new SimpleMeterRegistry();
         // Active gauges are LongTaskTimer in real Spring AI emit; for this unit test we
         // use plain gauges since the snapshot uses sumGauge() over them.
-        gauge(registry, "gen_ai.chat.client.operation.active", Tags.empty(), 1);
+        gauge(registry, "spring.ai.chat.client.active", Tags.empty(), 1);
         gauge(registry, "gen_ai.client.operation.active", Tags.empty(), 1);
         gauge(registry, "spring.ai.advisor.active", Tags.empty(), 4);
         gauge(registry, "db.vector.client.operation.active", Tags.empty(), 0);

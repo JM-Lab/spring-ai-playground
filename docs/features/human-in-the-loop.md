@@ -1,8 +1,8 @@
-description: Human-in-the-Loop approval in Spring AI Playground - require explicit approval before a tool runs, set the mode per tool in Tool Studio or per re-exposed tool in the Expose Tools drawer, and approve or decline calls right inside Agentic Chat.
+description: Human-in-the-Loop approval in Spring AI Playground - require explicit approval before a tool runs, set it per tool, and approve or decline calls inside Agentic Chat.
 
 # Human-in-the-Loop Approval
 
-**Where:** set it per tool in **Tool Studio → Sandbox & Capabilities → Human-in-the-loop**, or per re-exposed tool in the **Expose Tools** drawer's **Approval** column. It then takes effect in **Agentic Chat** and for any external MCP client.
+**Where:** set it per tool in **Tool Studio → Sandbox & Capabilities → Human-in-the-loop**, or per re-exposed tool in the **Composed Tools** drawer's **HITL** column. It then takes effect in **Agentic Chat** and for any external MCP client.
 
 **Human-in-the-loop (HITL)** pauses a tool call and waits for you to **approve or decline** before the tool runs. The risk level warns you how dangerous a tool is; the sandbox limits what it can touch; HITL is the gate that asks *"run this exact call?"* at the moment it would fire.
 
@@ -46,9 +46,9 @@ The mode **defaults to Required above `L0`** and to Disabled at `L0` - the more 
 
 ## Require approval on a re-exposed external tool { #expose }
 
-When you [proxy an external tool](mcp-server/proxy.md) through the built-in server, each row in the **Expose Tools** drawer has an **Approval** toggle:
+When you [proxy an external tool](mcp-server/proxy.md) through the built-in server, each row in the **Composed Tools** drawer has a **HITL** toggle:
 
-- Ticking **Approval** means *"require explicit human approval before this tool runs when called from an external MCP client. Chat on this device gates these tools too."*
+- Ticking **HITL** means *"require explicit human approval before this tool runs when called from an external MCP client. Chat on this device gates these tools too."*
 - It also **lowers the tool's displayed risk by one band** (a `HITL -1` annotation), because a human now gates every call - see [Composed risk and HITL mitigation](../mcp-server-safety.md#composed-risk).
 
 You can toggle approval per tool, or for all selected tools at once. The same setting is available in YAML via the `hitl: true` key on a composed tool - see the [Configuration reference](../getting-started/configuration.md#mcp).
@@ -78,5 +78,5 @@ For an external MCP client (e.g. Claude Desktop) calling a `Required` tool on th
 - [Human-in-the-Loop Approval (architecture)](../hitl-architecture.md) - the two gates, loopback de-duplication, and fail-safe internals
 - [MCP Server Proxy](mcp-server/proxy.md) - re-expose external tools with per-tool approval
 - [Tool Studio](tool-studio/index.md) - author tools and their sandbox + approval policy
-- [Agentic Chat](agentic-chat.md) - where approvals are answered
+- [Agentic Chat](agentic-chat/index.md) - where approvals are answered
 - [Tutorial 11 - Approve a Tool in Chat](../tutorials/11-human-approval.md)

@@ -37,7 +37,8 @@ Converts a moment in time between IANA time zones. Returns the same instant rend
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -85,6 +86,8 @@ return parts.year + '-' + parts.month + '-' + parts.day
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -112,7 +115,8 @@ Computes b - a in the requested unit (days|hours|minutes|seconds|milliseconds). 
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -142,6 +146,8 @@ switch (String(unit || 'milliseconds').toLowerCase()) {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -167,7 +173,8 @@ Percent-encodes a string for use in a URL component. Equivalent to encodeURIComp
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -184,6 +191,8 @@ if (text == null) throw new Error('text required');
 return encodeURIComponent(String(text));
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -212,7 +221,8 @@ Adds (or subtracts) a duration to a date and returns the resulting ISO timestamp
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -248,6 +258,8 @@ return d.toISOString();
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -274,7 +286,8 @@ Parses a date/time string (ISO 8601 or RFC 2822) and returns its components plus
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -321,6 +334,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -348,7 +363,8 @@ Computes the next datetime matching a standard 5-field cron expression (minute h
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -420,6 +436,8 @@ return results;
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -446,7 +464,8 @@ Returns a line-by-line diff between two texts. Each entry is {op, line} where op
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -489,6 +508,8 @@ return out.reverse();
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -516,7 +537,8 @@ Sorts lines of text alphabetically. Supports reverse and case-insensitive option
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -540,6 +562,8 @@ if (reverse) lines.reverse();
 return lines.join('\n');
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -566,7 +590,8 @@ Scans text for personally identifiable information patterns (email, US SSN, US p
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -631,6 +656,8 @@ return out;
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -658,7 +685,8 @@ Returns all regex matches in the input. With the 'g' flag every match is returne
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -694,6 +722,8 @@ return [{ match: m[0], groups: Array.from(m).slice(1), index: m.index }];
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -721,7 +751,8 @@ Formats a date (ISO string or epoch ms) using a pattern with tokens yyyy/MM/dd H
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -764,6 +795,8 @@ return pat.replace(/yyyy|SSS|MM|dd|HH|mm|ss/g, t => map[t] || t);
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -789,7 +822,8 @@ Returns summary statistics (count, sum, min, max, mean, median, stddev) for an a
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -836,6 +870,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -861,7 +897,8 @@ Scans text for well-known secret patterns (AWS keys, GitHub tokens, Slack tokens
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -909,6 +946,8 @@ return out;
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -937,7 +976,8 @@ Replaces regex matches in the input with the given replacement string. Supports 
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -958,6 +998,8 @@ const re = new RegExp(pattern, flagsStr);
 return String(text).replace(re, replacement == null ? '' : String(replacement));
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -985,7 +1027,8 @@ Evaluates a safe arithmetic/logical expression (no eval, no host access). Suppor
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1115,6 +1158,8 @@ return result;
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1142,7 +1187,8 @@ Serialises an array of rows into CSV text. Rows may be arrays (use header param)
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1214,6 +1260,8 @@ return out.join('\n');
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1241,7 +1289,8 @@ Encodes UTF-8 text to base64, or decodes base64 back to UTF-8 text. Use mode='en
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1284,6 +1333,8 @@ throw new Error('mode must be encode or decode');
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1311,7 +1362,8 @@ Encodes UTF-8 text to hex string, or decodes hex back to UTF-8 text. Use mode='e
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1348,6 +1400,8 @@ throw new Error('mode must be encode or decode');
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1367,7 +1421,8 @@ Generates a cryptographically random UUID v4 string.
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1380,6 +1435,8 @@ Generates a cryptographically random UUID v4 string.
 return crypto.randomUUID();
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -1407,7 +1464,8 @@ Computes the cryptographic hash of UTF-8 text. Algorithms: SHA-256 (default), SH
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1428,6 +1486,8 @@ const arr = Array.isArray(digest) ? digest : Array.from(digest);
 return arr.map(b => (b & 0xff).toString(16).padStart(2, '0')).join('');
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -1456,7 +1516,8 @@ Computes an HMAC signature over UTF-8 text using a secret. Algorithms: SHA-256 (
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1481,6 +1542,8 @@ const arr = Array.isArray(sig) ? sig : Array.from(sig);
 return arr.map(b => (b & 0xff).toString(16).padStart(2, '0')).join('');
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -1508,7 +1571,8 @@ Generates cryptographically secure random bytes. encoding: 'hex' (default), 'bas
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1541,6 +1605,8 @@ return b64;
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1570,7 +1636,8 @@ Generates a strong random password from selected character classes. Uses crypto.
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1633,6 +1700,8 @@ return chars.join('');
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1658,7 +1727,8 @@ Decodes a JWT without verifying its signature. Returns the header and payload as
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1693,6 +1763,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1719,7 +1791,8 @@ Verifies a HS256/HS384/HS512 JWT signature using a shared secret and returns the
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1791,6 +1864,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1818,7 +1893,8 @@ Parses CSV text into an array of rows. If header=true, each row is an object key
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1838,6 +1914,8 @@ if (delimiter) opts.delimiter = String(delimiter);
 return safety.parser.csv(String(text), opts);
 
 ```
+
+</details>
 
 </div>
 </div>

@@ -1,5 +1,5 @@
 title: Tokens & Cost
-description: Token spend and money spend per turn, per model, per provider. Includes the Model Pricing Manager dialog (configure per-model rates and display currency), cost computation, paid-vs-free interpretation.
+description: Token and money spend per turn, model, and provider, with the Model Pricing Manager for per-model rates, display currency, and paid-vs-free interpretation.
 
 # Tokens & Cost
 

@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.chat;
 
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -104,7 +105,7 @@ public final class ChatHumanQuestionHandler implements HumanQuestionHandler {
             CompletableFuture<String> decision) {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(question.header() == null ? "Choose an option" : question.header());
-        dialog.setModal(true);
+        dialog.setModality(ModalityMode.STRICT);
         dialog.setCloseOnEsc(false);
         dialog.setCloseOnOutsideClick(false);
         dialog.add(body(question));

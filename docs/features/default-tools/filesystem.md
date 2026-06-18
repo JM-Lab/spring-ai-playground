@@ -36,7 +36,8 @@ All paths are resolved relative to the playground's configured filesystem base p
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -54,6 +55,8 @@ if (path == null || path === '') throw new Error('path required');
 return safety.fs.readText(path);
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -80,7 +83,8 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -96,6 +100,8 @@ const target = (dir == null || dir === '') ? '.' : dir;
 return safety.fs.list(target);
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -122,7 +128,8 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -139,6 +146,8 @@ if (path == null || path === '') throw new Error('path required');
 return safety.fs.stat(path);
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -165,7 +174,8 @@ Counts the lines in a UTF-8 text file. Uses safety.fs.lineCount().
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -178,6 +188,8 @@ if (path == null || path === '') throw new Error('path required');
 return safety.fs.lineCount(path);
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -206,7 +218,8 @@ Returns a slice of lines from a UTF-8 text file (head / tail / range). `start` i
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -224,6 +237,8 @@ if (path == null || path === '') throw new Error('path required');
 return safety.fs.slice(path, start, end);
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -254,7 +269,8 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -278,6 +294,8 @@ return safety.fs.sort(path, {
 });
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -308,7 +326,8 @@ Searches a UTF-8 text file for lines matching a JavaScript regex. Returns an arr
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -329,6 +348,8 @@ return safety.fs.grep(pattern, path, {
 });
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -358,7 +379,8 @@ Recursively finds files matching a glob inside a directory. Glob supports `*` an
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -379,6 +401,8 @@ return safety.fs.find(target, pattern, {
 });
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -408,7 +432,8 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 
 **Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -433,6 +458,8 @@ return safety.fs.cut(path, {
 });
 
 ```
+
+</details>
 
 </div>
 </div>
@@ -460,7 +487,8 @@ Writes a UTF-8 text file inside the FS base path (creating parent directories as
 
 **Sandbox** - Sandbox needs **`fileWrite`** (L4). Paths resolve against `TOOL_STUDIO_FS_BASE`; the helper auto-creates parent directories.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -479,6 +507,8 @@ safety.fs.writeText(path, String(content));
 return { ok: true, path, bytes: new TextEncoder().encode(String(content)).length };
 
 ```
+
+</details>
 
 </div>
 </div>

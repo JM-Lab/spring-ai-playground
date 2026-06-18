@@ -1,5 +1,5 @@
 title: Tool Studio Observability
-description: In-process tool execution - JS sandbox functions and local @Tool methods, latency p50/p95/p99, error rate, sandbox guard blocks counter that ties to the Safety layer.
+description: In-process tool execution observability - JS sandbox and local @Tool methods, latency p50/p95/p99, error rate, and sandbox guard-block counts.
 
 # Tool Studio
 
@@ -42,11 +42,11 @@ The **Sandbox guard blocks** KPI is the concrete bridge to the Safety layer. See
 
 | Chart | Type | Reading |
 |---|---|---|
-| Tool calls / minute | Line, in-process spans/min | Spike → agent in a tool-heavy phase; sustained zero with chat traffic → tools not being selected (check Top tools below) |
+| Tool calls / minute | Stacked bar (top 4 tools), in-process spans/min | Spike → agent in a tool-heavy phase; sustained zero with chat traffic → tools not being selected (check Top tools below) |
 | Tool latency p50 / p95 / p99 | Multi-line, ms | Diverging p99 from p50 → tail-latency regression in one tool |
 | Top tools | Horizontal bar (top 8 by call count) | The most-called tool head; helps spot accidental tool selection |
 | Sandbox level | Histogram across L0 / L3 / L4 / L5 by call | L0 = safest baseline; high L5 traffic warrants per-tool review |
-| Sandbox guard blocks | Bar over time, by `category` tag | Cluster of blocks → agent attempting forbidden action repeatedly (e.g. SSRF probe) |
+| Sandbox guard blocks | Horizontal bar (lifetime), by `category` / `reason` | Cluster of blocks → agent attempting forbidden action repeatedly (e.g. SSRF probe) |
 
 ## Cross-references
 

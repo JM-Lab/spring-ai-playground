@@ -54,7 +54,8 @@ class McpServerHitlToolGateTest {
     private final McpClientService mcpClientService = mock(McpClientService.class);
     private final McpServerHitlToolGate gate = new McpServerHitlToolGate(mcpClientServiceProvider, new SimpleMeterRegistry());
     private final AtomicInteger delegateCalls = new AtomicInteger();
-    private final CallToolResult delegateResult = new CallToolResult("ok", false);
+    private final CallToolResult delegateResult =
+            CallToolResult.builder().addTextContent("ok").isError(false).build();
 
     @BeforeEach
     void setUp() {

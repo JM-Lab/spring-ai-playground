@@ -19,11 +19,13 @@ Spring AI Playground is a cross-platform desktop app for building, testing, vali
 
 Every tool you build earns a **Local Pass** — a local test-run with your sample arguments. Only passing tools are added live to the built-in MCP server and become callable from Agentic Chat. A tool that has not passed is never exposed to an agent.
 
-Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** — twelve panels (Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces) backed by a ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — so the tools you let an agent call are also the tools you can see in detail after the fact.
+> **Security scope.** The in-process sandbox is defense-in-depth for the local build-and-vet loop. It is not adversarial-grade isolation and not a gateway. To run tool code you do not trust, nest it in container or microVM isolation. See [Isolation tiers](https://spring-ai-community.github.io/spring-ai-playground/safety-architecture/#isolation-tiers).
+
+Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, and Traces, backed by a ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — so the tools you let an agent call are also the tools you can see in detail after the fact.
 
 In Tool Studio, new or updated built-in tools are test-run before they are published to the built-in MCP server. You do not need to know Java, Spring, or JVM internals to use it. If you can install a desktop app and write a small JavaScript function, you can build tools here and connect them to hosts and clients such as Claude Desktop, Claude Code, Cursor, IDEs, and other MCP-compatible environments.
 
-Ships with a **bundled catalog of default tools** across five source bundles — web fetch, datetime, math, security, encoding, crypto, filesystem, GitHub, Wikipedia, weather, finance, geo, and a Korean-domain bundle (Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain) — searchable and filterable in the [Default Tools directory](docs/features/default-tools/index.md#browse-all-tools).
+Ships with a **bundled catalog of default tools** — web fetch, datetime, math, security, encoding, crypto, filesystem, GitHub, Wikipedia, weather, finance, geo, and a Korean-domain bundle (Upbit, Bithumb, Naver, Kakao, KMA, KOFIC, KRX, data.go.kr keychain) — searchable and filterable in the [Default Tools directory](docs/features/default-tools/index.md#browse-all-tools).
 
 Plus a **preset catalog of external MCP servers** — Gmail, Notion, Slack, GitHub, Linear, Atlassian, Tavily, Firecrawl, Microsoft-Teams, Sentry, and more — grouped by category with `${ENV_VAR}` placeholders so disabled servers can't be activated without setup. Browse the full list in the [Default MCP Catalog](docs/features/default-mcp-catalog/index.md).
 
@@ -143,7 +145,7 @@ For the **stdio MCP server** (drop-in for Claude Desktop, Claude Code, IDEs, and
 - Docker — `docker run -i --rm -e SPRING_PROFILES_INCLUDE=mcp-stdio -v spring-ai-playground:/root ghcr.io/spring-ai-community/spring-ai-playground`. Add `-p 8282:8282` if you also want browser access to the Vaadin Inspector alongside the stdio channel.
 - Raw fat JAR — download `spring-ai-playground-*.jar` from [Releases](https://github.com/spring-ai-community/spring-ai-playground/releases) (or `./mvnw -Pproduction package`) and run `SPRING_PROFILES_INCLUDE=mcp-stdio java -jar spring-ai-playground-*.jar`. No Docker required, ideal for Java/Spring developers and CI integrations.
 
-Full setup details for both modes live in [Getting Started: Alternative Runtimes](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#alternative-runtimes).
+Full setup details for both modes live in [Getting Started: Alternative Runtimes](https://spring-ai-community.github.io/spring-ai-playground/getting-started/alternative-runtimes/).
 
 ## Why Spring AI Playground?
 
@@ -160,7 +162,8 @@ Full setup details for both modes live in [Getting Started: Alternative Runtimes
 - **Provider Agnostic**: Switch between Ollama, OpenAI, and other OpenAI-compatible APIs without changing the overall workflow.
 - **OS-Independent Tool Runtime**: Tools are authored once as JavaScript and run through the same bundled runtime, so the same tool definition works consistently across macOS, Windows, and Linux.
 - **Single-Agent Execution**: Use validated built-in tools together with grounded context (RAG) in Agentic Chat to handle focused, practical workflows without needing a larger orchestration layer. Agentic Chat can also call tools exposed by MCP servers that you explicitly connect and trust.
-- **Observability Dashboards**: Twelve built-in dashboards (Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, Traces) backed by an in-memory ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the full conversation thread, and deep-link straight back into Agentic Chat.
+- **Agentic Chat Workbench**: A Prompt Library of ready-to-use presets and `{{variable}}` templates, per-turn reasoning effort (Off/Low/Medium/High), a configurable per-chat memory window, and rich rendering of syntax-highlighted code, KaTeX math, and Mermaid diagrams. See [Agentic Chat](docs/features/agentic-chat/index.md).
+- **Observability Dashboards**: Built-in dashboards spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, and Traces, backed by an in-memory ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the full conversation thread, and deep-link straight back into Agentic Chat.
 
 The intended workflow is practical and composable:
 
@@ -206,7 +209,7 @@ Current focus:
 - making test-before-publish the default path for built-in local tool exposure
 - testing tool execution flows, environment-backed tool configuration, and RAG integration in one place
 - making tools easier to inspect, easier to test, and easier to operationalize before they are reused elsewhere
-- supporting practical single-agent workflows through Agentic Chat with tools and grounded context. See [Agentic Chat Architecture Overview](https://spring-ai-community.github.io/spring-ai-playground/features/#agentic-chat-architecture-overview).
+- supporting practical single-agent workflows through Agentic Chat with tools and grounded context. See [Agentic Chat Architecture Overview](https://spring-ai-community.github.io/spring-ai-playground/features/agentic-chat/#agentic-chat-architecture-overview).
 - promoting validated built-in tools into reusable MCP-hosted runtimes that can be shared across multiple MCP-compatible hosts and clients
 
 It is not trying to replace the tools where agents actually run. It is designed to give you a clearer path from local tool prototype to inspectable, reusable MCP server.

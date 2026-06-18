@@ -177,9 +177,7 @@ class HomeProviderStatus extends Div {
             if (className.contains("ollama")) {
                 keys = new String[] {"spring.ai.ollama.embedding.options.model"};
             } else if (className.contains("openai")) {
-                keys = new String[] {
-                        "spring.ai.openai-sdk.embedding.options.model",
-                        "spring.ai.openai.embedding.options.model"};
+                keys = new String[] {"spring.ai.openai.embedding.options.model"};
             } else {
                 keys = new String[0];
             }
@@ -203,9 +201,8 @@ class HomeProviderStatus extends Div {
                 return ping(baseUrl);
             }
             if (className.contains("openai")) {
-                String k1 = environment.getProperty("spring.ai.openai.api-key", "");
-                String k2 = environment.getProperty("spring.ai.openai-sdk.api-key", "");
-                return (k1 != null && !k1.isBlank()) || (k2 != null && !k2.isBlank());
+                String apiKey = environment.getProperty("spring.ai.openai.api-key", "");
+                return apiKey != null && !apiKey.isBlank();
             }
             return true;
         }).thenAccept(ready -> ui.access(() -> applyChatReadiness(ready)))
@@ -299,7 +296,7 @@ class HomeProviderStatus extends Div {
 
     private static String safeGetChatModel(ChatModel chatModel) {
         try {
-            var options = chatModel.getDefaultOptions();
+            var options = chatModel.getOptions();
             return options != null ? options.getModel() : null;
         } catch (Exception e) {
             return null;

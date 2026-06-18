@@ -53,11 +53,15 @@ class McpToolCallingManagerHitlTest {
     private final ToolCallingManager delegate = mock(ToolCallingManager.class);
     private final ToolSpecService toolSpecService = mock(ToolSpecService.class);
 
-    @SuppressWarnings("unchecked")
     private McpToolCallingManager manager() {
+        return manager(12_000);
+    }
+
+    @SuppressWarnings("unchecked")
+    private McpToolCallingManager manager(int toolResultMaxChars) {
         ObjectProvider<ToolSpecService> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(toolSpecService);
-        return new McpToolCallingManager(delegate, provider, new SimpleMeterRegistry());
+        return new McpToolCallingManager(delegate, provider, new SimpleMeterRegistry(), toolResultMaxChars);
     }
 
     private Prompt promptWith(HumanQuestionHandler handler) {
@@ -180,6 +184,42 @@ class McpToolCallingManagerHitlTest {
         manager().executeToolCalls(prompt, response);
 
         assertEquals("Allow writeFile?", captured.get());
+    }
+
+    @Test
+    void oversizedToolResponseIsTruncatedWithMarker() {
+        ChatResponse response = responseWith(toolCall("1", "fetchPage"));
+        Prompt prompt = promptWith(questions -> Map.of());
+        when(toolSpecService.requiresApproval("fetchPage")).thenReturn(false);
+        String big = "x".repeat(50);
+        when(delegate.executeToolCalls(prompt, response)).thenReturn(delegateResultWith("1", "fetchPage", big));
+
+        ToolExecutionResult result = manager(20).executeToolCalls(prompt, response);
+
+        String data = ((ToolResponseMessage) result.conversationHistory().getLast())
+                .getResponses().get(0).responseData();
+        assertEquals("x".repeat(20) + "\n...[truncated 30 of 50 chars]", data);
+    }
+
+    @Test
+    void underLimitToolResponsePassesThroughUnchanged() {
+        ChatResponse response = responseWith(toolCall("1", "getTime"));
+        Prompt prompt = promptWith(questions -> Map.of());
+        when(toolSpecService.requiresApproval("getTime")).thenReturn(false);
+        when(delegate.executeToolCalls(prompt, response)).thenReturn(delegateResultWith("1", "getTime", "12:00"));
+
+        ToolExecutionResult result = manager(20).executeToolCalls(prompt, response);
+
+        assertEquals("12:00", ((ToolResponseMessage) result.conversationHistory().getLast())
+                .getResponses().get(0).responseData());
+    }
+
+    private ToolExecutionResult delegateResultWith(String id, String name, String data) {
+        AssistantMessage assistant = AssistantMessage.builder().content("").toolCalls(List.of(toolCall(id, name)))
+                .build();
+        List<Message> history = List.of(new UserMessage("do it"), assistant, ToolResponseMessage.builder()
+                .responses(List.of(new ToolResponseMessage.ToolResponse(id, name, data))).build());
+        return ToolExecutionResult.builder().conversationHistory(history).build();
     }
 
     private static Map<String, String> answerAll(List<HumanQuestion> questions, String label) {

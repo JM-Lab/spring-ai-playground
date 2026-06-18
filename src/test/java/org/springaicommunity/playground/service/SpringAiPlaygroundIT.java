@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.tool.ToolCallback;
@@ -107,7 +108,7 @@ class SpringAiPlaygroundIT {
 
     @Test
     void testStream() {
-        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
+        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, (DefaultChatOptions) ChatOptions.builder().build());
         String prompt = "Hello World";
         String assistantText =
                 chatService.stream(chatHistory, prompt, chatService.buildFilterExpression(List.of("*")), null, null,
@@ -137,7 +138,7 @@ class SpringAiPlaygroundIT {
 
     @Test
     void testCall() {
-        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
+        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, (DefaultChatOptions) ChatOptions.builder().build());
         String prompt = "Hello World";
         String assistantText = chatService.call(chatHistory, prompt, null, null, null);
 
@@ -165,7 +166,7 @@ class SpringAiPlaygroundIT {
 
     @Test
     void testCallwithMcp() {
-        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, new DefaultChatOptions());
+        ChatHistory chatHistory = chatHistoryService.createChatHistory(null, (DefaultChatOptions) ChatOptions.builder().build());
         List<ToolCallback> toolCallbacks = mcpClientService.buildToolCallbackProviders(
                         chatService.getLiveMcpServerInfos().stream().peek(mcpClientService::startMcpClient)
                                 .toArray(McpServerInfo[]::new)).stream()

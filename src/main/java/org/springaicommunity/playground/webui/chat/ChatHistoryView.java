@@ -15,7 +15,8 @@
  */
 package org.springaicommunity.playground.webui.chat;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import tools.jackson.core.type.TypeReference;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -106,7 +107,7 @@ public class ChatHistoryView extends WorkspaceSidebar implements BeforeEnterObse
     private void renameHistory() {
         this.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
             Dialog dialog = VaadinUtils.headerDialog("Rename: " + chatHistory.title());
-            dialog.setModal(true);
+            dialog.setModality(ModalityMode.STRICT);
             dialog.setResizable(true);
             dialog.addThemeVariants(DialogVariant.LUMO_NO_PADDING);
             VerticalLayout dialogLayout = new VerticalLayout();
@@ -140,7 +141,7 @@ public class ChatHistoryView extends WorkspaceSidebar implements BeforeEnterObse
     private void deleteHistory() {
         this.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
             Dialog dialog = VaadinUtils.headerDialog("Delete: " + chatHistory.title());
-            dialog.setModal(true);
+            dialog.setModality(ModalityMode.STRICT);
             dialog.add("Are you sure you want to delete this history permanently?");
 
             Button deleteButton = new Button("Delete", e -> {

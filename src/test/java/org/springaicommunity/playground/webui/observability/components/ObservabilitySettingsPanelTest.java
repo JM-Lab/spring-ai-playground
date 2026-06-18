@@ -62,7 +62,8 @@ class ObservabilitySettingsPanelTest {
 
         long integerFieldCount = panel.getChildren()
                 .flatMap(c -> streamAll(c))
-                .filter(c -> "VAADIN-INTEGER-FIELD".equalsIgnoreCase(c.getElement().getTag()))
+                .filter(c -> !c.getElement().isTextNode()
+                        && "VAADIN-INTEGER-FIELD".equalsIgnoreCase(c.getElement().getTag()))
                 .count();
         assertThat(integerFieldCount).isEqualTo(1);
     }
@@ -216,7 +217,8 @@ class ObservabilitySettingsPanelTest {
         assertThat(panel.stagedMode()).isEqualTo(Mode.SLIDING);
         long pickerCount = panel.getChildren()
                 .flatMap(c -> streamAll(c))
-                .filter(c -> "VAADIN-DATE-TIME-PICKER".equalsIgnoreCase(c.getElement().getTag()))
+                .filter(c -> !c.getElement().isTextNode()
+                        && "VAADIN-DATE-TIME-PICKER".equalsIgnoreCase(c.getElement().getTag()))
                 .count();
         assertThat(pickerCount).isEqualTo(2);
     }

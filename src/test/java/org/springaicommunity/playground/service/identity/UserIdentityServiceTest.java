@@ -15,11 +15,12 @@
  */
 package org.springaicommunity.playground.service.identity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -63,5 +64,17 @@ class UserIdentityServiceTest {
 
         String reloaded = new UserIdentityService(home, new ObjectMapper(), providerReturning(null)).deviceId();
         assertThat(reloaded).isEqualTo(first);
+    }
+
+    @Test
+    void corruptInstallationFileReseedsInsteadOfCrashing(@TempDir Path home) throws IOException {
+        Path identityFile = home.resolve("identity").resolve("installation.json");
+        Files.createDirectories(identityFile.getParent());
+        Files.writeString(identityFile, "{ not valid json ]]]");
+
+        UserIdentityService service = new UserIdentityService(home, new ObjectMapper(),
+                providerReturning("seed-after-corruption"));
+
+        assertThat(service.deviceId()).isEqualTo("seed-after-corruption");
     }
 }

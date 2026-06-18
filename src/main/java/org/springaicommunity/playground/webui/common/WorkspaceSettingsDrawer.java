@@ -47,10 +47,11 @@ public class WorkspaceSettingsDrawer extends Div {
         this.scrim = buildScrim();
 
         addClassName("workspace-settings-drawer");
+        // Height hugs the content (footer sits right under it); long bodies hit max-height and scroll.
         getStyle().set("position", "absolute")
                 .set("top", "var(--lumo-space-m)")
                 .set("right", "var(--lumo-space-m)")
-                .set("bottom", "var(--lumo-space-m)")
+                .set("max-height", "calc(100% - 2 * var(--lumo-space-m))")
                 .set("width", "min(720px, calc(100% - 2 * var(--lumo-space-m)))")
                 .set("box-sizing", "border-box")
                 .set("background-color", "var(--lumo-base-color)")
@@ -80,7 +81,7 @@ public class WorkspaceSettingsDrawer extends Div {
 
         this.bodyDiv = new Div();
         this.bodyDiv.setWidthFull();
-        this.bodyDiv.getStyle().set("flex", "1 1 auto")
+        this.bodyDiv.getStyle().set("flex", "0 1 auto")
                 .set("overflow-y", "auto")
                 .set("box-sizing", "border-box")
                 .set("padding", "var(--lumo-space-m)");

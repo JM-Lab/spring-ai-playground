@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.service.chat;
 
 import org.springaicommunity.playground.service.PersistenceExecutor;
+import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,7 +36,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,7 +66,7 @@ class ChatHistoryPersistenceServiceTest {
 
     private ChatHistory buildHistory(String id) {
         long now = System.currentTimeMillis();
-        return new ChatHistory(id, "T", now, now, "sys", new DefaultChatOptions(),
+        return new ChatHistory(id, "T", now, now, "sys", (DefaultChatOptions) ChatOptions.builder().build(),
                 () -> List.of(new UserMessage("Hi")));
     }
 
@@ -71,7 +76,7 @@ class ChatHistoryPersistenceServiceTest {
         String title = "Test Chat";
         long timestamp = System.currentTimeMillis();
         String systemPrompt = "You are a helpful assistant.";
-        DefaultChatOptions chatOptions = new DefaultChatOptions();
+        DefaultChatOptions chatOptions = (DefaultChatOptions) ChatOptions.builder().build();
 
         List<Message> messages = List.of(
                 new UserMessage("Hello!"),
@@ -113,6 +118,46 @@ class ChatHistoryPersistenceServiceTest {
         assertThat(systemMessage.getText()).isEqualTo("System initialized.");
         assertThat(systemMessage.getMessageType()).isEqualTo(MessageType.SYSTEM);
         assertThat(systemMessage.getMetadata()).containsEntry("messageType", MessageType.SYSTEM);
+    }
+
+    @Test
+    void toolPreferencesSurviveSaveAndLoad() throws IOException {
+        ChatToolPreferences prefs = new ChatToolPreferences(true, Set.of("tool-a", "tool-b"),
+                List.of("doc-1"), Map.of(McpTransportType.STREAMABLE_HTTP, List.of("server-x")),
+                ReasoningEffort.MEDIUM);
+        chatHistoryPersistenceService.save(buildHistory("chat-prefs").withToolPreferences(prefs));
+
+        ChatToolPreferences loaded = chatHistoryPersistenceService.loads().getFirst().toolPreferences();
+        assertThat(loaded.useBuiltinMcp()).isTrue();
+        assertThat(loaded.exposedToolIds()).containsExactlyInAnyOrder("tool-a", "tool-b");
+        assertThat(loaded.ragDocInfoIds()).containsExactly("doc-1");
+        assertThat(loaded.mcpServerNames()).containsEntry(McpTransportType.STREAMABLE_HTTP, List.of("server-x"));
+        assertThat(loaded.reasoningEffort()).isEqualTo(ReasoningEffort.MEDIUM);
+    }
+
+    @Test
+    void nonChatFilesInSaveDirAreSkipped() throws IOException {
+        chatHistoryPersistenceService.save(buildHistory("Chat-real"));
+        // system-prompt-presets.json is a JSON array written into the same chat/save dir; it must not break loads()
+        Files.writeString(chatHistoryPersistenceService.getSaveDir().resolve("system-prompt-presets.json"),
+                "[{\"id\":\"user-x\",\"displayName\":\"X\",\"prompt\":\"hi\",\"kind\":\"EXAMPLE\",\"tools\":[]}]");
+
+        List<ChatHistory> loaded = chatHistoryPersistenceService.loads();
+        assertThat(loaded).extracting(ChatHistory::conversationId).containsExactly("Chat-real");
+    }
+
+    @Test
+    void oldFileWithoutToolPreferencesLoadsDefaults() {
+        Map<String, Object> oldFormat = new HashMap<>();
+        oldFormat.put("conversationId", "legacy-chat");
+        oldFormat.put("title", "Legacy");
+        oldFormat.put("createTimestamp", 1L);
+        oldFormat.put("updateTimestamp", 1L);
+        oldFormat.put("chatOptions", Map.of());
+        oldFormat.put("messageList", List.of());
+
+        ChatHistory loaded = chatHistoryPersistenceService.convertTo(oldFormat);
+        assertThat(loaded.toolPreferences()).isEqualTo(ChatToolPreferences.defaults());
     }
 
     @Test
@@ -158,7 +203,7 @@ class ChatHistoryPersistenceServiceTest {
                 .content("")
                 .toolCalls(List.of(toolCall))
                 .build();
-        ChatHistory history = new ChatHistory("chat-toolcalls", "T", 1L, 1L, "", new DefaultChatOptions(),
+        ChatHistory history = new ChatHistory("chat-toolcalls", "T", 1L, 1L, "", (DefaultChatOptions) ChatOptions.builder().build(),
                 () -> List.of(assistantWithToolCalls));
 
         chatHistoryPersistenceService.save(history);
@@ -176,7 +221,7 @@ class ChatHistoryPersistenceServiceTest {
         ToolResponseMessage toolMessage = ToolResponseMessage.builder()
                 .responses(List.of(response))
                 .build();
-        ChatHistory history = new ChatHistory("chat-toolresponse", "T", 1L, 1L, "", new DefaultChatOptions(),
+        ChatHistory history = new ChatHistory("chat-toolresponse", "T", 1L, 1L, "", (DefaultChatOptions) ChatOptions.builder().build(),
                 () -> List.of(toolMessage));
 
         chatHistoryPersistenceService.save(history);

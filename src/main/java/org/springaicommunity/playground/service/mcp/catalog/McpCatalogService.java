@@ -15,10 +15,11 @@
  */
 package org.springaicommunity.playground.service.mcp.catalog;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
@@ -77,7 +78,7 @@ public class McpCatalogService {
                 if (entry.id() == null || entry.id().isBlank()) continue;
                 sink.put(entry.id(), entry);
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new IllegalStateException("Failed to load MCP catalog from " + resourcePath, e);
         }
     }

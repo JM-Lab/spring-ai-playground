@@ -16,10 +16,11 @@
 package org.springaicommunity.playground.service.mcp.risk;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.PersistenceExecutor;
@@ -59,7 +60,7 @@ public class McpToolHashLedger {
         Path baseDir = springAiPlaygroundHomeDir.resolve("mcp").resolve("risk");
         Files.createDirectories(baseDir);
         this.ledgerPath = baseDir.resolve(LEDGER_FILE);
-        this.objectMapper = objectMapper.copy().enable(SerializationFeature.INDENT_OUTPUT);
+        this.objectMapper = objectMapper.rebuild().enable(SerializationFeature.INDENT_OUTPUT).build();
         this.persistenceExecutor = persistenceExecutor;
         this.sink = sink;
         this.fingerprintsByKey = new ConcurrentHashMap<>(loadAll());
@@ -74,10 +75,10 @@ public class McpToolHashLedger {
         canonical.put("inputSchema", inputSchema == null ? null : inputSchema);
         canonical.put("annotations", annotations == null ? McpToolDescriptor.Annotations.EMPTY : annotations);
         try {
-            byte[] bytes = this.objectMapper.copy().disable(SerializationFeature.INDENT_OUTPUT)
+            byte[] bytes = this.objectMapper.rebuild().disable(SerializationFeature.INDENT_OUTPUT).build()
                     .writeValueAsBytes(canonical);
             return sha256Hex(bytes);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to canonicalize tool content for hashing", e);
         }
     }
@@ -182,7 +183,7 @@ public class McpToolHashLedger {
         this.persistenceExecutor.submit(() -> {
             try {
                 writeAtomically(snapshot);
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Failed to persist hash ledger", e);
             }
         });
@@ -208,7 +209,7 @@ public class McpToolHashLedger {
                 map.put(fp.key(), fp);
             }
             return map;
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             logger.warn("Failed to load hash ledger from {} — starting empty", this.ledgerPath, e);
             return Map.of();
         }

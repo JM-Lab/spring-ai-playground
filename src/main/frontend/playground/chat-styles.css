@@ -14,3 +14,92 @@
     animation: blink 1.5s infinite;
 }
 
+.chat-message-actions {
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+vaadin-message:hover .chat-message-actions,
+vaadin-message:focus-within .chat-message-actions {
+    opacity: 1;
+}
+
+vaadin-markdown pre {
+    position: relative;
+    background: var(--lumo-contrast-5pct);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+    color: var(--lumo-body-text-color);
+}
+
+vaadin-markdown pre code,
+vaadin-markdown pre code.hljs {
+    background: transparent;
+}
+
+.saip-code-copy {
+    position: absolute;
+    top: var(--lumo-space-xs);
+    right: var(--lumo-space-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    color: var(--lumo-secondary-text-color);
+    background: var(--lumo-base-color);
+    border: 1px solid var(--lumo-contrast-20pct);
+    border-radius: var(--lumo-border-radius-s);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.saip-code-copy vaadin-icon {
+    width: 15px;
+    height: 15px;
+}
+
+vaadin-markdown pre:hover .saip-code-copy,
+.saip-code-copy:focus-visible {
+    opacity: 1;
+}
+
+.saip-code-copy:hover {
+    color: var(--lumo-body-text-color);
+    border-color: var(--lumo-contrast-40pct);
+}
+
+.saip-code-copied {
+    color: var(--lumo-success-text-color);
+}
+
+.saip-code-lang {
+    position: absolute;
+    top: var(--lumo-space-xs);
+    left: var(--lumo-space-s);
+    font-size: var(--lumo-font-size-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lumo-tertiary-text-color);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+vaadin-markdown pre:hover .saip-code-lang {
+    opacity: 1;
+}
+
+.saip-mermaid {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    margin: var(--lumo-space-s) 0;
+}
+
+.saip-mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+

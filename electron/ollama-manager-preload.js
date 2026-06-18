@@ -7,6 +7,7 @@ const ALLOWED_INVOKE = new Set([
   'ollama-manager:fit-window',
   'ollama-manager:request-close',
   'ollama-manager:enqueue-pull',
+  'ollama-manager:cancel-download',
   'ollama-manager:list-installed',
   'ollama-manager:delete',
   'ollama-manager:copy',

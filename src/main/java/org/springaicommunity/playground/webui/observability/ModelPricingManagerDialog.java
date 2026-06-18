@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.observability;
 
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -68,14 +69,13 @@ public class ModelPricingManagerDialog extends Dialog {
         this.pricingService = pricingService;
         this.currencyService = currencyService;
 
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setResizable(true);
         setDraggable(true);
         addThemeVariants(DialogVariant.LUMO_NO_PADDING);
         setWidth("780px");
         setMaxWidth("100vw");
 
-        // Header — title + active currency badge + close
         HorizontalLayout headerRow = VaadinUtils.buildHeaderHorizontalLayout(
                 "Model pricing", e -> close());
         activeCurrencyBadge.getStyle()
@@ -90,11 +90,9 @@ public class ModelPricingManagerDialog extends Dialog {
                 .set("display", "inline-flex")
                 .set("align-items", "center")
                 .set("gap", "4px");
-        // Insert badge as second-to-last (before close button)
         headerRow.addComponentAtIndex(headerRow.getComponentCount() - 1, activeCurrencyBadge);
         getHeader().add(headerRow);
 
-        // Empty-state banner — shows when no pricing rows
         emptyStateBanner.setText(
                 "No model pricing configured yet. Add a model below to start tracking cost.");
         emptyStateBanner.getStyle()
@@ -106,7 +104,6 @@ public class ModelPricingManagerDialog extends Dialog {
                 .set("color", "var(--lumo-warning-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
 
-        // Pricing grid
         grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_NO_BORDER);
         grid.addColumn(ModelPricing::model).setHeader("Model").setAutoWidth(true).setFlexGrow(1);
         grid.addColumn(p -> formatBd(p.inputPerMillionTokens())).setHeader("Input $/1M").setAutoWidth(true);
@@ -236,7 +233,6 @@ public class ModelPricingManagerDialog extends Dialog {
             customCode.clear();
             customSymbol.clear();
             customRate.clear();
-            // Re-populate combo with the new entry + select it as active.
             currencyCombo.setItems(currencyService.all().stream().map(CurrencyRate::code).toList());
             currencyCombo.setValue(code);
             currencyService.setActiveCurrency(code);
@@ -288,7 +284,7 @@ public class ModelPricingManagerDialog extends Dialog {
         VerticalLayout customContent = new VerticalLayout(customForm, customHelper, customAction);
         customContent.setPadding(false);
         customContent.setSpacing(false);
-        customDetails.setContent(customContent);
+        customDetails.add(customContent);
         customDetails.setWidthFull();
         customDetails.getStyle()
                 .set("background", "var(--lumo-base-color)")
@@ -319,7 +315,7 @@ public class ModelPricingManagerDialog extends Dialog {
         currencyDetails.setSummary(summaryRow);
         currencyDetails.setOpened(false);
         currencyDetails.addThemeVariants(DetailsVariant.REVERSE, DetailsVariant.FILLED);
-        currencyDetails.setContent(currencyContent);
+        currencyDetails.add(currencyContent);
         currencyDetails.setWidthFull();
         currencyDetails.addClassName("currency-details-clickable");
         currencyDetails.getStyle()
@@ -328,7 +324,6 @@ public class ModelPricingManagerDialog extends Dialog {
                 .set("border-radius", "var(--lumo-border-radius-m)")
                 .set("margin-top", "var(--lumo-space-l)");
 
-        // Footer hint — small + neutral
         Span hint = new Span(
                 "Pricing → pricing.json · Currency → currency.json (~/spring-ai-playground/observability/)");
         hint.getStyle().set("color", "var(--lumo-tertiary-text-color)")
@@ -337,7 +332,6 @@ public class ModelPricingManagerDialog extends Dialog {
                 .set("text-align", "right")
                 .set("margin-top", "var(--lumo-space-m)");
 
-        // Body
         VerticalLayout body = new VerticalLayout();
         body.setPadding(true);
         body.setSpacing(false);

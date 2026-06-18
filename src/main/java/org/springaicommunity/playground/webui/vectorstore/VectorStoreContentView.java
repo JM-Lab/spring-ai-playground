@@ -15,11 +15,11 @@
  */
 package org.springaicommunity.playground.webui.vectorstore;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.KeyDownEvent;
@@ -45,7 +45,6 @@ import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.util.JacksonUtils;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.vaadin.crudui.crud.CrudOperation;
 import org.vaadin.crudui.crud.impl.GridCrud;
@@ -73,7 +72,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
 
     public static final String CUSTOM_ADD_DOC_INFO_ID = "docInfoId-custom";
     private static final ObjectMapper ObjectMapper =
-            JsonMapper.builder().addModules(JacksonUtils.instantiateAvailableModules())
+            JsonMapper.builder().findAndAddModules()
                     .enable(SerializationFeature.INDENT_OUTPUT).build();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
     private static final TypeReference<Media> MEDIA_TYPE_REFERENCE = new TypeReference<>() {};
@@ -169,6 +168,18 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
                         VaadinUtils.showErrorNotification(e.getMessage());
                     }
                 });
+            }
+
+            @Override
+            public void refreshGrid() {
+                try {
+                    super.refreshGrid();
+                    grid.setEmptyStateText("No items found.");
+                } catch (Exception e) {
+                    VaadinUtils.showErrorNotification(e.getMessage());
+                    grid.setItems(List.<VectorStoreContentItem>of());
+                    grid.setEmptyStateText("Search unavailable - check the embedding provider configuration.");
+                }
             }
         };
 
@@ -285,7 +296,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
     private String writeAsJson(Object value) {
         try {
             return ObjectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Error converting value to JSON", e);
         }
     }
@@ -293,7 +304,7 @@ public class VectorStoreContentView extends VerticalLayout implements BeforeEnte
     private <T> T readToObject(String jsonString, TypeReference<T> typeReference) {
         try {
             return ObjectMapper.readValue(jsonString, typeReference);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException(
                     "Error converting JSON to " + typeReference.getType().getTypeName(), e);
         }

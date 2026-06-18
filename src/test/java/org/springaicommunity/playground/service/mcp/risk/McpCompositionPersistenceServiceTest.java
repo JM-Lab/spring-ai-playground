@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,6 +23,7 @@ import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -77,6 +78,17 @@ class McpCompositionPersistenceServiceTest {
         McpCompositionPersistenceService service = new McpCompositionPersistenceService(
                 tempHome, objectMapper, executor);
         assertNotNull(service.loadAll());
+        assertTrue(service.loadAll().isEmpty());
+    }
+
+    @Test
+    void loadAllReturnsEmptyWhenFileCorrupt() throws IOException {
+        Path file = tempHome.resolve("mcp").resolve("risk").resolve("compositions.json");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "{ not a composition array ]]]");
+        executor = new PersistenceExecutor();
+        McpCompositionPersistenceService service = new McpCompositionPersistenceService(
+                tempHome, objectMapper, executor);
         assertTrue(service.loadAll().isEmpty());
     }
 }

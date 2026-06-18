@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SidebarFilterBar extends Div {
 
@@ -91,13 +92,30 @@ public class SidebarFilterBar extends Div {
         return v == null ? Set.of() : Set.copyOf(v);
     }
 
+    // setItems wipes the current value, so re-applying the still-valid part keeps user filters alive
+    // across list refreshes (e.g. after a tool update re-populates the options).
     public void setCategoryItems(List<String> ids, Function<String, String> labelGen) {
+        Set<String> previous = getCategorySelection();
         this.categoryFilter.setItems(ids);
         if (labelGen != null) this.categoryFilter.setItemLabelGenerator(labelGen::apply);
+        restoreSelection(this.categoryFilter, previous, ids);
     }
 
     public void setTagItems(List<String> tags) {
+        Set<String> previous = getTagSelection();
         this.tagFilter.setItems(tags);
+        restoreSelection(this.tagFilter, previous, tags);
+    }
+
+    private static void restoreSelection(MultiSelectComboBox<String> combo, Set<String> previous,
+            List<String> items) {
+        if (previous.isEmpty()) return;
+        Set<String> kept = previous.stream().filter(items::contains).collect(Collectors.toSet());
+        if (!kept.isEmpty()) combo.setValue(kept);
+    }
+
+    public void setSearchQuery(String query) {
+        this.searchField.setValue(query == null ? "" : query);
     }
 
     public void setCategorySelection(Set<String> selection) {

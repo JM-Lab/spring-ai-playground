@@ -15,7 +15,7 @@
  */
 package org.springaicommunity.playground.webui.mcp.inspector.primitives.server;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import com.vaadin.flow.component.AbstractField;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
@@ -31,7 +31,7 @@ import org.springaicommunity.playground.service.mcp.McpServerHitlToolGate;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.risk.McpToolPoisoningScanner;
-import org.springaicommunity.playground.service.mcp.risk.McpToolRiskAdvisor;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator;
 import org.springaicommunity.playground.webui.mcp.McpRiskChip;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers.ToolInfo;
@@ -59,7 +59,7 @@ public class ToolPrimitive extends Div {
     private boolean rawView = false;
 
     public ToolPrimitive(ToolInfo tool, int displayIndex, McpServerInfo serverInfo,
-            McpClientService clientService, McpToolRiskAdvisor.ToolRiskView risk) {
+            McpClientService clientService, McpToolRiskEvaluator.ToolRiskView risk) {
         this.tool = tool;
         this.serverInfo = serverInfo;
         this.clientService = clientService;
@@ -222,7 +222,7 @@ public class ToolPrimitive extends Div {
         try {
             return InspectorHelpers.INSPECTOR_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(
                     args == null ? Map.of() : args);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return String.valueOf(args);
         }
     }
@@ -237,12 +237,12 @@ public class ToolPrimitive extends Div {
         envelope.put("params", params);
         try {
             return InspectorHelpers.INSPECTOR_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return String.valueOf(envelope);
         }
     }
 
-    private static String buildRiskTooltip(McpToolRiskAdvisor.ToolRiskView risk) {
+    private static String buildRiskTooltip(McpToolRiskEvaluator.ToolRiskView risk) {
         StringBuilder sb = new StringBuilder(McpRiskChip.levelRationale(risk.finalLevel()));
         if (risk.publishLevel() != null && risk.publishLevel() != risk.finalLevel()) {
             sb.append(" · publish ").append(risk.publishLevel().name());
@@ -284,7 +284,7 @@ public class ToolPrimitive extends Div {
         envelope.put("result", lastResult);
         try {
             return InspectorHelpers.INSPECTOR_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return String.valueOf(envelope);
         }
     }

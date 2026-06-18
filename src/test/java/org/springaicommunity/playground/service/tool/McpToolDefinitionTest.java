@@ -15,10 +15,9 @@
  */
 package org.springaicommunity.playground.service.tool;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.NetworkPolicy;
 import org.springaicommunity.playground.service.tool.ToolManifest.Audit;
@@ -46,9 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class McpToolDefinitionTest {
 
     private static ObjectMapper mapper() {
-        return new ObjectMapper().registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return JsonMapper.builder()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).build();
     }
 
     @Test

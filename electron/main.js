@@ -21,6 +21,8 @@ const {
   CONFIG_TEMPLATES,
   DEFAULT_STARTER_TEMPLATE_IDS,
   startTempServer,
+  OLLAMA_APPLE_SILICON_YAML,
+  toMlxModel,
 } = require('./launcher-config');
 const ollamaManager = require('./ollama-manager');
 
@@ -97,6 +99,24 @@ function getStarterTemplateForProviderType(providerType = 'ollama') {
   ) || CONFIG_TEMPLATES.ollama;
 }
 
+function isAppleSilicon() {
+  if (process.platform !== 'darwin') return false;
+  if (process.arch === 'arm64') return true;
+  try {
+    return app.runningUnderRosettaTranslation === true;
+  } catch {
+    return false;
+  }
+}
+
+function templateYaml(template) {
+  if (!template || typeof template.yaml !== 'string') return template?.yaml ?? '';
+  if (template.providerType === 'ollama' && isAppleSilicon()) {
+    return OLLAMA_APPLE_SILICON_YAML;
+  }
+  return template.yaml;
+}
+
 function shouldCompactToTemplateYaml(yamlText = '') {
   const text = String(yamlText || '');
   return text.includes('system-prompt:') || text.includes('\n---\n') || text.includes('spring.config.activate');
@@ -135,7 +155,7 @@ function ensureProviderConfig(index, providerType = 'ollama') {
   const existingNames = new Set(index.configs.map(config => config.name.toLowerCase()));
   const configId = createUniqueConfigId(template.name, existingIds);
   const configName = createUniqueConfigName(template.name, existingNames);
-  fs.writeFileSync(getConfigFilePath(configId), template.yaml, 'utf8');
+  fs.writeFileSync(getConfigFilePath(configId), templateYaml(template), 'utf8');
   const created = { id: configId, name: configName };
   index.configs.push(created);
   return created;
@@ -340,6 +360,14 @@ function getSecretsStorePath() {
   return path.join(getConfigDirectory(), 'secrets.store');
 }
 
+function secureSecretsStorePermissions(storePath = getSecretsStorePath()) {
+  if (process.platform === 'win32') return;
+  try {
+    if (fs.existsSync(storePath)) fs.chmodSync(storePath, 0o600);
+  } catch {
+  }
+}
+
 function cloneSecretsStore(store) {
   return JSON.parse(JSON.stringify(store || {}));
 }
@@ -376,6 +404,7 @@ function readSecretsStore() {
     } else {
       parsed = JSON.parse(raw.toString('utf8'));
     }
+    secureSecretsStorePermissions(storePath);
     secretsStoreCache = parsed && typeof parsed === 'object' ? parsed : {};
     return cloneSecretsStore(secretsStoreCache);
   } catch (error) {
@@ -392,6 +421,7 @@ function writeSecretsStore(store) {
   } else {
     fs.writeFileSync(storePath, payload, 'utf8');
   }
+  secureSecretsStorePermissions(storePath);
   secretsStoreCache = cloneSecretsStore(store);
 }
 
@@ -565,7 +595,7 @@ function normalizeSpringAiYamlText(yamlText = '') {
     const ai = isPlainObject(spring.ai) ? { ...spring.ai } : {};
     let docChanged = false;
 
-    for (const key of ['model', 'ollama', 'openai-sdk', 'playground']) {
+    for (const key of ['model', 'ollama', 'openai', 'playground']) {
       if (!isPlainObject(spring[key])) continue;
       ai[key] = deepMerge(isPlainObject(ai[key]) ? { ...ai[key] } : {}, spring[key]);
       delete spring[key];
@@ -606,10 +636,10 @@ function getOllamaSection(doc = {}) {
   );
 }
 
-function getOpenAiSdkSection(doc = {}) {
+function getOpenAiSection(doc = {}) {
   return deepMerge(
-    isPlainObject(getLegacySpringDoc(doc)?.['openai-sdk']) ? { ...getLegacySpringDoc(doc)['openai-sdk'] } : {},
-    isPlainObject(getSpringAiDoc(doc)?.['openai-sdk']) ? getSpringAiDoc(doc)['openai-sdk'] : {},
+    isPlainObject(getLegacySpringDoc(doc)?.['openai']) ? { ...getLegacySpringDoc(doc)['openai'] } : {},
+    isPlainObject(getSpringAiDoc(doc)?.['openai']) ? getSpringAiDoc(doc)['openai'] : {},
   );
 }
 
@@ -672,14 +702,14 @@ function detectProviderType(yamlText = '') {
   const doc = getYamlObj(yamlText);
   const modelSection = getModelSection(doc);
   const ollamaSection = getOllamaSection(doc);
-  const openAiSdkSection = getOpenAiSdkSection(doc);
+  const openAiSection = getOpenAiSection(doc);
   const chatModel = modelSection?.chat;
-  const openaiBaseUrl = openAiSdkSection?.['base-url'];
+  const openaiBaseUrl = openAiSection?.['base-url'];
   const embeddingModel = modelSection?.embedding;
   const hasOllamaEmbedding = embeddingModel === 'ollama' || !!ollamaSection?.embedding;
   const usesCompatibleBaseUrl = Boolean(openaiBaseUrl) && !isOfficialOpenAiBaseUrl(openaiBaseUrl);
-  if (chatModel === 'openai-sdk' && (usesCompatibleBaseUrl || hasOllamaEmbedding)) return 'openai-compatible';
-  if (chatModel === 'openai-sdk' || Object.keys(openAiSdkSection).length) return 'openai';
+  if (chatModel === 'openai' && (usesCompatibleBaseUrl || hasOllamaEmbedding)) return 'openai-compatible';
+  if (chatModel === 'openai' || Object.keys(openAiSection).length) return 'openai';
   if (chatModel === 'ollama' || Object.keys(ollamaSection).length) return 'ollama';
   return 'custom';
 }
@@ -687,8 +717,8 @@ function hasEmbeddingModelConfig(yamlText = '') {
   const doc = getYamlObj(yamlText);
   const modelSection = getModelSection(doc);
   const ollamaSection = getOllamaSection(doc);
-  const openAiSdkSection = getOpenAiSdkSection(doc);
-  return !!modelSection?.embedding || !!ollamaSection?.embedding?.options?.model || !!openAiSdkSection?.embedding?.options?.model;
+  const openAiSection = getOpenAiSection(doc);
+  return !!modelSection?.embedding || !!ollamaSection?.embedding?.options?.model || !!openAiSection?.embedding?.options?.model;
 }
 function isOllamaRequired(yamlText = '') {
   const providerType = detectProviderType(yamlText);
@@ -700,7 +730,7 @@ function parseOllamaBaseUrl(yamlText = '') {
   const doc = getYamlObj(yamlText);
   const explicitOllamaBaseUrl = getOllamaSection(doc)?.['base-url'];
   if (explicitOllamaBaseUrl) return String(explicitOllamaBaseUrl);
-  const compatibleUrl = getOpenAiSdkSection(doc)?.['base-url'];
+  const compatibleUrl = getOpenAiSection(doc)?.['base-url'];
   if (compatibleUrl && String(compatibleUrl).includes('11434')) return String(compatibleUrl).replace(/\/v1\/?$/i, '');
   return 'http://127.0.0.1:11434';
 }
@@ -708,7 +738,7 @@ function extractPrimaryModelName(yamlText = '') {
   const doc = getYamlObj(yamlText);
   const chatModel = getModelSection(doc)?.chat;
   if (chatModel === 'ollama') return getOllamaSection(doc)?.chat?.options?.model || null;
-  if (chatModel === 'openai-sdk') return getOpenAiSdkSection(doc)?.chat?.options?.model || null;
+  if (chatModel === 'openai') return getOpenAiSection(doc)?.chat?.options?.model || null;
   return null;
 }
 
@@ -717,7 +747,7 @@ function getConfiguredChatModelInfo(yamlText = '') {
   const provider = getModelSection(doc)?.chat || null;
   let model = null;
   if (provider === 'ollama') model = getOllamaSection(doc)?.chat?.options?.model || null;
-  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.chat?.options?.model || null;
+  if (provider === 'openai') model = getOpenAiSection(doc)?.chat?.options?.model || null;
   return { provider, model };
 }
 
@@ -726,7 +756,7 @@ function getConfiguredEmbeddingModelInfo(yamlText = '') {
   const provider = getModelSection(doc)?.embedding || null;
   let model = null;
   if (provider === 'ollama') model = getOllamaSection(doc)?.embedding?.options?.model || null;
-  if (provider === 'openai-sdk') model = getOpenAiSdkSection(doc)?.embedding?.options?.model || null;
+  if (provider === 'openai') model = getOpenAiSection(doc)?.embedding?.options?.model || null;
   return { provider, model };
 }
 
@@ -890,6 +920,8 @@ function buildSpawnArguments(jrePath, jarPath, configPath, runtimeSettings, conf
       '-jar',
       jarPath,
       configArg,
+      // Electron owns the MLX decision, so disable the JVM-side auto-activator.
+      '--spring.ai.playground.ollama.mlx-auto-select=false',
       ...appArgs,
     ],
     env: { ...process.env, ...envVariables },
@@ -1023,18 +1055,25 @@ function getLaunchChatModelList(installedChatModels = [], configuredChatModel = 
   return prioritizedModel ? [prioritizedModel, ...remainingModels] : [...remainingModels];
 }
 
-function buildLaunchOverrideYaml(chatModels = []) {
-  return yaml.dump({
-    spring: {
-      ai: {
-        playground: {
-          chat: {
-            models: chatModels,
-          },
-        },
+function buildLaunchOverrideYaml(chatModels = [], chatModelOverride = null) {
+  const ai = {
+    playground: {
+      chat: {
+        models: chatModels,
       },
     },
-  }, { lineWidth: -1, noRefs: true }).trimEnd();
+  };
+  if (chatModelOverride) {
+    ai.ollama = { chat: { options: { model: chatModelOverride } } };
+  }
+  return yaml.dump({ spring: { ai } }, { lineWidth: -1, noRefs: true }).trimEnd();
+}
+
+function resolveAppleSiliconMlxModel(configuredChatModel, installedModels = []) {
+  if (!isAppleSilicon() || !configuredChatModel) return null;
+  const mlxModel = toMlxModel(configuredChatModel);
+  if (mlxModel === configuredChatModel) return null;
+  return (Array.isArray(installedModels) ? installedModels : []).includes(mlxModel) ? mlxModel : null;
 }
 
 async function resolveLaunchConfigPath(configPath) {
@@ -1047,12 +1086,11 @@ async function resolveLaunchConfigPath(configPath) {
     return configPath;
   }
 
-  const runtimeChatModels = getLaunchChatModelList(
-    ollamaInfo.installedChatModels,
-    ollamaInfo.chatModel?.provider === 'ollama' ? ollamaInfo.chatModel.model : null
-  );
+  const configuredChatModel = ollamaInfo.chatModel?.provider === 'ollama' ? ollamaInfo.chatModel.model : null;
+  const mlxChatModel = resolveAppleSiliconMlxModel(configuredChatModel, ollamaInfo.installedModels);
+  const runtimeChatModels = getLaunchChatModelList(ollamaInfo.installedChatModels, mlxChatModel || configuredChatModel);
   const runtimeYamlText = normalizeSpringAiYamlText(yamlText).trimEnd();
-  const overrideYamlText = buildLaunchOverrideYaml(runtimeChatModels);
+  const overrideYamlText = buildLaunchOverrideYaml(runtimeChatModels, mlxChatModel);
   const launchConfigPath = getUserConfigPath();
   const nextYamlText = runtimeYamlText
     ? `${runtimeYamlText}\n---\n${overrideYamlText}\n`
@@ -1060,6 +1098,9 @@ async function resolveLaunchConfigPath(configPath) {
 
   fs.writeFileSync(launchConfigPath, nextYamlText, 'utf8');
   appendLog(`Resolved ${runtimeChatModels.length} downloaded Ollama chat model(s) for launch.`);
+  if (mlxChatModel) {
+    appendLog(`Apple Silicon: upgraded chat model ${configuredChatModel} to MLX build ${mlxChatModel} for launch.`);
+  }
   return launchConfigPath;
 }
 
@@ -1186,7 +1227,7 @@ function writeJsonFile(filePath, value) {
 }
 
 function createDefaultConfigRecord(existingIds = new Set()) {
-  const defaultYaml = CONFIG_TEMPLATES.ollama.yaml;
+  const defaultYaml = templateYaml(CONFIG_TEMPLATES.ollama);
   const configId = createUniqueConfigId('Default', existingIds);
   const config = { id: configId, name: 'Ollama' };
   fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(defaultYaml), 'utf8');
@@ -1201,7 +1242,7 @@ function ensureStarterConfigs(index) {
     if (existingNames.has(template.name.toLowerCase())) continue;
     const configId = createUniqueConfigId(template.name, existingIds);
     existingIds.add(configId);
-    fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(template.yaml), 'utf8');
+    fs.writeFileSync(getConfigFilePath(configId), normalizeSpringAiYamlText(templateYaml(template)), 'utf8');
     index.configs.push({ id: configId, name: template.name });
   }
 }
@@ -1212,7 +1253,7 @@ function normalizeConfigYamlToTemplateIfNeeded(config) {
   if (!fs.existsSync(configPath)) {
     fs.writeFileSync(
       configPath,
-      normalizeSpringAiYamlText(template?.yaml ?? CONFIG_TEMPLATES.ollama.yaml),
+      normalizeSpringAiYamlText(templateYaml(template ?? CONFIG_TEMPLATES.ollama)),
       'utf8'
     );
     return;
@@ -1224,7 +1265,7 @@ function normalizeConfigYamlToTemplateIfNeeded(config) {
     return;
   }
   if (template && shouldCompactToTemplateYaml(existingYaml)) {
-    fs.writeFileSync(configPath, normalizeSpringAiYamlText(template.yaml), 'utf8');
+    fs.writeFileSync(configPath, normalizeSpringAiYamlText(templateYaml(template)), 'utf8');
   }
 }
 
@@ -1241,7 +1282,7 @@ function ensureConfigStore() {
     const config = { id: 'default', name: 'Ollama' };
     fs.writeFileSync(
       getConfigFilePath(config.id),
-      normalizeSpringAiYamlText(initialYaml ?? CONFIG_TEMPLATES.ollama.yaml),
+      normalizeSpringAiYamlText(initialYaml ?? templateYaml(CONFIG_TEMPLATES.ollama)),
       'utf8'
     );
     index = { activeConfigId: config.id, configs: [config], meta: { hasCompletedInitialSetup: false } };
@@ -1289,7 +1330,7 @@ function ensureConfigStore() {
       const template = getTemplateByName(config.name);
       fs.writeFileSync(
         configPath,
-        normalizeSpringAiYamlText(template?.yaml ?? CONFIG_TEMPLATES.ollama.yaml),
+        normalizeSpringAiYamlText(templateYaml(template ?? CONFIG_TEMPLATES.ollama)),
         'utf8'
       );
     }
@@ -1569,6 +1610,10 @@ function createOllamaManagerWindow() {
   ollamaManagerWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     appendLog(`Ollama manager failed to load (${errorCode}): ${errorDescription} - ${validatedURL || OLLAMA_MANAGER_PATH}`, true);
   });
+  ollamaManagerWindow.webContents.on('render-process-gone', (event, details) => {
+    appendLog(`Ollama manager render process gone (${details?.reason || 'unknown'}); reloading.`, true);
+    if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) ollamaManagerWindow.reload();
+  });
   ollamaManagerWindow.webContents.on('did-finish-load', () => {
     fitOllamaManagerWindowToContent();
   });
@@ -1627,6 +1672,15 @@ function sendOllamaDownloadQueueUpdate(target = null) {
   }
 }
 
+let lastDownloadProgressSendAt = 0;
+
+function sendOllamaDownloadProgressUpdate() {
+  const now = Date.now();
+  if (now - lastDownloadProgressSendAt < 400) return;
+  lastDownloadProgressSendAt = now;
+  sendOllamaDownloadQueueUpdate();
+}
+
 function updateDownloadTaskProgress(task, progress = {}) {
   task.progressText = progress?.status || progress?.error || progress?.digest || task.progressText || 'Downloading...';
   task.completed = typeof progress?.completed === 'number' ? progress.completed : task.completed ?? null;
@@ -1652,8 +1706,8 @@ function cancelQueuedOllamaDownloads() {
 
 function abortOllamaDownloadTask(task) {
   if (!task) return;
-  task.client?.abort?.();
-  task.stream?.abort?.();
+  try { task.client?.abort?.(); } catch { /* client may already be closed */ }
+  try { task.stream?.abort?.(); } catch { /* stream may already be done */ }
 }
 
 async function cleanupCanceledOllamaDownload(task) {
@@ -1686,6 +1740,24 @@ async function cancelAllOllamaDownloads() {
   await activeTask?.completionPromise;
 }
 
+function cancelOllamaDownload(taskId) {
+  if (activeOllamaDownload && activeOllamaDownload.id === taskId) {
+    const task = activeOllamaDownload;
+    task.cleanupRequested = true;
+    task.status = 'canceling';
+    task.progressText = 'Canceling download and removing partial files...';
+    abortOllamaDownloadTask(task);
+    return { ok: true, target: 'active' };
+  }
+  const index = ollamaDownloadQueue.findIndex((task) => task.id === taskId);
+  if (index === -1) return { ok: false };
+  const [task] = ollamaDownloadQueue.splice(index, 1);
+  task.status = 'canceled';
+  task.progressText = 'Canceled';
+  finalizeOllamaDownloadTask(task);
+  return { ok: true, target: 'queued' };
+}
+
 async function processNextOllamaDownload() {
   if (activeOllamaDownload || !ollamaDownloadQueue.length) return;
   activeOllamaDownload = ollamaDownloadQueue.shift();
@@ -1712,7 +1784,7 @@ async function processNextOllamaDownload() {
         task.status = 'running';
       }
       updateDownloadTaskProgress(task, progress);
-      sendOllamaDownloadQueueUpdate();
+      sendOllamaDownloadProgressUpdate();
       if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
         ollamaManagerWindow.webContents.send('ollama-manager:pull-progress', {
           model: task.model,
@@ -2723,6 +2795,12 @@ ipcMain.handle('ollama-manager:enqueue-pull', async (event, payload) => {
   sendOllamaDownloadQueueUpdate(event.sender);
   processNextOllamaDownload();
   return { ok: true, taskId: task.id };
+});
+
+ipcMain.handle('ollama-manager:cancel-download', async (event, payload) => {
+  const result = cancelOllamaDownload(payload?.taskId);
+  sendOllamaDownloadQueueUpdate(event.sender);
+  return result;
 });
 
 ipcMain.handle('ollama-manager:list-installed', async () => {

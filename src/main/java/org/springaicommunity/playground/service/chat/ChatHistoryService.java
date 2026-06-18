@@ -19,6 +19,7 @@ package org.springaicommunity.playground.service.chat;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.stereotype.Service;
@@ -37,13 +38,20 @@ public class ChatHistoryService {
 
     private final ChatMemory chatMemory;
     private final ChatHistoryPersistenceService chatHistoryPersistenceService;
+    private final ChatModel chatModel;
 
     private final Map<String, ChatHistory> conversationIdHistoryMap;
 
-    public ChatHistoryService(ChatMemory chatMemory, ChatHistoryPersistenceService chatHistoryPersistenceService) {
+    public ChatHistoryService(ChatMemory chatMemory, ChatHistoryPersistenceService chatHistoryPersistenceService,
+            ChatModel chatModel) {
         this.chatMemory = chatMemory;
         this.chatHistoryPersistenceService = chatHistoryPersistenceService;
+        this.chatModel = chatModel;
         this.conversationIdHistoryMap = new ConcurrentHashMap<>();
+    }
+
+    private String currentProvider() {
+        return this.chatModel.getClass().getSimpleName().replace("ChatModel", "");
     }
 
     public ChatHistory updateChatHistory(ChatHistory chatHistory) {
@@ -57,14 +65,16 @@ public class ChatHistoryService {
     private ChatHistory changeChatHistory(ChatHistory chatHistory) {
         if (Objects.isNull(chatHistory.title()) || chatHistory.title().isBlank())
             return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
-        return this.conversationIdHistoryMap.get(chatHistory.conversationId())
+        ChatHistory registered = this.conversationIdHistoryMap.get(chatHistory.conversationId());
+        return (Objects.isNull(registered) ? chatHistory : registered)
                 .mutate(chatHistory.title(), System.currentTimeMillis());
     }
 
+    // Stopping a stream can commit the conversation before the user turn reaches chat memory; falling back
+    // keeps the conversation registered and saved instead of throwing it away inside the cancel path.
     private String extractTitle(List<Message> messageList) {
         return messageList.stream().filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
-                .map(Message::getText).map(userPrompt -> buildTitle(userPrompt.trim(), 20)).orElseThrow(() ->
-                        new IllegalArgumentException("No USER Message type: " + messageList));
+                .map(Message::getText).map(userPrompt -> buildTitle(userPrompt.trim(), 20)).orElse("New chat");
     }
 
     private String buildTitle(String userPrompt, int length) {
@@ -87,6 +97,15 @@ public class ChatHistoryService {
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {
+        return createChatHistory(systemPrompt, chatOptions, ChatExtraOptions.defaults());
+    }
+
+    public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions, ChatExtraOptions extraOptions) {
+        return createChatHistory(systemPrompt, chatOptions, extraOptions, ChatToolPreferences.defaults());
+    }
+
+    public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions, ChatExtraOptions extraOptions,
+            ChatToolPreferences toolPreferences) {
         String conversationId = "Chat-" + UUID.randomUUID();
         long timestamp = System.currentTimeMillis();
         DefaultChatOptions defaultChatOptions =
@@ -96,6 +115,8 @@ public class ChatHistoryService {
                         .temperature(chatOptions.getTemperature())
                         .topK(chatOptions.getTopK()).topP(chatOptions.getTopP()).build();
         return new ChatHistory(conversationId, null, timestamp, timestamp, systemPrompt, defaultChatOptions,
+                extraOptions == null ? ChatExtraOptions.defaults() : extraOptions, currentProvider(),
+                toolPreferences == null ? ChatToolPreferences.defaults() : toolPreferences,
                 () -> getMessages(conversationId));
     }
 

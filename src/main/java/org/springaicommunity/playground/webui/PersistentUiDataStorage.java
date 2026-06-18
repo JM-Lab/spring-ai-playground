@@ -15,13 +15,14 @@
  */
 package org.springaicommunity.playground.webui;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.page.WebStorage;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.playground.service.chat.DefaultChatOptionsJacksonModule;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +37,7 @@ public class PersistentUiDataStorage {
     private final ObjectMapper objectMapper;
 
     public PersistentUiDataStorage(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.rebuild().addModule(new DefaultChatOptionsJacksonModule()).build();
     }
 
     public <T> void saveData(String key, T data) {
@@ -44,7 +45,7 @@ public class PersistentUiDataStorage {
             String jsonValue = objectMapper.writeValueAsString(data);
             WebStorage.setItem(LOCAL_STORAGE, key, jsonValue);
             logger.debug("Data saved to localStorage. Key: {}", key);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             logger.error("Error converting object to JSON: {}", e.getMessage());
         }
     }
@@ -56,7 +57,7 @@ public class PersistentUiDataStorage {
                     T data = objectMapper.readValue(jsonValue, typeReference);
                     callback.accept(data);
                     logger.debug("Data loaded from localStorage. Key: {}", key);
-                } catch (JsonProcessingException e) {
+                } catch (JacksonException e) {
                     logger.error("Error converting JSON to object: {}", e.getMessage());
                     callback.accept(null);
                 }

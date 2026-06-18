@@ -1,4 +1,4 @@
-description: Explore Spring AI Playground features: Tool Studio, MCP Server, Vector Database, Agentic Chat, Observability, and the safe local architecture behind its AI tool workflow.
+description: Explore Spring AI Playground features: Tool Studio, MCP Server, Vector Database, Agentic Chat, Observability, and the safe local execution architecture.
 
 # Features
 
@@ -25,7 +25,7 @@ Spring AI Playground is organized around five product surfaces, designed to be u
 
     Document ingestion, chunking, embedding, storage, and similarity search across Spring AI vector stores - the RAG validation surface.
 
--   :material-chat-processing:{ .lg .middle } **[Agentic Chat](agentic-chat.md)**
+-   :material-chat-processing:{ .lg .middle } **[Agentic Chat](agentic-chat/index.md)**
 
     ---
 

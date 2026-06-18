@@ -15,8 +15,8 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springframework.ai.tool.ToolCallback;
@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public interface McpClientServiceTest {
 
     default McpServerInfo testMcpClient(McpClientService mcpClientService, String serverName,
-            McpTransportType mcpTransportType, Object parameters) throws JsonProcessingException {
+            McpTransportType mcpTransportType, Object parameters) throws JacksonException {
         long currentTimeMillis = System.currentTimeMillis();
         McpServerInfo mcpServerInfo = new McpServerInfo(mcpTransportType, serverName, "", currentTimeMillis,
                 currentTimeMillis, new ObjectMapper().writeValueAsString(parameters));

@@ -138,11 +138,11 @@ public class SystemMetricsSnapshot {
             if (level != null) s.logbackEventsByLevel.merge(level, (long) c.count(), Long::sum);
         });
 
-        s.activeChatClient = (long) sumGauge("gen_ai.chat.client.operation.active", Tags.empty());
+        s.activeChatClient = (long) sumGauge("spring.ai.chat.client.active", Tags.empty());
         s.activeChatModel = (long) sumGauge("gen_ai.client.operation.active", Tags.empty());
         s.activeAdvisor = (long) sumGauge("spring.ai.advisor.active", Tags.empty());
         s.activeVector = (long) sumGauge("db.vector.client.operation.active", Tags.empty());
-        s.activeChatClientStream = (long) sumGauge("gen_ai.chat.client.operation.active",
+        s.activeChatClientStream = (long) sumGauge("spring.ai.chat.client.active",
                 Tags.of("spring.ai.chat.client.stream", "true"));
 
         // jvm.info value is always 1; the metadata is in the tags.

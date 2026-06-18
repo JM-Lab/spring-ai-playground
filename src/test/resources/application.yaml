@@ -22,6 +22,9 @@ spring:
       max-request-size: 20MB
   application:
     name: spring-ai-playground-test
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
   profiles:
     default: ollama, openai, mcp
   ai:
@@ -133,7 +136,7 @@ spring:
       on-profile: openai
   ai:
     model:
-    openai-sdk:
+    openai:
       api-key: ${OPENAI_API_KEY}
       base-url: https://models.github.ai/inference
       chat:

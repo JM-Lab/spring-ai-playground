@@ -15,16 +15,17 @@
  */
 package org.springaicommunity.playground.service.mcp.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.client.transport.customizer.McpSyncHttpClientRequestCustomizer;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import org.springaicommunity.playground.service.oauth.McpOAuth2AuthorizationCodeRequestCustomizer;
 import org.springaicommunity.playground.service.util.EnvVarResolver;
@@ -64,11 +65,9 @@ public interface McpClientPropertiesService<P> {
                     HttpClientSseClientTransport.Builder builder =
                             HttpClientSseClientTransport.builder(resolvedUrl);
                     if (StringUtils.hasText(resolvedEndpoint)) builder.sseEndpoint(resolvedEndpoint);
-                    if (!resolvedHeaders.isEmpty())
-                        builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
-                    McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
-                            oauthRegistrationId, oauth2ClientManager);
-                    if (oauthCustomizer != null) builder.httpRequestCustomizer(oauthCustomizer);
+                    McpSyncHttpClientRequestCustomizer sseCustomizer = combineCustomizers(resolvedHeaders,
+                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager));
+                    if (sseCustomizer != null) builder.httpRequestCustomizer(sseCustomizer);
                     yield builder.build();
                 }
                 case STREAMABLE_HTTP -> {
@@ -82,24 +81,32 @@ public interface McpClientPropertiesService<P> {
                     HttpClientStreamableHttpTransport.Builder builder =
                             HttpClientStreamableHttpTransport.builder(resolvedUrl);
                     if (StringUtils.hasText(resolvedEndpoint)) builder.endpoint(resolvedEndpoint);
-                    if (!resolvedHeaders.isEmpty())
-                        builder.customizeRequest(req -> resolvedHeaders.forEach(req::header));
-                    McpSyncHttpClientRequestCustomizer oauthCustomizer = oauthCustomizer(params.oauth(),
-                            oauthRegistrationId, oauth2ClientManager);
-                    if (oauthCustomizer != null) builder.httpRequestCustomizer(oauthCustomizer);
+                    McpSyncHttpClientRequestCustomizer httpCustomizer = combineCustomizers(resolvedHeaders,
+                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager));
+                    if (httpCustomizer != null) builder.httpRequestCustomizer(httpCustomizer);
                     yield builder.build();
                 }
                 case STDIO -> {
                     String resolvedJson = substituteStdio(objectMapper, parametersAsJson);
                     Parameters parameters = objectMapper.readValue(resolvedJson, Parameters.class);
                     yield new StdioClientTransport(parameters.toServerParameters(),
-                            new JacksonMcpJsonMapper(objectMapper));
+                            new JacksonMcpJsonMapper(JsonMapper.builder().build()));
                 }
             };
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException(
                     "Failed to parse MCP client connection parameters for transport " + getTransportType(), e);
         }
+    }
+
+    private static McpSyncHttpClientRequestCustomizer combineCustomizers(Map<String, String> headers,
+            McpSyncHttpClientRequestCustomizer oauth) {
+        boolean hasHeaders = headers != null && !headers.isEmpty();
+        if (!hasHeaders && oauth == null) return null;
+        return (request, method, uri, body, context) -> {
+            if (hasHeaders) headers.forEach(request::header);
+            if (oauth != null) oauth.customize(request, method, uri, body, context);
+        };
     }
 
     private static McpSyncHttpClientRequestCustomizer oauthCustomizer(HttpConnectionParametersWithExtras.OAuth oauth,
@@ -160,7 +167,7 @@ public interface McpClientPropertiesService<P> {
                         }
                         JsonNode envNode = root.get("env");
                         if (envNode != null && envNode.isObject()) {
-                            Iterator<Map.Entry<String, JsonNode>> it = envNode.fields();
+                            Iterator<Map.Entry<String, JsonNode>> it = envNode.properties().iterator();
                             while (it.hasNext()) {
                                 Map.Entry<String, JsonNode> e = it.next();
                                 if (!e.getValue().isNull()) {
@@ -173,13 +180,13 @@ public interface McpClientPropertiesService<P> {
                 }
             };
             return EnvVarResolver.missing(refs);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return Set.of();
         }
     }
 
     private static String substituteStdio(ObjectMapper objectMapper, String parametersAsJson)
-            throws JsonProcessingException {
+            throws JacksonException {
         JsonNode root = objectMapper.readTree(parametersAsJson);
         if (!root.isObject()) return parametersAsJson;
         ObjectNode obj = (ObjectNode) root;
@@ -197,7 +204,7 @@ public interface McpClientPropertiesService<P> {
         }
         JsonNode envNode = obj.get("env");
         if (envNode != null && envNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> it = envNode.fields();
+            Iterator<Map.Entry<String, JsonNode>> it = envNode.properties().iterator();
             while (it.hasNext()) {
                 Map.Entry<String, JsonNode> e = it.next();
                 if (!e.getValue().isNull()) refs.addAll(EnvVarResolver.findRefs(e.getValue().asText("")));
@@ -219,7 +226,7 @@ public interface McpClientPropertiesService<P> {
         if (envNode != null && envNode.isObject()) {
             ObjectNode envObj = (ObjectNode) envNode;
             Map<String, String> values = new LinkedHashMap<>();
-            Iterator<Map.Entry<String, JsonNode>> it = envObj.fields();
+            Iterator<Map.Entry<String, JsonNode>> it = envObj.properties().iterator();
             while (it.hasNext()) {
                 Map.Entry<String, JsonNode> e = it.next();
                 values.put(e.getKey(), e.getValue().isNull() ? null : e.getValue().asText(null));

@@ -15,10 +15,10 @@
  */
 package org.springaicommunity.playground.webui.observability.components;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
@@ -585,7 +585,7 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
     private void applyOption(ObjectNode option) {
         try {
             getElement().setProperty("chartOption", MAPPER.writeValueAsString(option));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize chart option", e);
         }
     }

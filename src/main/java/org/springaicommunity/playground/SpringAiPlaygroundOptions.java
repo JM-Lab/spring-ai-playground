@@ -17,7 +17,6 @@ package org.springaicommunity.playground;
 
 import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.tool.ToolSpecService.ExposureMode;
-import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
@@ -80,5 +79,17 @@ public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio 
     public record FsConfig(String basePath) {}
 
     public record Chat(String systemPrompt, List<String> models,
-                       @NestedConfigurationProperty DefaultChatOptions chatOptions) {}
+                       @NestedConfigurationProperty ChatOptionsConfig chatOptions, Integer toolResultMaxChars,
+                       Integer memoryMaxMessages, Integer historyMaxMessages, Integer defaultMaxTokens) {
+        public Chat {
+            if (toolResultMaxChars == null) toolResultMaxChars = 12_000;
+            if (memoryMaxMessages == null || memoryMaxMessages <= 0) memoryMaxMessages = 10;
+            if (historyMaxMessages == null || historyMaxMessages <= 0) historyMaxMessages = 2_000;
+            if (defaultMaxTokens == null || defaultMaxTokens <= 0) defaultMaxTokens = 8_192;
+        }
+    }
+
+    public record ChatOptionsConfig(String model, Double temperature, Integer maxTokens, Double topP,
+                                    Integer topK, Double frequencyPenalty, Double presencePenalty,
+                                    List<String> stopSequences) {}
 }

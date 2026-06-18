@@ -26,8 +26,6 @@
 
     <!-- M7 files introduced by commits already pushed to origin/main (52fbe60, ea2fa78) —
          suppressed to keep history clean. Remove a line whenever you next edit that file. -->
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolSpecPersistenceService\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolSpecPersistenceServiceBootTest\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]JavascriptToolPlaygroundView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolBuilderView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolParameterForm\.java$" checks=".*"/>
@@ -40,9 +38,6 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]config[\\/]SecurityConfig\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SharedDataReader\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SpringAiPlaygroundRagAdvisor\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistory\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryPersistenceService\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryService\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]HttpConnectionParametersWithExtras\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]McpAsyncClientOps\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]McpClientOps\.java$" checks=".*"/>
@@ -63,7 +58,6 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]DefaultToolsPreferenceResolver\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]DefaultToolsPreferenceService\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]McpToolDefinition\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolActivationCalculator\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolManifest\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolSpec\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]policy[\\/]EffectivePolicyResolver\.java$" checks=".*"/>
@@ -80,9 +74,7 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]SttMicButton\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]VaadinUtils\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatHistoryView\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatModelSettingView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]common[\\/]WorkspaceContentHeader\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]common[\\/]WorkspaceSettingsDrawer\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeChecklist\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeInfoView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeItemView\.java$" checks=".*"/>
@@ -123,7 +115,6 @@
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SpringAiPlaygroundIT\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryPersistenceServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryServiceTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatServiceWithCompatibleOpenAiIT\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatServiceWithOllamaIT\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]McpServerInfoServiceTest\.java$" checks=".*"/>
@@ -139,11 +130,8 @@
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]oauth[\\/]OAuthClientRegistrationsTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]oauth[\\/]OAuthTokenEncryptorTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ChipListBindingTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]DefaultToolPresetCatalogTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]DefaultToolsPreferenceResolverTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]DefaultToolsPreferenceServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]McpToolDefinitionTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolActivationCalculatorTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolCategoryCatalogTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]ToolWorkspaceBootstrapTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]tool[\\/]policy[\\/]EffectivePolicyResolverTest\.java$" checks=".*"/>

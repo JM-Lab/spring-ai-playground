@@ -456,7 +456,7 @@
   {
     "toolId": "e0eb0ea0-0963-50f3-9543-6e484a118128",
     "name": "listGithubRepoReleases",
-    "description": "Lists releases on a public GitHub repository (no auth).\n\nReturns: [{ tag, name, draft, prerelease, publishedAt, htmlUrl, body }].",
+    "description": "Lists releases on a public GitHub repository (no auth). Release bodies are clipped to 2,000 chars each to keep chat context small.\n\nReturns: [{ tag, name, draft, prerelease, publishedAt, htmlUrl, body }].",
     "staticVariables": [],
     "params": [
       {
@@ -481,7 +481,7 @@
         "testValue": "5"
       }
     ],
-    "code": "/**\n * Lists releases on a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nconst n = (Number.isInteger(perPage) && perPage > 0 && perPage <= 30) ? perPage : 5;\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases?per_page=' + n;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(r => ({\n  tag:         r.tag_name,\n  name:        r.name,\n  draft:       r.draft,\n  prerelease:  r.prerelease,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        r.body,\n}));\n",
+    "code": "/**\n * Lists releases on a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases\n *\n * Release bodies are full changelogs (often 10k+ chars each); clipping them keeps a page of\n * releases at a few hundred tokens instead of flooding the chat context.\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nconst n = (Number.isInteger(perPage) && perPage > 0 && perPage <= 30) ? perPage : 5;\n\nconst clip = (text, max) => {\n  const s = String(text == null ? '' : text);\n  return s.length <= max ? s : s.slice(0, max) + '\\n...[truncated ' + (s.length - max) + ' of ' + s.length + ' chars]';\n};\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases?per_page=' + n;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nreturn (resp.json() || []).map(r => ({\n  tag:         r.tag_name,\n  name:        r.name,\n  draft:       r.draft,\n  prerelease:  r.prerelease,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        clip(r.body, 2000),\n}));\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -532,7 +532,7 @@
   {
     "toolId": "0c0ece4e-4b0e-5fd9-93bb-876a200bf14d",
     "name": "getGithubLatestRelease",
-    "description": "Fetches the latest non-draft, non-prerelease release of a public GitHub repository (no auth).\n\nReturns: { tag, name, publishedAt, htmlUrl, body, assets: [{ name, downloadUrl, size }] }. 404 → { found: false, owner, repo }.",
+    "description": "Fetches the latest non-draft, non-prerelease release of a public GitHub repository (no auth). The body is clipped to 4,000 chars to keep chat context small.\n\nReturns: { tag, name, publishedAt, htmlUrl, body, assets: [{ name, downloadUrl, size }] }. 404 → { found: false, owner, repo }.",
     "staticVariables": [],
     "params": [
       {
@@ -550,7 +550,7 @@
         "testValue": "spring-ai"
       }
     ],
-    "code": "/**\n * Fetches the latest stable release of a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases/latest\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases/latest';\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 2_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst r = resp.json();\nreturn {\n  tag:         r.tag_name,\n  name:        r.name,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        r.body,\n  assets:      (r.assets || []).map(a => ({\n    name: a.name, downloadUrl: a.browser_download_url, size: a.size,\n  })),\n};\n",
+    "code": "/**\n * Fetches the latest stable release of a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/releases/latest\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\n\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/releases/latest';\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 2_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst r = resp.json();\n// Release bodies can be book-length changelogs; clip so one lookup stays around a thousand tokens.\nconst clip = (text, max) => {\n  const s = String(text == null ? '' : text);\n  return s.length <= max ? s : s.slice(0, max) + '\\n...[truncated ' + (s.length - max) + ' of ' + s.length + ' chars]';\n};\nreturn {\n  tag:         r.tag_name,\n  name:        r.name,\n  publishedAt: r.published_at,\n  htmlUrl:     r.html_url,\n  body:        clip(r.body, 4000),\n  assets:      (r.assets || []).map(a => ({\n    name: a.name, downloadUrl: a.browser_download_url, size: a.size,\n  })),\n};\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -601,7 +601,7 @@
   {
     "toolId": "c4e34ded-8d90-5123-b8c9-c9458bb30f56",
     "name": "getGithubFileContent",
-    "description": "Fetches the raw text content of a file from a public GitHub repository (no auth).\n\nFor directories this returns a listing instead: [{ name, type, path }]. Files over ~1 MB are not supported by this endpoint and return success=false.",
+    "description": "Fetches the raw text content of a file from a public GitHub repository (no auth). Content is clipped to the first 10,000 chars (truncated flag set) to keep chat context small.\n\nFor directories this returns a listing instead: [{ name, type, path }]. Files over ~1 MB are not supported by this endpoint and return success=false.",
     "staticVariables": [],
     "params": [
       {
@@ -633,7 +633,7 @@
         "testValue": "main"
       }
     ],
-    "code": "/**\n * Fetches a file (or directory listing) from a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}\n *\n * File response: base64-encoded content + sha + size. We decode to UTF-8 text.\n * Directory response: array of entries; we return a slimmed listing.\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nif (path  == null || path  === '') throw new Error('path required');\n\nconst refQs = (ref && ref !== '') ? ('?ref=' + encodeURIComponent(ref)) : '';\nconst segments = String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/contents/' + segments + refQs;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo, path };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nif (Array.isArray(data)) {\n  // Directory listing\n  return data.map(e => ({ name: e.name, type: e.type, path: e.path, size: e.size }));\n}\n// File — decode base64 content. GitHub wraps lines every 60 chars; strip whitespace first.\nif (data.encoding !== 'base64' || data.type !== 'file') {\n  return { found: true, type: data.type, name: data.name, path: data.path, size: data.size,\n           note: 'unsupported content; use a smaller file or different endpoint' };\n}\nconst b64 = String(data.content || '').replace(/\\s+/g, '');\nconst bin = atob(b64);\nconst bytes = new Uint8Array(bin.length);\nfor (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);\nconst text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);\nreturn { name: data.name, path: data.path, size: data.size, sha: data.sha,\n         encoding: 'utf-8', content: text };\n",
+    "code": "/**\n * Fetches a file (or directory listing) from a public GitHub repository.\n * Endpoint: GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}\n *\n * File response: base64-encoded content + sha + size. We decode to UTF-8 text.\n * Directory response: array of entries; we return a slimmed listing.\n */\n\nif (owner == null || owner === '') throw new Error('owner required');\nif (repo  == null || repo  === '') throw new Error('repo required');\nif (path  == null || path  === '') throw new Error('path required');\n\nconst refQs = (ref && ref !== '') ? ('?ref=' + encodeURIComponent(ref)) : '';\nconst segments = String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');\nconst url = 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)\n  + '/contents/' + segments + refQs;\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'spring-ai-playground' },\n  maxLength: 5_000_000,\n});\nif (resp.status === 404) return { found: false, owner, repo, path };\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nif (Array.isArray(data)) {\n  // Directory listing\n  return data.map(e => ({ name: e.name, type: e.type, path: e.path, size: e.size }));\n}\n// File — decode base64 content. GitHub wraps lines every 60 chars; strip whitespace first.\nif (data.encoding !== 'base64' || data.type !== 'file') {\n  return { found: true, type: data.type, name: data.name, path: data.path, size: data.size,\n           note: 'unsupported content; use a smaller file or different endpoint' };\n}\nconst b64 = String(data.content || '').replace(/\\s+/g, '');\nconst bin = atob(b64);\nconst bytes = new Uint8Array(bin.length);\nfor (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);\nconst text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);\n// Whole manifests/READMEs can be tens of thousands of chars; clip so one read stays a few\n// thousand tokens. The marker and flag tell the model the tail is missing rather than empty.\nconst MAX_CHARS = 10000;\nconst truncated = text.length > MAX_CHARS;\nconst content = truncated\n  ? text.slice(0, MAX_CHARS) + '\\n...[truncated ' + (text.length - MAX_CHARS) + ' of ' + text.length + ' chars]'\n  : text;\nreturn { name: data.name, path: data.path, size: data.size, sha: data.sha,\n         encoding: 'utf-8', truncated, content };\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -906,7 +906,7 @@
   {
     "toolId": "9638020b-f480-5b2c-b6a0-be3cddb40c34",
     "name": "convertCurrency",
-    "description": "Converts between fiat currencies using exchangerate.host (no key, no rate limit listed).\n\nReturns: { from, to, amount, rate, result, date }.",
+    "description": "Converts between fiat currencies using open.er-api.com daily reference rates (no key).\n\nReturns: { from, to, amount, rate, result, date }.",
     "staticVariables": [],
     "params": [
       {
@@ -931,7 +931,7 @@
         "testValue": "100"
       }
     ],
-    "code": "/**\n * Currency conversion via exchangerate.host public API.\n *\n * GET https://api.exchangerate.host/convert?from=USD&to=KRW&amount=100\n *\n * Returns the canonical ECB-derived rate plus the converted amount.\n */\n\nif (from == null || from === '') throw new Error('from required');\nif (to   == null || to   === '') throw new Error('to required');\nconst amt = (amount == null || amount === '') ? 1 : Number(amount);\nif (!Number.isFinite(amt)) throw new Error('amount must be a finite number');\n\nconst url = 'https://api.exchangerate.host/convert'\n  + '?from=' + encodeURIComponent(from)\n  + '&to='   + encodeURIComponent(to)\n  + '&amount=' + amt;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 200_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nreturn {\n  from:   d.query && d.query.from,\n  to:     d.query && d.query.to,\n  amount: d.query && d.query.amount,\n  rate:   d.info && d.info.rate,\n  result: d.result,\n  date:   d.date,\n};\n",
+    "code": "/**\n * Currency conversion via the open.er-api.com daily rates API (no key).\n * (api.exchangerate.host started requiring an access key in 2026, so the tool moved off it.)\n *\n * GET https://open.er-api.com/v6/latest/{from}\n *\n * One request fetches every rate for the source currency; the conversion is computed locally.\n */\n\nif (from == null || from === '') throw new Error('from required');\nif (to   == null || to   === '') throw new Error('to required');\nconst amt = (amount == null || amount === '') ? 1 : Number(amount);\nif (!Number.isFinite(amt)) throw new Error('amount must be a finite number');\n\nconst base  = String(from).trim().toUpperCase();\nconst quote = String(to).trim().toUpperCase();\n\nconst resp = await fetch('https://open.er-api.com/v6/latest/' + encodeURIComponent(base), {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 200_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst d = resp.json();\nif (d.result !== 'success') return { success: false, message: d['error-type'] || 'unexpected response' };\nconst rate = d.rates && d.rates[quote];\nif (rate == null) throw new Error('unknown currency code: ' + quote);\nreturn {\n  from:   base,\n  to:     quote,\n  amount: amt,\n  rate:   rate,\n  result: amt * rate,\n  date:   d.time_last_update_utc,\n};\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -946,7 +946,7 @@
       "removeDenyClasses": [],
       "networkMode": "allowlist",
       "hostsAllow": [
-        "api.exchangerate.host"
+        "open.er-api.com"
       ],
       "fileRead": null,
       "fileWrite": null,
@@ -1044,7 +1044,7 @@
   {
     "toolId": "83185f35-fc28-5ed0-a4e2-eadaa250ff13",
     "name": "getCountryInfo",
-    "description": "Fetches country information from restcountries.com (no auth) by partial or full name.\n\nReturns an array of matches, each: { name, officialName, capital, region, subregion, population, area, languages, currencies, callingCode, flagEmoji, latlng }.",
+    "description": "Looks up country facts by partial or full name from the open mledoze/countries dataset via the jsDelivr CDN (no key).\n\nReturns an array of matches (max 10), each: { name, officialName, capital, region, subregion, area, languages, currencies, callingCode, flagEmoji, latlng }.",
     "staticVariables": [],
     "params": [
       {
@@ -1055,7 +1055,7 @@
         "testValue": "korea"
       }
     ],
-    "code": "/**\n * Country metadata from restcountries.com (no key).\n *\n * GET https://restcountries.com/v3.1/name/{name}\n *\n * Partial matches are supported (e.g. \"korea\" returns both Koreas).\n * The API returns extremely chatty objects — we project to the most useful fields.\n */\n\nif (name == null || name === '') throw new Error('name required');\nconst resp = await fetch('https://restcountries.com/v3.1/name/' + encodeURIComponent(name), {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 5_000_000,\n});\nif (resp.status === 404) return [];\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nreturn (resp.json() || []).map(c => ({\n  name:         c.name && c.name.common,\n  officialName: c.name && c.name.official,\n  capital:      c.capital,\n  region:       c.region,\n  subregion:    c.subregion,\n  population:   c.population,\n  area:         c.area,\n  languages:    c.languages ? Object.values(c.languages) : [],\n  currencies:   c.currencies ? Object.keys(c.currencies) : [],\n  callingCode:  (c.idd && c.idd.root)\n                  ? c.idd.root + ((c.idd.suffixes && c.idd.suffixes[0]) || '')\n                  : null,\n  flagEmoji:    c.flag,\n  latlng:       c.latlng,\n}));\n",
+    "code": "/**\n * Country metadata from the open mledoze/countries dataset, served by the jsDelivr CDN (no key).\n * (restcountries.com moved behind API keys in 2026, so the tool ships its own open data source.)\n *\n * GET https://cdn.jsdelivr.net/gh/mledoze/countries@master/countries.json\n *\n * Partial matches are supported (e.g. \"korea\" returns both Koreas); results are capped at 10.\n */\n\nif (name == null || name === '') throw new Error('name required');\nconst resp = await fetch('https://cdn.jsdelivr.net/gh/mledoze/countries@master/countries.json', {\n  headers: { 'Accept': 'application/json' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst needle = String(name).trim().toLowerCase();\nconst matches = (resp.json() || []).filter(c => {\n  const common   = (c.name && c.name.common)   || '';\n  const official = (c.name && c.name.official) || '';\n  return common.toLowerCase().includes(needle) || official.toLowerCase().includes(needle);\n});\n\nreturn matches.slice(0, 10).map(c => ({\n  name:         c.name && c.name.common,\n  officialName: c.name && c.name.official,\n  capital:      c.capital,\n  region:       c.region,\n  subregion:    c.subregion,\n  area:         c.area,\n  languages:    c.languages ? Object.values(c.languages) : [],\n  currencies:   c.currencies ? Object.keys(c.currencies) : [],\n  callingCode:  (c.idd && c.idd.root)\n                  ? c.idd.root + ((c.idd.suffixes && c.idd.suffixes[0]) || '')\n                  : null,\n  flagEmoji:    c.flag,\n  latlng:       c.latlng,\n}));\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -1070,7 +1070,7 @@
       "removeDenyClasses": [],
       "networkMode": "allowlist",
       "hostsAllow": [
-        "restcountries.com"
+        "cdn.jsdelivr.net"
       ],
       "fileRead": null,
       "fileWrite": null,
@@ -1106,7 +1106,7 @@
   {
     "toolId": "ec9fdae3-56f8-506b-bfa6-4611ec62a433",
     "name": "searchArxiv",
-    "description": "Searches arXiv preprints via the public Atom-feed API (no auth). Results are parsed from XML.\n\nReturns up to `max` entries, each: { id, title, summary, authors, published, updated, primaryCategory, pdfUrl, abstractUrl }.",
+    "description": "Searches arXiv preprints via the public Atom-feed API (no auth). Results are parsed from XML. Each summary (abstract) is clipped to 1,500 chars to keep chat context small.\n\nReturns up to `max` entries, each: { id, title, summary, authors, published, updated, primaryCategory, pdfUrl, abstractUrl }.",
     "staticVariables": [],
     "params": [
       {
@@ -1131,7 +1131,7 @@
         "testValue": "relevance"
       }
     ],
-    "code": "/**\n * arXiv search via the public Atom-feed API.\n *\n * GET http://export.arxiv.org/api/query?search_query={query}&max_results={n}\n *\n * The response is XML (Atom). We parse it via safety.parser.xml and project\n * each <entry> to a compact object.\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n  = (Number.isInteger(max) && max > 0 && max <= 50) ? max : 5;\nconst so = (sortBy === 'lastUpdatedDate' || sortBy === 'submittedDate') ? sortBy : 'relevance';\n\nconst url = 'http://export.arxiv.org/api/query'\n  + '?search_query=' + encodeURIComponent(query)\n  + '&max_results=' + n\n  + '&sortBy=' + so + '&sortOrder=descending';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/atom+xml' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst root = safety.parser.xml(resp.text());\n\n// `root.children` is a list of {tag, attrs, text, children}. We pick <entry> nodes.\nfunction pickChild(node, tag) {\n  for (const c of node.children || []) if (c.tag === tag) return c;\n  return null;\n}\nfunction pickAllChildren(node, tag) {\n  const out = [];\n  for (const c of node.children || []) if (c.tag === tag) out.push(c);\n  return out;\n}\n\nconst entries = pickAllChildren(root, 'entry');\nreturn entries.map(e => {\n  const idNode      = pickChild(e, 'id');\n  const titleNode   = pickChild(e, 'title');\n  const summaryNode = pickChild(e, 'summary');\n  const pubNode     = pickChild(e, 'published');\n  const updNode     = pickChild(e, 'updated');\n  const catNode     = pickChild(e, 'primary_category') || pickChild(e, 'category');\n  const links       = pickAllChildren(e, 'link');\n  const authors     = pickAllChildren(e, 'author').map(a => {\n    const n = pickChild(a, 'name'); return n ? n.text : null;\n  }).filter(Boolean);\n  let pdfUrl = null, abs = null;\n  for (const l of links) {\n    const attrs = l.attrs || {};\n    if (attrs.title === 'pdf') pdfUrl = attrs.href;\n    if (attrs.rel === 'alternate') abs = attrs.href;\n  }\n  return {\n    id:              idNode && idNode.text,\n    title:           titleNode && titleNode.text.replace(/\\s+/g, ' ').trim(),\n    summary:         summaryNode && summaryNode.text.replace(/\\s+/g, ' ').trim(),\n    authors,\n    published:       pubNode && pubNode.text,\n    updated:         updNode && updNode.text,\n    primaryCategory: catNode && catNode.attrs && catNode.attrs.term,\n    pdfUrl,\n    abstractUrl:     abs,\n  };\n});\n",
+    "code": "/**\n * arXiv search via the public Atom-feed API.\n *\n * GET http://export.arxiv.org/api/query?search_query={query}&max_results={n}\n *\n * The response is XML (Atom). We parse it via safety.parser.xml and project\n * each <entry> to a compact object.\n */\n\nif (query == null || query === '') throw new Error('query required');\nconst n  = (Number.isInteger(max) && max > 0 && max <= 50) ? max : 5;\nconst so = (sortBy === 'lastUpdatedDate' || sortBy === 'submittedDate') ? sortBy : 'relevance';\n\nconst url = 'http://export.arxiv.org/api/query'\n  + '?search_query=' + encodeURIComponent(query)\n  + '&max_results=' + n\n  + '&sortBy=' + so + '&sortOrder=descending';\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/atom+xml' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\n\nconst root = safety.parser.xml(resp.text());\n\n// `root.children` is a list of {tag, attrs, text, children}. We pick <entry> nodes.\nfunction pickChild(node, tag) {\n  for (const c of node.children || []) if (c.tag === tag) return c;\n  return null;\n}\nfunction pickAllChildren(node, tag) {\n  const out = [];\n  for (const c of node.children || []) if (c.tag === tag) out.push(c);\n  return out;\n}\n\n// Abstracts run 1-2k chars each; clip so a page of papers stays compact in the chat context.\nconst clip = (text, max) => {\n  const s = String(text == null ? '' : text);\n  return s.length <= max ? s : s.slice(0, max) + '\\n...[truncated ' + (s.length - max) + ' of ' + s.length + ' chars]';\n};\n\nconst entries = pickAllChildren(root, 'entry');\nreturn entries.map(e => {\n  const idNode      = pickChild(e, 'id');\n  const titleNode   = pickChild(e, 'title');\n  const summaryNode = pickChild(e, 'summary');\n  const pubNode     = pickChild(e, 'published');\n  const updNode     = pickChild(e, 'updated');\n  const catNode     = pickChild(e, 'primary_category') || pickChild(e, 'category');\n  const links       = pickAllChildren(e, 'link');\n  const authors     = pickAllChildren(e, 'author').map(a => {\n    const n = pickChild(a, 'name'); return n ? n.text : null;\n  }).filter(Boolean);\n  let pdfUrl = null, abs = null;\n  for (const l of links) {\n    const attrs = l.attrs || {};\n    if (attrs.title === 'pdf') pdfUrl = attrs.href;\n    if (attrs.rel === 'alternate') abs = attrs.href;\n  }\n  return {\n    id:              idNode && idNode.text,\n    title:           titleNode && titleNode.text.replace(/\\s+/g, ' ').trim(),\n    summary:         summaryNode && clip(summaryNode.text.replace(/\\s+/g, ' ').trim(), 1500),\n    authors,\n    published:       pubNode && pubNode.text,\n    updated:         updNode && updNode.text,\n    primaryCategory: catNode && catNode.attrs && catNode.attrs.term,\n    pdfUrl,\n    abstractUrl:     abs,\n  };\n});\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,
@@ -1215,89 +1215,6 @@
       "networkMode": "allowlist",
       "hostsAllow": [
         "date.nager.at"
-      ],
-      "fileRead": null,
-      "fileWrite": null,
-      "fsBasePath": null
-    },
-    "toolSafety": {
-      "version": "1.0",
-      "runtime": {
-        "id": "spring-ai-playground/polyglot-js",
-        "minVersion": "0.2.0",
-        "ecmaVersion": "2024",
-        "javaInterop": false,
-        "helpers": [
-          "safety.http/v1"
-        ],
-        "console": true
-      },
-      "category": {
-        "source": "builtin",
-        "id": "WEB"
-      },
-      "capabilities": {
-        "network": {
-          "mode": "allowlist",
-          "hosts": []
-        },
-        "fileRead": false,
-        "fileWrite": false
-      }
-    },
-    "draft": true
-  },
-  {
-    "toolId": "314b5c66-3146-5ceb-b678-6e9d21b0fe66",
-    "name": "searchReddit",
-    "description": "Searches a public subreddit via Reddit's JSON API (no auth, but rate-limited and User-Agent required).\n\nReturns up to `limit` posts: [{ title, author, score, numComments, createdUtc, subreddit, permalink, url, selftext }]. Subreddit can be 'all' for site-wide search.",
-    "staticVariables": [],
-    "params": [
-      {
-        "name": "subreddit",
-        "description": "Subreddit name (without /r/, or 'all')",
-        "required": true,
-        "type": "STRING",
-        "testValue": "programming"
-      },
-      {
-        "name": "query",
-        "description": "Search query string",
-        "required": true,
-        "type": "STRING",
-        "testValue": "spring ai"
-      },
-      {
-        "name": "limit",
-        "description": "Max posts (1-25, default 5)",
-        "required": false,
-        "type": "INTEGER",
-        "testValue": "5"
-      },
-      {
-        "name": "sort",
-        "description": "relevance | hot | top | new | comments",
-        "required": false,
-        "type": "STRING",
-        "testValue": "relevance"
-      }
-    ],
-    "code": "/**\n * Reddit JSON search endpoint.\n *\n * GET https://www.reddit.com/r/{subreddit}/search.json?q=...&restrict_sr=1&limit=...\n *\n * No authentication needed for read access. Reddit BANS empty / generic User-Agent\n * strings — we pass a descriptive one. Rate limit: ~60 req/min/IP.\n */\n\nif (subreddit == null || subreddit === '') throw new Error('subreddit required');\nif (query == null || query === '') throw new Error('query required');\nconst n = (Number.isInteger(limit) && limit > 0 && limit <= 25) ? limit : 5;\nconst sortValid = (sort === 'hot' || sort === 'top' || sort === 'new' || sort === 'comments');\nconst s = sortValid ? sort : 'relevance';\n\nconst sub = String(subreddit).replace(/^r\\//, '');\nconst restrict = (sub.toLowerCase() === 'all') ? '' : '&restrict_sr=1';\nconst url = 'https://www.reddit.com/r/' + encodeURIComponent(sub) + '/search.json'\n  + '?q=' + encodeURIComponent(query)\n  + restrict\n  + '&limit=' + n + '&sort=' + s;\n\nconst resp = await fetch(url, {\n  headers: { 'Accept': 'application/json',\n             'User-Agent': 'spring-ai-playground/0.2 (by /u/local-tool)' },\n  maxLength: 5_000_000,\n});\nif (!resp.ok) return { success: false, status: resp.status, message: resp.text() };\nconst data = resp.json();\nconst children = (data.data && data.data.children) || [];\nreturn children.map(c => {\n  const d = c.data || {};\n  return {\n    title:       d.title,\n    author:      d.author,\n    score:       d.score,\n    numComments: d.num_comments,\n    createdUtc:  d.created_utc,\n    subreddit:   d.subreddit,\n    permalink:   'https://www.reddit.com' + d.permalink,\n    url:         d.url,\n    selftext:    d.selftext,\n  };\n});\n",
-    "codeType": "Javascript",
-    "createTimestamp": 1768000000000,
-    "updateTimestamp": 1768000000000,
-    "category": "WEB",
-    "tags": [
-      "search"
-    ],
-    "sandboxOverrides": {
-      "addAllowClasses": [],
-      "removeAllowClasses": [],
-      "addDenyClasses": [],
-      "removeDenyClasses": [],
-      "networkMode": "allowlist",
-      "hostsAllow": [
-        "www.reddit.com"
       ],
       "fileRead": null,
       "fileWrite": null,

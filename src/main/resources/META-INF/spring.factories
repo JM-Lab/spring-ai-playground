@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+org.springaicommunity.playground.config.AppleSiliconMlxActivator

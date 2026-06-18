@@ -15,9 +15,9 @@
  */
 package org.springaicommunity.playground.webui.mcp.inspector;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.AbstractField;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasValue;
@@ -66,10 +66,9 @@ public final class InspectorHelpers {
     public static ToolInfo toToolInfo(McpSchema.Tool tool) {
         String displayTitle = pickFirstNonBlank(annotationsTitle(tool.annotations()), tool.title());
         String name = Optional.ofNullable(tool.name()).orElse(displayTitle == null ? "" : displayTitle);
-        Map<String, Map<String, Object>> propertySchemas = extractPropertySchemas(tool.inputSchema());
-        List<String> req = Optional.ofNullable(tool.inputSchema())
-                .map(McpSchema.JsonSchema::required)
-                .orElseGet(List::of);
+        Map<String, Object> inputSchema = tool.inputSchema();
+        Map<String, Map<String, Object>> propertySchemas = extractPropertySchemas(inputSchema);
+        List<String> req = requiredNames(inputSchema);
         return new ToolInfo(displayTitle, name, tool.description(), tool.annotations(), req, propertySchemas);
     }
 
@@ -83,14 +82,21 @@ public final class InspectorHelpers {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Map<String, Object>> extractPropertySchemas(McpSchema.JsonSchema schema) {
-        if (schema == null || schema.properties() == null) return Map.of();
+    public static Map<String, Map<String, Object>> extractPropertySchemas(Map<String, Object> schema) {
+        if (schema == null || !(schema.get("properties") instanceof Map<?, ?> properties)) return Map.of();
         Map<String, Map<String, Object>> out = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> e : schema.properties().entrySet()) {
+        for (Map.Entry<?, ?> e : properties.entrySet()) {
             Map<String, Object> propSchema =
                     e.getValue() instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
-            out.put(e.getKey(), propSchema);
+            out.put(String.valueOf(e.getKey()), propSchema);
         }
+        return out;
+    }
+
+    public static List<String> requiredNames(Map<String, Object> schema) {
+        if (schema == null || !(schema.get("required") instanceof List<?> required)) return List.of();
+        List<String> out = new ArrayList<>();
+        for (Object name : required) out.add(String.valueOf(name));
         return out;
     }
 
@@ -132,7 +138,7 @@ public final class InspectorHelpers {
         try {
             JsonNode parsed = INSPECTOR_OBJECT_MAPPER.readTree(trimmed);
             return INSPECTOR_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(parsed);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return maybeJson;
         }
     }
@@ -140,7 +146,7 @@ public final class InspectorHelpers {
     public static String prettyPrint(Object value) {
         try {
             return INSPECTOR_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return String.valueOf(value);
         }
     }
@@ -379,7 +385,7 @@ public final class InspectorHelpers {
             }
             try {
                 return INSPECTOR_OBJECT_MAPPER.readValue(raw, Object.class);
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 throw new IllegalArgumentException("Invalid JSON for '" + key + "': " + e.getOriginalMessage());
             }
         }

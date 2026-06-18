@@ -24,14 +24,32 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public record ChatHistory(String conversationId, String title, long createTimestamp, long updateTimestamp, String systemPrompt,
-                          DefaultChatOptions chatOptions, @JsonIgnore Supplier<List<Message>> messagesSupplier) {
+                          DefaultChatOptions chatOptions, ChatExtraOptions extraOptions, String provider,
+                          ChatToolPreferences toolPreferences,
+                          @JsonIgnore Supplier<List<Message>> messagesSupplier) {
 
     public static final String TIMESTAMP = "timestamp";
+
+    public ChatHistory {
+        toolPreferences = toolPreferences == null ? ChatToolPreferences.defaults() : toolPreferences;
+    }
+
+    public ChatHistory(String conversationId, String title, long createTimestamp, long updateTimestamp,
+            String systemPrompt, DefaultChatOptions chatOptions, Supplier<List<Message>> messagesSupplier) {
+        this(conversationId, title, createTimestamp, updateTimestamp, systemPrompt, chatOptions,
+                ChatExtraOptions.defaults(), null, ChatToolPreferences.defaults(), messagesSupplier);
+    }
 
     public ChatHistory mutate(String title, long updateTimestamp) {
         updateLastMessageTimestamp(updateTimestamp);
         return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
-                this.chatOptions, this.messagesSupplier);
+                this.chatOptions, this.extraOptions, this.provider, this.toolPreferences, this.messagesSupplier);
+    }
+
+    public ChatHistory withToolPreferences(ChatToolPreferences toolPreferences) {
+        return new ChatHistory(this.conversationId, this.title, this.createTimestamp, this.updateTimestamp,
+                this.systemPrompt, this.chatOptions, this.extraOptions, this.provider, toolPreferences,
+                this.messagesSupplier);
     }
 
     public void updateLastMessageTimestamp(long updateTimestamp) {
@@ -46,6 +64,6 @@ public record ChatHistory(String conversationId, String title, long createTimest
 
     public ChatHistory mutate(Supplier<List<Message>> messagesSupplier) {
         return new ChatHistory(this.conversationId, title, this.createTimestamp, updateTimestamp, this.systemPrompt,
-                this.chatOptions, messagesSupplier);
+                this.chatOptions, this.extraOptions, this.provider, this.toolPreferences, messagesSupplier);
     }
 }

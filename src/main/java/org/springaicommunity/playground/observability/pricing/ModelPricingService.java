@@ -15,8 +15,9 @@
  */
 package org.springaicommunity.playground.observability.pricing;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class ModelPricingService {
             } else {
                 Files.createDirectories(file.getParent());
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             logger.warn("Failed to load pricing from {}", file, e);
         }
     }
@@ -104,7 +105,7 @@ public class ModelPricingService {
             try {
                 Files.createDirectories(file.getParent());
                 MAPPER.writeValue(file.toFile(), new ArrayList<>(pricing.values()));
-            } catch (IOException e) {
+            } catch (IOException | JacksonException e) {
                 logger.error("Failed to save pricing to {}", file, e);
             }
         });

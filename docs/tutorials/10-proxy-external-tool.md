@@ -1,4 +1,4 @@
-description: Tutorial 10 - proxy an MCP server through the playground's own built-in server: expose a whole server or a curated subset (even combine several), each tool wrapped with a risk level, HITL, logging, and secret masking, then call it from Agentic Chat or any external /mcp client.
+description: Tutorial 10 - proxy an MCP server through the built-in server: expose a whole server or a subset, each tool wrapped with a risk level, HITL, and logging.
 
 # Tutorial 10 - Proxy an MCP Server
 
@@ -18,17 +18,17 @@ The built-in server (`spring-ai-playground-built-in-mcp`, Streamable HTTP at `/m
 
 In **MCP Server**, open the sidebar's **Inactive MCP** section and activate the servers you want to proxy - here **DeepWiki** and **MCP Everything** - each via **Save & Connect**. (For the manual / authenticated path, see [Tutorial 2](2-external-mcp.md).) Confirm each server's tools in the [Inspector](../features/mcp-server/inspector.md#tools); every tool carries its own risk chip (DeepWiki's read tools score `L2 - Low`).
 
-## Step 2 - Open the Expose Tools drawer
+## Step 2 - Open the Composed Tools drawer
 
 Click the **gear icon** at the top-right of the *MCP Server Info* header. The **Built-in MCP Server Composed Tools** drawer lists every active server.
 
-![Expose Tools drawer - DeepWiki and MCP-Everything each shown with a Server risk chip, the exposure-mode selector, a max-risk cap, and an HITL-all toggle](../assets/images/mcp-server/expose-tools-drawer.png){ loading=lazy }
+![Composed Tools drawer - DeepWiki and MCP-Everything each shown with a Server risk chip, the exposure-mode selector, a max-risk cap, and an HITL-all toggle](../assets/images/mcp-server/expose-tools-drawer.png){ loading=lazy }
 
 ## Step 3 - Set the proxy-wide options
 
 The top of the drawer governs what the whole built-in server publishes:
 
-![Expose Tools drawer controls, numbered: 1 the COMPOSED TOOLS summary chips, 2 the 'What the built-in server exposes' selector, 3 the Max risk to expose cap, 4 the Require approval HITL-for-all toggle](../assets/images/mcp-server/proxy-drawer-controls.png){ loading=lazy }
+![Composed Tools drawer controls, numbered: 1 the COMPOSED TOOLS summary chips, 2 the 'What the built-in server exposes' selector, 3 the Max risk to expose cap, 4 the Require approval HITL-for-all toggle](../assets/images/mcp-server/proxy-drawer-controls.png){ loading=lazy }
 
 1. **COMPOSED TOOLS** - a live summary of every tool currently selected across *all* servers, by exposed alias. This is the merged set the built-in server will publish.
 2. **What the built-in server exposes** - `Both built-in and composed` (default), `Built-in tools only`, or `Composed tools only`. "Built-in" = your Tool Studio default + custom tools; "Composed" = the external tools you pick below. Pick `Composed tools only` to turn the playground into a *pure* proxy for upstream servers.

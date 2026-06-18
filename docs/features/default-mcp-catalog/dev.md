@@ -416,7 +416,7 @@ Pull up-to-date library documentation and code examples by library name and vers
 <div class="tcg-art" markdown>:material-scale-balance:</div>
 <div class="tcg-type">dev · korea · legal <span class="risk risk-l0">ga</span> <span class="rl rl-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools - citation...
+Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 93 MCP tools - citation...
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Vendor** &nbsp; chrisryugj · T2 community</div>
@@ -455,7 +455,7 @@ Search Korean law, court precedents, Constitutional Court decisions, ordinances,
 
 **Description**
 
-Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 17 MCP tools - citation verification, time-travel diff, and impact graph.
+Search Korean law, court precedents, Constitutional Court decisions, ordinances, and administrative rules. Wraps the Ministry of Government Legislation Open API into 93 MCP tools - citation verification, time-travel diff, and impact graph.
 
 • Quick start - free remote endpoint (pre-filled below):
   https://korean-law-mcp.fly.dev/mcp
@@ -693,7 +693,7 @@ Mixed-auth page - OAuth for remote vendor surfaces, none for the community stdio
 | Atlassian Rovo (Jira + Confluence) | Atlassian OAuth | - |
 | Sentry | Sentry OAuth | - |
 | Asana | Asana OAuth | - |
-| Azure DevOps | Microsoft OAuth (preview) | `MS_TENANT_ID` for `dev.azure.com` orgs scoped to a tenant |
+| Azure DevOps | Microsoft OAuth (preview) | `AZURE_DEVOPS_ORG` (+ `AZURE_DEVOPS_OAUTH_CLIENT_ID`) for your `dev.azure.com` org |
 | Microsoft Learn | None (free) | - |
 | Context7 | None (free) | - |
 | Korean Law MCP | None (free) | - |

@@ -15,8 +15,10 @@
  */
 package org.springaicommunity.playground.webui.observability;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -38,8 +40,8 @@ import java.util.Set;
 
 public class TraceDetailDialog extends Dialog {
 
-    private static final ObjectMapper PRETTY_MAPPER = new ObjectMapper()
-            .configure(SerializationFeature.INDENT_OUTPUT, true);
+    private static final ObjectMapper PRETTY_MAPPER = JsonMapper.builder()
+            .configure(SerializationFeature.INDENT_OUTPUT, true).build();
 
     public TraceDetailDialog(TraceRecord trace) {
         this(trace, null);
@@ -48,7 +50,7 @@ public class TraceDetailDialog extends Dialog {
     public TraceDetailDialog(TraceRecord trace, ObservabilityRingBuffer buffer) {
         setWidth("960px");
         setHeight("720px");
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setDraggable(true);
         setResizable(true);
         setHeaderTitle("Trace " + shorten(trace.traceId(), 12));

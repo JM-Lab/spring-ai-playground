@@ -1,5 +1,5 @@
 title: AI Agent Tool Safety
-description: Defense-in-depth sandbox for AI agent tools - three-layer model, policy resolution, threat-to-layer mapping, and Risk Level (L0-L5) reference.
+description: Defense-in-depth sandbox for AI agent tools - three-layer model, deployment isolation tiers, policy resolution, and a Risk Level (L0-L5) reference.
 
 # AI Agent Tool Safety
 
@@ -38,7 +38,7 @@ The Playground codebase uses **safety** for the sandbox surface (`safety.fs`, `s
 - **Safety** - keeping a small JavaScript action from doing things its author did not intend: runaway resource use, accidental egress to private networks, reading the wrong file, leaking secrets to logs. Sandbox boundaries are deterministic and bypass-resistant from inside JS, but they are not adversarial-grade for code that escapes into the host JVM through unforeseen paths.
 - **Security** - who can talk to the MCP endpoint at all, which authentication and transport guarantees apply. Handled by Spring Security on top of the sandbox, independent of how individual tools are authored.
 
-The two are layered but separate, and they fail to different threats. The diagrams below split them accordingly.
+The two are layered but separate, and they fail to different threats. The diagrams below split them accordingly. For where the in-process sandbox sits inside operating-system and container isolation, see [Isolation tiers](#isolation-tiers).
 
 ## Threat surface
 
@@ -67,8 +67,8 @@ flowchart TB
     subgraph L2["Layer 2 - Per-tool overrides"]
         B1["SandboxOverrides"] --> B2["Posture calculator"] --> B3["Risk badge<br/>L0 · L3 · L4 · L5"]
     end
-    subgraph L3["Layer 3 - MCP endpoint (Spring Security)"]
-        C1["Spring Security<br/>(off by default)"] --> C2["Streamable HTTP /mcp"]
+    subgraph L3["Layer 3 - MCP transport (opt-in auth)"]
+        C1["/mcp, /sse<br/>permitAll by default"] --> C2["add Spring Security<br/>(OAuth2 / API key) to gate"]
     end
     L1 == widens (cannot weaken) ==> L2
     L2 == publishes through ==> L3
@@ -82,14 +82,28 @@ What each layer controls, in detail:
 | **1** | Resource limits | `max-statements: 500000` via GraalVM `ResourceLimits` + wall-clock timeout via `Future.cancel(true)` on a virtual-thread executor. |
 | **1** | Helpers gateway | `fetch` (SSRF four-layer guard in `strict` by default), `safety.fs` (rooted at base path with `normalize()` escape check), `safety.parser.{html,xml,csv,yaml}`. These are the only network and filesystem paths from JS. |
 | **1** | Output masking | `console.log` substring-masks env-backed static-variable values before they reach the debug pane or chat tool-call trace. The mask applies to **all** env-vars surfaced by the secret store below - values exported from the OS-encrypted secret store are still treated as secrets at the log boundary. |
-| **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` - encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Desktop App → Use Environment Variables for Keys and Secrets](getting-started/desktop.md#7-use-environment-variables-for-keys-and-secrets). |
+| **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` - encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Desktop App → Use Environment Variables for Keys and Secrets](getting-started/desktop.md#9-use-environment-variables-for-keys-and-secrets). |
 | **2** | `SandboxOverrides` | Per-tool widening: `networkMode`, `hostsAllow`, `fileRead`/`fileWrite`, `addAllow/DenyClasses`, `fsBasePath`. |
 | **2** | Posture calculator | `SandboxPostureCalculator.compute()` - pure function from overrides to `RiskLevel`. |
 | **2** | Risk badge | L0 baseline · L3 narrow widening · L4 broad widening · L5 critical class re-enabled. |
-| **3** | Spring Security | `SecurityFilterChain` in front of MCP transport. Disabled by default for local single-user; enabled via Spring AI MCP Security for deployed scenarios. |
-| **3** | MCP transport | Streamable HTTP at `/mcp`. Binds to localhost only unless `server.address` is changed. |
+| **3** | MCP transport auth | The app `SecurityFilterChain` is present (for Vaadin and outbound MCP-client OAuth) but `/mcp` and `/sse` are `permitAll`, so the built-in server is **unauthenticated by default**. Gate it by adding Spring AI MCP Security (OAuth2 resource server / API key) for deployed scenarios. |
+| **3** | MCP transport | Streamable HTTP at `/mcp`. Binds to **all interfaces (0.0.0.0) by default** because `server.address` is unset; set it to `127.0.0.1` to restrict to localhost. |
 
-Layer 1 is fixed code in [`JsToolExecutor`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/JsToolExecutor.java), [`JsRuntimeGlobals`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/JsRuntimeGlobals.java), [`SafeHttpFetch`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/SafeHttpFetch.java), and [`SafeFs`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/SafeFs.java). Layer 2 lives in `SandboxOverrides` per `ToolSpec` and `SandboxPostureCalculator` for the badge. Layer 3 is conventional Spring Security configuration on top of the MCP transport - independent of the sandbox.
+Layer 1 is fixed code in [`JsToolExecutor`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/JsToolExecutor.java), [`JsRuntimeGlobals`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/JsRuntimeGlobals.java), [`SafeHttpFetch`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/SafeHttpFetch.java), and [`SafeFs`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/runtime/SafeFs.java). Layer 2 lives in `SandboxOverrides` per `ToolSpec` and `SandboxPostureCalculator` for the badge. Layer 3 is the MCP transport perimeter: the app Spring Security permits `/mcp` by default (it is wired for Vaadin and outbound MCP-client OAuth), so gating the built-in server is an opt-in you add - independent of the sandbox.
+
+## Isolation tiers (deployment trust boundaries) { #isolation-tiers }
+
+The three-layer model above lives entirely inside one JVM process. That is the right boundary for the threats it targets - author accidents and misuse on a single-user machine - but the in-process sandbox is not an adversarial boundary on its own. Where you need a harder one, the whole process nests inside the operating-system and container isolation you already run it under. The sandbox is the innermost tier, not the only one.
+
+![Isolation tiers - nested deployment boundaries from the host machine inward through an optional microVM, gVisor, or Kata tier, an optional Docker container, the always-on OS process and JVM, down to the in-process JS sandbox that holds the three-layer model](assets/images/isolation-tiers.svg){ loading=lazy }
+
+| Tier | How you run it | Outer boundary it adds | What that tier defends against | Use it when |
+|---|---|---|---|---|
+| **Tier 0** - in-process only | Desktop app, or from source | OS process and JVM | Author accidents, runaway code, accidental private-network egress, secret leakage to logs | Single-user local authoring (the default) |
+| **Tier 1** - plus container | The shipped Docker image | Linux namespaces and cgroups | Host filesystem and process isolation, resource caps, a reproducible runtime | Shared or server-style deployment, CI |
+| **Tier 2** - plus hardened isolation | The container under gVisor, Kata, or a Firecracker microVM | User-space kernel or VM boundary | Untrusted or multi-tenant tool code, kernel-level escape attempts | You run tools you do not trust |
+
+The split is deliberate: the in-process sandbox is **defense-in-depth at Tier 0**. Spring AI Playground does not reimplement Tiers 1 and 2 - container and microVM isolation are a deployment choice, and the project **composes** with them rather than replacing them. If you need to run tool code you genuinely do not trust, raise the tier; the sandbox keeps enforcing its policy inside whichever boundary you pick.
 
 ## Human-in-the-loop checkpoints
 
@@ -283,7 +297,7 @@ Two design choices are worth noting:
 Tool Studio sits on top of two distinct Spring projects:
 
 - **Spring AI** - `spring-ai-starter-mcp-server` exposes the built-in MCP server over Streamable HTTP at `/mcp`. Every Local-Passed tool registers itself with the server's `McpSyncServer` via `addTool(FunctionToolCallback)`. The sandbox runs *inside* the callback, so MCP never sees a tool that hasn't been through `JsToolExecutor`.
-- **Spring Security** - sits in front of the MCP endpoint. Disabled by default for the local single-user case; enabled via Spring AI's official [MCP Security](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-security.html) configuration for deployed scenarios.
+- **Spring Security** - present for Vaadin and outbound MCP-client OAuth; it permits `/mcp` and `/sse`, so the built-in MCP server is unauthenticated by default. Add Spring AI's official [MCP Security](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-security.html) configuration to gate it for deployed scenarios.
 
 ```mermaid
 flowchart LR
@@ -296,7 +310,7 @@ flowchart LR
     EXT --> SEC --> TRANS --> SYNC --> SAND
 ```
 
-The arrows go one way: callers cannot reach the sandbox without traversing the transport and (when enabled) the security filter chain. `SecurityFilterChain` is disabled by default for local single-user; OAuth2 / API key are the typical choices when enabled. The sandbox in the bottom box is everything from the previous two diagrams - the sandbox is what gives Spring AI's MCP server a safe runtime for user-authored tools; Spring Security is what gives it an adversarial perimeter. Both fail to different threats.
+The arrows go one way: callers cannot reach the sandbox without traversing the transport and (when enabled) the security filter chain. `SecurityFilterChain` permits `/mcp` and `/sse` by default, so the built-in server is unauthenticated; OAuth2 / API key are the typical choices when you gate it. The sandbox in the bottom box is everything from the previous two diagrams - the sandbox is what gives Spring AI's MCP server a safe runtime for user-authored tools; Spring Security is what gives it an adversarial perimeter once the transport is gated. Both fail to different threats.
 
 ## Risk Level decision matrix
 
@@ -344,8 +358,8 @@ Concrete threats, the layer that catches each, and the mechanism. This is the re
 | Tool author wants to call a private API server | Layer 2 (declared widening) | `networkMode: allowlist` + `hostsAllow` - badge becomes L3, visible before publish |
 | Tool author wants raw `java.io.File` read | Layer 2 (declared widening) | `addAllowClasses: [java.io.File*]` - badge becomes L4 |
 | Tool author wants raw `java.io.FileWriter` write | Layer 2 (declared widening) | `addAllowClasses: [java.io.FileWriter*]` - badge becomes **L5** |
-| External attacker calls `/mcp` from another machine | Layer 3 | Spring Security configuration (auth / network ACL) on MCP transport |
-| Bind-to-all-interfaces accident | Layer 3 (defaults) | `server.address` defaults to localhost; explicit operator change required |
+| External attacker calls `/mcp` from another machine | Layer 3 (opt-in) | Add Spring Security (auth / network ACL) on the MCP transport - not enforced by default |
+| Built-in server reachable off-host (default bind-all) | Layer 3 (opt-in) | **Not mitigated by default** - `server.address` is unset, so the server binds all interfaces; set `server.address=127.0.0.1` (and/or add MCP Security) before running outside a trusted host |
 
 The first seven threats are blocked at the **always-on Java sandbox** - no per-tool configuration can disable them. The next three are *opt-in widenings* that surface as risk-level badges before publish, so the gate is review rather than runtime. The last two live entirely on the **MCP transport** layer and are independent of how individual tools were authored.
 

@@ -36,7 +36,8 @@ Fetches the current KRW ticker(s) from Upbit, a major Korean crypto exchange (no
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -71,6 +72,8 @@ return (resp.json() || []).map(t => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -97,7 +100,8 @@ Fetches Upbit live orderbook (bids/asks) for one or more KRW markets (no auth). 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -134,6 +138,8 @@ return (resp.json() || []).map(b => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -161,7 +167,8 @@ Fetches Upbit OHLCV candles for a market (no auth). `interval` accepts 'days' (d
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -208,6 +215,8 @@ return (resp.json() || []).map(c => ({
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -233,7 +242,8 @@ Lists all tradable markets on Upbit (no auth). Pass `quote` (e.g. 'KRW', 'BTC', 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.upbit.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -267,6 +277,8 @@ return { count: rows.length, markets: rows };
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -292,7 +304,8 @@ Fetches the current KRW ticker for a symbol from Bithumb (no auth). Used as an U
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.bithumb.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -329,6 +342,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -355,7 +370,8 @@ Fetches Bithumb public orderbook depth for a KRW pair (no auth). `count` default
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `api.bithumb.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -391,6 +407,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -419,7 +437,8 @@ Naver Search API (KR; key required). Searches across blog, news, webkr, encyc, b
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `openapi.naver.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -480,6 +499,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -510,7 +531,8 @@ Kakao Local keyword search - finds places/POIs and returns WGS84 coordinates (KR
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `dapi.kakao.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -575,6 +597,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -601,7 +625,8 @@ AirKorea (data.go.kr) real-time air quality readings by Korean province (KR; dat
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -675,6 +700,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -703,7 +730,8 @@ iTunes Search API - Korean music catalog including K-pop (no auth). Default coun
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `itunes.apple.com` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -765,6 +793,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -792,7 +822,8 @@ K-beauty cosmetics product search via Open Beauty Facts (no auth). Default count
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `world.openbeautyfacts.org` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -863,6 +894,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -893,7 +926,8 @@ Korea Tourism Organization TourAPI 4.0 keyword search - tourist spots, cultural 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -985,6 +1019,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1014,7 +1050,8 @@ Seoul Open Data Plaza (data.seoul.go.kr) cultural events search (KR; separate ke
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `openapi.seoul.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1095,6 +1132,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1125,7 +1164,8 @@ KAMIS agricultural product wholesale/retail prices - daily price data operated b
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.kamis.or.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1213,6 +1253,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1241,7 +1283,8 @@ KOFIC (Korean Film Council) daily box-office ranking (KR; single API key require
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `www.kobis.or.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1314,6 +1357,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1345,7 +1390,8 @@ KRX Korea Exchange daily stock quotes (data.go.kr) - KOSPI/KOSDAQ/KONEX daily op
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1436,6 +1482,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1462,7 +1510,8 @@ data.go.kr generic dispatcher - calls arbitrary data.go.kr services not covered 
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1544,6 +1593,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1574,7 +1625,8 @@ KMA short-term weather forecast - hourly forecast for the next ~72 hours by lat/
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1703,6 +1755,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1731,7 +1785,8 @@ MOLIT (Ministry of Land, Infrastructure & Transport) apartment sale transactions
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1815,6 +1870,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1844,7 +1901,8 @@ MFDS (Ministry of Food & Drug Safety) drug product approval search (KR; data.go.
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -1922,6 +1980,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -1951,7 +2011,8 @@ MOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (K
 
 **Sandbox** - **L3** (Scoped widening) - `fetch` allowlisted to `apis.data.go.kr` (SSRF-guarded); no filesystem.
 
-**JS source**
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
 
 ```javascript
 /**
@@ -2014,6 +2075,8 @@ return {
 
 ```
 
+</details>
+
 </div>
 </div>
 
@@ -2033,7 +2096,7 @@ The Korea bundle is heavier on data sources, so most chains are *Korean source â
 
 ## Keys & secrets
 
-Six of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts - see the cost badges on each card). The other fifteen pull from three keychains.
+Eight of the 21 are no-key (Upbit, Bithumb, iTunes K-pop, Open Beauty Facts - see the cost badges on each card). The other thirteen pull from six keychains.
 
 ### Naver Open APIs
 

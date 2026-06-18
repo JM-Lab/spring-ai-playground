@@ -1,14 +1,14 @@
-description: Default Tools - 86 ready-to-call JavaScript tools across 5 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
+description: Default Tools - 85 ready-to-call JavaScript tools across 5 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
 
 # Default Tools
 
 **Where:** top navigation → **Tool Studio** - the default tools ship pre-loaded; tune the exposed subset in the **Built-in MCP Server Native Tools** drawer.
 
-Spring AI Playground ships with **86 default tools** spread across five JSON source bundles. They are ready to call the moment a model provider is connected - you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own tools.
+Spring AI Playground ships with **85 default tools** spread across six JSON source bundles. They are ready to call the moment a model provider is connected - you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own tools.
 
 Tools that reach an external API read their keys from **environment variables** - each tool's card below lists the variables it needs. How to supply env vars (desktop launcher, Docker `-e`, or a source run) is covered once in the [Configuration reference](../../getting-started/configuration.md#how).
 
-Not all of them are Local-Passed (active) by default - a **preset** decides the starting subset, and per-tool include / exclude rules layer on top. That preference lives in `<home>/spring-ai-playground/tool/save/default-tools-preference.json` and is chosen at setup - the desktop launcher's Default MCP Tools card, or CLI / yaml (full breakdown in [Tool Studio → Where preset choices live](../tool-studio/index.md#where-preset-choices-live)). Tool Studio's **Built-in MCP Server Native Tools** drawer then selects which Local-Passed tools the MCP server exposes.
+Every tool is **Local-Passed** (published to the built-in MCP server) out of the box - except any that are still missing a required `${ENV_VAR}`, which stay as **drafts** until you supply it. A **preset** decides something separate: which of the Local-Passed tools the server actually **exposes** to agents at boot (the default is **Starter 5**), with per-tool include / exclude rules layering on top. That preference lives in `<home>/spring-ai-playground/tool/save/default-tools-preference.json` and is chosen at setup - the desktop launcher's Default MCP Tools card, or CLI / yaml (full breakdown in [Tool Studio → Where preset choices live](../tool-studio/index.md#where-preset-choices-live)). Tool Studio's **Built-in MCP Server Native Tools** drawer then selects which Local-Passed tools the MCP server exposes. Applying a chat-side **[prompt preset](../agentic-chat/prompt-presets.md)** that declares tools writes this same preference, resetting the exposed set to that preset's key-less tools - so it persists across restarts and the chat, Tool Studio, and the server stay in agreement.
 
 ## Risk Level { #risk-level }
 
@@ -24,12 +24,12 @@ Every tool carries a **Risk Level** (`L0`-`L5`) - the sandbox posture the [Safe 
 | <span class="rl rl-l4">L4 - Broad access</span> | File *write*, `*` allowlist / `open` egress, or reflection class added | the file-write filesystem tool |
 | <span class="rl rl-l5">L5 - Unsandboxed</span> | `System` / `Runtime` / `Process` re-enabled, or raw file-write class | none ship by default |
 
-Levels are derived from each tool's declared `sandboxOverrides` (by `SandboxPostureCalculator`); the full bullet-by-bullet rule set is in [AI Agent Tool Safety → Risk Level decision matrix](../../safety-architecture.md#risk-level-decision-matrix). Across the 86 default tools: **28 are L0**, **57 are L3** (allowlisted-host `fetch` or file read), and **1 is L4** (file write) - none ship at L5.
+Levels are derived from each tool's declared `sandboxOverrides` (by `SandboxPostureCalculator`); the full bullet-by-bullet rule set is in [AI Agent Tool Safety → Risk Level decision matrix](../../safety-architecture.md#risk-level-decision-matrix). Across the 85 default tools: **28 are L0**, **56 are L3** (allowlisted-host `fetch` or file read), and **1 is L4** (file write) - none ship at L5.
 
 !!! question "Why no L1 or L2 here?"
     The **sandbox** rubric only ever produces **L0 / L3 / L4 / L5** - the calculator jumps from the `L0` baseline straight to `L3` the moment a tool declares *any* widening (network, file, or class change), so a tool is never L1 or L2. `L1` (*Safe*) and `L2` (*Low*) exist only in the [MCP server rubric](../../mcp-server-safety.md#risk-chip), which scores a different thing (connecting to an external server) on the same `L0`-`L5` enum.
 
-## Browse all 86 tools { #browse-all-tools }
+## Browse all 85 tools { #browse-all-tools }
 
 Click a card to jump to its full reference (with the JS source pre-expanded) on the right sub-page - same UX as the **Built-in MCP Server Native Tools** drawer in Tool Studio. Five reference pages organise the catalog by source bundle and concern: [Examples](examples.md) · [Utilities](utilities.md) · [Filesystem](filesystem.md) · [Global](global.md) · [Korea](korea.md).
 
@@ -48,7 +48,7 @@ Click a card to jump to its full reference (with the JS source pre-expanded) on 
 <span class="tool-directory__chip-label">Category</span> <button class="tool-directory__chip" data-group="category" data-value="ai" aria-pressed="false">AI</button> <button class="tool-directory__chip" data-group="category" data-value="crypto" aria-pressed="false">CRYPTO</button> <button class="tool-directory__chip" data-group="category" data-value="data" aria-pressed="false">DATA</button> <button class="tool-directory__chip" data-group="category" data-value="datetime" aria-pressed="false">DATETIME</button> <button class="tool-directory__chip" data-group="category" data-value="encoding" aria-pressed="false">ENCODING</button> <button class="tool-directory__chip" data-group="category" data-value="file" aria-pressed="false">FILE</button> <button class="tool-directory__chip" data-group="category" data-value="math" aria-pressed="false">MATH</button> <button class="tool-directory__chip" data-group="category" data-value="messaging" aria-pressed="false">MESSAGING</button> <button class="tool-directory__chip" data-group="category" data-value="productivity" aria-pressed="false">PRODUCTIVITY</button> <button class="tool-directory__chip" data-group="category" data-value="security" aria-pressed="false">SECURITY</button> <button class="tool-directory__chip" data-group="category" data-value="text" aria-pressed="false">TEXT</button> <button class="tool-directory__chip" data-group="category" data-value="web" aria-pressed="false">WEB</button>
 </div>
 </div>
-<div class="tool-directory__count">Showing 86 of 86 tools</div>
+<div class="tool-directory__count">Showing 85 of 85 tools</div>
 <div class="tool-directory__list" markdown>
 
 <div class="tcg-grid tcg-grid--directory" markdown>
@@ -878,13 +878,13 @@ Fetches current crypto prices from CoinGecko's public Simple Price API (no auth,
 <div class="tcg-page">→ Global</div>
 </div>
 
-<div class="tcg-card tcg-card--directory t-currency" data-name="convertcurrency" data-desc="converts between fiat currencies using exchangerate.host (no key, no rate limit listed)." data-category="web" data-tags="finance" data-preset="" data-env="" markdown>
+<div class="tcg-card tcg-card--directory t-currency" data-name="convertcurrency" data-desc="converts between fiat currencies using open.er-api.com daily reference rates (no key)." data-category="web" data-tags="finance" data-preset="" data-env="" markdown>
 <a class="tcg-stretched-link" href="global/#convertCurrency" aria-label="Open convertCurrency in Global">convertCurrency</a>
 <div class="tcg-name"><span class="tcg-name__text">convertCurrency</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-currency-usd:</div>
 <div class="tcg-type">web · finance <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Converts between fiat currencies using exchangerate.host (no key, no rate limit listed).
+Converts between fiat currencies using open.er-api.com daily reference rates (no key).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `from` · `to` · `amount`</div>
@@ -908,13 +908,13 @@ Returns geolocation and ASN info for an IP address (or the caller's IP if `ip` i
 <div class="tcg-page">→ Global</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="getcountryinfo" data-desc="fetches country information from restcountries.com (no auth) by partial or full name." data-category="web" data-tags="geo" data-preset="" data-env="" markdown>
+<div class="tcg-card tcg-card--directory" data-name="getcountryinfo" data-desc="fetches country information from the open mledoze/countries dataset (via the jsDelivr CDN, no key) by partial or full name." data-category="web" data-tags="geo" data-preset="" data-env="" markdown>
 <a class="tcg-stretched-link" href="global/#getCountryInfo" aria-label="Open getCountryInfo in Global">getCountryInfo</a>
 <div class="tcg-name"><span class="tcg-name__text">getCountryInfo</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-earth:</div>
 <div class="tcg-type">web · geo <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Fetches country information from restcountries.com (no auth) by partial or full name.
+Fetches country information from the open mledoze/countries dataset (via the jsDelivr CDN, no key) by partial or full name.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `name`</div>
@@ -948,21 +948,6 @@ Returns public holidays for a given country and year via Nager.Date (no auth).
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `year` · `countryCode`</div>
-<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
-</div>
-<div class="tcg-page">→ Global</div>
-</div>
-
-<div class="tcg-card tcg-card--directory t-reddit" data-name="searchreddit" data-desc="searches a public subreddit via reddit's json api (no auth, but rate-limited and user-agent required)." data-category="web" data-tags="search" data-preset="" data-env="" markdown>
-<a class="tcg-stretched-link" href="global/#searchReddit" aria-label="Open searchReddit in Global">searchReddit</a>
-<div class="tcg-name"><span class="tcg-name__text">searchReddit</span> <span class="cost">🆓</span></div>
-<div class="tcg-art" markdown>:simple-reddit:</div>
-<div class="tcg-type">web · search <span class="risk risk-l3">L3</span></div>
-<div class="tcg-body" markdown>
-Searches a public subreddit via Reddit's JSON API (no auth, but rate-limited and User-Agent required).
-</div>
-<div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `subreddit` · `query` · `limit` · `sort`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-page">→ Global</div>
@@ -1367,7 +1352,7 @@ No JS authoring is required for any of this mode - pick a preset, expose, call.
 - → [Tool Studio: Connect to the Built-in MCP Server](../tool-studio/index.md#connect-to-the-built-in-mcp-server) - wiring external clients over Streamable HTTP
 - → [Alternative Runtimes: distribution channels and MCP transports](../../getting-started/alternative-runtimes.md#how-distribution-channels-map-to-mcp-transports) - Docker container and fat-JAR launchers for STDIO mode
 - → [MCP Server: MCP Inspector](../mcp-server/index.md#mcp-inspector) - exercise tools, resources, prompts before exposing externally
-- → [Agentic Chat](../agentic-chat.md) - call them from a model conversation
+- → [Agentic Chat](../agentic-chat/index.md) - call them from a model conversation
 
 ### Author and compose
 
@@ -1415,7 +1400,7 @@ The two transports differ in **who owns the server's lifetime**: in Streamable H
 
 Most MCP server implementations ship one **native binary per OS** (Python wheels, Node binaries, Go / Rust executables) and require the user to install a platform-matching build, often plus a toolchain (Python, Node, Cargo) to author new tools.
 
-Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact - distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher - runs identically on macOS, Windows, and Linux. All 86 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
+Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact - distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher - runs identically on macOS, Windows, and Linux. All 85 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
 
 Full mechanics - including how every cross-bridged helper rides on JVM stdlib so `/` vs `\`, TLS, parsers, and crypto behave identically across OSes - in [Tool Studio → Cross-platform by design](../tool-studio/index.md#cross-platform-by-design).
 

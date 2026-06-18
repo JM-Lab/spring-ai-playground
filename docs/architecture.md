@@ -90,7 +90,7 @@ Per-feature services under `src/main/java/org/springaicommunity/playground/servi
 | `service/tool` | `ToolSpecService`, `ToolCategoryCatalog`, `ChipListBinding`, `DefaultToolPresetCatalog`, `DefaultToolsPreference{Resolver,Service}`, `ToolActivationCalculator`, `McpToolDefinition` + `ToolManifest` envelope | Tool definitions, preset/preference resolution, draft/exposure state |
 | `service/tool/runtime` | `JsToolExecutor`, `JsRuntimeGlobals`, `SafeHttpFetch`, `SafeFs`, `JsHelperException` | GraalVM sandbox, `fetch` SSRF guard, `safety.fs`, `safety.parser.*` |
 | `service/tool/policy` | `EffectivePolicyResolver`, `SandboxPostureCalculator` | Per-tool capability overrides + **sandbox** risk-level (L0-L5) calculation (distinct from the MCP connection/exposure risk in `service/mcp/risk`) |
-| `service/mcp` | `McpServerInfoService`, `McpToolCallingManager`, `HitlToolCallAdvisor`, `McpServerHitlToolGate` | Built-in MCP server metadata, tool-call eventing, and the two human-in-the-loop approval gates (chat-side advisor + server-side elicitation) - see [Human-in-the-Loop Approval](hitl-architecture.md) |
+| `service/mcp` | `McpServerInfoService`, `McpToolCallingManager`, `LoggingToolCallAdvisor`, `McpServerHitlToolGate` | Built-in MCP server metadata, tool-call eventing, and the two human-in-the-loop approval gates (chat-side advisor + server-side elicitation) - see [Human-in-the-Loop Approval](hitl-architecture.md) |
 | `service/oauth` | `EncryptedFileOAuth2AuthorizedClientRepository`, `OAuthTokenEncryptor`, `McpClientRegistrationRepository`, `McpOAuth2AuthorizationCodeRequestCustomizer` | OAuth 2.1 for external MCP connections - encrypted-at-rest token store, dynamic client registration, authorization-code customizer |
 | `service/mcp/catalog` | `McpCatalogService`, `McpCategoryService`, `McpTagSuggestionService` | 57-entry preset catalog (49 remote + 8 stdio per OS) - loaded from `default-mcp-specs.json` and `default-mcp-specs-stdio-{mac,linux,windows}.json`, plus the 14-row `default-mcp-categories.json` taxonomy (13 catalog-facing categories + `CUSTOM` reserved for user-added entries), plus dynamic tag suggestions for the Config form; each entry carries `trustSignals` + `docsAdequate` metadata consumed by the risk model |
 | `service/mcp/client` | `McpClientService`, `Mcp*PropertiesService` | External MCP clients across STDIO / HTTP / SSE |
@@ -98,7 +98,7 @@ Per-feature services under `src/main/java/org/springaicommunity/playground/servi
 | `service/util` | `SecretMasking`, `EnvVarResolver` | Resolve `${ENV_VAR}` placeholders against the OS env; sweep connection-error notifications + per-call logs to replace any resolved secret value with `***` |
 | `service/vectorstore` | `VectorStoreService`, `VectorStoreDocumentService` | Tika ingestion, chunking, embedding, search |
 | `service/identity` | `DeviceIdProvider`, `UserIdentityService`, `MdcIdentityFilter` (in `config`) | Stable per-device id - salted SHA-256 of the OS machine id, persisted to `identity/installation.json`; injected into MDC as `userId` / `sessionId` for log + trace correlation (see [Observability → Device-based identity](observability-architecture.md#device-identity)) |
-| `observability` *(top-level)* | `ObservabilityCollector`, `ObservabilityRingBuffer`, `ObservabilityTimeSeries`, `ModelPricingService` | Micrometer `ObservationHandler` pipeline + ring buffer / time series / JSONL persistence that backs the Observability dashboards - a sibling of `service/`, shown here because it is runtime backend. Full design: [AI Agent Observability](observability-architecture.md) |
+| `observability` *(top-level)* | `ObservabilityCollector`, `ObservabilityRingBuffer`, `ObservabilityTimeSeries`, `ModelPricingService` | Micrometer `ObservationHandler` pipeline + ring buffer / time series / JSON persistence that backs the Observability dashboards - a sibling of `service/`, shown here because it is runtime backend. Full design: [AI Agent Observability](observability-architecture.md) |
 
 
 Persistence is pluggable via `PersistenceServiceInterface` and coordinated by `SpringAiPlaygroundPersistenceManager` on startup / shutdown. The default writes JSON files under the user home directory.
@@ -107,7 +107,7 @@ Persistence is pluggable via `PersistenceServiceInterface` and coordinated by `S
 
 Thin adapter layer configured in `SpringAiPlaygroundApplication` and related Spring `@Configuration` classes.
 
-- `ChatClient` is built once from **all `Advisor` beans injected as an array** (`chatClientBuilder.defaultAdvisors(Advisor[])`), ordered by each advisor's `getOrder()`. The four are **`MessageChatMemoryAdvisor`**, **`SpringAiPlaygroundRagAdvisor`** (`LOWEST_PRECEDENCE - 1`), **`SimpleLoggerAdvisor`**, and **`HitlToolCallAdvisor`** (`HIGHEST_PRECEDENCE + 300`) - the last extends Spring AI's `ToolCallAdvisor`, so it owns the tool-calling loop: it wraps `McpToolCallingManager`, which runs the [human-in-the-loop approval gate](hitl-architecture.md) before any tool executes.
+- `ChatClient` is built once from **all `Advisor` beans injected as an array** (`chatClientBuilder.defaultAdvisors(Advisor[])`), ordered by each advisor's `getOrder()`. The four are **`MessageChatMemoryAdvisor`**, **`SpringAiPlaygroundRagAdvisor`** (`LOWEST_PRECEDENCE - 1`), **`SimpleLoggerAdvisor`**, and **`LoggingToolCallAdvisor`** (`HIGHEST_PRECEDENCE + 300`) - the last extends Spring AI's `ToolCallAdvisor`, so it owns the tool-calling loop: it wraps `McpToolCallingManager`, which runs the [human-in-the-loop approval gate](hitl-architecture.md) before any tool executes.
 - `ChatMemory` defaults to `MessageWindowChatMemory` (last 10 messages) backed by `InMemoryChatMemoryRepository`.
 - `VectorStore` defaults to `SimpleVectorStore` (in-memory). Swap via Spring profile or user configuration.
 - `EmbeddingModel` is resolved from the active model profile (Ollama by default, OpenAI optional).
@@ -219,11 +219,11 @@ Once registered, the same connection becomes available as a tool source in Agent
 
 ### Flow 2b - Exposing external tools (composition)
 
-Beyond inspecting a connection, the operator can **re-expose** selected upstream tools on the built-in MCP server through the Expose Tools drawer. `McpCompositionService` persists the selection (exposed alias, description override, per-tool HITL, max-risk cap); on enable, `McpCompositionShadowingRules` validates the set (alias collisions, cross-server references), `McpToolRiskComposer` combines server + tool risk (lowered one band when HITL is set), and `McpExposedToolService` wraps each chosen tool in a `WrappedExternalToolCallback` registered with `McpSyncServer` - so it joins the Tool Studio tools published at `/mcp`.
+Beyond inspecting a connection, the operator can **re-expose** selected upstream tools on the built-in MCP server through the Composed Tools drawer. `McpCompositionService` persists the selection (exposed alias, description override, per-tool HITL, max-risk cap); on enable, `McpCompositionShadowingRules` validates the set (alias collisions, cross-server references), `McpToolRiskComposer` combines server + tool risk (lowered one band when HITL is set), and `McpExposedToolService` wraps each chosen tool in a `WrappedExternalToolCallback` registered with `McpSyncServer` - so it joins the Tool Studio tools published at `/mcp`.
 
 ```mermaid
 flowchart LR
-    DRAWER["Expose Tools drawer<br/>select · alias · HITL · cap"]
+    DRAWER["Composed Tools drawer<br/>select · alias · HITL · cap"]
     SVC["Composition service<br/>persist selection"]
     RULES{"Shadowing rules<br/>R1 · R2 · R3"}
     WRAP["Wrapped tool<br/>alias + risk MDC"]
@@ -254,7 +254,7 @@ Searches go through `VectorStoreService.search(query, filterExpression)` which b
 
 ### Flow 4 - Chat advisor chain (memory + RAG)
 
-Every chat request passes through the `ChatClient` advisor chain before it reaches the model. The chain is assembled from all `Advisor` beans injected as an array (`defaultAdvisors(Advisor[])`) and ordered by each advisor's `getOrder()` - **MessageChatMemoryAdvisor**, **SpringAiPlaygroundRagAdvisor**, **SimpleLoggerAdvisor**, and **HitlToolCallAdvisor** (which owns the tool-calling loop and runs the [human-in-the-loop gate](hitl-architecture.md); see Flow 5).
+Every chat request passes through the `ChatClient` advisor chain before it reaches the model. The chain is assembled from all `Advisor` beans injected as an array (`defaultAdvisors(Advisor[])`) and ordered by each advisor's `getOrder()` - **MessageChatMemoryAdvisor**, **SpringAiPlaygroundRagAdvisor**, **SimpleLoggerAdvisor**, and **LoggingToolCallAdvisor** (which owns the tool-calling loop and runs the [human-in-the-loop gate](hitl-architecture.md); see Flow 5).
 
 ```mermaid
 sequenceDiagram

@@ -31,7 +31,7 @@ import org.springaicommunity.playground.service.mcp.catalog.McpCategoryService;
 import org.springaicommunity.playground.service.mcp.catalog.McpTagSuggestionService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.mcp.risk.McpRegistrationRiskPreview;
-import org.springaicommunity.playground.service.mcp.risk.McpToolRiskAdvisor;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator;
 
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
@@ -44,7 +44,7 @@ public class McpContentView extends VerticalLayout {
 
     public McpContentView(McpServerInfo mcpServerInfo, McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService, McpCategoryService mcpCategoryService,
-            McpTagSuggestionService mcpTagSuggestionService, McpToolRiskAdvisor riskAdvisor,
+            McpTagSuggestionService mcpTagSuggestionService, McpToolRiskEvaluator riskEvaluator,
             McpRegistrationRiskPreview registrationRiskPreview,
             PropertyChangeSupport mcpServerInfoChangeSupport) {
         this.mcpServerInfo = mcpServerInfo;
@@ -71,7 +71,7 @@ public class McpContentView extends VerticalLayout {
                             return;
                         ui.access(() -> toolListAsOpt.ifPresent(toolList -> replace(inspectorPlaceholder,
                                 new McpServerInspectorView(this.mcpServerInfo, mcpClientService, toolList,
-                                        riskAdvisor))));
+                                        riskEvaluator))));
                     });
         }
     }

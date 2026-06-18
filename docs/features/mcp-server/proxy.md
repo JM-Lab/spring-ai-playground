@@ -1,8 +1,8 @@
-description: MCP Server Proxy - re-publish selected tools from your external MCP connections through the playground's own built-in MCP server, governed per tool with a risk level, HITL approval, logging, and secret masking.
+description: MCP Server Proxy - re-publish tools from external MCP connections through the built-in server, governed per tool with risk level, HITL, logging, and secret masking.
 
 # MCP Server Proxy
 
-**Where:** top navigation → **MCP Server** → select a connected server → the **gear icon** at the top-right of the *MCP Server Info* pane → **Expose Tools**.
+**Where:** top navigation → **MCP Server** → select a connected server → the **gear icon** at the top-right of the *MCP Server Info* pane → **Composed Tools**.
 
 The **MCP Server Proxy** re-publishes tools from the external MCP servers you've connected **through the playground's own built-in MCP server** (`spring-ai-playground-built-in-mcp`, Streamable HTTP at `/mcp`). The built-in server fronts those upstream servers as a **governed proxy** - Agentic Chat, the MCP Inspector, and any external MCP client reach the proxied tools on one endpoint, alongside the tools you authored in Tool Studio. You control it **per tool**: which tools, under what alias, with what risk cap and human-approval setting.
 
@@ -21,7 +21,7 @@ flowchart LR
     PROXY --> EXTC
 ```
 
-You pick the tools through the **Expose Tools** drawer; internally the selection is a *composition* (`McpComposition`) that wraps each chosen tool in a `WrappedExternalToolCallback`. "Proxy" is the user-facing idea - *re-publish someone else's tool through mine, per tool* - and "composition" is the mechanism.
+You pick the tools through the **Composed Tools** drawer; internally the selection is a *composition* (`McpComposition`) that wraps each chosen tool in a `WrappedExternalToolCallback`. "Proxy" is the user-facing idea - *re-publish someone else's tool through mine, per tool* - and "composition" is the mechanism.
 
 !!! info "Combine across connections"
     You re-publish the tools you select - individually or with **Select all**, across one or several active connections - combined onto the one built-in `/mcp` endpoint. See [Default MCP Servers → trust and risk](../default-mcp-catalog/index.md#trust-and-risk).
@@ -34,11 +34,11 @@ An external MCP server can be written in any language and run anywhere - you did
 - **A safety envelope.** Every proxied tool is wrapped with a computed risk level, optional human approval (HITL), full logging and tracing, and secret masking - see the [safe-wrapping contract](../../mcp-server-safety.md#wrapping-contract).
 - **A review gate.** Before a tool is published it passes a [description poisoning scan](../../mcp-server-safety.md#poisoning-scan), a [fingerprint ledger](../../mcp-server-safety.md#fingerprint-ledger) (so a silently-redefined upstream tool is flagged for re-review), and [composition shadowing rules](../../mcp-server-safety.md#shadowing-rules).
 
-## The Expose Tools drawer
+## The Composed Tools drawer
 
-The **gear icon** on the MCP Server Info header opens the **Expose Tools** drawer.
+The **gear icon** on the MCP Server Info header opens the **Composed Tools** drawer.
 
-![Expose Tools drawer with the max-risk cap set to L3, a HITL-all toggle, a DeepWiki server row carrying a Server: L1 - Safe chip, and the list of tools currently exposed on the built-in server](../../assets/images/mcp-server/expose-tools-drawer.png){ loading=lazy }
+![Composed Tools drawer with the max-risk cap set to L3, a HITL-all toggle, a DeepWiki server row carrying a Server: L1 - Safe chip, and the list of tools currently exposed on the built-in server](../../assets/images/mcp-server/expose-tools-drawer.png){ loading=lazy }
 
 - **Max risk to expose** caps which tools can be selected - any tool whose effective risk exceeds the cap (default `L3`) is disabled in the list.
 - **Require approval (HITL)** can be set per tool, or for all selected tools at once via the header checkbox. Marking a tool HITL lowers its effective risk by one band and **gates the call at runtime** - external clients are asked via MCP elicitation, and chat on this device shows an approval dialog (see [Human-in-the-Loop](../human-in-the-loop.md)).
@@ -65,7 +65,7 @@ This is how external tools reach external clients in practice; the [trust-and-ri
 ## Steps
 
 1. **Connect the upstream server** - activate a [catalog entry](../default-mcp-catalog/index.md) or add a custom server, and confirm its tools work in the [Inspector](inspector.md#tools).
-2. **Open the Expose Tools drawer** - the gear icon on the MCP Server Info header.
+2. **Open the Composed Tools drawer** - the gear icon on the MCP Server Info header.
 3. **Set the ceiling** - pick a **Max risk to expose** cap; optionally tick **Require approval (HITL) for all selected tools**.
 4. **Select tools** - expand a server, tick the tools you want. Each shows its effective risk chip; over-cap tools are disabled.
 5. **(Optional) Rename / gate** - edit the exposed alias or description, and toggle HITL per tool.
@@ -84,7 +84,7 @@ spring:
         description: Curated tools for my team     # shown in clients' server list
         exposure-mode: both          # builtin-only | composed-only | both
       mcp-server:
-        composed-tools-max-risk: L3  # cap; tools whose risk exceeds this are skipped
+        composed-tools-max-risk: L3  # cap (omit this key -> L5); tools whose risk exceeds this are skipped
         composed-tools:
           - server: DeepWiki         # connected server name
             tool: ask_question       # upstream tool name

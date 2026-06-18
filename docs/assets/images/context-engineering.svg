@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 525" role="img" aria-label="How Spring AI Playground assembles each chat turn's context window from a system prompt, retrieved documents, tool schemas, conversation memory, and per-request options, then builds provider-native request options, calls the model, and loops tool results and each turn back into the context and conversation memory">
+  <defs>
+    <style>
+      .title { font: 600 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; }
+      .subt { font: 400 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; }
+      .clab { font: 600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; }
+      .csub { font: 400 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; }
+      .strip { font: 600 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; }
+      .mlab { font: 600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #1f2937; text-anchor: middle; }
+      .msub { font: 400 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #4b5563; text-anchor: middle; }
+      .flow { font: 400 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #6b7280; }
+      .box { fill: #ffffff; stroke: #7c93af; stroke-width: 1; }
+      .cw { fill: #ffffff; stroke: #52617a; stroke-width: 1.5; }
+      .arr { stroke: #7c93af; stroke-width: 1.2; fill: none; }
+      .arr-d { stroke: #aab6c6; stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+    </style>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#7c93af"/>
+    </marker>
+    <marker id="ahd" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#aab6c6"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="24" y="32">How each turn's context window is assembled</text>
+  <text class="subt" x="24" y="51">Context engineering: every input the model sees on a turn, and where you configure it</text>
+
+  <!-- five source cards (left), aligned row-for-row with the context-window strips -->
+  <g>
+    <rect class="box" x="24" y="115" width="236" height="46" rx="8" fill="#eef5ff"/>
+    <text class="clab" x="38" y="139">System prompt</text>
+    <text class="csub" x="38" y="156">Preset, template, or free text - Prompt Library</text>
+
+    <rect class="box" x="24" y="161" width="236" height="46" rx="8" fill="#eef9f1"/>
+    <text class="clab" x="38" y="185">Retrieved documents</text>
+    <text class="csub" x="38" y="202">Vector search over selected collections - RAG</text>
+
+    <rect class="box" x="24" y="207" width="236" height="46" rx="8" fill="#fdf6ec"/>
+    <text class="clab" x="38" y="231">Tool schemas</text>
+    <text class="csub" x="38" y="248">Built-in, authored, proxied - tool selector</text>
+
+    <rect class="box" x="24" y="253" width="236" height="46" rx="8" fill="#fbeef1"/>
+    <text class="clab" x="38" y="277">Per-request options</text>
+    <text class="csub" x="38" y="294">Reasoning effort + generation options</text>
+
+    <rect class="box" x="24" y="299" width="236" height="46" rx="8" fill="#f3f4f6"/>
+    <text class="clab" x="38" y="323">Conversation memory</text>
+    <text class="csub" x="38" y="340">Sliding window - last 10 turns</text>
+  </g>
+
+  <!-- convergence: five parallel horizontal arrows into the matching strips -->
+  <path class="arr" d="M260,138 L300,138" marker-end="url(#ah)"/>
+  <path class="arr" d="M260,184 L300,184" marker-end="url(#ah)"/>
+  <path class="arr" d="M260,230 L300,230" marker-end="url(#ah)"/>
+  <path class="arr" d="M260,276 L300,276" marker-end="url(#ah)"/>
+  <path class="arr" d="M260,322 L300,322" marker-end="url(#ah)"/>
+
+  <!-- context window panel -->
+  <rect class="cw" x="304" y="72" width="188" height="282" rx="10"/>
+  <text class="mlab" x="398" y="92">Context window</text>
+  <text class="msub" x="398" y="106">what the model sees this turn</text>
+  <rect x="318" y="118" width="160" height="40" rx="5" fill="#eef5ff" stroke="#c9d3e0"/>
+  <text class="strip" x="330" y="142">System prompt</text>
+  <rect x="318" y="164" width="160" height="40" rx="5" fill="#eef9f1" stroke="#c9d3e0"/>
+  <text class="strip" x="330" y="188">Retrieved documents</text>
+  <rect x="318" y="210" width="160" height="40" rx="5" fill="#fdf6ec" stroke="#c9d3e0"/>
+  <text class="strip" x="330" y="234">Tool schemas</text>
+  <rect x="318" y="256" width="160" height="40" rx="5" fill="#fbeef1" stroke="#c9d3e0"/>
+  <text class="strip" x="330" y="280">Options</text>
+  <rect x="318" y="302" width="160" height="40" rx="5" fill="#f3f4f6" stroke="#c9d3e0"/>
+  <text class="strip" x="330" y="326">Conversation memory</text>
+
+  <!-- context window -> request factory -> model -->
+  <path class="arr" d="M492,230 L528,230" marker-end="url(#ah)"/>
+  <rect class="box" x="530" y="198" width="152" height="64" rx="8" fill="#ffffff"/>
+  <text class="mlab" x="606" y="222">Request options</text>
+  <text class="msub" x="606" y="238">ChatRequestOptionsFactory</text>
+  <text class="msub" x="606" y="250">provider-native build</text>
+
+  <path class="arr" d="M682,230 L718,230" marker-end="url(#ah)"/>
+  <rect class="box" x="720" y="200" width="130" height="60" rx="8" fill="#eef5ff"/>
+  <text class="mlab" x="785" y="226">Model (LLM)</text>
+  <text class="msub" x="785" y="242">streamed response</text>
+
+  <!-- agentic tool loop: model -> tool call -> results re-enter the context -->
+  <path class="arr" d="M800,260 L800,414 L694,414" marker-end="url(#ah)"/>
+  <rect class="box" x="318" y="392" width="372" height="44" rx="8" fill="#fdf6ec"/>
+  <text class="mlab" x="504" y="410">Tool call - McpToolCallingManager</text>
+  <text class="msub" x="504" y="424">human-in-the-loop gate before each call</text>
+  <path class="arr" d="M330,392 L330,356" marker-end="url(#ah)"/>
+  <text class="flow" x="342" y="382">tool results re-enter the context</text>
+
+  <!-- memory loop (dashed): each turn is appended to the bottom Conversation memory card -->
+  <path class="arr-d" d="M828,258 C840,392 838,500 740,500 L236,500 C150,500 138,404 138,347" marker-end="url(#ahd)"/>
+  <text class="flow" x="396" y="494">each turn is appended to conversation memory</text>
+</svg>

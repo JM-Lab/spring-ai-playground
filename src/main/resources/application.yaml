@@ -24,8 +24,8 @@ management:
       maximum-expected-value:
         gen_ai.client.operation: 5m
         spring.ai.chat.client: 5m
-        spring.ai.tool: 1m
-        db.vector.client.operation: 30s
+        spring.ai.tool: 5m
+        db.vector.client.operation: 2m
       expiry:
         gen_ai.client.operation: 30m
         spring.ai.chat.client: 30m
@@ -37,9 +37,7 @@ management:
   tracing:
     sampling:
       probability: ${SPRING_AI_PLAYGROUND_TRACE_SAMPLE:1.0}
-  # OTLP export is opt-in: set MANAGEMENT_OTLP_TRACING_ENDPOINT=https://... to enable.
-  # Leaving the yaml block absent keeps Spring Boot from instantiating the exporter
-  # with an empty endpoint (which fails validation).
+
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
@@ -52,6 +50,9 @@ spring:
       max-request-size: 20MB
   application:
     name: spring-ai-playground
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
   profiles:
     default: ollama
   ai:
@@ -123,6 +124,9 @@ spring:
       user-home: ${user.home}
       chat:
         system-prompt:
+        memory-max-messages: 10
+        history-max-messages: 2000
+        default-max-tokens: 8192
       built-in-mcp-server:
         name: ${SPRING_AI_PLAYGROUND_MCP_NAME:spring-ai-playground-built-in-mcp}
         description: "${SPRING_AI_PLAYGROUND_MCP_DESCRIPTION:Spring AI Playground's built-in MCP server, served over Streamable HTTP at /mcp. Publishes your native Tool Studio tools (default catalog + custom) plus composed tools from connected external MCP servers, per the configured exposure mode.}"
@@ -168,15 +172,38 @@ spring:
           - gpt-oss:20b
           - deepseek-r1:8b
 ---
+# activated by AppleSiliconMlxActivator on Apple Silicon, not a manual profile
+spring:
+  config:
+    activate:
+      on-profile: mlx
+  ai:
+    ollama:
+      chat:
+        options:
+          model: qwen3.5:4b-mlx
+    playground:
+      chat:
+        models:
+          - qwen3.5:2b-mlx
+          - qwen3.5:4b-mlx
+          - qwen3.5:9b-mlx
+          - qwen3.6:27b-mlx
+          - qwen3.6:35b-mlx
+          - gemma4:e2b-mlx
+          - gemma4:e4b-mlx
+          - gemma4:12b-mlx
+          - gemma4:31b-mlx
+---
 spring:
   config:
     activate:
       on-profile: openai
   ai:
     model:
-      chat: openai-sdk
-      embedding: openai-sdk
-    openai-sdk:
+      chat: openai
+      embedding: openai
+    openai:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:

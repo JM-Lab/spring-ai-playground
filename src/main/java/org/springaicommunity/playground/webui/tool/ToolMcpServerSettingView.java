@@ -60,8 +60,10 @@ public class ToolMcpServerSettingView extends VerticalLayout {
             ToolSpecService toolSpecService) {
         this.persistenceService = persistenceService;
         this.activationCalculator = activationCalculator;
-        this.customSelector = ExposedToolsSelector.newCustomSelector(toolSpecService::riskLevelOf);
-        this.builtinSelector = ExposedToolsSelector.newBuiltinSelector(toolSpecService::riskLevelOf);
+        this.customSelector = ExposedToolsSelector.newCustomSelector(
+                toolSpecService::riskLevelOf, toolSpecService::categoryOf);
+        this.builtinSelector = ExposedToolsSelector.newBuiltinSelector(
+                toolSpecService::riskLevelOf, toolSpecService::categoryOf);
 
         setWidthFull();
         setPadding(false);
@@ -145,7 +147,8 @@ public class ToolMcpServerSettingView extends VerticalLayout {
         chipsContainer.add(toolsLabel, summary);
 
         autoAddCheckbox.setHelperText(
-                "Newly published tools (custom or built-in) are exposed to the MCP server automatically.");
+                "Newly published custom tools are exposed to the MCP server automatically. "
+                        + "Built-in exposure follows the active tool preset.");
 
         dirtyHint.setText("● Unsaved changes — click \"Confirm\" to commit");
         dirtyHint.getStyle()
@@ -306,6 +309,10 @@ public class ToolMcpServerSettingView extends VerticalLayout {
                 .map(ToolSpec::toolId).collect(Collectors.toSet());
         return ExposedToolsSelector.computeSetting(autoAddCheckbox.getValue(), customSel, builtinSel,
                 exposableBuiltinIds());
+    }
+
+    public boolean isDirty() {
+        return this.dirty;
     }
 
     public void markConfirmed(ToolMcpServerSetting newConfirmed) {

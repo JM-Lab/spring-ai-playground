@@ -15,8 +15,8 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.catalog.McpCatalogEntry;
 import org.springaicommunity.playground.service.mcp.catalog.McpRiskFactors;
@@ -134,7 +134,7 @@ public class McpRiskInputsResolver {
                 return McpAuthMode.OAUTH_STANDARD;
             }
             JsonNode headers = node.get("headers");
-            if (headers != null && headers.fieldNames().hasNext()) {
+            if (headers != null && !headers.propertyNames().isEmpty()) {
                 return McpAuthMode.BEARER;
             }
         } catch (Exception ignored) {
@@ -184,7 +184,7 @@ public class McpRiskInputsResolver {
         if (properties == null || !properties.isObject()) return 1.0;
         int total = 0;
         int withDescription = 0;
-        var fields = properties.fields();
+        var fields = properties.properties().iterator();
         while (fields.hasNext()) {
             var entry = fields.next();
             total++;

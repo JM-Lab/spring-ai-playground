@@ -19,9 +19,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CategoryDef(String id, String displayName, int order, String icon, String description,
-                          boolean builtIn) {
+                          Boolean builtIn) {
 
     public CategoryDef {
+        if (builtIn == null) builtIn = false;
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("CategoryDef id must not be blank");
         }

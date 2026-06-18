@@ -9,9 +9,9 @@ description: Tutorial 4 - trigger a built-in MCP tool from a chat turn. Watch th
 
 ## Steps
 
-1. Open **Agentic Chat**. Click the gear icon to open **Chat Model Setting** and switch the model.
+1. Open **Agentic Chat**. Click the gear icon to open **Agentic Chat Setting** and switch the model.
 
-![Chat Model Setting panel with the model dropdown open showing qwen3.5:9b and gemma4:e4b](../assets/images/tutorials/tutorial-4-chat-tool-setup.png)
+![Agentic Chat Setting panel with the model dropdown open showing qwen3.5:9b and gemma4:e4b](../assets/images/tutorials/tutorial-4-chat-tool-setup.png)
 *① `Model` dropdown - open it to switch from the default `qwen3.5:2b`, ② recommended models for tool use are `qwen3.5:9b` and `gemma4:e4b`. Pick one and click **Apply & New Chat**.*
 
 2. With the chat started under the new model, tick **Use built-in MCP server in this chat** in the tool menu above the prompt, confirm `getCurrentTime` is selected in the exposed-tools list, then type a prompt that should trigger a tool call.

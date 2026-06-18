@@ -15,10 +15,13 @@
  */
 package org.springaicommunity.playground.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
+import org.springaicommunity.playground.service.chat.DefaultChatOptionsJacksonModule;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +39,10 @@ import java.util.stream.Stream;
 public interface PersistenceServiceInterface<T> {
 
     TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
-    ObjectMapper OBJECT_MAPPER = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false)
+            .addModule(new DefaultChatOptionsJacksonModule()).build();
 
     Path getSaveDir();
 
@@ -104,8 +110,13 @@ public interface PersistenceServiceInterface<T> {
             List<File> fileList = paths.filter(this::shouldLoadFile).map(Path::toFile)
                     .filter(Predicate.not(File::isHidden))
                     .peek(file -> getLogger().info("Load file : {}", file.getAbsolutePath())).toList();
-            for (File file : fileList)
-                saveObjectList.add(convertTo(OBJECT_MAPPER.readValue(file, MAP_TYPE_REFERENCE)));
+            for (File file : fileList) {
+                try {
+                    saveObjectList.add(convertTo(OBJECT_MAPPER.readValue(file, MAP_TYPE_REFERENCE)));
+                } catch (JacksonException e) {
+                    getLogger().warn("Skipping unreadable save file {}", file.getAbsolutePath(), e);
+                }
+            }
         }
         return saveObjectList;
     }

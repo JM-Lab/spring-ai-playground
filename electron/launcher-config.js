@@ -48,9 +48,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
-      embedding: openai-sdk
-    openai-sdk:
+      chat: openai
+      embedding: openai
+    openai:
       api-key: \${OPENAI_API_KEY}
       chat:
         options:
@@ -77,9 +77,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
+      chat: openai
       embedding: ollama
-    openai-sdk:
+    openai:
       api-key: not-used
       base-url: http://localhost:11434/v1
       chat:
@@ -103,9 +103,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
+      chat: openai
       embedding: ollama
-    openai-sdk:
+    openai:
       api-key: not-used
       base-url: http://localhost:8080/v1
       chat:
@@ -132,9 +132,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
+      chat: openai
       embedding: ollama
-    openai-sdk:
+    openai:
       api-key: your-tabby-key
       base-url: http://localhost:5000/v1
       chat:
@@ -160,9 +160,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
+      chat: openai
       embedding: ollama
-    openai-sdk:
+    openai:
       api-key: not-used
       base-url: http://localhost:1234/v1
       chat:
@@ -188,9 +188,9 @@ const CONFIG_TEMPLATES = {
     yaml: `spring:
   ai:
     model:
-      chat: openai-sdk
+      chat: openai
       embedding: ollama
-    openai-sdk:
+    openai:
       api-key: not-used
       base-url: http://localhost:8000/v1
       chat:
@@ -209,6 +209,53 @@ const CONFIG_TEMPLATES = {
 `,
   },
 };
+
+const MLX_MODEL_MAP = {
+  // plain -mlx builds only; -mlx-bf16 variants are not auto-selected
+  'qwen3.5:0.8b': 'qwen3.5:0.8b-mlx',
+  'qwen3.5:2b': 'qwen3.5:2b-mlx',
+  'qwen3.5:4b': 'qwen3.5:4b-mlx',
+  'qwen3.5:9b': 'qwen3.5:9b-mlx',
+  'qwen3.5:27b': 'qwen3.5:27b-mlx',
+  'qwen3.5:35b': 'qwen3.5:35b-mlx',
+  'qwen3.6:27b': 'qwen3.6:27b-mlx',
+  'qwen3.6:35b': 'qwen3.6:35b-mlx',
+  'gemma4:e2b': 'gemma4:e2b-mlx',
+  'gemma4:e4b': 'gemma4:e4b-mlx',
+  'gemma4:12b': 'gemma4:12b-mlx',
+  'gemma4:26b': 'gemma4:26b-mlx',
+  'gemma4:31b': 'gemma4:31b-mlx',
+};
+
+function toMlxModel(name) {
+  return (typeof name === 'string' && MLX_MODEL_MAP[name]) || name;
+}
+
+const OLLAMA_APPLE_SILICON_YAML = `spring:
+  ai:
+    model:
+      chat: ollama
+      embedding: ollama
+    ollama:
+      chat:
+        options:
+          model: qwen3.5:4b-mlx
+      embedding:
+        options:
+          model: qwen3-embedding:0.6b
+    playground:
+      chat:
+        models:
+          - qwen3.5:2b-mlx
+          - qwen3.5:4b-mlx
+          - qwen3.5:9b-mlx
+          - qwen3.6:27b-mlx
+          - qwen3.6:35b-mlx
+          - gemma4:e2b-mlx
+          - gemma4:e4b-mlx
+          - gemma4:12b-mlx
+          - gemma4:31b-mlx
+`;
 
 const http = require('http');
 const fs = require('fs');
@@ -271,4 +318,6 @@ module.exports = {
   CONFIG_TEMPLATES,
   DEFAULT_STARTER_TEMPLATE_IDS,
   startTempServer,
+  toMlxModel,
+  OLLAMA_APPLE_SILICON_YAML,
 };
