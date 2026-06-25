@@ -17,6 +17,7 @@ package org.springaicommunity.playground.service.mcp.client;
 
 import tools.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
@@ -24,6 +25,9 @@ import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService.McpToolSource;
 import org.springaicommunity.playground.service.mcp.client.McpClientService.OAuthSnapshot;
 import org.springaicommunity.playground.service.mcp.client.McpClientService.StatusEntry;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator.ToolRiskView;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpClientCommonProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -39,7 +43,10 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +74,7 @@ class McpClientServiceUnitTest {
                 null,
                 oauthClientService,
                 presentProvider(serverInfoService),
+                emptyProvider(),
                 mock(McpNotificationStore.class),
                 meterRegistry);
     }
@@ -84,6 +92,42 @@ class McpClientServiceUnitTest {
     }
 
     @Test
+    void oneToolRiskFailureDoesNotAbortIndexingOfRemainingTools() {
+        McpToolRiskEvaluator evaluator = mock(McpToolRiskEvaluator.class);
+        when(evaluator.evaluateTool(any(), eq("bad"), anyString(), isNull()))
+                .thenThrow(new IllegalStateException("evaluator exploded"));
+        when(evaluator.evaluateTool(any(), eq("good"), anyString(), isNull()))
+                .thenReturn(new ToolRiskView(RiskLevel.L3, RiskLevel.L3, null, null));
+        McpClientCommonProperties props = new McpClientCommonProperties();
+        props.setName("test-app");
+        props.setVersion("0.0.1-test");
+        McpClientService riskIndexing = new McpClientService(
+                null,
+                null,
+                props,
+                new ObjectMapper(),
+                new McpClientPropertiesService<?>[] {},
+                null,
+                oauthClientService,
+                presentProvider(serverInfoService),
+                presentProvider(evaluator),
+                mock(McpNotificationStore.class),
+                meterRegistry);
+        McpClientOps ops = mock(McpClientOps.class);
+        when(ops.listTools()).thenReturn(List.of(
+                Tool.builder().name("bad").description("first, fails").build(),
+                Tool.builder().name("good").description("second, still indexed").build()));
+
+        riskIndexing.refreshToolIndex(
+                new McpServerInfo(McpTransportType.STREAMABLE_HTTP, "srv", "", 0L, 0L, "{}"), ops);
+
+        assertThat(riskIndexing.lookupToolSource("bad"))
+                .hasValueSatisfying(s -> assertThat(s.riskFinal()).isNull());
+        assertThat(riskIndexing.lookupToolSource("good"))
+                .hasValueSatisfying(s -> assertThat(s.riskFinal()).isEqualTo("L3"));
+    }
+
+    @Test
     void snapshotStatusesReturnsEmptyMapWhenNoClientsStarted() {
         assertThat(service.snapshotStatuses()).isEmpty();
     }
@@ -98,13 +142,9 @@ class McpClientServiceUnitTest {
     void snapshotOAuthStateReturnsRowPerOauthServerWithTokenExpiry() {
         McpServerInfo serverWithOauth = new McpServerInfo(McpTransportType.STREAMABLE_HTTP,
                 "github", "", 0L, 0L,
-                // OAuthClientRegistrations.registrationId returns non-null iff connectionAsJson
-                // declares a "registrationId" / OAuth fields. To exercise that branch we wire a
-                // mocked OAuth2AuthorizedClient.
                 "{}");
         when(serverInfoService.read()).thenReturn(List.of(serverWithOauth));
 
-        // Stub the OAuth client lookup. Any registrationId returns this token.
         OAuth2AccessToken token = new OAuth2AccessToken(
                 OAuth2AccessToken.TokenType.BEARER, "token-xyz",
                 Instant.now().minusSeconds(60), Instant.now().plusSeconds(900));
@@ -120,11 +160,7 @@ class McpClientServiceUnitTest {
                 anyString())).thenReturn(authorized);
 
         List<OAuthSnapshot> rows = service.snapshotOAuthState();
-        // Whether registrationId(...) yields non-null for this serverInfo depends on its
-        // connectionAsJson — if it doesn't, the row is skipped. Either result is OK; we
-        // only assert that calling the method is safe and returns a list.
         assertThat(rows).isNotNull();
-        // If at least one row materialised, verify it contains the stubbed token expiry.
         if (!rows.isEmpty()) {
             assertThat(rows.get(0).accessTokenExpiresAtMs()).isNotNull();
             assertThat(rows.get(0).hasRefreshToken()).isTrue();
@@ -133,9 +169,10 @@ class McpClientServiceUnitTest {
 
     @Test
     void mcpToolSourceRecordCarriesNameAndTransport() {
-        McpToolSource s = new McpToolSource("weather", "STDIO");
+        McpToolSource s = new McpToolSource("weather", "STDIO", "L3");
         assertThat(s.serverName()).isEqualTo("weather");
         assertThat(s.transport()).isEqualTo("STDIO");
+        assertThat(s.riskFinal()).isEqualTo("L3");
     }
 
     @Test
@@ -161,6 +198,19 @@ class McpClientServiceUnitTest {
             @Override public T getIfUnique(Supplier<T> def) { return value; }
             @Override public void ifAvailable(Consumer<T> c) { c.accept(value); }
             @Override public void ifUnique(Consumer<T> c) { c.accept(value); }
+        };
+    }
+
+    private static <T> ObjectProvider<T> emptyProvider() {
+        return new ObjectProvider<>() {
+            @Override public T getObject() { throw new RuntimeException("not available"); }
+            @Override public T getObject(Object... args) { throw new RuntimeException("not available"); }
+            @Override public T getIfAvailable() { return null; }
+            @Override public T getIfAvailable(Supplier<T> def) { return def.get(); }
+            @Override public T getIfUnique() { return null; }
+            @Override public T getIfUnique(Supplier<T> def) { return def.get(); }
+            @Override public void ifAvailable(Consumer<T> c) {}
+            @Override public void ifUnique(Consumer<T> c) {}
         };
     }
 }

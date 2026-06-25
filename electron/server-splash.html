@@ -230,6 +230,7 @@
             background: #f3ece0;
             color: var(--text);
             border: 1px solid rgba(95, 106, 100, 0.12);
+            white-space: nowrap;
         }
         button:hover {
             transform: translateY(-1px);
@@ -351,6 +352,7 @@
             <div class="hint" id="launch-hint">Spring Boot is starting with the selected YAML.</div>
             <div class="controls controls-primary">
                 <button id="switch-config" type="button">Back to Settings</button>
+                <button id="start-without-secrets" type="button" style="display:none;">Start without saved keys</button>
             </div>
             <div class="controls controls-secondary">
                 <label class="checkbox-row" for="auto-copy-logs">
@@ -378,6 +380,7 @@
     const launchHint = document.getElementById('launch-hint');
     const retryLaunchButton = document.getElementById('retry-launch');
     const switchConfigButton = document.getElementById('switch-config');
+    const startWithoutSecretsButton = document.getElementById('start-without-secrets');
     const quitLauncherButton = document.getElementById('quit-launcher');
     const closeWindowButton = document.getElementById('close-window');
     const statusText = document.getElementById('status-text');
@@ -407,6 +410,8 @@
       }
       const readiness = payload?.readiness || {};
       retryLaunchButton.disabled = !payload?.serverRunning;
+      startWithoutSecretsButton.style.display =
+        (readiness?.phase === 'waiting-for-credentials' && readiness?.allowBypass) ? '' : 'none';
 
       if (readiness?.message) {
         launchHint.textContent = readiness.message;
@@ -446,6 +451,16 @@
         appendLine(error.message || String(error), true);
         switchConfigButton.disabled = false;
         retryLaunchButton.disabled = false;
+      }
+    });
+
+    startWithoutSecretsButton.addEventListener('click', async () => {
+      startWithoutSecretsButton.disabled = true;
+      try {
+        await window.electronAPI.invoke('app:start-without-secrets');
+      } catch (error) {
+        appendLine(error.message || String(error), true);
+        startWithoutSecretsButton.disabled = false;
       }
     });
 

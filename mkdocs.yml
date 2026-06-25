@@ -107,6 +107,7 @@ nav:
       - "Vector Database": features/vector-database.md
       - "Agentic Chat":
           - features/agentic-chat/index.md
+          - "Self-equipping Agents": features/agentic-chat/dynamic-tool-discovery.md
           - "Prompt Templates": features/agentic-chat/prompt-templates.md
           - "Prompt Presets": features/agentic-chat/prompt-presets.md
       - "Human-in-the-Loop": features/human-in-the-loop.md
@@ -124,9 +125,11 @@ nav:
               - "MCP Inspector": features/observability/ai-stack/mcp-inspector.md
               - "Vector Database": features/observability/ai-stack/vector-database.md
               - "Agentic Chat": features/observability/ai-stack/agentic-chat.md
+              - "Safety": features/observability/ai-stack/safety.md
           - "Runtime":
               - features/observability/runtime/index.md
               - "Host": features/observability/runtime/host.md
+              - "Ollama": features/observability/runtime/ollama.md
               - "Web Application": features/observability/runtime/web-application.md
               - "Logs": features/observability/runtime/logs.md
               - "Traces": features/observability/runtime/traces.md

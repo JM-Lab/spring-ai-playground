@@ -23,6 +23,18 @@ import java.util.Map;
 
 public final class McpRiskEvents {
 
+    public static final class Types {
+
+        public static final String SERVER_RISK_COMPUTED = "server-risk-computed";
+        public static final String TOOL_PUBLISH_RISK_COMPUTED = "tool-publish-risk-computed";
+        public static final String FLOOR_OVERRIDE_TRIGGERED = "floor-override-triggered";
+        public static final String HASH_LEDGER_MISMATCH = "hash-ledger-mismatch";
+        public static final String COMPOSITION_LIFECYCLE = "composition-lifecycle";
+        public static final String POISONING_HIT = "poisoning-hit";
+
+        private Types() {}
+    }
+
     public record ServerRiskComputed(
             Instant at,
             String serverId,

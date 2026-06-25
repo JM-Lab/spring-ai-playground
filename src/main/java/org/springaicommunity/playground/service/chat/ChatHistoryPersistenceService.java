@@ -19,6 +19,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import org.springaicommunity.playground.service.PersistenceExecutor;
 import org.springaicommunity.playground.service.PersistenceServiceInterface;
+import org.springaicommunity.playground.service.tool.ToolWorkspace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,12 +53,14 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
     private final Path saveDir;
     private final ObjectProvider<ChatHistoryService> chatHistoryServiceProvider;
     private final PersistenceExecutor persistenceExecutor;
+    private final ToolWorkspace toolWorkspace;
 
     public ChatHistoryPersistenceService(Path springAiPlaygroundHomeDir,
             ObjectProvider<ChatHistoryService> chatHistoryServiceProvider,
-            PersistenceExecutor persistenceExecutor) throws IOException {
+            PersistenceExecutor persistenceExecutor, ToolWorkspace toolWorkspace) throws IOException {
         this.chatHistoryServiceProvider = chatHistoryServiceProvider;
         this.persistenceExecutor = persistenceExecutor;
+        this.toolWorkspace = toolWorkspace;
         this.saveDir = springAiPlaygroundHomeDir.resolve("chat").resolve("save");
         Files.createDirectories(this.saveDir);
     }
@@ -72,7 +76,10 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
     }
 
     public void deleteAsync(ChatHistory chatHistory) {
-        this.persistenceExecutor.submit(() -> delete(chatHistory));
+        this.persistenceExecutor.submit(() -> {
+            delete(chatHistory);
+            this.toolWorkspace.deleteConversationDir(chatHistory.conversationId());
+        });
     }
 
     @Override
@@ -87,7 +94,30 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
 
     @Override
     public void buildSaveData(ChatHistory chatHistory, Map<String, Object> saveObjectMap) {
-        saveObjectMap.put(MESSAGE_LIST, chatHistory.messagesSupplier().get());
+        saveObjectMap.put(MESSAGE_LIST,
+                chatHistory.messagesSupplier().get().stream().map(this::snapshotMessage).toList());
+    }
+
+    private Message snapshotMessage(Message message) {
+        Map<String, Object> live = message.getMetadata();
+        Map<String, Object> metadata;
+        synchronized (live) {
+            metadata = new LinkedHashMap<>(live);
+        }
+        return switch (message.getMessageType()) {
+            case USER -> UserMessage.builder().text(message.getText()).metadata(metadata).build();
+            case ASSISTANT -> {
+                AssistantMessage assistantMessage = (AssistantMessage) message;
+                yield AssistantMessage.builder().content(assistantMessage.getText()).properties(metadata)
+                        .toolCalls(assistantMessage.getToolCalls()).build();
+            }
+            case SYSTEM -> SystemMessage.builder().text(message.getText()).metadata(metadata).build();
+            case TOOL -> {
+                ToolResponseMessage toolResponseMessage = (ToolResponseMessage) message;
+                yield ToolResponseMessage.builder().responses(toolResponseMessage.getResponses())
+                        .metadata(metadata).build();
+            }
+        };
     }
 
     @Override
@@ -95,9 +125,6 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         return chatHistory.conversationId();
     }
 
-    // Only conversation files (named after the "Chat-" conversationId) are chat histories. Other JSON in
-    // chat/save — notably system-prompt-presets.json (a JSON array) — must be skipped, otherwise loads()
-    // throws on the first non-chat file and drops every conversation.
     @Override
     public boolean shouldLoadFile(Path path) {
         String name = path.getFileName().toString();

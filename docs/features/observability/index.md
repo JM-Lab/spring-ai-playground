@@ -1,11 +1,11 @@
 title: Observability
-description: Twelve in-app dashboards surfacing what a Spring AI Playground agent did - token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail.
+description: Fourteen in-app dashboards surfacing what a Spring AI Playground agent did - token economics, tool and MCP behaviour, RAG quality, host runtime, Ollama monitoring, and a live trace tail.
 
 # Observability
 
 **Where:** top navigation → **Observability**.
 
-The observability layer is the **visibility arm** of Spring AI Playground's safety model - the user-facing surface that answers *what the agent did, in what order, against which integration, at what cost*. Where the [sandbox](../../safety-architecture.md) prevents unsafe actions at the call boundary, this layer captures every action that did happen and presents it through **twelve dashboards** in the desktop app.
+The observability layer is the **visibility arm** of Spring AI Playground's safety model - the user-facing surface that answers *what the agent did, in what order, against which integration, at what cost*. Where the [sandbox](../../safety-architecture.md) prevents unsafe actions at the call boundary, this layer captures every action that did happen and presents it through **fourteen dashboards** in the desktop app.
 
 The pages under this section document the user surface. For the trace pipeline, storage tiers, configuration, and external export paths, see [AI Agent Observability Architecture](../../observability-architecture.md).
 
@@ -19,9 +19,9 @@ The dashboards are designed around three roles, all of which can be the same per
 
 Every dashboard is read-only and passive - opening it never alters trace data or model behaviour.
 
-## Sidebar map - twelve dashboards in four groups
+## Sidebar map - fourteen dashboards in four groups
 
-The twelve dashboards are grouped into four sections in the left sidebar. Each group answers a different category of question:
+The fourteen dashboards are grouped into four sections in the left sidebar. Each group answers a different category of question:
 
 ```mermaid
 flowchart TB
@@ -38,10 +38,12 @@ flowchart TB
         MI["MCP Inspector"]
         VD["Vector Database"]
         AC["Agentic Chat"]
+        SF["Safety"]
     end
     subgraph R["Runtime"]
         direction TB
         HO["Host"]
+        OL["Ollama"]
         WA["Web Application"]
         LG["Logs"]
         TR["Traces"]
@@ -92,17 +94,20 @@ flowchart LR
         S4["Vector Database<br/>index · search"]
         S5["JVM running"]
         S6["Any logger"]
+        S7["Ollama server"]
     end
     Trace["TraceRecord"]
     Prim["MCP primitive<br/>observations"]
     Met["MeterRegistry +<br/>SystemMetrics"]
     Log["Rolling app log"]
+    OllamaApi["Ollama<br/>/api/ps · /api/tags"]
     S1 --> Trace
     S2 --> Trace
     S4 --> Trace
     S3 --> Prim
     S5 --> Met
     S6 --> Log
+    S7 --> OllamaApi
     subgraph TDASH["Trace-fed dashboards (8)"]
         direction TB
         D1["Overview"]
@@ -117,14 +122,16 @@ flowchart LR
     Trace --> TDASH
     Prim --> MI["MCP Inspector"]
     Met --> RUN["Host ·<br/>Web Application"]
+    OllamaApi --> OLL["Ollama"]
     Log --> LG["Logs"]
 ```
 
-The four streams are independent and the dashboards mix them differently:
+The five streams are independent and the dashboards mix them differently:
 
 - **`TraceRecord` stream** - every chat turn becomes one `TraceRecord`, but so does every Tool Studio test run and every Vector Database operation that fires through Spring AI. That single record carries `gen_ai.*` / `spring.ai.tool` / `db.vector.client.operation` child spans and surfaces across **Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, Vector Database, Agentic Chat, and Traces**. A Tool Studio test that never touches chat still populates the Tool Studio dashboard plus Overview / Traces.
 - **MCP primitive observations** - when you browse or invoke through the MCP Inspector (list tools, read resources, get prompts, sampling, elicitation), separate observations fire and feed only the **MCP Inspector** dashboard. Independent of trace.
 - **`MeterRegistry` + system metrics** - JVM heap, GC, threads, CPU, HTTP, Tomcat sessions, logback level counts are always live (no user action needed) and feed **Host** and **Web Application**.
+- **Ollama HTTP API** - when Ollama is the active chat provider, the **Ollama** dashboard polls the local server's `/api/ps` and `/api/tags` directly (running models, VRAM, installed inventory) - independent of traces and `MeterRegistry`.
 - **Application log stream** - anything any code logs is tailed live and feeds **Logs**.
 
 So clicking through MCP Inspector primitives, running a Tool Studio test, or uploading a document in Vector Database all generate data on their own dashboards even without sending a single chat message. Conversely, only the chat surface generates the conversation-level aggregates on Agentic Chat.
@@ -149,13 +156,13 @@ So clicking through MCP Inspector primitives, running a Tool Studio test, or upl
 
     ---
 
-    Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat - what the agent integrated with, split by integration kind.
+    Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Safety - what the agent integrated with, split by integration kind.
 
 -   :material-cog-outline:{ .lg .middle } **[Runtime](runtime/index.md)**
 
     ---
 
-    Host · Web Application · Logs · Traces - is the JVM process itself healthy, and the raw trace stream behind every aggregate.
+    Host · Ollama · Web Application · Logs · Traces - is the JVM process itself healthy, Ollama's runtime status, and the raw trace stream behind every aggregate.
 
 </div>
 

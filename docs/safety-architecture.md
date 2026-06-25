@@ -47,7 +47,7 @@ A tool author writes a small JavaScript action with structured input parameters 
 The threats this design has to defend against fall into three categories, listed in roughly increasing trust granted to the actor:
 
 1. **Runaway code** - accidental infinite loop, recursive blow-up, unbounded buffer growth, deadlock. The author did not intend harm; the code does the wrong thing anyway.
-2. **Misuse by author** - the author writes a tool that calls a private network endpoint, reads a path outside the workspace, leaks an env-backed secret into a log line, or pulls in a Java class the default policy denies. The author may not realise these are escalations.
+2. **Misuse by author** - the author writes a tool that calls a private network endpoint, reads a path outside the readable roots, leaks an env-backed secret into a log line, or pulls in a Java class the default policy denies. The author may not realise these are escalations.
 3. **External callers** - anything calling `/mcp` from outside the local machine. This is the adversarial-security layer, distinct from sandbox safety.
 
 The three layers below catch categories (1) and (2) at the JS-execution boundary, and category (3) at the MCP transport. The split matters because most engineering choices - `safety.fs`, deny-first allowlist, virtual-thread timeout, env-var masking - exist to protect *the local author's environment from accidents*, not to protect a deployed cluster from external attackers. The latter is a Spring Security configuration choice, not a sandbox capability.
@@ -80,7 +80,7 @@ What each layer controls, in detail:
 |---|---|---|
 | **1** | Class allow / deny | Deny-first lookup gate (`JsToolExecutor.isClassAllowed`). Default deny-list covers `System` / `Runtime` / `Process` / `ProcessBuilder` / `Class` / reflect / invoke / `Thread` / `ThreadGroup` / `ClassLoader` / `ServiceLoader` / `java.util.spi.*`. Default allow-list covers only `java.lang/math/time/util/text.*` - pure compute. |
 | **1** | Resource limits | `max-statements: 500000` via GraalVM `ResourceLimits` + wall-clock timeout via `Future.cancel(true)` on a virtual-thread executor. |
-| **1** | Helpers gateway | `fetch` (SSRF four-layer guard in `strict` by default), `safety.fs` (rooted at base path with `normalize()` escape check), `safety.parser.{html,xml,csv,yaml}`. These are the only network and filesystem paths from JS. |
+| **1** | Helpers gateway | `fetch` (SSRF four-layer guard in `strict` by default), `safety.fs` (reads bounded to the readable roots, writes to the working directory, both symlink-resolved via `toRealPath` before the boundary check), `safety.parser.{html,xml,csv,yaml}`. These are the only network and filesystem paths from JS. |
 | **1** | Output masking | `console.log` substring-masks env-backed static-variable values before they reach the debug pane or chat tool-call trace. The mask applies to **all** env-vars surfaced by the secret store below - values exported from the OS-encrypted secret store are still treated as secrets at the log boundary. |
 | **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` - encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Desktop App → Use Environment Variables for Keys and Secrets](getting-started/desktop.md#9-use-environment-variables-for-keys-and-secrets). |
 | **2** | `SandboxOverrides` | Per-tool widening: `networkMode`, `hostsAllow`, `fileRead`/`fileWrite`, `addAllow/DenyClasses`, `fsBasePath`. |
@@ -165,7 +165,7 @@ Each gate is configured by `EffectivePolicy` and lives outside the JS context. D
 
 - **Class lookup gate** - `JsToolExecutor.isClassAllowed`. Deny list is evaluated first.
 - **fetch install + SSRF guard** - `JsRuntimeGlobals.installFetch`. Skips installation entirely when egress is `blocked`; otherwise the SSRF four-layer guard runs in `strict`.
-- **safety.fs path resolve** - `SafeFs.resolveAndValidate`. Every helper call resolves and `normalize()`-escape-checks against the base path.
+- **safety.fs path resolve** - `SafeFs.resolveRead` / `resolveWrite`. Every helper call resolves symbolic links (`toRealPath`) and checks the real path against the readable roots (for reads) or the working directory (for writes).
 - **console mask** - `installConsoleLog` + `maskKnownSecrets`. Env-backed static variables substring-masked.
 - **safety.parser** - XML is XXE-hardened; XML/CSV return plain proxy trees; YAML and HTML have caveats documented at [Tool Studio → Built-in Helpers](features/tool-studio/index.md#built-in-javascript-helpers).
 - **Future.cancel(true) on timeout** - host-side kill on the virtual-thread executor. Interrupts propagate into the Polyglot Context.
@@ -352,7 +352,7 @@ Concrete threats, the layer that catches each, and the mechanism. This is the re
 | Tool calls `fetch("http://169.254.169.254/...")` to reach cloud metadata | Layer 1 (strict egress) | SSRF four-layer guard - literal-IP private/reserved check rejects |
 | Tool calls `fetch("attacker.example")` where DNS resolves to RFC 1918 | Layer 1 (strict egress) | DNS resolve - every returned address checked against private/reserved |
 | Tool calls `fetch` with a host in CGNAT (`100.64.0.0/10`) | Layer 1 (strict egress) | Explicit CGNAT range rejection (not covered by `isSiteLocalAddress`) |
-| Tool reads `safety.fs.readText("../../etc/passwd")` | Layer 1 | `SafeFs.resolveAndValidate` - `normalize()` + `startsWith(base)` |
+| Tool reads `safety.fs.readText("../../etc/passwd")` | Layer 1 | `SafeFs.resolveRead` - `toRealPath` resolve + `startsWith(root)` |
 | Tool runs `while (true) {}` or unbounded recursion | Layer 1 | `max-statements` GraalVM budget + virtual-thread `Future.cancel(true)` |
 | Tool calls `console.log` with an env-backed Bearer token | Layer 1 | `maskKnownSecrets` substring-masks resolved env values |
 | Tool author wants to call a private API server | Layer 2 (declared widening) | `networkMode: allowlist` + `hostsAllow` - badge becomes L3, visible before publish |

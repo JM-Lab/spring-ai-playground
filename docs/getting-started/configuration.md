@@ -105,6 +105,12 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 | `spring.ai.playground.chat.tool-result-max-chars` | relaxed-binding env | `12000` | Caps the characters of any single tool result before it returns to the model in the [Agentic Chat](../features/agentic-chat/index.md) loop - built-in, authored, or external. Oversized results are truncated (with a marker) so one verbose tool call cannot blow up the context window. `0` disables the cap. |
 | `spring.ai.playground.chat.memory-max-messages` | relaxed-binding env | `10` | How many recent messages are sent to the model each turn - the conversation **memory window**. Overridable per chat from the settings drawer's **Recent messages** field. See [Context Engineering → Conversation memory](../context-engineering-architecture.md#conversation-memory). |
 | `spring.ai.playground.chat.history-max-messages` | relaxed-binding env | `2000` | Safety cap on the **full local conversation store** that the screen and on-disk history read from; messages beyond this are dropped. The memory window above is what the model actually sees. |
+| `spring.ai.playground.chat.tool-search.enabled` | relaxed-binding env | `true` | Master switch for **[dynamic tool discovery](../features/agentic-chat/dynamic-tool-discovery.md)** - the `toolSearchTool` advisor, the boot-time tool index, and the chat checkbox. `false` removes the feature entirely. |
+| `spring.ai.playground.chat.tool-search.default-on` | relaxed-binding env | `false` | Whether new chats start in dynamic-discovery mode. A preset can still switch it on per conversation. |
+| `spring.ai.playground.chat.tool-search.min-tools` | relaxed-binding env | `10` | Minimum searchable tools before the chat's **Dynamic tool discovery** checkbox enables - discovery only pays off with a real catalog to search. |
+| `spring.ai.playground.chat.tool-search.max-results` | relaxed-binding env | `3` | Tool names returned per `toolSearchTool` search. |
+| `spring.ai.playground.chat.tool-search.index-type` | relaxed-binding env | `HYBRID` | `HYBRID` (exact tool-name match, then vector search) or `VECTOR` (vector only). |
+| `spring.ai.playground.chat.tool-search.vector-store` | relaxed-binding env | `DEDICATED` | `DEDICATED` (a private, persisted tool index) or `SHARED` (reuse the RAG vector store). See [Context Engineering → Tools](../context-engineering-architecture.md#tools). |
 | `spring.ai.mcp.server.request-timeout` | relaxed-binding env | `150` | Seconds. |
 
 ## Observability { #observability }
@@ -133,7 +139,7 @@ Spring AI's own prompt/completion logging is **off** by default and toggled with
 | Property | Env | Default | Notes |
 |---|---|---|---|
 | `...tool-studio.timeout-seconds` | relaxed-binding env | `30` | Per-tool JS execution timeout. |
-| `...tool-studio.fs.base-path` | `TOOL_STUDIO_FS_BASE` | `${user.home}/spring-ai-playground/fs-tool-workspace` | Root the filesystem tools are confined to. |
+| `...tool-studio.fs.base-path` | `TOOL_STUDIO_FS_BASE` | `${user.home}/spring-ai-playground/workspace` | Root the filesystem tools are confined to. |
 | `...tool-studio.js-sandbox.allow-network-io` | relaxed-binding env | `false` | Raw Java network access in tool JS (the built-in `fetch` is preferred). |
 | `...tool-studio.js-sandbox.allow-file-io` | relaxed-binding env | `false` | Raw Java file access (use `safety.fs`). |
 | `...tool-studio.js-sandbox.allow-native-access` / `allow-create-thread` | relaxed-binding env | `false` | Native / thread capabilities. |
@@ -151,7 +157,7 @@ Spring AI's own prompt/completion logging is **off** by default and toggled with
 | Logs | (derived) | `<app-home>/logs` (rolling file; the `mcp-stdio` profile detaches the console appender) |
 | Tool specs | (derived) | `<app-home>/tool/save` |
 | Vector store | (derived) | `<app-home>/vectorstore/save` |
-| Filesystem-tool workspace | `TOOL_STUDIO_FS_BASE` | `<app-home>/fs-tool-workspace` |
+| Filesystem-tool workspace | `TOOL_STUDIO_FS_BASE` | `<app-home>/workspace` |
 
 The desktop app stores this tree under the OS app-data location (macOS `~/Library/Application Support/spring-ai-playground`, Windows `%APPDATA%/spring-ai-playground`, Linux `~/.config/spring-ai-playground`).
 

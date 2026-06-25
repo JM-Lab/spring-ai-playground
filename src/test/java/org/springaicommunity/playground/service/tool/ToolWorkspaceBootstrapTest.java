@@ -32,7 +32,8 @@ class ToolWorkspaceBootstrapTest {
 
     @Test
     void seedsSampleFilesIntoBasePath(@TempDir Path tempDir) throws Exception {
-        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(tempDir.toString()));
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(
+                new ToolWorkspace(buildOptions(tempDir.toString()), tempDir));
 
         bootstrap.seed();
 
@@ -45,7 +46,8 @@ class ToolWorkspaceBootstrapTest {
     @Test
     void doesNotOverwriteExistingFiles(@TempDir Path tempDir) throws Exception {
         Files.writeString(tempDir.resolve("README.md"), "user-edited content");
-        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(tempDir.toString()));
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(
+                new ToolWorkspace(buildOptions(tempDir.toString()), tempDir));
 
         bootstrap.seed();
 
@@ -57,7 +59,8 @@ class ToolWorkspaceBootstrapTest {
     void createsBasePathIfMissing(@TempDir Path tempDir) throws Exception {
         Path nestedBase = tempDir.resolve("never-existed").resolve("workspace");
         assertThat(nestedBase).doesNotExist();
-        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(nestedBase.toString()));
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(
+                new ToolWorkspace(buildOptions(nestedBase.toString()), tempDir));
 
         bootstrap.seed();
 
@@ -66,12 +69,40 @@ class ToolWorkspaceBootstrapTest {
     }
 
     @Test
-    void resolveBasePathFallsBackToFsToolWorkspaceSubdir() {
-        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(buildOptions(""));
-        Path resolved = bootstrap.resolveBasePath();
-        Path expected = Path.of(System.getProperty("user.home"), "spring-ai-playground", "fs-tool-workspace")
-                .toAbsolutePath().normalize();
-        assertThat(resolved).isEqualTo(expected);
+    void baseFallsBackToWorkspaceSubdir(@TempDir Path tempDir) {
+        ToolWorkspace ws = new ToolWorkspace(buildOptions(""), tempDir);
+        assertThat(ws.base()).isEqualTo(tempDir.resolve("workspace").toAbsolutePath().normalize());
+    }
+
+    @Test
+    void migratesLegacyFsToolWorkspaceIntoWorkspace(@TempDir Path tempDir) throws Exception {
+        Path legacy = tempDir.resolve("fs-tool-workspace");
+        Files.createDirectories(legacy);
+        Files.writeString(legacy.resolve("user-file.txt"), "kept");
+        Path workspace = tempDir.resolve("workspace");
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(
+                new ToolWorkspace(buildOptions(workspace.toString()), tempDir));
+
+        bootstrap.seed();
+
+        assertThat(legacy).doesNotExist();
+        assertThat(Files.readString(workspace.resolve("user-file.txt"))).isEqualTo("kept");
+    }
+
+    @Test
+    void doesNotMigrateWhenWorkspaceAlreadyExists(@TempDir Path tempDir) throws Exception {
+        Path legacy = tempDir.resolve("fs-tool-workspace");
+        Files.createDirectories(legacy);
+        Files.writeString(legacy.resolve("old.txt"), "legacy");
+        Path workspace = tempDir.resolve("workspace");
+        Files.createDirectories(workspace);
+        ToolWorkspaceBootstrap bootstrap = new ToolWorkspaceBootstrap(
+                new ToolWorkspace(buildOptions(workspace.toString()), tempDir));
+
+        bootstrap.seed();
+
+        assertThat(legacy).exists();
+        assertThat(workspace.resolve("old.txt")).doesNotExist();
     }
 
     private SpringAiPlaygroundOptions buildOptions(String basePath) {

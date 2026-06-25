@@ -166,17 +166,24 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
     }
 
     public void horizontalBarChart(Map<String, Long> data, String color, int topN, String unitSuffix) {
-        ObjectNode root = MAPPER.createObjectNode();
-        ObjectNode tooltip = root.putObject("tooltip");
-        tooltip.put("trigger", "axis");
-        tooltip.putObject("axisPointer").put("type", "shadow");
-        root.putObject("grid").put("left", 110).put("right", 60).put("top", 36).put("bottom", 24).put("containLabel", true);
-
         Map<String, Long> sorted = new LinkedHashMap<>();
         data.entrySet().stream()
                 .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
                 .limit(topN)
                 .forEach(e -> sorted.put(e.getKey(), e.getValue()));
+        renderHorizontalBars(sorted, color, unitSuffix);
+    }
+
+    public void horizontalBarChartInOrder(Map<String, Long> data, String color) {
+        renderHorizontalBars(data, color, "");
+    }
+
+    private void renderHorizontalBars(Map<String, Long> ordered, String color, String unitSuffix) {
+        ObjectNode root = MAPPER.createObjectNode();
+        ObjectNode tooltip = root.putObject("tooltip");
+        tooltip.put("trigger", "axis");
+        tooltip.putObject("axisPointer").put("type", "shadow");
+        root.putObject("grid").put("left", 110).put("right", 60).put("top", 36).put("bottom", 24).put("containLabel", true);
 
         ObjectNode xAxis = root.putObject("xAxis");
         xAxis.put("type", "value");
@@ -189,8 +196,7 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
         yAxis.put("type", "category");
         yAxis.putObject("axisLabel").put("fontSize", 12).put("color", "#475569");
         ArrayNode yData = yAxis.putArray("data");
-        // ECharts puts last label at top of axis; reverse for "biggest at top"
-        List<String> keys = new ArrayList<>(sorted.keySet());
+        List<String> keys = new ArrayList<>(ordered.keySet());
         Collections.reverse(keys);
         for (String k : keys) yData.add(k);
 
@@ -208,7 +214,7 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
         ArrayNode dataArr = bar.putArray("data");
         boolean hasData = false;
         for (String k : keys) {
-            long v = sorted.get(k);
+            long v = ordered.get(k);
             dataArr.add(v);
             if (v != 0) hasData = true;
         }
@@ -325,7 +331,6 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
         yAxis.put("type", "category");
         yAxis.putObject("axisLabel").put("fontSize", 12).put("color", "#475569");
         ArrayNode yData = yAxis.putArray("data");
-        // ECharts puts last label at top of axis; reverse for "biggest at top"
         List<String> keys = new ArrayList<>(data.keySet());
         Collections.reverse(keys);
         for (String k : keys) yData.add(k);
@@ -474,15 +479,11 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
         ObjectNode legend = root.putObject("legend");
         legend.put("show", showLegend);
         legend.put("bottom", 0);
-        // Match common dashboard conventions (Grafana / Datadog default
-        // legend ~13px in secondary text colour, not the 11px tertiary
-        // tone ECharts ships by default).
         legend.putObject("textStyle").put("fontSize", 13)
                 .put("color", "#475569");
         ObjectNode grid = root.putObject("grid");
         grid.put("left", 12);
         grid.put("right", 12);
-        // leave 36px on top so the toolbox icons don't overlap the plot
         grid.put("top", 36);
         grid.put("bottom", showLegend ? 60 : 36);
         grid.put("containLabel", true);
@@ -562,12 +563,10 @@ public class ChartCanvas extends Component implements HasSize, HasStyle {
 
     private void addDataZoom(ObjectNode root) {
         ArrayNode dz = root.putArray("dataZoom");
-        // inside zoom (mouse wheel + drag inside)
         ObjectNode inside = dz.addObject();
         inside.put("type", "inside");
         inside.put("start", 0);
         inside.put("end", 100);
-        // slider zoom (visible scrollbar/brush at the bottom)
         ObjectNode slider = dz.addObject();
         slider.put("type", "slider");
         slider.put("height", 18);

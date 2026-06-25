@@ -90,8 +90,8 @@ class ObservabilityPersistenceServiceTest {
         service.scheduledCleanup();
 
         assertThat(Files.exists(freshDir)).isTrue();
-        assertThat(Files.exists(notADateDir)).isTrue();         // non-date dir untouched
-        assertThat(Files.exists(oldDir)).isFalse();             // > retention removed
+        assertThat(Files.exists(notADateDir)).isTrue();
+        assertThat(Files.exists(oldDir)).isFalse();
         assertThat(Files.exists(veryOldDir)).isFalse();
     }
 
@@ -136,6 +136,7 @@ class ObservabilityPersistenceServiceTest {
                 null,
                 null,
                 false, 0, false,
+                null, null, null, null,
                 List.of(), Map.of());
         service.saveAsync(sparse);
         executor.awaitCompletion(Duration.ofSeconds(5));
@@ -161,6 +162,7 @@ class ObservabilityPersistenceServiceTest {
                 id, "conv-1", "msg-1", "ollama", "qwen3.5:9b",
                 System.currentTimeMillis(), 100L, TraceRecord.STATUS_OK,
                 10L, 20L, 30L, "stop", false, 0, false,
+                null, null, null, null,
                 List.of(), Map.of("gen_ai.system", "ollama"));
     }
 }

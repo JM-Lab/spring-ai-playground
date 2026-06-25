@@ -43,17 +43,12 @@ public class ChatRequestOptionsFactory {
 
     private static final TypeReference<Map<String, Object>> OVERRIDE_TYPE = new TypeReference<>() {};
 
-    // Connection/credential and tool-injection fields are off-limits to a free-form override: it may tweak request
-    // params but cannot repoint the endpoint, inject credentials, or attach tools.
     private static final Set<String> PROTECTED_FIELDS = Set.of("baseUrl", "apiKey", "credential",
             "azureOpenAIServiceVersion", "organizationId", "azure", "gitHubModels", "microsoftFoundry",
             "microsoftFoundryServiceVersion", "timeout", "maxRetries", "proxy", "customHeaders", "deploymentName",
             "toolCallbacks", "toolContext");
 
     private final ObjectMapper overlayMapper;
-    // Generous cap when no per-chat limit is set: reasoning models spend the budget on a hidden reasoning pass
-    // before the answer (e.g. an OpenAI-compatible /v1 endpoint returns empty content otherwise), so a small
-    // default would truncate them mid-thought. Tunable via spring.ai.playground.chat.default-max-tokens.
     private final Integer defaultMaxTokens;
 
     public ChatRequestOptionsFactory(ObjectMapper objectMapper, SpringAiPlaygroundOptions playgroundOptions) {
@@ -88,7 +83,6 @@ public class ChatRequestOptionsFactory {
                 .topP(base.getTopP())
                 .frequencyPenalty(base.getFrequencyPenalty())
                 .presencePenalty(base.getPresencePenalty())
-                // Without include_usage the streaming response carries no token counts, so the chat footer would be empty.
                 .streamUsage(true);
         if (extra.seed() != null) builder.seed(extra.seed());
         if (!CollectionUtils.isEmpty(extra.stop())) builder.stop(extra.stop());
@@ -130,9 +124,8 @@ public class ChatRequestOptionsFactory {
 
     private String openAiReasoningEffort(ReasoningEffort effort) {
         if (effort == null) return null;
-        // OpenAI reasoning models cannot be fully switched off, so OFF maps to "no override" rather than minimal.
         return switch (effort) {
-            case OFF -> null;
+            case DEFAULT, OFF -> null;
             case LOW -> "low";
             case MEDIUM -> "medium";
             case HIGH -> "high";
@@ -140,7 +133,7 @@ public class ChatRequestOptionsFactory {
     }
 
     private void applyOllamaThinking(OllamaChatOptions.Builder builder, ReasoningEffort effort) {
-        if (effort == null) return;
+        if (effort == null || effort == ReasoningEffort.DEFAULT) return;
         switch (effort) {
             case OFF -> builder.disableThinking();
             case LOW -> builder.thinkLow();
@@ -149,7 +142,6 @@ public class ChatRequestOptionsFactory {
         }
     }
 
-    // Overlay the user's free-form provider-options JSON onto the typed options; override values win.
     private ToolCallingChatOptions applyJsonOverride(ToolCallingChatOptions options, String json) {
         if (!StringUtils.hasText(json)) return options;
         try {
@@ -165,7 +157,6 @@ public class ChatRequestOptionsFactory {
 
     private void applyOverride(Object builder, String key, Object value) {
         String property = toCamelCase(key);
-        // exact name first, then a case-insensitive fallback so acronym-cased setters still bind (numGpu -> numGPU)
         if (invokeMatchingSetter(builder, value, property, true)) return;
         if (invokeMatchingSetter(builder, value, property, false)) return;
         logger.debug("chat.options.override-ignored key={} (no matching builder setter)", key);
@@ -176,13 +167,11 @@ public class ChatRequestOptionsFactory {
             if (method.getParameterCount() != 1) continue;
             boolean nameMatch = exact ? method.getName().equals(property)
                     : method.getName().equalsIgnoreCase(property);
-            // guard the resolved method name, not the raw key, so case variants cannot reach a protected setter
             if (!nameMatch || isProtected(method.getName())) continue;
             try {
                 method.invoke(builder, this.overlayMapper.convertValue(value, method.getParameterTypes()[0]));
                 return true;
             } catch (IllegalArgumentException | ReflectiveOperationException ignore) {
-                // wrong overload or uncoercible value: try the next candidate method
             }
         }
         return false;

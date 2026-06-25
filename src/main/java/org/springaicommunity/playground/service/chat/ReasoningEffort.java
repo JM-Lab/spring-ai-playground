@@ -15,8 +15,6 @@
  */
 package org.springaicommunity.playground.service.chat;
 
-// Dynamic, per-request reasoning level chosen near the chat input. Mapped per provider at request build time
-// (OpenAI reasoning_effort / Ollama think levels). A null value means "leave the model default untouched".
 public enum ReasoningEffort {
-    OFF, LOW, MEDIUM, HIGH
+    OFF, LOW, MEDIUM, HIGH, DEFAULT
 }

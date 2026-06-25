@@ -19,9 +19,9 @@ description: External MCP server health and traffic - latency by transport, OAut
 
 ## Span filter
 
-`spring.ai.tool` spans where `mcp.transport` is present and not `in-process`.
+`spring.ai.tool` spans where `mcp.method.name` is present.
 
-Each such span is enriched by `McpToolObservationFilter` with **risk and composition dimensions** lifted from the call's MDC context: `mcp.origin` (`internal_js` / `wrapped_external`), `mcp.composition.id` / `.name`, `mcp.tool.exposed_alias`, `mcp.server` (the upstream server name), the three risk levels `mcp.risk.final` / `.server` / `.publish`, and `mcp.risk.floor_trigger` when a floor rule tripped. So a tool re-exposed through [composition](../../mcp-server/index.md#expose-external-tools) is traceable back to its upstream server and its computed risk - not just its exposed alias.
+Each such span is enriched by `McpToolObservationFilter` with **risk and composition dimensions** lifted from the call's MDC context: `saip.tool.origin` (`internal_js` / `wrapped_external`), `saip.composition.id` / `.name`, `saip.tool.exposed_alias`, `saip.mcp.server` (the upstream server name), the three risk levels `saip.risk.final` / `.server` / `.publish`, and `saip.risk.floor_trigger` when a floor rule tripped. So a tool re-exposed through [composition](../../mcp-server/index.md#expose-external-tools) is traceable back to its upstream server and its computed risk - not just its exposed alias.
 
 ## Controls
 
@@ -33,7 +33,7 @@ All dashboards share the [Observability global settings](../index.md#global-sett
 |---|---|---|
 | MCP servers | Number of registered external MCP servers | `McpClientService.registeredServers().size()` |
 | Servers up | Number with last connection state OK | Live ping / connection state |
-| MCP tool calls | Count of all externally-routed tool calls | Spans with `mcp.transport` non-null |
+| MCP tool calls | Count of all externally-routed tool calls | Spans with `mcp.method.name` non-null |
 | Distinct tools | Unique tool names called externally | `set(spring.ai.tool.definition.name)` filtered |
 | p95 latency | 95th-percentile external tool duration | Span duration distribution |
 | Error rate | Percentage of external calls with `status=ERROR` | Span status |
@@ -68,4 +68,4 @@ All dashboards share the [Observability global settings](../index.md#global-sett
 - [MCP Server (feature)](../../mcp-server/index.md) - how external MCP servers are registered + the Inspector built-in to Spring AI Playground
 - [MCP Inspector](mcp-inspector.md) - sibling tab for MCP primitive operations (read tools, read resources, etc.) rather than tool execution
 - [Tool Studio](tool-studio.md) - sibling tab for the same shape of data, locally executed
-- [Observability Architecture → Tool and MCP observability](../../../observability-architecture.md#tool-and-mcp-observability-the-agentic-focus) - `mcp.transport` discriminator
+- [Observability Architecture → Tool and MCP observability](../../../observability-architecture.md#tool-and-mcp-observability-the-agentic-focus) - `mcp.method.name` discriminator

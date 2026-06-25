@@ -18,10 +18,10 @@ package org.springaicommunity.playground.service.tool.runtime;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,54 +47,69 @@ public final class SafeFs {
 
     public record FileStat(long size, long mtime, boolean directory) {}
 
-    private SafeFs() {}
+    public record FsScope(Path workspace, List<Path> readRoots) {
+        public FsScope {
+            workspace = workspace.toAbsolutePath().normalize();
+            readRoots = readRoots.stream().map(p -> p.toAbsolutePath().normalize()).toList();
+        }
 
-    public static String readText(Path base, String userPath) throws IOException {
-        return Files.readString(resolveAndValidate(base, userPath), StandardCharsets.UTF_8);
+        public static FsScope confined(Path base) {
+            return new FsScope(base, List.of(base));
+        }
     }
 
-    public static void writeText(Path base, String userPath, String content) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+    private SafeFs() {}
+
+    public static String readText(FsScope scope, String userPath) throws IOException {
+        return Files.readString(resolveRead(scope, userPath), StandardCharsets.UTF_8);
+    }
+
+    public static Path writeText(FsScope scope, String userPath, String content) throws IOException {
+        Path target = resolveWrite(scope, userPath);
         if (target.getParent() != null && !Files.exists(target.getParent())) {
             Files.createDirectories(target.getParent());
         }
         Files.writeString(target, content == null ? "" : content, StandardCharsets.UTF_8);
+        return target;
     }
 
-    public static List<String> list(Path base, String userDir) throws IOException {
+    public static List<String> list(FsScope scope, String userDir) throws IOException {
         String input = userDir == null || userDir.isEmpty() ? "." : userDir;
-        Path dir = resolveAndValidate(base, input);
+        Path dir = resolveRead(scope, input);
+        if (!Files.exists(dir)) {
+            return new ArrayList<>();
+        }
         if (!Files.isDirectory(dir)) {
             throw reject(JsHelperException.Kind.INVALID_INPUT, "not-a-directory",
                     "not a directory: " + userDir);
         }
         List<String> out = new ArrayList<>();
         try (Stream<Path> stream = Files.list(dir)) {
-            stream.forEach(p -> out.add(base.relativize(p).toString()));
+            stream.forEach(p -> out.add(displayPath(scope, p)));
         }
         return out;
     }
 
-    public static boolean exists(Path base, String userPath) {
+    public static boolean exists(FsScope scope, String userPath) {
         try {
-            return Files.exists(resolveAndValidate(base, userPath));
+            return Files.exists(resolveRead(scope, userPath));
         } catch (FsPolicyException e) {
             return false;
         }
     }
 
-    public static FileStat stat(Path base, String userPath) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+    public static FileStat stat(FsScope scope, String userPath) throws IOException {
+        Path target = resolveRead(scope, userPath);
         BasicFileAttributes attrs = Files.readAttributes(target, BasicFileAttributes.class);
         return new FileStat(attrs.size(), attrs.lastModifiedTime().toMillis(), attrs.isDirectory());
     }
 
-    public static List<String> grep(Path base, String userPath, String pattern,
+    public static List<String> grep(FsScope scope, String userPath, String pattern,
                                     boolean caseInsensitive, int limit, boolean numbered) throws IOException {
         if (pattern == null || pattern.isEmpty())
             throw reject(JsHelperException.Kind.INVALID_INPUT, "grep-pattern-required",
                     "grep: pattern required");
-        Path target = resolveAndValidate(base, userPath);
+        Path target = resolveRead(scope, userPath);
         Pattern regex;
         try {
             int flags = caseInsensitive ? Pattern.CASE_INSENSITIVE : 0;
@@ -118,15 +133,15 @@ public final class SafeFs {
         return out;
     }
 
-    public static long lineCount(Path base, String userPath) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+    public static long lineCount(FsScope scope, String userPath) throws IOException {
+        Path target = resolveRead(scope, userPath);
         try (Stream<String> lines = Files.lines(target, StandardCharsets.UTF_8)) {
             return lines.count();
         }
     }
 
-    public static List<String> slice(Path base, String userPath, Integer start, Integer end) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+    public static List<String> slice(FsScope scope, String userPath, Integer start, Integer end) throws IOException {
+        Path target = resolveRead(scope, userPath);
         List<String> all;
         try (Stream<String> lines = Files.lines(target, StandardCharsets.UTF_8)) {
             all = lines.toList();
@@ -147,9 +162,9 @@ public final class SafeFs {
         return v;
     }
 
-    public static List<String> cut(Path base, String userPath, String delimiter, List<Integer> fields,
+    public static List<String> cut(FsScope scope, String userPath, String delimiter, List<Integer> fields,
                                    boolean regexDelimiter) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+        Path target = resolveRead(scope, userPath);
         if (fields == null || fields.isEmpty()) {
             throw reject(JsHelperException.Kind.INVALID_INPUT, "cut-fields-required",
                     "cut: fields required");
@@ -180,9 +195,9 @@ public final class SafeFs {
         return out;
     }
 
-    public static List<String> sort(Path base, String userPath, boolean reverse, boolean numeric,
+    public static List<String> sort(FsScope scope, String userPath, boolean reverse, boolean numeric,
                                     boolean caseInsensitive, boolean unique) throws IOException {
-        Path target = resolveAndValidate(base, userPath);
+        Path target = resolveRead(scope, userPath);
         Comparator<String> cmp;
         if (numeric) {
             cmp = Comparator.comparingDouble(s -> {
@@ -209,10 +224,10 @@ public final class SafeFs {
         }
     }
 
-    public static List<String> find(Path base, String userDir, String glob, int maxDepth, String type)
+    public static List<String> find(FsScope scope, String userDir, String glob, int maxDepth, String type)
             throws IOException {
         String input = userDir == null || userDir.isEmpty() ? "." : userDir;
-        Path root = resolveAndValidate(base, input);
+        Path root = resolveRead(scope, input);
         if (!Files.isDirectory(root)) {
             throw reject(JsHelperException.Kind.INVALID_INPUT, "find-not-a-directory",
                     "find: not a directory: " + userDir);
@@ -227,7 +242,7 @@ public final class SafeFs {
         }
         int depth = maxDepth <= 0 ? Integer.MAX_VALUE : maxDepth;
         List<String> out = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(root, depth, FileVisitOption.FOLLOW_LINKS)) {
+        try (Stream<Path> walk = Files.walk(root, depth)) {
             walk.forEach(p -> {
                 if (p.equals(root)) return;
                 boolean isFile = Files.isRegularFile(p);
@@ -235,28 +250,63 @@ public final class SafeFs {
                 if ("file".equals(type) && !isFile) return;
                 if ("dir".equals(type) && !isDir) return;
                 if (matcher.matches(p.getFileName())) {
-                    out.add(base.relativize(p).toString());
+                    out.add(displayPath(scope, p));
                 }
             });
         }
         return out;
     }
 
-    static Path resolveAndValidate(Path base, String userPath) {
+    static Path resolveRead(FsScope scope, String userPath) {
+        Path candidate = toCandidate(scope.workspace(), userPath);
+        Path real = realCanonical(candidate);
+        for (Path root : scope.readRoots()) {
+            if (real.startsWith(realCanonical(root))) return candidate;
+        }
+        throw reject(JsHelperException.Kind.SECURITY, "path-escapes-base",
+                "path escapes base: " + userPath);
+    }
+
+    static Path resolveWrite(FsScope scope, String userPath) {
+        Path candidate = toCandidate(scope.workspace(), userPath);
+        if (Files.isSymbolicLink(candidate)) {
+            throw reject(JsHelperException.Kind.SECURITY, "write-through-symlink",
+                    "writes may not target a symbolic link: " + userPath);
+        }
+        if (realCanonical(candidate).startsWith(realCanonical(scope.workspace()))) return candidate;
+        throw reject(JsHelperException.Kind.SECURITY, "write-outside-workspace",
+                "writes are confined to the workspace: " + userPath);
+    }
+
+    private static Path realCanonical(Path p) {
+        Path cursor = p;
+        while (cursor != null && !Files.exists(cursor)) {
+            cursor = cursor.getParent();
+        }
+        if (cursor == null) return p;
+        try {
+            Path real = cursor.toRealPath();
+            return cursor.equals(p) ? real : real.resolve(cursor.relativize(p));
+        } catch (IOException e) {
+            return p;
+        }
+    }
+
+    private static Path toCandidate(Path base, String userPath) {
         if (userPath == null || userPath.isEmpty()) {
             throw reject(JsHelperException.Kind.INVALID_INPUT, "path-required", "path required");
         }
-        Path candidate;
         try {
-            candidate = base.resolve(userPath).normalize();
-        } catch (Exception e) {
+            Path p = Paths.get(userPath);
+            return (p.isAbsolute() ? p : base.resolve(userPath)).normalize();
+        } catch (RuntimeException e) {
             throw reject(JsHelperException.Kind.INVALID_INPUT, "invalid-path",
                     "invalid path: " + userPath);
         }
-        if (!candidate.startsWith(base)) {
-            throw reject(JsHelperException.Kind.SECURITY, "path-escapes-base",
-                    "path escapes base: " + userPath);
-        }
-        return candidate;
+    }
+
+    private static String displayPath(FsScope scope, Path p) {
+        return p.startsWith(scope.workspace())
+                ? scope.workspace().relativize(p).toString() : p.toString();
     }
 }

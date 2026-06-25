@@ -1,10 +1,10 @@
-description: Default Tools - 85 ready-to-call JavaScript tools across 5 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
+description: Default Tools - 88 ready-to-call JavaScript tools across 6 source bundles, exposed through the built-in MCP server, OS-agnostic by design.
 
 # Default Tools
 
 **Where:** top navigation → **Tool Studio** - the default tools ship pre-loaded; tune the exposed subset in the **Built-in MCP Server Native Tools** drawer.
 
-Spring AI Playground ships with **85 default tools** spread across six JSON source bundles. They are ready to call the moment a model provider is connected - you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own tools.
+Spring AI Playground ships with **88 default tools** spread across six JSON source bundles. They are ready to call the moment a model provider is connected - you do not need to author anything yourself to see agentic workflows work end-to-end. They also serve as editable references when you start writing your own tools.
 
 Tools that reach an external API read their keys from **environment variables** - each tool's card below lists the variables it needs. How to supply env vars (desktop launcher, Docker `-e`, or a source run) is covered once in the [Configuration reference](../../getting-started/configuration.md#how).
 
@@ -24,12 +24,12 @@ Every tool carries a **Risk Level** (`L0`-`L5`) - the sandbox posture the [Safe 
 | <span class="rl rl-l4">L4 - Broad access</span> | File *write*, `*` allowlist / `open` egress, or reflection class added | the file-write filesystem tool |
 | <span class="rl rl-l5">L5 - Unsandboxed</span> | `System` / `Runtime` / `Process` re-enabled, or raw file-write class | none ship by default |
 
-Levels are derived from each tool's declared `sandboxOverrides` (by `SandboxPostureCalculator`); the full bullet-by-bullet rule set is in [AI Agent Tool Safety → Risk Level decision matrix](../../safety-architecture.md#risk-level-decision-matrix). Across the 85 default tools: **28 are L0**, **56 are L3** (allowlisted-host `fetch` or file read), and **1 is L4** (file write) - none ship at L5.
+Levels are derived from each tool's declared `sandboxOverrides` (by `SandboxPostureCalculator`); the full bullet-by-bullet rule set is in [AI Agent Tool Safety → Risk Level decision matrix](../../safety-architecture.md#risk-level-decision-matrix). Across the 88 default tools: **30 are L0**, **57 are L3** (allowlisted-host `fetch` or file read), and **1 is L4** (file write) - none ship at L5.
 
 !!! question "Why no L1 or L2 here?"
     The **sandbox** rubric only ever produces **L0 / L3 / L4 / L5** - the calculator jumps from the `L0` baseline straight to `L3` the moment a tool declares *any* widening (network, file, or class change), so a tool is never L1 or L2. `L1` (*Safe*) and `L2` (*Low*) exist only in the [MCP server rubric](../../mcp-server-safety.md#risk-chip), which scores a different thing (connecting to an external server) on the same `L0`-`L5` enum.
 
-## Browse all 85 tools { #browse-all-tools }
+## Browse all 88 tools { #browse-all-tools }
 
 Click a card to jump to its full reference (with the JS source pre-expanded) on the right sub-page - same UX as the **Built-in MCP Server Native Tools** drawer in Tool Studio. Five reference pages organise the catalog by source bundle and concern: [Examples](examples.md) · [Utilities](utilities.md) · [Filesystem](filesystem.md) · [Global](global.md) · [Korea](korea.md).
 
@@ -48,7 +48,7 @@ Click a card to jump to its full reference (with the JS source pre-expanded) on 
 <span class="tool-directory__chip-label">Category</span> <button class="tool-directory__chip" data-group="category" data-value="ai" aria-pressed="false">AI</button> <button class="tool-directory__chip" data-group="category" data-value="crypto" aria-pressed="false">CRYPTO</button> <button class="tool-directory__chip" data-group="category" data-value="data" aria-pressed="false">DATA</button> <button class="tool-directory__chip" data-group="category" data-value="datetime" aria-pressed="false">DATETIME</button> <button class="tool-directory__chip" data-group="category" data-value="encoding" aria-pressed="false">ENCODING</button> <button class="tool-directory__chip" data-group="category" data-value="file" aria-pressed="false">FILE</button> <button class="tool-directory__chip" data-group="category" data-value="math" aria-pressed="false">MATH</button> <button class="tool-directory__chip" data-group="category" data-value="messaging" aria-pressed="false">MESSAGING</button> <button class="tool-directory__chip" data-group="category" data-value="productivity" aria-pressed="false">PRODUCTIVITY</button> <button class="tool-directory__chip" data-group="category" data-value="security" aria-pressed="false">SECURITY</button> <button class="tool-directory__chip" data-group="category" data-value="text" aria-pressed="false">TEXT</button> <button class="tool-directory__chip" data-group="category" data-value="web" aria-pressed="false">WEB</button>
 </div>
 </div>
-<div class="tool-directory__count">Showing 85 of 85 tools</div>
+<div class="tool-directory__count">Showing 88 of 88 tools</div>
 <div class="tool-directory__list" markdown>
 
 <div class="tcg-grid tcg-grid--directory" markdown>
@@ -83,16 +83,46 @@ Returns the current time in ISO 8601 format. If the user specifies a city, count
 <div class="tcg-page">→ Examples</div>
 </div>
 
-<div class="tcg-card tcg-card--directory t-google" data-name="buildgooglecalendarcreatelink" data-desc="builds a google calendar &quot;add event&quot; url with prefilled fields." data-category="productivity" data-tags="example,util" data-preset="" data-env="" markdown>
-<a class="tcg-stretched-link" href="examples/#buildGoogleCalendarCreateLink" aria-label="Open buildGoogleCalendarCreateLink in Examples">buildGoogleCalendarCreateLink</a>
-<div class="tcg-name"><span class="tcg-name__text">buildGoogleCalendarCreateLink</span> <span class="cost">🆓</span></div>
-<div class="tcg-art" markdown>:simple-googlecalendar:</div>
-<div class="tcg-type">productivity · example · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-card tcg-card--directory" data-name="sendemail" data-desc="drafts an email and renders a send email action card in chat - the user clicks to send it from their own mail app (review-then-send)." data-category="productivity" data-tags="util" data-preset="" data-env="" markdown>
+<a class="tcg-stretched-link" href="examples/#sendEmail" aria-label="Open sendEmail in Examples">sendEmail</a>
+<div class="tcg-name"><span class="tcg-name__text">sendEmail</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-email-outline:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
 <div class="tcg-body" markdown>
-Builds a Google Calendar "Add Event" URL with prefilled fields.
+Drafts an email and renders a **Send email** action card in chat - the user clicks to send it from their own mail app (review-then-send).
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `start` · `end` · `details` · `location` · `timeZone`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `to` · `cc` · `subject` · `body`</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-page">→ Examples</div>
+</div>
+
+<div class="tcg-card tcg-card--directory" data-name="addtocalendar" data-desc="builds a calendar event and renders an add to calendar action card in chat - a dropdown to add the event to google, outlook, or yahoo calendar, or get a standard .ics file." data-category="productivity" data-tags="util" data-preset="" data-env="" markdown>
+<a class="tcg-stretched-link" href="examples/#addToCalendar" aria-label="Open addToCalendar in Examples">addToCalendar</a>
+<div class="tcg-name"><span class="tcg-name__text">addToCalendar</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-calendar-plus:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-body" markdown>
+Builds a calendar event and renders an **Add to calendar** action card in chat - a dropdown to add the event to Google, Outlook, or Yahoo Calendar, or get a standard `.ics` file (the `.ics` opens directly in your calendar app on the desktop, or downloads in a browser).
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `start` · `end` · `location` · `description`</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-page">→ Examples</div>
+</div>
+
+<div class="tcg-card tcg-card--directory" data-name="showlocation" data-desc="renders an interactive google map of a place directly in the chat - no api key. display-only, loads client-side from a place name, address, or 'lat,lng'." data-category="productivity" data-tags="util" data-preset="" data-env="" markdown>
+<a class="tcg-stretched-link" href="examples/#showLocation" aria-label="Open showLocation in Examples">showLocation</a>
+<div class="tcg-name"><span class="tcg-name__text">showLocation</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-map-marker:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-body" markdown>
+Renders an interactive Google Map of a place directly in the chat - no API key needed.
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `label`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-page">→ Examples</div>
@@ -548,6 +578,21 @@ Parses CSV text into an array of rows. If header=true, each row is an object key
 <div class="tcg-page">→ Utilities</div>
 </div>
 
+<div class="tcg-card tcg-card--directory" data-name="listalloweddirectories" data-desc="reports the readable roots (anything under them can be read) and the working directory (the only writable location; a per-conversation subdirectory when run from a chat). call this first. uses safety.fs.readroots() / workspace()." data-category="file" data-tags="pipeline" data-preset="file-toolkit" data-env="" markdown>
+<a class="tcg-stretched-link" href="filesystem/#listAllowedDirectories" aria-label="Open listAllowedDirectories in Filesystem">listAllowedDirectories</a>
+<div class="tcg-name"><span class="tcg-name__text">listAllowedDirectories</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-folder-key-outline:</div>
+<div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
+<div class="tcg-body" markdown>
+Reports the readable roots (anything under them can be read) and the working directory (the only writable location; a per-conversation subdirectory when run from a chat). Call this first. Uses safety.fs.readRoots() / workspace().
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; -</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-page">→ Filesystem</div>
+</div>
+
 <div class="tcg-card tcg-card--directory" data-name="readtextfile" data-desc="reads a utf-8 text file from disk and returns its contents as a single string." data-category="file" data-tags="pipeline" data-preset="file-toolkit" data-env="" markdown>
 <a class="tcg-stretched-link" href="filesystem/#readTextFile" aria-label="Open readTextFile in Filesystem">readTextFile</a>
 <div class="tcg-name"><span class="tcg-name__text">readTextFile</span> <span class="cost">🆓</span></div>
@@ -563,13 +608,13 @@ Reads a UTF-8 text file from disk and returns its contents as a single string.
 <div class="tcg-page">→ Filesystem</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="listdir" data-desc="lists the immediate entries (files and subdirectories) of a directory under the fs base path. returns an array of relative names (not full paths). uses safety.fs.list()." data-category="file" data-tags="pipeline" data-preset="file-toolkit" data-env="" markdown>
+<div class="tcg-card tcg-card--directory" data-name="listdir" data-desc="lists the immediate entries (files and subdirectories) of a directory. entries in the working directory come back as relative names; entries elsewhere under a readable root come back as absolute paths. uses safety.fs.list()." data-category="file" data-tags="pipeline" data-preset="file-toolkit" data-env="" markdown>
 <a class="tcg-stretched-link" href="filesystem/#listDir" aria-label="Open listDir in Filesystem">listDir</a>
 <div class="tcg-name"><span class="tcg-name__text">listDir</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-folder-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Lists the immediate entries (files and subdirectories) of a directory under the FS base path. Returns an array of relative names (not full paths). Uses safety.fs.list().
+Lists the immediate entries (files and subdirectories) of a directory. Entries in the working directory come back as relative names; entries elsewhere under a readable root come back as absolute paths. Uses safety.fs.list().
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `dir`</div>
@@ -578,13 +623,13 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 <div class="tcg-page">→ Filesystem</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="statfile" data-desc="returns size, last-modified timestamp, and a directory flag for a path inside the fs base. uses safety.fs.stat()." data-category="file" data-tags="pipeline" data-preset="" data-env="" markdown>
+<div class="tcg-card tcg-card--directory" data-name="statfile" data-desc="returns size, last-modified timestamp, and a directory flag for a path (relative under the working directory, or absolute under a readable root). uses safety.fs.stat()." data-category="file" data-tags="pipeline" data-preset="" data-env="" markdown>
 <a class="tcg-stretched-link" href="filesystem/#statFile" aria-label="Open statFile in Filesystem">statFile</a>
 <div class="tcg-name"><span class="tcg-name__text">statFile</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-information-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Returns size, last-modified timestamp, and a directory flag for a path inside the FS base. Uses safety.fs.stat().
+Returns size, last-modified timestamp, and a directory flag for a path (relative under the working directory, or absolute under a readable root). Uses safety.fs.stat().
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path`</div>
@@ -683,13 +728,13 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 <div class="tcg-page">→ Filesystem</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="writetextfile" data-desc="writes a utf-8 text file inside the fs base path (creating parent directories as needed). overwrites any existing file. requires `filewrite` permission on the sandbox." data-category="file" data-tags="pipeline" data-preset="" data-env="" markdown>
+<div class="tcg-card tcg-card--directory" data-name="writetextfile" data-desc="writes a utf-8 text file inside the working directory (creating parent directories as needed). overwrites any existing file. requires `filewrite` permission on the sandbox." data-category="file" data-tags="pipeline" data-preset="" data-env="" markdown>
 <a class="tcg-stretched-link" href="filesystem/#writeTextFile" aria-label="Open writeTextFile in Filesystem">writeTextFile</a>
 <div class="tcg-name"><span class="tcg-name__text">writeTextFile</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-file-edit-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l4">L4</span></div>
 <div class="tcg-body" markdown>
-Writes a UTF-8 text file inside the FS base path (creating parent directories as needed). Overwrites any existing file. Requires `fileWrite` permission on the sandbox.
+Writes a UTF-8 text file inside the working directory (creating parent directories as needed). Overwrites any existing file. Requires `fileWrite` permission on the sandbox.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `content`</div>
@@ -1400,7 +1445,7 @@ The two transports differ in **who owns the server's lifetime**: in Streamable H
 
 Most MCP server implementations ship one **native binary per OS** (Python wheels, Node binaries, Go / Rust executables) and require the user to install a platform-matching build, often plus a toolchain (Python, Node, Cargo) to author new tools.
 
-Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact - distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher - runs identically on macOS, Windows, and Linux. All 85 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
+Spring AI Playground's tool runtime is **OS-agnostic by design**. One JVM artifact - distributed as a JAR, a Docker image, or an Electron-packaged desktop launcher - runs identically on macOS, Windows, and Linux. All 88 default tools are pure JavaScript executed through GraalVM Polyglot, and so is every tool you author. There is no per-OS build step, no native dependency, no toolchain on the user's machine.
 
 Full mechanics - including how every cross-bridged helper rides on JVM stdlib so `/` vs `\`, TLS, parsers, and crypto behave identically across OSes - in [Tool Studio → Cross-platform by design](../tool-studio/index.md#cross-platform-by-design).
 
@@ -1421,7 +1466,7 @@ Some default tools depend on environment-backed secrets and stay inert until tho
 | `OPENAI_API_KEY` | `openaiResponseGenerator` | OpenAI Responses API |
 | `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | `googlePseSearch` | Google Programmable Search Engine |
 | `SLACK_WEBHOOK_URL` | `sendSlackMessage` | Incoming Webhook |
-| `TOOL_STUDIO_FS_BASE` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`) |
+| `TOOL_STUDIO_FS_BASE` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}/spring-ai-playground/workspace`) |
 | Various Korean provider keys | KR network tools - Naver, Kakao, KMA, data.go.kr | Provider-specific (per-page) |
 
 Secrets are masked from `console.log` output by substring replacement when the full resolved value appears, and they are not committed to the tool spec - they resolve at runtime from the JVM environment.

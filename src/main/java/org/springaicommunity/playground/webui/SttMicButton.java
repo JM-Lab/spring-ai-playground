@@ -17,137 +17,50 @@ package org.springaicommunity.playground.webui;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasValueAndElement;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinService;
-import jakarta.servlet.http.HttpServletRequest;
+import tools.jackson.databind.JsonNode;
 
 public class SttMicButton extends Button {
 
     private static final String BUTTON_ID = "micButton";
 
-    private enum SttSupport {CHROME, ELECTRON, UNSUPPORTED_BROWSER}
+    private enum Mode { WEB_SPEECH, LOCAL_WHISPER }
 
-    private final SttSupport sttSupport;
-    private final String serverUrl;
+    private final String targetComponentId;
+    private final Mode mode;
 
     public <C extends Component & HasValueAndElement<?, String>> SttMicButton(C targetComponent) {
         super(VaadinUtils.styledLargeIcon(VaadinIcon.MICROPHONE.create()));
-        this.sttSupport = resolveSttSupport();
-        this.serverUrl = (this.sttSupport == SttSupport.ELECTRON) ? resolveServerUrl() : null;
+        this.targetComponentId = targetComponent.getId().orElse("");
+        this.mode = resolveMode();
         addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         setId(BUTTON_ID);
-        configureByEnvironment(targetComponent);
+        getElement().setAttribute("data-stt-mode", mode == Mode.WEB_SPEECH ? "webspeech" : "local");
+        setTooltipText("Voice input — click to start recording");
+        addClickListener(e -> getElement().executeJs("window.STTModule.toggle($0, $1)",
+                targetComponentId, getId().orElse(BUTTON_ID)));
+        registerJsErrorBridge();
     }
 
-    private <C extends Component & HasValueAndElement<?, String>> void configureByEnvironment(C targetComponent) {
-        switch (this.sttSupport) {
-            case CHROME -> {
-                setTooltipText("Voice input");
-                addClickListener(e ->
-                        getElement().executeJs("window.STTModule.toggle($0, $1)",
-                                targetComponent.getId().orElse(""),
-                                getId().orElse(BUTTON_ID))
-                );
-            }
-            case ELECTRON -> {
-                setTooltipText("Voice input is only available in the browser");
-                addClickListener(e -> showElectronDialog());
-            }
-            case UNSUPPORTED_BROWSER -> {
-                setTooltipText("Voice input is only supported in Chrome");
-                addClickListener(e -> showUnsupportedBrowserDialog());
-            }
-        }
-    }
-
-    private SttSupport resolveSttSupport() {
+    private static Mode resolveMode() {
         VaadinRequest request = VaadinService.getCurrentRequest();
-        if (request == null) return SttSupport.UNSUPPORTED_BROWSER;
-        String userAgent = request.getHeader("User-Agent");
-        if (userAgent == null) return SttSupport.UNSUPPORTED_BROWSER;
-        if (userAgent.contains("Electron")) return SttSupport.ELECTRON;
-        if (userAgent.contains("Chrome/")) return SttSupport.CHROME;
-        return SttSupport.UNSUPPORTED_BROWSER;
+        String userAgent = request == null ? null : request.getHeader("User-Agent");
+        if (userAgent == null) return Mode.LOCAL_WHISPER;
+        if (userAgent.contains("Electron")) return Mode.LOCAL_WHISPER;
+        if (userAgent.contains("Chrome/")) return Mode.WEB_SPEECH;
+        return Mode.LOCAL_WHISPER;
     }
 
-    private String resolveServerUrl() {
-        try {
-            VaadinRequest request = VaadinService.getCurrentRequest();
-            if (request == null) return null;
-            HttpServletRequest http = (HttpServletRequest) request;
-            String scheme = http.getScheme();
-            String host = http.getServerName();
-            int port = http.getServerPort();
-            boolean isDefaultPort = ("http".equals(scheme) && port == 80)
-                    || ("https".equals(scheme) && port == 443);
-            return isDefaultPort
-                    ? scheme + "://" + host
-                    : scheme + "://" + host + ":" + port;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private void showElectronDialog() {
-        Dialog dialog = new Dialog();
-        dialog.setCloseOnOutsideClick(true);
-        dialog.setCloseOnEsc(true);
-        dialog.setHeaderTitle("Voice Input Not Supported");
-
-        VerticalLayout content = new VerticalLayout();
-        content.setPadding(false);
-        content.setSpacing(true);
-        content.add(new Paragraph(
-                "Voice input is not supported in the desktop app. "
-                        + "Please open in a Chrome browser to use voice input."));
-
-        if (this.serverUrl != null) {
-            Paragraph urlInfo = new Paragraph("URL: " + this.serverUrl);
-            urlInfo.getStyle().set("font-weight", "bold");
-            content.add(urlInfo);
-        }
-
-        dialog.add(content);
-
-        if (this.serverUrl != null) {
-            Button openBrowserButton = new Button("Open in Browser", e -> {
-                UI.getCurrent().getPage().open(this.serverUrl, "_blank");
-                dialog.close();
-            });
-            openBrowserButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            dialog.getFooter().add(openBrowserButton);
-        }
-
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
-        dialog.open();
-    }
-
-    private void showUnsupportedBrowserDialog() {
-        Dialog dialog = new Dialog();
-        dialog.setCloseOnOutsideClick(true);
-        dialog.setCloseOnEsc(true);
-        dialog.setHeaderTitle("Voice Input Not Supported");
-
-        VerticalLayout content = new VerticalLayout();
-        content.setPadding(false);
-        content.setSpacing(true);
-        content.add(new Paragraph(
-                "Voice input is only supported in the Chrome browser. "
-                        + "Please open this page in Chrome to use voice input."));
-
-        dialog.add(content);
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
-        dialog.open();
-    }
-
-    public boolean isSttAvailable() {
-        return this.sttSupport == SttSupport.CHROME;
+    private void registerJsErrorBridge() {
+        getElement().addEventListener("stt-error", event -> {
+            JsonNode data = event.getEventData().get("event.detail.message");
+            String message = (data != null && !data.isNull()) ? data.asText() : null;
+            if (message == null || message.isBlank()) message = "Voice input failed.";
+            VaadinUtils.showErrorNotification(message);
+        }).addEventData("event.detail.message");
     }
 }

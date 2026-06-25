@@ -48,13 +48,13 @@ A `=value` suffix on any type sets the default. The rendering rules, and why the
 
 ## Required tools
 
-A template can declare the built-in tools it uses - for example **Research brief writer** names four search tools. The detail pane lists them under **Required tools**, and they reference only key-less (**Local Pass**) tools. Filling a template produces a preset, so applying it behaves like any [preset](prompt-presets.md#required-tools): it **resets the built-in MCP server to expose exactly those tools**, turns built-in MCP on for the new chat, and selects them - with a confirmation dialog first. Tools are never enabled silently; you stay in control of what the agent can call.
+A template can declare the built-in tools it uses - for example **Research brief writer** names three tools (`searchArxiv`, `searchHackerNews`, `extractPageContent`). The detail pane lists them under **Required tools**, and they reference only key-less (**Local Pass**) tools. Filling a template produces a preset, so applying it behaves like any [preset](prompt-presets.md#required-tools): it **resets the built-in MCP server to expose exactly those tools**, turns built-in MCP on for the new chat, and selects them - with a confirmation dialog first. Tools are never enabled silently; you stay in control of what the agent can call.
 
 ## Create your own template
 
 You are not limited to the built-ins. The **New template** button in the Prompt Library header opens a blank editor where you build one from scratch.
 
-**1. Open the editor.** Click **New template**. You get a **Name** field, a **Prompt** area (wrap variables in `{{ }}`), a live list of detected variables, and a tools picker.
+**1. Open the editor.** Click **New template**. You get a **Name** field, a **Prompt** area (wrap variables in `{{ }}`), a live list of detected variables, a tools picker, and a **Use dynamic tool discovery** checkbox - tick it to let the saved preset search the catalog on demand instead of naming a fixed tool set (it disables the tools picker, since the model finds its own).
 
 ![The New variable template editor - a Name field, a Prompt area with helper text listing the variable types, an Add variable button, and a Save template button](../../assets/images/chat/prompt-template-create-editor.png){ width="1460" }
 
@@ -92,7 +92,7 @@ Spring AI Playground ships **9 templates**. Each assembles into a ready-to-use [
 | **Domain expert** | domain, focus_area, audience | An expert persona calibrated to an audience level. |
 | **Custom role** | role, task, tone | Any role, task, and tone. |
 | **Structured output** | format, fields, strictness | Locks every reply into one format (table / JSON / bullets / steps). |
-| **Research brief writer** | topic, angle, word_limit, source_mix | A bounded research brief with a word limit and source mix. Activates 6 search tools. |
+| **Research brief writer** | topic, angle, word_limit | A bounded research brief with a word limit. Activates 3 tools. |
 | **Summarizer** | content_type, output_length, focus | Faithful summaries by content type and length. Activates `extractPageContent`. |
 | **Translator** | source_language, target_language, register | Format-preserving translation. |
 | **Tutor** | subject, learner_level, teaching_style | A personal tutor by subject, level, and teaching style. |

@@ -21,10 +21,13 @@ import reactor.core.publisher.Sinks;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Component
 public class ObservabilityRingBuffer extends BoundedRingBuffer<TraceRecord> {
@@ -37,23 +40,27 @@ public class ObservabilityRingBuffer extends BoundedRingBuffer<TraceRecord> {
         super(props.getRingBufferCapacity(), 10);
     }
 
-    public synchronized void add(TraceRecord trace) {
+    public synchronized TraceRecord add(TraceRecord trace) {
         TraceRecord merged = mergeWithRecent(trace);
         if (merged != null) {
             sink.tryEmitNext(merged);
-            return;
+            return merged;
         }
         addWithEviction(trace);
         sink.tryEmitNext(trace);
+        return trace;
     }
 
     private TraceRecord mergeWithRecent(TraceRecord trace) {
         Iterator<TraceRecord> it = buffer.descendingIterator();
         int checked = 0;
-        while (it.hasNext() && checked < MERGE_LOOKBACK) {
+        while (it.hasNext()) {
             TraceRecord existing = it.next();
             checked++;
-            if (!isDuplicate(trace, existing)) continue;
+            boolean match = checked <= MERGE_LOOKBACK
+                    ? isDuplicate(trace, existing)
+                    : sameTraceId(trace, existing);
+            if (!match) continue;
             TraceRecord merged = mergeTraces(existing, trace);
             buffer.remove(existing);
             buffer.addLast(merged);
@@ -63,7 +70,11 @@ public class ObservabilityRingBuffer extends BoundedRingBuffer<TraceRecord> {
     }
 
     private static boolean isDuplicate(TraceRecord incoming, TraceRecord existing) {
-        if (incoming.traceId() != null && incoming.traceId().equals(existing.traceId())) {
+        if (sameTraceId(incoming, existing)) {
+            return true;
+        }
+        String callA = toolCallId(incoming);
+        if (callA != null && callA.equals(toolCallId(existing))) {
             return true;
         }
         String userA = incoming.userMessageId();
@@ -82,9 +93,9 @@ public class ObservabilityRingBuffer extends BoundedRingBuffer<TraceRecord> {
     }
 
     private static TraceRecord mergeTraces(TraceRecord a, TraceRecord b) {
-        String traceId = firstNonBlank(a.traceId(), b.traceId());
-        String provider = firstNonBlank(a.provider(), b.provider());
-        String model = firstNonBlank(a.model(), b.model());
+        String traceId = TraceRecord.firstNonBlank(a.traceId(), b.traceId());
+        String provider = TraceRecord.firstNonBlank(a.provider(), b.provider());
+        String model = TraceRecord.firstNonBlank(a.model(), b.model());
         long start = Math.min(a.startEpochMs(), b.startEpochMs());
         long end = Math.max(a.startEpochMs() + a.durationMs(), b.startEpochMs() + b.durationMs());
         long duration = end - start;
@@ -97,27 +108,75 @@ public class ObservabilityRingBuffer extends BoundedRingBuffer<TraceRecord> {
         Long inTok = pickLarger(a.inputTokens(), b.inputTokens());
         Long outTok = pickLarger(a.outputTokens(), b.outputTokens());
         Long totalTok = pickLarger(a.totalTokens(), b.totalTokens());
-        String finishReason = firstNonBlank(a.finishReason(), b.finishReason());
-        int toolCallCount = Math.max(a.toolCallCount(), b.toolCallCount());
+        String finishReason = TraceRecord.firstNonBlank(a.finishReason(), b.finishReason());
         boolean hasTools = a.hasTools() || b.hasTools();
         boolean hasRag = a.hasRag() || b.hasRag();
         List<SpanRecord> spans = new ArrayList<>();
-        if (a.spans() != null) spans.addAll(a.spans());
-        if (b.spans() != null) spans.addAll(b.spans());
+        Set<String> seenSpanIds = new HashSet<>();
+        Set<String> seenToolCallIds = new HashSet<>();
+        appendNewSpans(spans, seenSpanIds, seenToolCallIds, a.spans());
+        appendNewSpans(spans, seenSpanIds, seenToolCallIds, b.spans());
+        int toolCallCount = Math.max(countToolSpans(spans),
+                Math.max(a.toolCallCount(), b.toolCallCount()));
         Map<String, String> attrs = new HashMap<>();
         if (a.attributes() != null) attrs.putAll(a.attributes());
         if (b.attributes() != null) b.attributes().forEach(attrs::putIfAbsent);
+        Set<String> toolNames = new LinkedHashSet<>();
+        if (a.toolNames() != null) toolNames.addAll(a.toolNames());
+        if (b.toolNames() != null) toolNames.addAll(b.toolNames());
+        Set<String> serverNames = new LinkedHashSet<>();
+        if (a.serverNames() != null) serverNames.addAll(a.serverNames());
+        if (b.serverNames() != null) serverNames.addAll(b.serverNames());
         return new TraceRecord(traceId,
-                firstNonBlank(a.conversationId(), b.conversationId()),
-                firstNonBlank(a.userMessageId(), b.userMessageId()),
+                TraceRecord.firstNonBlank(a.conversationId(), b.conversationId()),
+                TraceRecord.firstNonBlank(a.userMessageId(), b.userMessageId()),
                 provider, model, start, duration, status,
                 inTok, outTok, totalTok,
                 finishReason, hasTools, toolCallCount, hasRag,
+                TraceRecord.firstNonBlank(a.userId(), b.userId()),
+                TraceRecord.firstNonBlank(a.sessionId(), b.sessionId()),
+                toolNames, serverNames,
                 spans, attrs);
     }
 
-    private static String firstNonBlank(String a, String b) {
-        return (a != null && !a.isBlank()) ? a : b;
+    private static boolean sameTraceId(TraceRecord a, TraceRecord b) {
+        return a.traceId() != null && a.traceId().equals(b.traceId());
+    }
+
+    private static void appendNewSpans(List<SpanRecord> out, Set<String> seenSpanIds,
+            Set<String> seenToolCallIds, List<SpanRecord> in) {
+        if (in == null) return;
+        for (SpanRecord span : in) {
+            String callId = toolCallIdOf(span);
+            if (callId != null && !seenToolCallIds.add(callId)) continue;
+            if (span.spanId() == null || seenSpanIds.add(span.spanId())) {
+                out.add(span);
+            }
+        }
+    }
+
+    private static String toolCallIdOf(SpanRecord span) {
+        if (!ObservabilityCollector.TOOL_SPAN_NAME.equals(span.name())) return null;
+        Map<String, String> a = span.attributes();
+        if (a == null) return null;
+        String id = a.get(ObservabilityCollector.TOOL_CALL_ID_ATTR);
+        if (id == null || id.isBlank()) id = a.get("gen_ai.tool.call.id");
+        return id == null || id.isBlank() ? null : id;
+    }
+
+    private static String toolCallId(TraceRecord trace) {
+        if (trace.spans() == null) return null;
+        for (SpanRecord span : trace.spans()) {
+            String id = toolCallIdOf(span);
+            if (id != null) return id;
+        }
+        return null;
+    }
+
+    private static int countToolSpans(List<SpanRecord> spans) {
+        return (int) spans.stream()
+                .filter(s -> ObservabilityCollector.TOOL_SPAN_NAME.equals(s.name()))
+                .count();
     }
 
     private static Long pickLarger(Long a, Long b) {

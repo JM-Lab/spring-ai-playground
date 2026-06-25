@@ -64,9 +64,11 @@ public class SpringAiPlaygroundRagAdvisor implements BaseAdvisor {
     public ChatClientRequest before(ChatClientRequest chatClientRequest, AdvisorChain advisorChain) {
         if (isFilterExpressionMissing(chatClientRequest))
             return chatClientRequest;
+        String query = extractUserQuery(chatClientRequest);
+        if (!StringUtils.hasText(query))
+            return chatClientRequest;
         Optional<Consumer<Object>> ragProcessMessageConsumer = getRagProcessMessageConsumer(chatClientRequest);
         ragProcessMessageConsumer.ifPresent(consumer -> consumer.accept(formatSearchStart(chatClientRequest)));
-        String query = extractUserQuery(chatClientRequest);
         String filterExpression = chatClientRequest.context().get(RAG_FILTER_EXPRESSION).toString();
         List<Document> retrievedDocuments = vectorStoreService.search(query, filterExpression);
         printSearchResults(retrievedDocuments);

@@ -89,7 +89,7 @@ spring:
         timeout-seconds: 30
         spec-location: "classpath*:tool/default-tool-specs*.json"
         fs:
-          base-path: ${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}
+          base-path: ${TOOL_STUDIO_FS_BASE:}
         js-sandbox:
           allow-network-io: false
           allow-file-io: false

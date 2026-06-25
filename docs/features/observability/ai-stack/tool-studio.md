@@ -5,7 +5,7 @@ description: In-process tool execution observability - JS sandbox and local @Too
 
 ![Tool Studio dashboard - top note "Built-in tools - JS sandbox functions and local @Tool methods, including self-loopback through the in-process MCP server", six KPI cards (Traces with tools, Total tool calls, Distinct tools, p95 latency, Error rate, Sandbox guard blocks), and a Tool calls / minute stacked-over-time chart](../../../assets/images/observability/tool-studio-full.png)
 
-*Tool Studio - counts in-process Spring AI tool callbacks. When chat traffic routes through the built-in MCP server (the default exposure path), tool spans carry `mcp.transport=streamable-http` and surface in [MCP Servers](mcp-servers.md) instead - so a busy chat session can still show 0 here. The `Sandbox guard blocks` KPI ties this dashboard to the prevention layer in [Safety Architecture](../../../safety-architecture.md) regardless of where the tool was routed.*
+*Tool Studio - counts in-process Spring AI tool callbacks. When chat traffic routes through the built-in MCP server (the default exposure path), tool spans carry `network.transport=tcp` and surface in [MCP Servers](mcp-servers.md) instead - so a busy chat session can still show 0 here. The `Sandbox guard blocks` KPI ties this dashboard to the prevention layer in [Safety Architecture](../../../safety-architecture.md) regardless of where the tool was routed.*
 
 **Purpose** - observe in-process tool execution: the JS-sandbox tools authored in Tool Studio, every Spring AI `@Tool` method, anything the agent calls *without* leaving the JVM. Cross-references the sandbox prevention layer through the `sandbox.guard.blocked` counter.
 
@@ -19,7 +19,7 @@ description: In-process tool execution observability - JS sandbox and local @Too
 
 ## Span filter
 
-`spring.ai.tool` spans where `mcp.transport` is absent or equals `in-process`.
+`spring.ai.tool` spans where `mcp.method.name` is absent (in-process).
 
 ## Controls
 
@@ -29,7 +29,7 @@ All dashboards share the [Observability global settings](../index.md#global-sett
 
 | Card | Shows | Source |
 |---|---|---|
-| Traces with tools | Number of chat turns that called at least one in-process tool | `TraceRecord` where any child span is `spring.ai.tool` without `mcp.transport` |
+| Traces with tools | Number of chat turns that called at least one in-process tool | `TraceRecord` where any child span is `spring.ai.tool` without `mcp.method.name` |
 | Total tool calls | Count of all in-process tool spans | Sum of qualifying spans |
 | Distinct tools | Number of unique tool names called | `set(spring.ai.tool.definition.name)` size |
 | p95 latency | 95th-percentile in-process tool duration | Span duration distribution |

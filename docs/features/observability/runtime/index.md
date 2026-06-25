@@ -1,5 +1,5 @@
 title: Runtime
-description: Four dashboards covering JVM/OS health, HTTP and Tomcat instrumentation, live log tail with MDC-extracted trace correlation, and the raw trace stream.
+description: Five dashboards covering JVM/OS health, Ollama runtime monitoring, HTTP and Tomcat instrumentation, live log tail with MDC-extracted trace correlation, and the raw trace stream.
 
 # Runtime
 
@@ -13,6 +13,7 @@ flowchart LR
     SMT["SystemMetrics<br/>TimeSeries"]
     MR --> SMC --> SMR --> SMT
     SMT --> HO["Host"]
+    OllamaApi["Ollama<br/>/api/ps · /api/tags"] --> OL["Ollama"]
     MR -. live read .-> WA["Web Application"]
     LogStream["Rolling<br/>app log"] --> LG["Logs"]
     Coll["Observability<br/>Collector"] --> Buf["Observability<br/>RingBuffer"]
@@ -21,7 +22,7 @@ flowchart LR
     LG -. traceId match .-> TR
 ```
 
-The four tabs are independent - Logs and Traces share an MDC `traceId` so an operator can drill from a log line to the trace it came from (and vice versa), but otherwise each tab pulls from its own source. The Host and Web Application tabs both read `MeterRegistry`, but Host historizes it through the dedicated `SystemMetricsCollector` parallel pipeline while Web Application reads live values directly.
+The five tabs are independent - Logs and Traces share an MDC `traceId` so an operator can drill from a log line to the trace it came from (and vice versa), but otherwise each tab pulls from its own source. The Host and Web Application tabs both read `MeterRegistry`, but Host historizes it through the dedicated `SystemMetricsCollector` parallel pipeline while Web Application reads live values directly. Ollama is separate again - it polls the local Ollama server's own HTTP API.
 
 ## Pages in this group
 
@@ -32,6 +33,12 @@ The four tabs are independent - Logs and Traces share an MDC `traceId` so an ope
     ---
 
     `SystemMetricsSnapshot` + `SystemMetricsTimeSeries` (parallel pipeline). JVM heap / GC / threads / classes, OS CPU / load / uptime, disk, file descriptors.
+
+-   :material-memory:{ .lg .middle } **[Ollama](ollama.md)**
+
+    ---
+
+    Ollama `/api/ps` + `/api/tags`. Platform/accelerator, running models, VRAM in use and over time, GPU/CPU offload, installed-model inventory by size / quantization / family / capability.
 
 -   :material-web:{ .lg .middle } **[Web Application](web-application.md)**
 
@@ -57,6 +64,6 @@ The four tabs are independent - Logs and Traces share an MDC `traceId` so an ope
 
 - [Index](../index.md) - observability landing + the four group pages
 - [AI Usage](../ai-usage/index.md) - Tokens & Cost · AI Models
-- [AI Stack](../ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat
+- [AI Stack](../ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Safety
 - [Tokens & Cost → Model Pricing Manager](../ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) - configure per-model rates and display currency
 - [Observability Architecture](../../../observability-architecture.md) - pipeline, storage tiers, external export, configuration

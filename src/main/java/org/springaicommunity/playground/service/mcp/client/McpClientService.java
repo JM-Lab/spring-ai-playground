@@ -27,7 +27,9 @@ import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
 import jakarta.annotation.Nullable;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator;
 import org.springaicommunity.playground.service.oauth.McpOAuthAuthorizedEvent;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.oauth.OAuthClientRegistrations;
 import org.springaicommunity.playground.service.util.SecretMasking;
 import org.slf4j.Logger;
@@ -56,6 +58,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -105,7 +108,7 @@ public class McpClientService {
         }
     }
 
-    public record McpToolSource(String serverName, String transport) {}
+    public record McpToolSource(String serverName, String transport, String riskFinal) {}
 
     public static final String TEST_CLIENT_INFIX = " - test - ";
 
@@ -116,13 +119,13 @@ public class McpClientService {
     @Nullable private final OAuth2AuthorizedClientManager oauth2ClientManager;
     @Nullable private final OAuth2AuthorizedClientService oauth2AuthorizedClientService;
     private final ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider;
+    private final ObjectProvider<McpToolRiskEvaluator> riskEvaluatorProvider;
     private final McpNotificationStore notificationStore;
     private final MeterRegistry meterRegistry;
     private final Map<String, List<McpSchema.Root>> rootsByServer = new ConcurrentHashMap<>();
 
     private final Map<McpTransportType, McpClientPropertiesService<?>> typeMcpClientPropertiesServiceMap;
     private final BiFunction<NamedClientMcpTransport, Implementation, McpClientOps> mcpClientOpsBiFunction;
-    // Keyed by transport:serverName so description/connection-only edits reuse the same live client.
     private final Map<String, McpClientOps> connectingMcpClientOpsMap;
 
     private final Map<String, StatusEntry> statusCache;
@@ -136,6 +139,7 @@ public class McpClientService {
             @Nullable OAuth2AuthorizedClientManager oauth2ClientManager,
             @Nullable OAuth2AuthorizedClientService oauth2AuthorizedClientService,
             ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider,
+            ObjectProvider<McpToolRiskEvaluator> riskEvaluatorProvider,
             McpNotificationStore notificationStore,
             MeterRegistry meterRegistry) {
         this.mcpSyncClientConfigurer = mcpSyncClientConfigurer;
@@ -145,6 +149,7 @@ public class McpClientService {
         this.oauth2ClientManager = oauth2ClientManager;
         this.oauth2AuthorizedClientService = oauth2AuthorizedClientService;
         this.mcpServerInfoServiceProvider = mcpServerInfoServiceProvider;
+        this.riskEvaluatorProvider = riskEvaluatorProvider;
         this.notificationStore = notificationStore;
         this.meterRegistry = meterRegistry;
         this.typeMcpClientPropertiesServiceMap = Arrays.stream(mcpClientPropertiesServices)
@@ -291,19 +296,27 @@ public class McpClientService {
     }
 
     private McpSchema.ElicitResult awaitElicitation(String serverKey, McpSchema.ElicitRequest request) {
+        CompletableFuture<McpSchema.ElicitResult> future =
+                notificationStore.awaitElicitationResponse(serverKey, request);
         try {
-            McpSchema.ElicitResult result =
-                    notificationStore.awaitElicitationResponse(serverKey, request).get(2, TimeUnit.MINUTES);
+            McpSchema.ElicitResult result = future.get(2, TimeUnit.MINUTES);
             recordServerHandler("elicitation",
                     serverKey, result.action() == McpSchema.ElicitResult.Action.ACCEPT ? "accept" : "reject");
             return result;
         } catch (TimeoutException e) {
             recordServerHandler("elicitation", serverKey, "timeout");
-            return new McpSchema.ElicitResult(McpSchema.ElicitResult.Action.CANCEL, Map.of());
+            return discardAndCancel(future);
         } catch (Exception e) {
             recordServerHandler("elicitation", serverKey, "error");
-            return new McpSchema.ElicitResult(McpSchema.ElicitResult.Action.CANCEL, Map.of());
+            return discardAndCancel(future);
         }
+    }
+
+    private McpSchema.ElicitResult discardAndCancel(CompletableFuture<McpSchema.ElicitResult> future) {
+        McpSchema.ElicitResult cancelled =
+                new McpSchema.ElicitResult(McpSchema.ElicitResult.Action.CANCEL, Map.of());
+        future.complete(cancelled);
+        return cancelled;
     }
 
     private void recordServerHandler(String kind, String serverName, String outcome) {
@@ -502,16 +515,18 @@ public class McpClientService {
         return Optional.ofNullable(toolNameToSource.get(toolName));
     }
 
-    private void refreshToolIndex(McpServerInfo mcpServerInfo, McpClientOps ops) {
+    void refreshToolIndex(McpServerInfo mcpServerInfo, McpClientOps ops) {
         String serverName = mcpServerInfo.serverName();
         String transport = String.valueOf(mcpServerInfo.mcpTransportType());
         try {
             List<McpSchema.Tool> tools = ops.listTools();
             if (tools == null) return;
             evictToolIndex(mcpServerInfo);
-            McpToolSource source = new McpToolSource(serverName, transport);
+            McpToolRiskEvaluator riskEvaluator = this.riskEvaluatorProvider.getIfAvailable();
             for (McpSchema.Tool tool : tools) {
                 if (tool.name() == null || tool.name().isBlank()) continue;
+                McpToolSource source = new McpToolSource(serverName, transport,
+                        evaluateRiskQuietly(riskEvaluator, mcpServerInfo, tool));
                 McpToolSource previous = toolNameToSource.put(tool.name(), source);
                 if (previous != null && !previous.serverName().equals(serverName)) {
                     logger.warn("MCP tool name collision: tool={} previousServer={} newServer={}",
@@ -519,10 +534,26 @@ public class McpClientService {
                 }
             }
         } catch (RuntimeException e) {
-            // index is best-effort — connect itself already succeeded
             logger.warn("Failed to index MCP tools for observability: serverName={}, error={}",
                     serverName, e.getMessage());
         }
+    }
+
+    private String evaluateRiskQuietly(McpToolRiskEvaluator riskEvaluator,
+            McpServerInfo mcpServerInfo, McpSchema.Tool tool) {
+        if (riskEvaluator == null) return null;
+        try {
+            return levelName(riskEvaluator.evaluateTool(mcpServerInfo, tool.name(),
+                    tool.description(), null).finalLevel());
+        } catch (RuntimeException e) {
+            logger.warn("Tool risk evaluation failed: serverName={}, tool={}, error={}",
+                    mcpServerInfo.serverName(), tool.name(), e.getMessage());
+            return null;
+        }
+    }
+
+    private static String levelName(RiskLevel level) {
+        return level == null ? null : level.name();
     }
 
     private void evictToolIndex(McpServerInfo mcpServerInfo) {
@@ -585,7 +616,7 @@ public class McpClientService {
     }
 
     public List<McpSchema.Root> getRoots(McpServerInfo mcpServerInfo) {
-        return new java.util.ArrayList<>(rootsByServer.getOrDefault(mcpServerInfo.serverName(), List.of()));
+        return new ArrayList<>(rootsByServer.getOrDefault(mcpServerInfo.serverName(), List.of()));
     }
 
     public void addRoot(McpServerInfo mcpServerInfo, McpSchema.Root root) {
@@ -687,11 +718,18 @@ public class McpClientService {
                     McpClientOps ops = connectingMcpClientOpsMap.get(clientKey(info));
                     Set<String> secrets = SecretMasking.collectFromTemplate(info.connectionAsJson());
                     ToolCallback[] wrapped = Arrays.stream(ops.toolCallbackProvider().getToolCallbacks())
-                            .map(cb -> (ToolCallback) new LoggingMcpToolCallback(cb, info.serverName(), secrets))
+                            .map(cb -> (ToolCallback) new LoggingMcpToolCallback(cb, info.serverName(), secrets,
+                                    riskFinalOf(cb)))
                             .toArray(ToolCallback[]::new);
                     return (ToolCallbackProvider) () -> wrapped;
                 })
                 .toList();
+    }
+
+    private String riskFinalOf(ToolCallback cb) {
+        if (cb.getToolDefinition() == null) return null;
+        McpToolSource source = toolNameToSource.get(cb.getToolDefinition().name());
+        return source == null ? null : source.riskFinal();
     }
 
     public void deleteConnectingMcpServer(McpServerInfo mcpServerInfo) {

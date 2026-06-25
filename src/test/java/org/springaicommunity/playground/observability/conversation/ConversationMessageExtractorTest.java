@@ -45,6 +45,7 @@ class ConversationMessageExtractorTest {
                 ObservabilityCollector.CHAT_MODEL_SPAN_NAME, 0L, 100L, "OK", modelAttrs);
         TraceRecord trace = new TraceRecord("t1", "conv1", "msg1", "openai", "gpt-4",
                 0L, 100L, "OK", 10L, 5L, 15L, "stop", false, 0, false,
+                null, null, null, null,
                 List.of(modelSpan), Map.of());
 
         TraceMessageView view = ConversationMessageExtractor.from(trace);
@@ -73,6 +74,7 @@ class ConversationMessageExtractorTest {
 
         TraceRecord trace = new TraceRecord("t1", "conv1", "msg1", "openai", "gpt-4",
                 0L, 200L, "OK", 12L, 4L, 16L, "stop", true, 1, false,
+                null, null, null, null,
                 List.of(modelSpan, toolSpan), Map.of());
 
         TraceMessageView view = ConversationMessageExtractor.from(trace);
@@ -89,6 +91,7 @@ class ConversationMessageExtractorTest {
                 ObservabilityCollector.CHAT_MODEL_SPAN_NAME, 0L, 100L, "OK", Map.of());
         TraceRecord trace = new TraceRecord("t1", "conv1", "msg1", null, null,
                 0L, 100L, "OK", null, null, null, null, false, 0, false,
+                null, null, null, null,
                 List.of(modelSpan), Map.of());
 
         TraceMessageView view = ConversationMessageExtractor.from(trace);
@@ -119,6 +122,7 @@ class ConversationMessageExtractorTest {
                 ObservabilityCollector.CHAT_MODEL_SPAN_NAME, 0L, 100L, "OK", modelAttrs);
         TraceRecord trace = new TraceRecord("t1", "conv1", "msg1", "openai", "gpt-4",
                 0L, 100L, "OK", 10L, 0L, 10L, "tool_calls", true, 1, false,
+                null, null, null, null,
                 List.of(modelSpan), Map.of());
 
         TraceMessageView view = ConversationMessageExtractor.from(trace);

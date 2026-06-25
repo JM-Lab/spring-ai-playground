@@ -25,6 +25,25 @@ const {
   toMlxModel,
 } = require('./launcher-config');
 const ollamaManager = require('./ollama-manager');
+const whisperManager = require('./whisper-manager');
+const whisperStt = require('./whisper-stt');
+
+function warmWhisperSttInBackground() {
+  if (!whisperManager.isSttEnabled()) {
+    appendLog('[whisper-stt] disabled');
+    return;
+  }
+  const status = whisperManager.getInstallationStatus({});
+  const modelPath = status && status.activeModel && status.activeModel.path;
+  if (!modelPath || !whisperStt.isReady(modelPath)) {
+    appendLog('[whisper-stt] enabled but no model ready, voice input unavailable until a model is downloaded', true);
+    return;
+  }
+  appendLog('[whisper-stt] warming model in background');
+  whisperStt.preload(modelPath)
+      .then(() => appendLog('[whisper-stt] model warm'))
+      .catch((err) => appendLog(`[whisper-stt] warm failed: ${err && err.message}`, true));
+}
 
 let tempServer = null;
 let mainWindow, splashWindow, serverSplashWindow, configWindow, serverProcess, ollamaManagerWindow;
@@ -44,6 +63,11 @@ let restartToConfigAfterStop = false;
 let currentLaunchToken = 0;
 let lastLaunchCommand = '';
 let autoCopyLaunchLogsPending = false;
+let bypassSecretsGate = false;
+let credGateStartTime = 0;
+let credGateTimer = null;
+let credGateBypassLogged = false;
+const CRED_GATE_BYPASS_AFTER_MS = 60000;
 let secretsStoreCache = null;
 let secretsEncryptionAvailable = null;
 
@@ -438,6 +462,22 @@ function getSecretsStorageStatus() {
 function getSecretsForConfig(configId) {
   const store = readSecretsStore();
   return store?.[configId] && typeof store[configId] === 'object' ? store[configId] : {};
+}
+
+function canDecryptSecretsStore() {
+  const storePath = getSecretsStorePath();
+  const legacyPath = path.join(getConfigDirectory(), 'secrets.json.enc');
+  const effectivePath = fs.existsSync(storePath) ? storePath : (fs.existsSync(legacyPath) ? legacyPath : null);
+  if (!effectivePath) return true;
+  try {
+    const raw = fs.readFileSync(effectivePath);
+    if (!raw || raw.length === 0) return true;
+    if (isSecretsEncryptionAvailable()) JSON.parse(safeStorage.decryptString(raw));
+    else JSON.parse(raw.toString('utf8'));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function saveSecretsForConfig(configId, secretValues = {}) {
@@ -1885,6 +1925,7 @@ function createMainWindow() {
       sandbox: false,
       allowRunningInsecureContent: true,
       webSecurity: false,
+      preload: PRELOAD_PATH,
     },
   });
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
@@ -2375,6 +2416,7 @@ function checkServerReady(launchToken) {
           if (launchToken !== currentLaunchToken || restartToConfigAfterStop) return;
           createMainWindow();
           mainWindow.loadURL(dynamicServerUrl);
+          setImmediate(warmWhisperSttInBackground);
         }, 500);
         return;
       }
@@ -2412,6 +2454,7 @@ function checkServerReady(launchToken) {
               if (launchToken !== currentLaunchToken || restartToConfigAfterStop) return;
               createMainWindow();
               mainWindow.loadURL(dynamicServerUrl);
+              setImmediate(warmWhisperSttInBackground);
             }, 500);
             return;
           }
@@ -2443,6 +2486,10 @@ function checkServerReady(launchToken) {
 function launchApplicationWithConfig(configPath) {
   activeConfigPath = configPath;
   restartToConfigAfterStop = false;
+  bypassSecretsGate = false;
+  credGateStartTime = 0;
+  credGateBypassLogged = false;
+  if (credGateTimer) { clearTimeout(credGateTimer); credGateTimer = null; }
   createServerSplashWindow();
   sendServerSplashState();
   if (configWindow && !configWindow.isDestroyed()) configWindow.close();
@@ -2453,10 +2500,39 @@ function launchApplicationWithConfig(configPath) {
       return;
     }
     activeConfigPath = await resolveLaunchConfigPath(configPath);
-    startSpringServer();
+    startSpringServerWhenSecretsReady();
   }).catch(error => {
     handleFatalError(error.message || String(error));
   });
+}
+
+function startSpringServerWhenSecretsReady() {
+  if (restartToConfigAfterStop) return;
+  if (bypassSecretsGate || canDecryptSecretsStore()) {
+    if (credGateTimer) { clearTimeout(credGateTimer); credGateTimer = null; }
+    clearSecretsStoreCache();
+    startSpringServer();
+    return;
+  }
+  const firstHold = !credGateStartTime;
+  if (firstHold) credGateStartTime = Date.now();
+  const allowBypass = (Date.now() - credGateStartTime) >= CRED_GATE_BYPASS_AFTER_MS;
+  launchReadinessState = {
+    phase: 'waiting-for-credentials',
+    timedOut: false,
+    timeoutMs: null,
+    allowBypass,
+    message: allowBypass
+      ? 'Still waiting for keychain authorization. Start without saved API keys, or keep waiting.'
+      : 'Waiting for keychain authorization to load saved API keys. If a password prompt appears, choose Always Allow.',
+  };
+  if (firstHold) appendLog('Saved credentials are locked; holding server launch until the keychain is authorized.', true);
+  if (allowBypass && !credGateBypassLogged) {
+    credGateBypassLogged = true;
+    appendLog('Keychain still locked after 60s; you can start without saved API keys from the launcher.', true);
+  }
+  sendServerSplashState();
+  credGateTimer = setTimeout(startSpringServerWhenSecretsReady, 1500);
 }
 
 ipcMain.handle('config:load', async () => buildConfigLoadPayload());
@@ -2845,6 +2921,16 @@ ipcMain.handle('config:open-ollama-download', async () => {
   return { ok: true };
 });
 
+ipcMain.handle('calendar:open-ics', async (event, payload) => {
+  const content = payload && typeof payload.content === 'string' ? payload.content : '';
+  if (!content) return { ok: false };
+  const safe = String((payload && payload.filename) || 'event').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || 'event';
+  const file = path.join(app.getPath('downloads'), safe + '.ics');
+  fs.writeFileSync(file, content, 'utf8');
+  const error = await shell.openPath(file);
+  return { ok: !error, path: file, error: error || undefined };
+});
+
 ipcMain.handle('app:launch-state', async () => {
   const index = readConfigIndex();
   const selectedConfigId = currentConfigId || index.activeConfigId;
@@ -2890,7 +2976,106 @@ ipcMain.handle('app:quit-launcher', async () => {
   return { ok: true };
 });
 
+ipcMain.handle('stt:status', async (event, payload) => {
+  return whisperManager.getInstallationStatus(payload || {});
+});
+
+ipcMain.handle('stt:open-folder', async () => {
+  const dir = whisperManager.whisperHomeDir();
+  fs.mkdirSync(dir, { recursive: true });
+  shell.openPath(dir).catch(() => {});
+  return { ok: true, dir };
+});
+
+ipcMain.handle('stt:cancel-download', async () => {
+  const canceled = whisperManager.cancelModelDownload();
+  return { ok: true, canceled };
+});
+
+ipcMain.handle('stt:set-preferred-model', async (event, payload) => {
+  const filename = payload && typeof payload.filename === 'string' ? payload.filename.trim() : '';
+  if (!filename) return { ok: false, error: 'filename required' };
+  whisperManager.setPreferredModelFilename(filename);
+  appendLog(`[whisper] preferred-model.txt set to ${filename}`);
+  return { ok: true, filename };
+});
+
+ipcMain.handle('stt:set-enabled', async (event, payload) => {
+  const enabled = !payload || payload.enabled !== false;
+  whisperManager.setSttEnabled(enabled);
+  appendLog(`[whisper] STT ${enabled ? 'enabled' : 'disabled'}`);
+  return { ok: true, enabled };
+});
+
+ipcMain.handle('stt:transcribe', async (event, payload) => {
+  if (!whisperManager.isSttEnabled()) {
+    return { ok: false, code: 'STT_DISABLED', message: 'STT is disabled in Settings.' };
+  }
+  const status = whisperManager.getInstallationStatus({});
+  const modelPath = status && status.activeModel && status.activeModel.path;
+  if (!modelPath) return { ok: false, code: 'MODEL_MISSING', message: 'Active model not resolved.' };
+  if (!whisperStt.isReady(modelPath)) {
+    return { ok: false, code: 'MODEL_MISSING', message: `Model file not found: ${modelPath}` };
+  }
+  const samples = payload && payload.samples;
+  if (!samples) return { ok: false, code: 'EMPTY_AUDIO', message: 'samples (Float32Array) required' };
+  const float32 = samples instanceof Float32Array
+    ? samples
+    : (samples.buffer ? new Float32Array(samples.buffer, samples.byteOffset || 0, samples.byteLength / 4)
+                      : new Float32Array(samples));
+  try {
+    const text = await whisperStt.transcribe({
+      samples: float32,
+      modelPath,
+      language: (payload && payload.language) || 'auto',
+    });
+    return { ok: true, text };
+  } catch (e) {
+    const message = e && e.message ? e.message : String(e);
+    return { ok: false, code: 'STT_RUNTIME_ERROR', message };
+  }
+});
+
+ipcMain.handle('stt:download-model', async (event, payload) => {
+  if (whisperManager.isDownloading())
+    return { ok: false, error: 'A download is already in progress.' };
+  const sender = event.sender;
+  const safeSend = (channel, message) => {
+    if (!sender.isDestroyed()) sender.send(channel, message);
+  };
+  const opts = payload || {};
+  try {
+    const result = await whisperManager.downloadModel({
+      url: opts.url,
+      dest: opts.filename ? path.join(whisperManager.whisperHomeDir(), opts.filename) : undefined,
+      onProgress: ({ downloadedBytes, totalBytes }) =>
+        safeSend('stt:download-progress', {
+          downloadedBytes, totalBytes,
+          modelFilename: opts.filename || whisperManager.DEFAULT_MODEL_FILENAME,
+        }),
+      onLog: (msg) => appendLog(msg),
+    });
+    safeSend('stt:download-complete', {
+      path: result.path, size: result.size,
+      modelFilename: opts.filename || whisperManager.DEFAULT_MODEL_FILENAME,
+    });
+    return { ok: true, ...result };
+  } catch (e) {
+    const message = e && e.message ? e.message : String(e);
+    safeSend('stt:download-error', { message });
+    return { ok: false, error: message };
+  }
+});
+
+ipcMain.handle('app:start-without-secrets', async () => {
+  bypassSecretsGate = true;
+  if (credGateTimer) { clearTimeout(credGateTimer); credGateTimer = null; }
+  startSpringServerWhenSecretsReady();
+  return { ok: true };
+});
+
 ipcMain.handle('app:restart-to-config', async () => {
+  if (credGateTimer) { clearTimeout(credGateTimer); credGateTimer = null; }
   restartToConfigAfterStop = true;
   if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.close(); mainWindow = null; }
   if (serverProcess) {

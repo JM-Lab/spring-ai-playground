@@ -19,6 +19,7 @@ import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.service.tool.ToolActivationCalculator.State;
@@ -56,9 +57,6 @@ public final class ExposedToolsSelector {
                 "Local-Passed built-in tools — tick which to expose.", riskLevelFn, categoryFn);
     }
 
-    // The one tool-selector renderer used everywhere: name + faint category label + risk badge + description
-    // tooltip. The dropdown can't show real category headers, so callers sort items by category to keep a
-    // category's tools adjacent under its shared label.
     public static MultiSelectComboBox<ToolSpec> newCategorizedSelector(String label, String helperText,
             Function<ToolSpec, String> riskLevelFn, Function<ToolSpec, String> categoryFn) {
         MultiSelectComboBox<ToolSpec> selector = new MultiSelectComboBox<>();
@@ -71,7 +69,7 @@ public final class ExposedToolsSelector {
         return selector;
     }
 
-    private static ComponentRenderer<HorizontalLayout, ToolSpec> toolSpecRenderer(
+    private static ComponentRenderer<VerticalLayout, ToolSpec> toolSpecRenderer(
             Function<ToolSpec, String> riskLevelFn, Function<ToolSpec, String> categoryFn) {
         return new ComponentRenderer<>(spec -> {
             Span name = new Span(spec.name());
@@ -90,10 +88,23 @@ public final class ExposedToolsSelector {
             row.setWidthFull();
             row.setSpacing(false);
             row.getStyle().set("gap", "var(--lumo-space-s)");
+            VerticalLayout item = new VerticalLayout(row);
+            item.setPadding(false);
+            item.setSpacing(false);
+            item.setWidthFull();
+            item.getStyle().set("gap", "0").set("padding", "var(--lumo-space-xs) 0");
             String description = spec.description();
-            row.getElement().setAttribute("title",
+            if (description != null && !description.isBlank()) {
+                Span desc = new Span(description);
+                desc.getStyle().set("font-size", "var(--lumo-font-size-xs)")
+                        .set("color", "var(--lumo-secondary-text-color)").set("white-space", "nowrap")
+                        .set("overflow", "hidden").set("text-overflow", "ellipsis")
+                        .set("max-width", "32em").set("display", "block");
+                item.add(desc);
+            }
+            item.getElement().setAttribute("title",
                     description == null || description.isBlank() ? spec.name() : description);
-            return row;
+            return item;
         });
     }
 

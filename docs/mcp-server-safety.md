@@ -149,7 +149,7 @@ Re-exposing an upstream tool does not copy it - it **wraps** it in a [`WrappedEx
 | **Re-identification** | Publishes under the exposed alias and optional description override; the input schema passes through unchanged |
 | **Risk level** | Carries the composed `L0`-`L5` level (server + tool, HITL-mitigated) as a chip and a span tag |
 | **Logging & tracing** | Emits `mcp.tool.start` / `mcp.tool.done` / `mcp.tool.crash` with call duration on every invocation |
-| **Risk MDC context** | Pushes `mcp.cid`, `mcp.origin`, `mcp.composition.*`, `mcp.upstream.*`, `mcp.risk.*`, and `mcp.risk.floor_trigger` for the duration of the call - so a chat tool call traces back to its upstream origin and computed risk (see [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md)) |
+| **Risk MDC context** | Pushes `saip.cid`, `saip.tool.origin`, `saip.composition.*`, `saip.upstream.*`, `saip.risk.*`, and `saip.risk.floor_trigger` for the duration of the call - so a chat tool call traces back to its upstream origin and computed risk (see [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md)) |
 | **Secret masking** | Redacts upstream connection secrets from error messages before they reach logs or chat |
 | **HITL gate** | Records the per-tool human-approval flag; the runtime [elicitation gate](hitl-architecture.md#server-gate) honors it |
 
@@ -190,7 +190,7 @@ Before a composition is enabled, [`McpCompositionShadowingRules`](https://github
 | Connection form | Live server risk chip as you type / pick an entry | [MCP Server → Connection risk preview](features/mcp-server/index.md#connection-risk-preview) |
 | Composed Tools drawer | Per-server + per-tool chips, max-risk cap, HITL `-1` | [MCP Server → Expose external tools](features/mcp-server/index.md#expose-external-tools) |
 | Inspector Tools tab | Per-tool risk chip beside each tool card | [MCP Inspector → Tools](features/mcp-server/inspector.md#tools) |
-| Observability | `mcp.risk.*` / `mcp.composition.*` span tags | [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md) |
+| Observability | `saip.risk.*` / `saip.composition.*` span tags | [Observability → MCP Servers](features/observability/ai-stack/mcp-servers.md) |
 
 ## Further reading
 

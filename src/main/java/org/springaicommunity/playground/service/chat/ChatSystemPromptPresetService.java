@@ -115,9 +115,14 @@ public class ChatSystemPromptPresetService {
     }
 
     public Preset save(String displayName, String prompt, PresetKind kind, List<String> tools) {
+        return save(displayName, prompt, kind, tools, false);
+    }
+
+    public Preset save(String displayName, String prompt, PresetKind kind, List<String> tools,
+            boolean dynamicTools) {
         if (displayName == null || displayName.isBlank())
             throw new IllegalArgumentException("Preset name must not be blank");
-        Preset preset = new Preset(userId(displayName), displayName.trim(), "", prompt, kind, tools);
+        Preset preset = new Preset(userId(displayName), displayName.trim(), "", prompt, kind, tools, dynamicTools);
         List<Preset> next = new ArrayList<>(userPresets.size() + 1);
         for (Preset existing : userPresets) {
             if (!existing.id().equals(preset.id())) next.add(existing);

@@ -15,6 +15,8 @@
  */
 package org.springaicommunity.playground.observability.system;
 
+import com.sun.management.OperatingSystemMXBean;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.LongTaskTimer;
@@ -25,9 +27,13 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.search.Search;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.observability.McpToolObservationFilter;
+import org.springaicommunity.playground.service.mcp.risk.McpRiskSignalLogger;
+import org.springaicommunity.playground.service.tool.runtime.SandboxGuardMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.lang.management.ManagementFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -75,7 +81,6 @@ public class SystemMetricsSnapshot {
         s.jvmThreadsLive = (long) firstGauge("jvm.threads.live");
         s.jvmThreadsDaemon = (long) firstGauge("jvm.threads.daemon");
         s.jvmThreadsPeak = (long) firstGauge("jvm.threads.peak");
-        // started is a lifetime FunctionCounter, not a gauge
         s.jvmThreadsStarted = (long) firstFunctionCounterValue("jvm.threads.started");
         registry.find("jvm.threads.states").gauges().forEach(g -> {
             String state = g.getId().getTag("state");
@@ -92,12 +97,10 @@ public class SystemMetricsSnapshot {
         });
         s.gcLiveDataBytes = (long) firstGauge("jvm.gc.live.data.size");
         s.gcMaxDataBytes = (long) firstGauge("jvm.gc.max.data.size");
-        // allocated / promoted are lifetime FunctionCounter; overhead is a Gauge
         s.gcMemoryAllocatedBytes = (long) firstFunctionCounterValue("jvm.gc.memory.allocated");
         s.gcMemoryPromotedBytes = (long) firstFunctionCounterValue("jvm.gc.memory.promoted");
         s.gcOverheadFraction = firstGauge("jvm.gc.overhead");
 
-        // loaded is a current-state Gauge; unloaded is a lifetime FunctionCounter.
         s.jvmClassesLoaded = (long) firstGauge("jvm.classes.loaded");
         s.jvmClassesUnloaded = (long) firstFunctionCounterValue("jvm.classes.unloaded");
 
@@ -115,6 +118,11 @@ public class SystemMetricsSnapshot {
         s.diskFreeBytes = (long) firstGauge("disk.free");
         s.diskTotalBytes = (long) firstGauge("disk.total");
 
+        if (ManagementFactory.getOperatingSystemMXBean() instanceof OperatingSystemMXBean os) {
+            s.systemPhysicalMemoryTotalBytes = os.getTotalMemorySize();
+            s.systemPhysicalMemoryFreeBytes = os.getFreeMemorySize();
+        }
+
         registry.find("http.server.requests").timers().forEach(t -> {
             String status = t.getId().getTag("status");
             String outcome = t.getId().getTag("outcome");
@@ -126,17 +134,19 @@ public class SystemMetricsSnapshot {
             s.httpRequestsTotalTimeSeconds += t.totalTime(TimeUnit.SECONDS);
         });
 
-        // sessions active/alive are Gauges; created/expired/rejected are lifetime FunctionCounters.
         s.tomcatSessionsActive = (long) firstGauge("tomcat.sessions.active.current");
         s.tomcatSessionsActiveMax = (long) firstGauge("tomcat.sessions.active.max");
         s.tomcatSessionsCreated = (long) firstFunctionCounterValue("tomcat.sessions.created");
         s.tomcatSessionsExpired = (long) firstFunctionCounterValue("tomcat.sessions.expired");
         s.tomcatSessionsRejected = (long) firstFunctionCounterValue("tomcat.sessions.rejected");
 
-        registry.find("logback.events").counters().forEach(c -> {
-            String level = c.getId().getTag("level");
-            if (level != null) s.logbackEventsByLevel.merge(level, (long) c.count(), Long::sum);
-        });
+        for (Meter meter : registry.find("logback.events").meters()) {
+            String level = meter.getId().getTag("level");
+            if (level == null) continue;
+            double count = meter instanceof Counter counter ? counter.count()
+                    : meter instanceof FunctionCounter functionCounter ? functionCounter.count() : 0;
+            if (count > 0) s.logbackEventsByLevel.merge(level, (long) count, Long::sum);
+        }
 
         s.activeChatClient = (long) sumGauge("spring.ai.chat.client.active", Tags.empty());
         s.activeChatModel = (long) sumGauge("gen_ai.client.operation.active", Tags.empty());
@@ -145,7 +155,6 @@ public class SystemMetricsSnapshot {
         s.activeChatClientStream = (long) sumGauge("spring.ai.chat.client.active",
                 Tags.of("spring.ai.chat.client.stream", "true"));
 
-        // jvm.info value is always 1; the metadata is in the tags.
         Gauge info = registry.find("jvm.info").gauge();
         if (info != null) {
             for (Tag tag : info.getId().getTags()) {
@@ -197,7 +206,7 @@ public class SystemMetricsSnapshot {
         captureTimerSummary(registry, "gen_ai.image.client.operation",
                 s.genAiImageDuration);
 
-        registry.find("sandbox.guard.blocked").counters().forEach(c -> {
+        registry.find(SandboxGuardMetrics.COUNTER_NAME).counters().forEach(c -> {
             String category = c.getId().getTag("category");
             String reason = c.getId().getTag("reason");
             if (category == null || reason == null) return;
@@ -250,6 +259,24 @@ public class SystemMetricsSnapshot {
 
         registry.find("mcp.oauth.authorized").counters().forEach(c ->
                 s.mcpOAuthAuthorizedTotal += (long) c.count());
+
+        registry.find(McpRiskSignalLogger.COUNTER).counters().forEach(c -> {
+            String type = c.getId().getTag("type");
+            if (type == null) return;
+            s.mcpRiskSignalByType.merge(type, (long) c.count(), Long::sum);
+        });
+
+        registry.find("mcp.hitl.decision").counters().forEach(c -> {
+            String outcome = c.getId().getTag("outcome");
+            if (outcome == null) return;
+            s.mcpHitlByOutcome.merge(outcome, (long) c.count(), Long::sum);
+        });
+
+        registry.find(McpToolObservationFilter.TOOL_RISK_COUNTER).counters().forEach(c -> {
+            String level = c.getId().getTag("level");
+            if (level == null) return;
+            s.mcpToolRiskByLevel.merge(level, (long) c.count(), Long::sum);
+        });
 
         return s;
     }
@@ -338,6 +365,8 @@ public class SystemMetricsSnapshot {
 
         public long diskFreeBytes;
         public long diskTotalBytes;
+        public long systemPhysicalMemoryTotalBytes;
+        public long systemPhysicalMemoryFreeBytes;
 
         public final Map<String, Long> httpRequestsByStatus = new LinkedHashMap<>();
         public long httpRequestsTotal;
@@ -357,59 +386,49 @@ public class SystemMetricsSnapshot {
         public long activeVector;
         public long activeChatClientStream;
 
-        // jvm.info — vendor/runtime/version (value=1, all info in tags)
         public final Map<String, String> jvmInfo = new LinkedHashMap<>();
 
-        // jvm.compilation.time — cumulative JIT compile time
         public double jvmCompilationTimeMs;
 
-        // jvm.memory.usage.after.gc — % per pool retained after GC (leak signal)
         public final Map<String, Double> jvmMemoryUsageAfterGc = new LinkedHashMap<>();
 
-        // jvm.gc.concurrent.phase.time — G1 concurrent phases (background)
         public final Map<String, Double> gcConcurrentPhaseSecondsSum = new LinkedHashMap<>();
 
-        // jvm.buffer.total.capacity — per buffer pool
         public final Map<String, Long> jvmBufferTotalCapacity = new LinkedHashMap<>();
 
-        // HTTP in-flight (LongTaskTimer ACTIVE_TASKS)
         public long httpServerActive;
         public long httpClientActive;
 
-        // http.client.requests aggregated by client.name / host
         public final Map<String, HostStats> httpClientByHost = new LinkedHashMap<>();
 
-        // tomcat.sessions.alive.max — longest session lifetime (seconds)
         public long tomcatSessionsAliveMax;
 
-        // process.cpu.time — cumulative CPU ns
         public long processCpuTimeNs;
 
-        // Spring AI streaming / embedding / image Timer summaries
         public final TimerSummary genAiTtft = new TimerSummary();
         public final TimerSummary genAiPerChunk = new TimerSummary();
         public final TimerSummary genAiEmbeddingDuration = new TimerSummary();
         public final TimerSummary genAiImageDuration = new TimerSummary();
 
-        // Sandbox guard blocks: category/reason → count, plus collapsed by category for the KPI.
         public final Map<String, Long> sandboxGuardBlocked = new LinkedHashMap<>();
         public final Map<String, Long> sandboxGuardBlockedByCategory = new LinkedHashMap<>();
 
-        // Playground MCP server lifecycle counters (connect/disconnect/error/awaiting_auth)
         public final Map<String, Long> mcpLifecycleByOutcome = new LinkedHashMap<>();
         public final Map<String, Long> mcpLifecycleByServer = new LinkedHashMap<>();
 
-        // Playground MCP primitive timers (kind → count / TimerSummary, plus per-server / outcome)
         public final Map<String, Long> mcpPrimitiveCountByKind = new LinkedHashMap<>();
         public final Map<String, TimerSummary> mcpPrimitiveTimerByKind = new LinkedHashMap<>();
         public final Map<String, Long> mcpPrimitiveOutcomeCounts = new LinkedHashMap<>();
         public final Map<String, Long> mcpPrimitiveCountByServer = new LinkedHashMap<>();
 
-        // Playground MCP server-initiated handlers (sampling / elicitation)
         public final Map<String, Long> mcpServerHandlerCounts = new LinkedHashMap<>();
 
-        // Playground MCP OAuth lifetime counter (across all servers)
         public long mcpOAuthAuthorizedTotal;
+
+        public final Map<String, Long> mcpRiskSignalByType = new LinkedHashMap<>();
+        public final Map<String, Long> mcpHitlByOutcome = new LinkedHashMap<>();
+
+        public final Map<String, Long> mcpToolRiskByLevel = new LinkedHashMap<>();
     }
 
     public static class HostStats {

@@ -27,8 +27,6 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.jsoup.Jsoup;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.NetworkPolicy;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
-import org.springaicommunity.playground.service.tool.runtime.SafeFs;
-import org.springaicommunity.playground.service.tool.runtime.SafeHttpFetch;
 import org.springaicommunity.playground.service.tool.runtime.SafeHttpFetch.FetchResponse;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -73,15 +71,15 @@ public final class JsRuntimeGlobals {
 
     private JsRuntimeGlobals() {}
 
-    public static void installAll(Value bindings, EffectivePolicy policy, Path fsBasePath) {
+    public static void installAll(Value bindings, EffectivePolicy policy, SafeFs.FsScope fsScope) {
         installFetch(bindings, policy);
         installUrl(bindings);
         installBase64(bindings);
         installCrypto(bindings);
-        installSafety(bindings, policy, fsBasePath);
+        installSafety(bindings, policy, fsScope);
     }
 
-    public static void installSafety(Value bindings, EffectivePolicy policy, Path fsBasePath) {
+    public static void installSafety(Value bindings, EffectivePolicy policy, SafeFs.FsScope fsScope) {
         Map<String, Object> parser = new LinkedHashMap<>();
         parser.put("html", (ProxyExecutable) JsRuntimeGlobals::parseHtml);
         parser.put("yaml", (ProxyExecutable) JsRuntimeGlobals::parseYaml);
@@ -90,18 +88,21 @@ public final class JsRuntimeGlobals {
 
         Map<String, Object> safety = new LinkedHashMap<>();
         safety.put("parser", ProxyObject.fromMap(parser));
-        if (policy != null && (policy.fileRead() || policy.fileWrite()) && fsBasePath != null) {
-            safety.put("fs", fsProxy(policy, fsBasePath));
+        if (policy != null && (policy.fileRead() || policy.fileWrite()) && fsScope != null) {
+            safety.put("fs", fsProxy(policy, fsScope));
         }
         bindings.putMember("safety", ProxyObject.fromMap(safety));
     }
 
-    private static ProxyObject fsProxy(EffectivePolicy policy, Path base) {
+    private static ProxyObject fsProxy(EffectivePolicy policy, SafeFs.FsScope scope) {
         Map<String, Object> fs = new LinkedHashMap<>();
+        fs.put("workspace", (ProxyExecutable) args -> scope.workspace().toString());
+        fs.put("readRoots", (ProxyExecutable) args -> ProxyArray.fromArray(
+                (Object[]) scope.readRoots().stream().map(Path::toString).toArray(String[]::new)));
         if (policy.fileRead()) {
             fs.put("readText", (ProxyExecutable) args -> {
                 try {
-                    return SafeFs.readText(base, args.length > 0 ? args[0].asString() : null);
+                    return SafeFs.readText(scope, args.length > 0 ? args[0].asString() : null);
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.readText",
                             "io", "safety.fs.readText: " + e.getMessage(), e);
@@ -110,17 +111,17 @@ public final class JsRuntimeGlobals {
             fs.put("list", (ProxyExecutable) args -> {
                 try {
                     String dir = args.length > 0 && !args[0].isNull() ? args[0].asString() : ".";
-                    return ProxyArray.fromArray((Object[]) SafeFs.list(base, dir).toArray(new String[0]));
+                    return ProxyArray.fromArray((Object[]) SafeFs.list(scope, dir).toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.list",
                             "io", "safety.fs.list: " + e.getMessage(), e);
                 }
             });
             fs.put("exists", (ProxyExecutable) args ->
-                    SafeFs.exists(base, args.length > 0 ? args[0].asString() : null));
+                    SafeFs.exists(scope, args.length > 0 ? args[0].asString() : null));
             fs.put("stat", (ProxyExecutable) args -> {
                 try {
-                    SafeFs.FileStat s = SafeFs.stat(base, args.length > 0 ? args[0].asString() : null);
+                    SafeFs.FileStat s = SafeFs.stat(scope, args.length > 0 ? args[0].asString() : null);
                     Map<String, Object> out = new LinkedHashMap<>();
                     out.put("size", s.size());
                     out.put("mtime", s.mtime());
@@ -145,7 +146,7 @@ public final class JsRuntimeGlobals {
                 boolean numbered = opts != null && opts.hasMember("numbered")
                         && opts.getMember("numbered").asBoolean();
                 try {
-                    return ProxyArray.fromArray((Object[]) SafeFs.grep(base, path, pattern, caseInsensitive,
+                    return ProxyArray.fromArray((Object[]) SafeFs.grep(scope, path, pattern, caseInsensitive,
                             limit, numbered).toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.grep",
@@ -154,7 +155,7 @@ public final class JsRuntimeGlobals {
             });
             fs.put("lineCount", (ProxyExecutable) args -> {
                 try {
-                    return SafeFs.lineCount(base, args.length > 0 ? args[0].asString() : null);
+                    return SafeFs.lineCount(scope, args.length > 0 ? args[0].asString() : null);
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.lineCount",
                             "io", "safety.fs.lineCount: " + e.getMessage(), e);
@@ -168,7 +169,7 @@ public final class JsRuntimeGlobals {
                 Integer start = args.length > 1 && !args[1].isNull() ? args[1].asInt() : null;
                 Integer end = args.length > 2 && !args[2].isNull() ? args[2].asInt() : null;
                 try {
-                    return ProxyArray.fromArray((Object[]) SafeFs.slice(base, path, start, end)
+                    return ProxyArray.fromArray((Object[]) SafeFs.slice(scope, path, start, end)
                             .toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.slice",
@@ -198,7 +199,7 @@ public final class JsRuntimeGlobals {
                         ? opts.getMember("delimiter").asString() : null;
                 boolean regex = opts.hasMember("regex") && opts.getMember("regex").asBoolean();
                 try {
-                    return ProxyArray.fromArray((Object[]) SafeFs.cut(base, path, delimiter, fields, regex)
+                    return ProxyArray.fromArray((Object[]) SafeFs.cut(scope, path, delimiter, fields, regex)
                             .toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.cut",
@@ -217,7 +218,7 @@ public final class JsRuntimeGlobals {
                         && opts.getMember("caseInsensitive").asBoolean();
                 boolean unique = opts != null && opts.hasMember("unique") && opts.getMember("unique").asBoolean();
                 try {
-                    return ProxyArray.fromArray((Object[]) SafeFs.sort(base, path, reverse, numeric,
+                    return ProxyArray.fromArray((Object[]) SafeFs.sort(scope, path, reverse, numeric,
                             caseInsensitive, unique).toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.sort",
@@ -233,7 +234,7 @@ public final class JsRuntimeGlobals {
                 String type = opts != null && opts.hasMember("type") && !opts.getMember("type").isNull()
                         ? opts.getMember("type").asString() : null;
                 try {
-                    return ProxyArray.fromArray((Object[]) SafeFs.find(base, dir, glob, maxDepth, type)
+                    return ProxyArray.fromArray((Object[]) SafeFs.find(scope, dir, glob, maxDepth, type)
                             .toArray(new String[0]));
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.find",
@@ -244,10 +245,9 @@ public final class JsRuntimeGlobals {
         if (policy.fileWrite()) {
             fs.put("writeText", (ProxyExecutable) args -> {
                 try {
-                    SafeFs.writeText(base,
+                    return SafeFs.writeText(scope,
                             args.length > 0 ? args[0].asString() : null,
-                            args.length > 1 && !args[1].isNull() ? args[1].asString() : "");
-                    return null;
+                            args.length > 1 && !args[1].isNull() ? args[1].asString() : "").toString();
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.writeText",
                             "io", "safety.fs.writeText: " + e.getMessage(), e);

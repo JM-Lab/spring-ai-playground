@@ -27,6 +27,7 @@ import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResol
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,42 +66,42 @@ class JsRuntimeFsTest {
 
     @Test
     void fsNotInjectedWhenAllowFileIoFalse() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_OFF, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_OFF, SafeFs.FsScope.confined(base));
         Value v = context.eval("js", "typeof safety.fs");
         assertEquals("undefined", v.asString());
     }
 
     @Test
     void fsNotInjectedWhenBasePathNull() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, null);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, (SafeFs.FsScope) null);
         Value v = context.eval("js", "typeof safety.fs");
         assertEquals("undefined", v.asString());
     }
 
     @Test
     void fsReadText() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js", "safety.fs.readText('hello.txt')");
         assertEquals("world", v.asString());
     }
 
     @Test
     void fsWriteText() throws IOException {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         context.eval("js", "safety.fs.writeText('new.txt', 'created')");
         assertEquals("created", Files.readString(base.resolve("new.txt")));
     }
 
     @Test
     void fsExists() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         assertTrue(context.eval("js", "safety.fs.exists('hello.txt')").asBoolean());
         assertEquals(false, context.eval("js", "safety.fs.exists('missing.txt')").asBoolean());
     }
 
     @Test
     void fsList() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js",
                 "Array.from(safety.fs.list('.')).includes('hello.txt')");
         assertTrue(v.asBoolean());
@@ -108,21 +109,21 @@ class JsRuntimeFsTest {
 
     @Test
     void fsStat() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js", "safety.fs.stat('hello.txt').size");
         assertEquals(5, v.asInt());
     }
 
     @Test
     void fsBlocksTraversal() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         assertThrows(RuntimeException.class, () -> context.eval("js",
                 "safety.fs.readText('../../../etc/passwd')"));
     }
 
     @Test
     void fsBlocksAbsolutePath() {
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         assertThrows(RuntimeException.class, () -> context.eval("js",
                 "safety.fs.readText('/etc/passwd')"));
     }
@@ -130,7 +131,7 @@ class JsRuntimeFsTest {
     @Test
     void fsGrep() throws IOException {
         Files.writeString(base.resolve("log.txt"), "INFO ok\nERROR boom\nINFO done\n");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js",
                 "Array.from(safety.fs.grep('ERROR', 'log.txt')).length");
         assertEquals(1, v.asInt());
@@ -139,14 +140,14 @@ class JsRuntimeFsTest {
     @Test
     void fsLineCount() throws IOException {
         Files.writeString(base.resolve("multi.txt"), "a\nb\nc\nd\n");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         assertEquals(4, context.eval("js", "safety.fs.lineCount('multi.txt')").asInt());
     }
 
     @Test
     void fsSliceHeadTail() throws IOException {
         Files.writeString(base.resolve("multi.txt"), "1\n2\n3\n4\n5\n");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value head = context.eval("js", "Array.from(safety.fs.slice('multi.txt', 0, 2)).join(',')");
         Value tail = context.eval("js", "Array.from(safety.fs.slice('multi.txt', -2)).join(',')");
         assertEquals("1,2", head.asString());
@@ -156,7 +157,7 @@ class JsRuntimeFsTest {
     @Test
     void fsCut() throws IOException {
         Files.writeString(base.resolve("tsv.txt"), "a\t1\tx\nb\t2\ty\n");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js",
                 "Array.from(safety.fs.cut('tsv.txt', {delimiter: '\\t', fields: [1, 3]})).join('|')");
         assertEquals("a\tx|b\ty", v.asString());
@@ -165,7 +166,7 @@ class JsRuntimeFsTest {
     @Test
     void fsSortUnique() throws IOException {
         Files.writeString(base.resolve("d.txt"), "b\na\nb\nc\na\n");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js",
                 "Array.from(safety.fs.sort('d.txt', {unique: true})).join(',')");
         assertEquals("a,b,c", v.asString());
@@ -175,9 +176,31 @@ class JsRuntimeFsTest {
     void fsFindGlob() throws IOException {
         Files.writeString(base.resolve("a.json"), "{}");
         Files.writeString(base.resolve("b.txt"), "x");
-        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, base);
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, SafeFs.FsScope.confined(base));
         Value v = context.eval("js",
                 "Array.from(safety.fs.find('.', '*.json', {type: 'file'})).length");
         assertEquals(1, v.asInt());
+    }
+
+    @Test
+    void fsExposesWorkspaceAndReadRoots() throws IOException {
+        Path workspace = base.resolve("ws");
+        Files.createDirectories(workspace);
+        SafeFs.FsScope split = new SafeFs.FsScope(workspace, List.of(base));
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, split);
+        assertEquals(workspace.toString(), context.eval("js", "safety.fs.workspace()").asString());
+        assertTrue(context.eval("js",
+                "Array.from(safety.fs.readRoots()).includes('" + base + "')").asBoolean());
+    }
+
+    @Test
+    void fsReadsAbsolutePathUnderReadRoot() throws IOException {
+        Path workspace = base.resolve("ws");
+        Files.createDirectories(workspace);
+        Files.writeString(base.resolve("outside.txt"), "hi");
+        SafeFs.FsScope split = new SafeFs.FsScope(workspace, List.of(base));
+        JsRuntimeGlobals.installSafety(context.getBindings("js"), FS_ON, split);
+        Value v = context.eval("js", "safety.fs.readText('" + base.resolve("outside.txt") + "')");
+        assertEquals("hi", v.asString());
     }
 }

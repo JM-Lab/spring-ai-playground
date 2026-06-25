@@ -62,66 +62,6 @@
     ]
   },
   {
-    "toolId": "3eb36ae5-4bea-4452-a1c5-abb44b720f16",
-    "name": "buildGoogleCalendarCreateLink",
-    "description": "Builds a Google Calendar \"Add Event\" URL with prefilled fields.\n\nThe tool only generates a URL; the user must open it and click \"Save\" in Google Calendar.\n\nIf the user provides a rough input for date, time, or location \n(e.g., \"tomorrow 10am\", \"Seoul\", \"New York\"), the agent is expected\nto parse and convert these inputs into proper ISO-8601 date strings \nfor start/end and a valid IANA time zone identifier for timeZone \nbefore passing them to this tool.",
-    "staticVariables": [],
-    "params": [
-      {
-        "name": "title",
-        "description": "Event title shown in Google Calendar.",
-        "required": true,
-        "type": "STRING",
-        "testValue": "Meeting"
-      },
-      {
-        "name": "start",
-        "description": "Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:00).",
-        "required": true,
-        "type": "STRING",
-        "testValue": "2025-12-16T10:00:00+09:00"
-      },
-      {
-        "name": "end",
-        "description": "Event end time. Must be after start. The agent should ensure proper ISO-8601 format(e.g., 2025-12-16T10:00:00+09:00).",
-        "required": true,
-        "type": "STRING",
-        "testValue": "2025-12-16T11:00:00+09:00"
-      },
-      {
-        "name": "details",
-        "description": "Optional event description or agenda.",
-        "required": false,
-        "type": "STRING",
-        "testValue": ""
-      },
-      {
-        "name": "location",
-        "description": "Optional event location text. The agent can resolve rough location names to standard city names if needed.",
-        "required": false,
-        "type": "STRING",
-        "testValue": ""
-      },
-      {
-        "name": "timeZone",
-        "description": "IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone before calling this tool.",
-        "required": false,
-        "type": "STRING",
-        "testValue": ""
-      }
-    ],
-    "code": "/**\n * Build a Google Calendar \"Add event\" URL (action=TEMPLATE).\n *\n * This tool ONLY generates a URL.\n * The user must open the link and click \"Save\" in Google Calendar.\n *\n * INPUT NOTES:\n * - start / end: Date object or ISO-8601 string parseable by Date()\n * - dates are encoded in UTC (Google Calendar requirement)\n * - timeZone (ctz) controls UI display, not the UTC timestamps\n *\n */\n\nfunction toDate(v) {\n  const d = v instanceof Date ? v : new Date(String(v));\n  if (isNaN(d.getTime())) {\n    throw new Error('Invalid date value: ' + v);\n  }\n  return d;\n}\n\n// Google Calendar expects UTC timestamps like: 20251216T010000Z\nfunction formatAsUtcCompact(d) {\n  return d\n    .toISOString()\n    .replace(/[-:]/g, '')\n    .replace(/\\.\\d{3}Z$/, 'Z');\n}\n\nconst s = toDate(start);\nconst e = toDate(end);\n\nif (e <= s) {\n  throw new Error('end must be after start');\n}\n\nconst base = 'https://www.google.com/calendar/render?action=TEMPLATE';\nconst params = [];\n\nparams.push('text=' + encodeURIComponent(String(title || '')));\nparams.push(\n  'dates=' +\n    encodeURIComponent(formatAsUtcCompact(s) + '/' + formatAsUtcCompact(e))\n);\n\nif (details) params.push('details=' + encodeURIComponent(String(details)));\nif (location) params.push('location=' + encodeURIComponent(String(location)));\nif (timeZone) params.push('ctz=' + encodeURIComponent(String(timeZone)));\n\nreturn base + '&' + params.join('&');\n",
-    "codeType": "Javascript",
-    "createTimestamp": 1765801820195,
-    "updateTimestamp": 1765801820195,
-    "category": "PRODUCTIVITY",
-    "tags": [
-      "example",
-      "util"
-    ],
-    "draft": true
-  },
-  {
     "toolId": "eb35a905-4074-4589-805b-4dfd67353fb0",
     "name": "getWeather",
     "description": "Free public weather lookup via wttr.in (no API key). Returns a small JSON summary: { location, tempC, humidity, windSpeed, windDirection }.",
@@ -313,5 +253,130 @@
       "promptTemplate": "The assistant wants to send a Slack message. Allow '{toolName}' with {args}?"
     },
     "draft": true
+  },
+  {
+    "toolId": "310b18da-7ce7-4e72-98d4-6f76e4805892",
+    "name": "sendEmail",
+    "description": "Use this whenever the user wants to email or send something to someone — it is the only way you send email for the user. You do NOT send it yourself: calling this makes a \"Send email\" button appear in the chat, and the user clicks it to send from their own mail app (review-then-send). So always call this tool for email requests; never refuse with \"I can't send email\" and never write the email as plain text instead. IMPORTANT — after calling, the email is NOT sent yet: do NOT say it was sent (never \"전송되었습니다\" / \"sent\"). Instead tell the user to click the \"Send email\" button below to send it (e.g. \"메일 초안을 준비했어요 — 아래 Send email 버튼을 눌러 보내세요\"). The button appears automatically; you do not need to paste any code block. 'subject' and 'body' are required; 'to' and 'cc' are optional (comma-separated). The From/sender address cannot be set (it is the user's default account).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "to",
+        "description": "Recipient email address(es), comma-separated. Optional.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "alice@example.com"
+      },
+      {
+        "name": "cc",
+        "description": "Cc email address(es), comma-separated. Optional.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "subject",
+        "description": "Email subject line.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Meeting follow-up"
+      },
+      {
+        "name": "body",
+        "description": "Email body text. Plain text; line breaks are kept.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Hi Alice, following up on our chat."
+      }
+    ],
+    "code": "if (subject == null || String(subject).trim() === '') throw new Error('subject required');\nif (body == null || String(body).trim() === '') throw new Error('body required');\nconst action = { type: 'email', subject: String(subject), body: String(body) };\nconst toValue = to == null ? '' : String(to).trim();\nconst ccValue = cc == null ? '' : String(cc).trim();\nif (toValue !== '') action.to = toValue;\nif (ccValue !== '') action.cc = ccValue;\nreturn 'Email ready below — review it and click the Send email button to send it from your own mail app.\\n\\n```saip-action-return-direct\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "util"
+    ]
+  },
+  {
+    "toolId": "7a25bbb9-63b9-44b6-b43a-3431ebc8bd02",
+    "name": "addToCalendar",
+    "description": "Use this whenever the user wants to add a calendar event or schedule something — it is the only way you add events for the user. You do NOT add it yourself: calling this makes an \"Add to calendar\" button appear in the chat, and the user clicks it to download a standard .ics file that opens in their own calendar app (Apple Calendar, Outlook, Google import, etc.). So always call this tool for scheduling requests; never refuse and never write the event as plain text instead. IMPORTANT — after calling, the event is NOT added yet: do NOT say it was added/created. Instead tell the user to click the \"Add to calendar\" button below to add it (e.g. \"일정을 준비했어요 — 아래 Add to calendar 버튼을 눌러 추가하세요\"). The button appears automatically; you do not need to paste any code block. Convert rough date/time (e.g. 'tomorrow 10am') to ISO-8601 first; 'end' must be after 'start'. 'title', 'start', 'end' are required; 'location' and 'description' are optional.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "title",
+        "description": "Event title.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Team sync"
+      },
+      {
+        "name": "start",
+        "description": "Start time as ISO-8601 (convert rough input first, e.g. 2026-01-15T10:00:00+09:00).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T10:00:00+09:00"
+      },
+      {
+        "name": "end",
+        "description": "End time as ISO-8601, after start.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "2026-01-15T11:00:00+09:00"
+      },
+      {
+        "name": "location",
+        "description": "Optional location text.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "description",
+        "description": "Optional event description.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "if (title == null || String(title).trim() === '') throw new Error('title required');\nif (start == null || String(start).trim() === '') throw new Error('start required');\nif (end == null || String(end).trim() === '') throw new Error('end required');\nconst s = new Date(String(start));\nconst e = new Date(String(end));\nif (isNaN(s.getTime())) throw new Error('invalid start: ' + start);\nif (isNaN(e.getTime())) throw new Error('invalid end: ' + end);\nif (e <= s) throw new Error('end must be after start');\nconst action = { type: 'calendar', title: String(title), start: s.toISOString(), end: e.toISOString() };\nconst loc = location == null ? '' : String(location).trim();\nconst desc = description == null ? '' : String(description).trim();\nif (loc !== '') action.location = loc;\nif (desc !== '') action.description = desc;\nreturn 'Event ready below — review it and click the Add to calendar button to add it to your own calendar.\\n\\n```saip-action-return-direct\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "util"
+    ]
+  },
+  {
+    "toolId": "94c0b813-5650-4285-85d8-999aac5dc727",
+    "name": "showLocation",
+    "description": "Use this when the user asks where a place is or wants to see a location. Calling this renders an interactive map centered on the place directly in the chat - you do NOT need to paste coordinates or a link. Pass a place name, address, or 'lat,lng' as 'query'. After calling, tell the user the location is shown on the map below (e.g. \"아래 지도에 위치를 표시했어요\"). The map is display-only and needs no account or key.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "query",
+        "description": "Place name, address, or 'lat,lng' to show on the map.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "Gyeongbokgung Palace, Seoul"
+      },
+      {
+        "name": "label",
+        "description": "Optional short caption shown above the map.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "if (query == null || String(query).trim() === '') throw new Error('query required');\nconst action = { type: 'map', query: String(query).trim() };\nconst lbl = label == null ? '' : String(label).trim();\nif (lbl !== '') action.label = lbl;\nreturn 'Location shown on the map below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "util"
+    ]
   }
 ]

@@ -79,6 +79,7 @@ The desktop launcher includes a built-in configuration editor. In practical term
 - JVM options and application arguments for launch-time tuning
 - import, export, save-as, delete, factory reset, and save-and-launch workflows
 - automatic [MLX model selection](#apple-silicon-and-mlx-models) on Apple Silicon for faster local inference
+- on-device [speech-to-text model download](#local-speech-to-text-whisper) for local voice input in Agentic Chat
 
 ## How the Desktop Config Works
 
@@ -270,7 +271,7 @@ Each task shows a live progress bar, the downloaded / total size, and a status b
 
 The next card down the screen is **Default MCP Tools**. It chooses which preset of built-in tools the MCP server exposes the moment it boots.
 
-![Default MCP Tools card - collapsed, showing the active preset (Starter 5, 5 of 85 tools) and its tools as chips, with a preset dropdown and a folded Advanced curation section](../assets/images/launcher/launcher-default-tools-card.png)
+![Default MCP Tools card - collapsed, showing the active preset (Starter 5, 5 of 88 tools) and its tools as chips, with a preset dropdown and a folded Advanced curation section](../assets/images/launcher/launcher-default-tools-card.png)
 
 Pick a preset - the default `Starter 5` needs no API keys. The full per-preset tool lists, the include / exclude **Advanced curation** rules, and the CLI / YAML equivalents are all covered in [Default MCP Tools Curation](#default-mcp-tools-curation) above; the tools themselves live in [Tool Studio](../features/tool-studio/index.md).
 
@@ -383,6 +384,33 @@ On Apple Silicon Macs, the launcher automatically prefers Apple's **MLX**-optimi
 Because the launcher owns this decision, it passes `--spring.ai.playground.ollama.mlx-auto-select=false` to the JVM so the backend does not resolve the model a second time. On Intel Macs, Windows, and Linux the configured model name is used as-is.
 
 To install the `-mlx` builds, open [Download and Manage Ollama Models](#7-download-and-manage-ollama-models); the `Recommended` tab lists the `-mlx` models for the active profile.
+
+## Local Speech-to-Text (Whisper)
+
+The desktop app can transcribe voice input for [Agentic Chat](../features/agentic-chat/index.md#voice-input) **on-device** - it runs a local **Whisper** model on your machine, set up here in the config editor, so audio never leaves your machine. This is a desktop-only capability; in a browser the chat mic falls back to the cloud-backed Web Speech API instead.
+
+Speech-to-text is **off by default, and the model is not bundled with the app** - you opt in and download a model once from the config editor's **Local Speech-to-Text** card:
+
+![The Local Speech-to-Text card - a Use voice input checkbox, a model dropdown showing large-v3-turbo-q5 (547 MB, recommended) with a Not downloaded badge, the recommended-model description and native-memory note, and Download model, Refresh, and Open folder buttons](../assets/images/launcher/launcher-stt-card.png)
+
+1. Open the **Local Speech-to-Text** card in the config editor.
+2. Tick **Use voice input** to load Whisper on demand.
+3. Pick a model. Larger models are more accurate but use more disk and memory:
+
+    | Model | Download | Notes |
+    |---|---|---|
+    | `tiny` | ~74 MB | English only in practice, short utterances |
+    | `base` / `small` | ~141 / ~465 MB | multilingual, basic to fair |
+    | `medium-q5` | ~514 MB | multilingual, good |
+    | **`large-v3-turbo-q5`** | **~547 MB** | **recommended** - multilingual, best speed/quality balance |
+    | `large-v3` | ~2.9 GB | most accurate, slowest |
+
+4. Click **Download model**. A progress bar shows the transfer with a **Cancel** option; files are saved under `~/.spring-ai-playground/whisper/`.
+5. **Restart the app** to apply - the card shows a restart hint whenever a change needs one.
+
+The card also offers **Refresh** (re-check installed models), **Set active** (switch to an already-downloaded model), and **Open folder** (reveal the Whisper directory). A model uses extra memory only while it is transcribing, so the runtime memory cost scales with the model you choose.
+
+Voice input is supported on **Apple Silicon Macs**. Intel Macs are not supported yet; there the chat mic shows a short notice, and in a browser it uses Web Speech instead. See [Agentic Chat → Voice input](../features/agentic-chat/index.md#voice-input) for how the mic behaves in a conversation.
 
 ## Further Reading
 

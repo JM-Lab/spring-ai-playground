@@ -43,7 +43,7 @@ class JsToolFsBuiltinsTest {
     private static JsToolExecutor executor;
 
     @TempDir
-    Path tmp;
+    static Path tmp;
 
     @BeforeAll
     static void loadSpecs() throws IOException {
@@ -55,7 +55,7 @@ class JsToolFsBuiltinsTest {
         }
         executor = new JsToolExecutor(30L,
                 new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
-                null);
+                tmp);
     }
 
     private EffectivePolicy fsPolicy() {
@@ -68,17 +68,17 @@ class JsToolFsBuiltinsTest {
                 5_000_000L, 30L, true, null, null, null);
     }
 
+    private static Map<String, Object> specByName(String name) {
+        return specs.stream().filter(s -> name.equals(s.get("name"))).findFirst().orElseThrow();
+    }
+
     private JsExecutionResult run(String name, Map<String, Object> params) {
-        Map<String, Object> spec = specs.stream()
-                .filter(s -> name.equals(s.get("name"))).findFirst().orElseThrow();
-        return executor.execute(new JsExecutionParams(coerce(params), (String) spec.get("code")),
+        return executor.execute(new JsExecutionParams(coerce(params), (String) specByName(name).get("code")),
                 fsPolicy(), tmp);
     }
 
     private JsExecutionResult runWithWrite(String name, Map<String, Object> params) {
-        Map<String, Object> spec = specs.stream()
-                .filter(s -> name.equals(s.get("name"))).findFirst().orElseThrow();
-        return executor.execute(new JsExecutionParams(coerce(params), (String) spec.get("code")),
+        return executor.execute(new JsExecutionParams(coerce(params), (String) specByName(name).get("code")),
                 fsWritePolicy(), tmp);
     }
 
@@ -228,7 +228,7 @@ class JsToolFsBuiltinsTest {
         assertThat(r.isOk()).as(r.error()).isTrue();
         Map<?, ?> m = (Map<?, ?>) r.result();
         assertThat(m.get("ok")).isEqualTo(true);
-        assertThat(m.get("path")).isEqualTo("out.txt");
+        assertThat(m.get("path")).isEqualTo(tmp.toAbsolutePath().normalize().resolve("out.txt").toString());
         assertThat(((Number) m.get("bytes")).intValue()).isEqualTo(11);
         assertThat(Files.readString(tmp.resolve("out.txt"))).isEqualTo("hello world");
     }
@@ -239,6 +239,123 @@ class JsToolFsBuiltinsTest {
                 "path", "../../etc/passwd-hack",
                 "content", "x"));
         assertThat(r.isOk()).as("path escape must be rejected").isFalse();
+    }
+
+    @Test
+    void listAllowedDirectoriesReportsWorkspaceAndReadRoots() {
+        JsExecutionResult r = run("listAllowedDirectories", Map.of());
+        assertThat(r.isOk()).as(r.error()).isTrue();
+        Map<?, ?> m = (Map<?, ?>) r.result();
+        String workspace = tmp.toAbsolutePath().normalize().toString();
+        assertThat(m.get("workingDirectory")).isEqualTo(workspace);
+        @SuppressWarnings("unchecked")
+        List<String> roots = (List<String>) m.get("readRoots");
+        assertThat(roots).contains(workspace);
+    }
+
+    @Test
+    void defaultScopeWidensReadsButConfinesWritesToWorkspace() throws IOException {
+        Path ws = tmp.resolve("workspace");
+        Files.createDirectories(ws);
+        Files.writeString(ws.resolve("in.txt"), "inside");
+        JsToolExecutor scoped = new JsToolExecutor(30L,
+                new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
+                ws);
+
+        JsExecutionResult read = scoped.execute(new JsExecutionParams(Map.of("path", "in.txt"),
+                (String) specByName("readTextFile").get("code")), fsPolicy(), null);
+        assertThat(read.isOk()).as(read.error()).isTrue();
+        assertThat((String) read.result()).isEqualTo("inside");
+
+        JsExecutionResult dirs = scoped.execute(new JsExecutionParams(Map.of(),
+                (String) specByName("listAllowedDirectories").get("code")), fsPolicy(), null);
+        Map<?, ?> m = (Map<?, ?>) dirs.result();
+        assertThat(m.get("workingDirectory")).isEqualTo(ws.toAbsolutePath().normalize().toString());
+        @SuppressWarnings("unchecked")
+        List<String> roots = (List<String>) m.get("readRoots");
+        assertThat(roots)
+                .contains(Path.of(System.getProperty("user.home")).toAbsolutePath().normalize().toString());
+
+        JsExecutionResult write = scoped.execute(new JsExecutionParams(
+                Map.of("path", tmp.resolve("escape.txt").toString(), "content", "x"),
+                (String) specByName("writeTextFile").get("code")), fsWritePolicy(), null);
+        assertThat(write.isOk()).as("write outside the workspace must be rejected").isFalse();
+    }
+
+    @Test
+    void perConversationScopeWritesIntoSubdirectory() throws IOException {
+        Path ws = tmp.resolve("workspace");
+        Files.createDirectories(ws);
+        JsToolExecutor scoped = new JsToolExecutor(30L,
+                new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
+                ws);
+        String conv = "Chat-abc123";
+        Path expectedDir = ws.resolve(conv).toAbsolutePath().normalize();
+
+        JsExecutionResult dirs = scoped.execute(new JsExecutionParams(Map.of(),
+                (String) specByName("listAllowedDirectories").get("code")), fsPolicy(), null, conv);
+        assertThat(((Map<?, ?>) dirs.result()).get("workingDirectory")).isEqualTo(expectedDir.toString());
+
+        JsExecutionResult w = scoped.execute(new JsExecutionParams(
+                Map.of("path", "note.txt", "content", "hello"),
+                (String) specByName("writeTextFile").get("code")), fsWritePolicy(), null, conv);
+        assertThat(w.isOk()).as(w.error()).isTrue();
+        assertThat(((Map<?, ?>) w.result()).get("path")).isEqualTo(expectedDir.resolve("note.txt").toString());
+        assertThat(Files.readString(expectedDir.resolve("note.txt"))).isEqualTo("hello");
+    }
+
+    @Test
+    void perConversationScopesAreIsolated() throws IOException {
+        Path ws = tmp.resolve("workspace");
+        Files.createDirectories(ws);
+        JsToolExecutor scoped = new JsToolExecutor(30L,
+                new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
+                ws);
+
+        scoped.execute(new JsExecutionParams(Map.of("path", "note.txt", "content", "from-A"),
+                (String) specByName("writeTextFile").get("code")), fsWritePolicy(), null, "Chat-A");
+        scoped.execute(new JsExecutionParams(Map.of("path", "note.txt", "content", "from-B"),
+                (String) specByName("writeTextFile").get("code")), fsWritePolicy(), null, "Chat-B");
+
+        assertThat(Files.readString(ws.resolve("Chat-A").resolve("note.txt"))).isEqualTo("from-A");
+        assertThat(Files.readString(ws.resolve("Chat-B").resolve("note.txt"))).isEqualTo("from-B");
+
+        JsExecutionResult readB = scoped.execute(new JsExecutionParams(Map.of("path", "note.txt"),
+                (String) specByName("readTextFile").get("code")), fsPolicy(), null, "Chat-B");
+        assertThat(readB.result()).isEqualTo("from-B");
+    }
+
+    @Test
+    void blankOrUnsafeConversationIdWritesToWorkspaceRoot() throws IOException {
+        Path ws = tmp.resolve("workspace");
+        Files.createDirectories(ws);
+        JsToolExecutor scoped = new JsToolExecutor(30L,
+                new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
+                ws);
+        String expected = ws.resolve("root.txt").toAbsolutePath().normalize().toString();
+        for (String conv : new String[] {null, "", ".."}) {
+            JsExecutionResult w = scoped.execute(new JsExecutionParams(
+                    Map.of("path", "root.txt", "content", "x"),
+                    (String) specByName("writeTextFile").get("code")), fsWritePolicy(), null, conv);
+            assertThat(w.isOk()).as("conv=%s -> %s", conv, w.error()).isTrue();
+            assertThat(((Map<?, ?>) w.result()).get("path")).isEqualTo(expected);
+        }
+    }
+
+    @Test
+    void overrideFsBaseIgnoresConversationId() throws IOException {
+        Path ws = tmp.resolve("workspace");
+        Path override = tmp.resolve("override");
+        Files.createDirectories(override);
+        JsToolExecutor scoped = new JsToolExecutor(30L,
+                new JsSandbox(false, true, false, false, 5_000_000L, Set.of(), Set.of(), Map.of()),
+                ws);
+        JsExecutionResult w = scoped.execute(new JsExecutionParams(
+                Map.of("path", "note.txt", "content", "x"),
+                (String) specByName("writeTextFile").get("code")), fsWritePolicy(), override, "Chat-A");
+        assertThat(w.isOk()).as(w.error()).isTrue();
+        assertThat(((Map<?, ?>) w.result()).get("path"))
+                .isEqualTo(override.resolve("note.txt").toAbsolutePath().normalize().toString());
     }
 
     @Test

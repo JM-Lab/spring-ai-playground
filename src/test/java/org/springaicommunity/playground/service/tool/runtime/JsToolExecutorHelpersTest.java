@@ -54,7 +54,7 @@ class JsToolExecutorHelpersTest {
     void setUp() {
         executor = new JsToolExecutor(10L,
                 new JsSandbox(true, false, false, false, 500_000L, STANDARD_DENY, STANDARD_ALLOW, Map.of()),
-                null);
+                Path.of(System.getProperty("java.io.tmpdir")));
     }
 
 

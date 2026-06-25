@@ -19,6 +19,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.details.DetailsVariant;
@@ -67,7 +68,6 @@ public class PromptLibraryDialog extends Dialog {
 
     public enum ToolReadiness { READY, NOT_EXPOSED, NEEDS_SETUP, NOT_ENABLED }
 
-    // Display-only token matcher for highlighting; parsing semantics live in ChatSystemPromptTemplateRenderer.
     private static final Pattern TOKEN = Pattern.compile("\\{\\{[^}]*\\}\\}");
 
     private static final Set<String> FS_TOOLS = Set.of("readTextFile", "listDir", "statFile", "lineCount",
@@ -77,7 +77,6 @@ public class PromptLibraryDialog extends Dialog {
     private final ChatSystemPromptTemplateRenderer templateRenderer;
     private final Consumer<Preset> onApply;
     private final Function<String, ToolReadiness> toolReadiness;
-    // Sorted by category then name so the categorized picker keeps each category's tools adjacent.
     private final List<ToolSpec> builtinTools;
     private final Function<ToolSpec, String> riskLevelFn;
     private final Function<ToolSpec, String> categoryFn;
@@ -143,8 +142,6 @@ public class PromptLibraryDialog extends Dialog {
         buildList();
         showPlaceholder();
     }
-
-    // --- left rail: collapsible categories instead of one long scroll ---
 
     private void buildList() {
         this.listPanel.removeAll();
@@ -226,8 +223,6 @@ public class PromptLibraryDialog extends Dialog {
         else showPresetDetail(preset);
     }
 
-    // --- template detail: typed variable form + live preview ---
-
     private void showTemplateDetail(Preset preset) {
         HorizontalLayout title = titleRow(preset, badge("TEMPLATE"));
         if (isUserOwned(preset)) {
@@ -259,7 +254,6 @@ public class PromptLibraryDialog extends Dialog {
                     || spec.type() == ChatSystemPromptTemplateRenderer.VariableType.LIST)
                 form.setColspan(field, 2);
         }
-        // The picker is what actually activates tools on apply; a {{tools}} variable is plain prompt text.
         MultiSelectComboBox<ToolSpec> toolsPicker = newToolsPicker(preset.tools());
         this.detailPanel.add(form, preview, toolsPicker);
         updatePreview.run();
@@ -272,7 +266,6 @@ public class PromptLibraryDialog extends Dialog {
         this.detailPanel.add(buttonRow(save, saveApply));
     }
 
-    // Variables rendered as primary-tinted chips inside the otherwise plain template text.
     private Component highlightedTemplateText(String prompt) {
         Div box = new Div();
         box.getStyle().set("background", "var(--lumo-contrast-5pct)")
@@ -394,7 +387,6 @@ public class PromptLibraryDialog extends Dialog {
             }
             onChange.run();
         });
-        // Join in declared option order so the rendered value is stable regardless of click order.
         values.put(spec.name(), () -> spec.options().stream()
                 .filter(box.getSelectedItems()::contains).collect(Collectors.joining(", ")));
         return box;
@@ -416,7 +408,6 @@ public class PromptLibraryDialog extends Dialog {
         }
     }
 
-    // Single-line values only: multiline/list answers would make an unwieldy preset name.
     private String presetName(Preset template, Map<String, String> resolved) {
         String summary = resolved.values().stream()
                 .filter(StringUtils::hasText).filter(value -> !value.contains("\n"))
@@ -424,8 +415,6 @@ public class PromptLibraryDialog extends Dialog {
         if (summary.length() > 50) summary = summary.substring(0, 50) + "...";
         return summary.isBlank() ? template.displayName() : template.displayName() + " (" + summary + ")";
     }
-
-    // --- preset detail: editable prompt, save copy, apply ---
 
     private void showPresetDetail(Preset preset) {
         HorizontalLayout title = titleRow(preset, null);
@@ -445,7 +434,7 @@ public class PromptLibraryDialog extends Dialog {
                 event -> openSaveAsPresetDialog(preset.displayName(), prompt.getValue(), preset.tools()));
         Button apply = new Button("Apply to chat", event -> applyAndClose(
                 new Preset(preset.id(), preset.displayName(), preset.description(), prompt.getValue(),
-                        PresetKind.EXAMPLE, preset.tools())));
+                        PresetKind.EXAMPLE, preset.tools(), preset.dynamicTools())));
         apply.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         this.detailPanel.add(buttonRow(save, apply));
     }
@@ -460,14 +449,15 @@ public class PromptLibraryDialog extends Dialog {
         nameField.setWidthFull();
         nameField.setValue(suggestedName == null ? "" : suggestedName);
         MultiSelectComboBox<ToolSpec> toolsPicker = newToolsPicker(initialTools);
+        Checkbox dynamicTools = newDynamicToolsCheckbox(toolsPicker);
         Button save = new Button("Save", event -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
             }
-            Preset saved = this.presetService.save(nameField.getValue(), prompt,
-                    PresetKind.EXAMPLE, orderedSelection(toolsPicker));
+            Preset saved = this.presetService.save(nameField.getValue(), prompt, PresetKind.EXAMPLE,
+                    dynamicTools.getValue() ? List.of() : orderedSelection(toolsPicker), dynamicTools.getValue());
             dialog.close();
             this.selectedId = saved.id();
             buildList();
@@ -476,7 +466,7 @@ public class PromptLibraryDialog extends Dialog {
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button cancel = new Button("Cancel", event -> dialog.close());
-        dialog.add(nameField, toolsPicker);
+        dialog.add(nameField, dynamicTools, toolsPicker);
         dialog.getFooter().add(cancel, save);
         dialog.open();
     }
@@ -500,7 +490,13 @@ public class PromptLibraryDialog extends Dialog {
         return this.builtinTools.stream().filter(selected::contains).map(ToolSpec::name).toList();
     }
 
-    // --- template editor: create or edit a user template ---
+    private Checkbox newDynamicToolsCheckbox(MultiSelectComboBox<ToolSpec> toolsPicker) {
+        Checkbox dynamicTools = new Checkbox("Use dynamic tool discovery");
+        dynamicTools.setTooltipText(
+                "The model searches all Local-Passed tools on demand instead of activating the ones picked below.");
+        dynamicTools.addValueChangeListener(event -> toolsPicker.setEnabled(!dynamicTools.getValue()));
+        return dynamicTools;
+    }
 
     private void showTemplateEditor(Preset existing) {
         this.detailPanel.removeAll();
@@ -537,6 +533,8 @@ public class PromptLibraryDialog extends Dialog {
 
         MultiSelectComboBox<ToolSpec> toolsPicker =
                 newToolsPicker(existing == null ? List.of() : existing.tools());
+        Checkbox dynamicTools = newDynamicToolsCheckbox(toolsPicker);
+        if (existing != null) dynamicTools.setValue(existing.dynamicTools());
 
         Button cancel = new Button("Cancel", event -> {
             if (existing == null) showPlaceholder();
@@ -553,8 +551,8 @@ public class PromptLibraryDialog extends Dialog {
                 promptArea.setErrorMessage("Prompt is required");
                 return;
             }
-            Preset saved = this.presetService.save(nameField.getValue(), promptArea.getValue(),
-                    PresetKind.TEMPLATE, orderedSelection(toolsPicker));
+            Preset saved = this.presetService.save(nameField.getValue(), promptArea.getValue(), PresetKind.TEMPLATE,
+                    dynamicTools.getValue() ? List.of() : orderedSelection(toolsPicker), dynamicTools.getValue());
             if (existing != null && isUserOwned(existing) && !existing.id().equals(saved.id()))
                 this.presetService.delete(existing.id());
             this.selectedId = saved.id();
@@ -566,7 +564,7 @@ public class PromptLibraryDialog extends Dialog {
 
         this.detailPanel.add(title, nameField, promptArea,
                 new HorizontalLayout(sectionLabel("Detected variables"), addVariable), tags,
-                toolsPicker, buttonRow(cancel, save));
+                dynamicTools, toolsPicker, buttonRow(cancel, save));
     }
 
     private void openAddVariableDialog(TextArea promptArea) {
@@ -644,8 +642,6 @@ public class PromptLibraryDialog extends Dialog {
         return token.append("}}").toString();
     }
 
-    // --- shared pieces ---
-
     private HorizontalLayout titleRow(Preset preset, Span kindBadge) {
         Span name = new Span(preset.displayName());
         name.getStyle().set("font-size", "var(--lumo-font-size-l)").set("font-weight", "600");
@@ -691,8 +687,9 @@ public class PromptLibraryDialog extends Dialog {
             this.detailPanel.add(row);
         }
         if (preset.tools().stream().anyMatch(FS_TOOLS::contains)) {
-            Span fsNote = new Span("Filesystem tools only see the sandbox base path (default"
-                    + " ~/spring-ai-playground/fs-tool-workspace). Change it per tool in Tool Studio or via"
+            Span fsNote = new Span("Filesystem tools read anywhere under your home directory and write only"
+                    + " inside the working directory (default ~/spring-ai-playground/workspace). Call"
+                    + " listAllowedDirectories to see the exact roots, or change the working directory via"
                     + " spring.ai.playground.tool-studio.fs.base-path.");
             fsNote.getStyle().set("color", "var(--lumo-secondary-text-color)")
                     .set("font-size", "var(--lumo-font-size-xs)");

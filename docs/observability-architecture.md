@@ -19,13 +19,13 @@ This is one of six architecture documents that complement each other:
 
 ## Overview { #overview }
 
-Every action the agent takes - a chat turn, a tool call, a vector query, an MCP invocation - emits OpenTelemetry-style spans. A **passive** collector assembles them into per-turn traces and serves twelve in-app dashboards plus a live trace tail. The sandbox prevents unsafe execution; this layer makes everything that *did* happen auditable.
+Every action the agent takes - a chat turn, a tool call, a vector query, an MCP invocation - emits OpenTelemetry-style spans. A **passive** collector assembles them into per-turn traces and serves fourteen in-app dashboards plus a live trace tail. The sandbox prevents unsafe execution; this layer makes everything that *did* happen auditable.
 
 ```mermaid
 flowchart LR
     ACT["Chat · Tools<br/>RAG · MCP calls"] --> SP["emit spans<br/>gen_ai.* · spring.ai.tool"]
     SP --> COL["ObservabilityCollector<br/>(passive · non-blocking)"]
-    COL --> DASH["12 dashboards"]
+    COL --> DASH["14 dashboards"]
     COL --> TR["live trace tail<br/>+ log viewer"]
 ```
 
@@ -37,7 +37,7 @@ The Playground codebase reserves three closely related words for distinct purpos
 
 - **Observability** - the union of traces, metrics, and logs the collector records and exposes through the in-app dashboards. Everything in this document.
 - **Telemetry** - the Spring AI / Micrometer event vocabulary on the wire (`spring.ai.chat.client`, `gen_ai.client.operation`, `db.vector.client.operation`, `spring.ai.tool`). These are the *inputs* to the observability layer; the names come from upstream Spring AI and OpenTelemetry conventions and are not invented here.
-- **Monitoring** - the user-facing surface that reads from the observability store: the twelve dashboard tabs, the live trace tail, the log viewer. Documented as a feature under [Features → Observability](features/observability/index.md).
+- **Monitoring** - the user-facing surface that reads from the observability store: the fourteen dashboard tabs, the live trace tail, the log viewer. Documented as a feature under [Features → Observability](features/observability/index.md).
 
 This document covers the pipeline between telemetry-on-the-wire and the monitoring surface - what flows in, where it sits, how it gets read.
 
@@ -53,8 +53,8 @@ The observability layer makes a clean separation between what comes from upstrea
 | OpenTelemetry GenAI semantic conventions - `gen_ai.system`, `gen_ai.response.model`, `gen_ai.usage.*`, `gen_ai.response.finish_reasons`, `db.vector.query.*` | Storage tiers - ring buffer, on-demand time series, JSON persistence with daily partitioning and retention cron |
 | Micrometer `Tracer` - trace / span ID propagation (Brave or OpenTelemetry implementation) | MDC bridge in `ChatService` - `conversationId` / `userMessageId` correlation across reactive and sync paths |
 | Spring Boot Actuator `MeterRegistry` - JVM, OS, HTTP, Tomcat, Logback gauges | `SystemMetricsCollector` + `SystemMetricsRingBuffer` + `SystemMetricsTimeSeries` - periodic capture of the curated MeterRegistry subset into a parallel time-series pipeline, surfaced on the Host and Web Application tabs |
-| Apache ECharts 5.6 - chart rendering | All twelve dashboard tabs and two modal dialogs - KPI cards, chart compositions, live trace stream, log tail, Trace Detail dialog, Conversation Thread dialog |
-| - | `McpToolObservationFilter` - `ObservationFilter` that injects `mcp.transport`, `mcp.server`, and `mcp.kind` attributes onto `spring.ai.tool` spans by looking up tool names in `McpClientService`. Drives the Tool Studio / MCP Servers tab split (see next section). |
+| Apache ECharts 5.6 - chart rendering | All fourteen dashboard tabs and two modal dialogs - KPI cards, chart compositions, live trace stream, log tail, Trace Detail dialog, Conversation Thread dialog |
+| - | `McpToolObservationFilter` - `ObservationFilter` that injects `network.transport`, `saip.mcp.server`, and `mcp.method.name` attributes onto `spring.ai.tool` spans by looking up tool names in `McpClientService`. Drives the Tool Studio / MCP Servers tab split (see next section). |
 | - | Pricing layer - `ModelPricingService` holds an in-memory table (edited only through the Model Pricing Manager dialog), computes cost at read time from `TraceRecord` token counts |
 
 This document covers the **right column**. For the upstream vocabulary and attribute keys, defer to Spring AI's own observability documentation and the OpenTelemetry GenAI semantic conventions. A second consequence of building on standard interfaces: external export (OTLP traces, Prometheus metrics, structured logs) ships without custom adapters - see [External export](#external-export).
@@ -67,7 +67,7 @@ The collector subscribes to the `ObservationRegistry` and accepts any context wh
 |---|---|---|
 | `spring.ai.chat.client` | **Root** - one user turn through the `ChatClient` pipeline | `conversation.id`, `spring.ai.chat.client.conversation.id` |
 | `gen_ai.client.operation` | Model call - chat, embedding, image gen | `gen_ai.system` (provider), `gen_ai.response.model`, `gen_ai.request.model`, `gen_ai.usage.{input,output,total}_tokens`, `gen_ai.response.finish_reasons` |
-| `spring.ai.tool` | Tool invocation (in-process or MCP) | `mcp.transport` distinguishes in-process from STDIO / HTTP / SSE |
+| `spring.ai.tool` | Tool invocation (in-process or MCP) | `mcp.method.name` distinguishes external MCP (STDIO / HTTP / SSE) from in-process |
 | `spring.ai.advisor` | Advisor pipeline step (RAG retrieval, memory, etc.) | Advisor-specific tags |
 | `db.vector.client.operation` | Vector store query, add, or delete | `db.system` (Chroma / Pinecone / ...), `db.vector.query.top_k`, `db.vector.query.similarity_threshold`, `db.vector.query.response.documents.count` |
 
@@ -101,14 +101,14 @@ These toggles can be flipped per-environment if a deployment explicitly opts int
 
 Model calls are visible on the wire because Spring AI emits them with stable OpenTelemetry semantic conventions - that part is free. The contribution this layer makes lives one level up: telling an operator *what the agent decided to do*, against which integration, with which outcome. The dashboards split tool execution into **two** tabs - **Tool Studio** (in-process Spring AI tool callbacks, including everything the JS sandbox publishes) and **MCP Servers** (external MCP servers reached over stdio, Streamable HTTP, or the legacy SSE transport) - because debugging "did my sandbox tool return the right value" and "is my external MCP server actually online" are different operational questions, and lumping them into a generic "tool call" view forces operators to filter every panel themselves.
 
-The discriminator is the `mcp.transport` attribute on the `spring.ai.tool` span. This attribute, together with `mcp.server` and `mcp.kind`, is injected by `McpToolObservationFilter` - an `ObservationFilter` that the project registers. At span start the filter looks up the tool's name in `McpClientService`: if the tool routes through an MCP transport, the matching transport label is attached; otherwise `mcp.kind=in-process` marks the span as an in-process callback. Spring AI's own MCP integration does not emit these attributes - they are this layer's contribution to the trace stream.
+The discriminator is the `mcp.method.name` attribute on the `spring.ai.tool` span. This attribute, together with `network.transport` and `saip.mcp.server`, is injected by `McpToolObservationFilter` - an `ObservationFilter` that the project registers. At span start the filter looks up the tool's name in `McpClientService`: if the tool routes through an MCP transport, `mcp.method.name=tools/call` and the matching `network.transport` label are attached; an in-process callback gets neither. Spring AI's own MCP integration does not emit these attributes - they are this layer's contribution to the trace stream.
 
 | Span shape | Where it surfaces | What it tells you |
 |---|---|---|
-| `spring.ai.tool` with `mcp.transport` absent or `=in-process` | Tool Studio tab | In-process call - a JS-sandbox tool from Tool Studio or a Spring AI `@Tool` method. Risk Level (sandbox layer) applies; latency is purely JVM-internal. |
-| `spring.ai.tool` with `mcp.transport=stdio` | MCP Servers tab | External MCP server launched as a local subprocess. Latency includes JSON-RPC over stdio framing; cold-start spawn cost is invisible (one-time at connection). |
-| `spring.ai.tool` with `mcp.transport=streamable-http` | MCP Servers tab | External MCP server reachable over Streamable HTTP - the MCP spec's modern HTTP transport. Latency is HTTP round-trip plus server processing; subject to retries and timeouts. |
-| `spring.ai.tool` with `mcp.transport=sse` | MCP Servers tab | External MCP server using the legacy Server-Sent Events transport (superseded by Streamable HTTP in the current MCP spec). Similar latency profile to Streamable HTTP but with long-lived connection state. |
+| `spring.ai.tool` with no `mcp.method.name` (no `network.transport`) | Tool Studio tab | In-process call - a JS-sandbox tool from Tool Studio or a Spring AI `@Tool` method. Risk Level (sandbox layer) applies; latency is purely JVM-internal. |
+| `spring.ai.tool` with `network.transport=pipe` | MCP Servers tab | External MCP server launched as a local subprocess. Latency includes JSON-RPC over stdio framing; cold-start spawn cost is invisible (one-time at connection). |
+| `spring.ai.tool` with `network.transport=tcp` + `network.protocol.name=http` | MCP Servers tab | External MCP server reachable over Streamable HTTP - the MCP spec's modern HTTP transport. Latency is HTTP round-trip plus server processing; subject to retries and timeouts. |
+| `spring.ai.tool` with `network.transport=tcp` + `network.protocol.name=http` | MCP Servers tab | External MCP server using the legacy Server-Sent Events transport (superseded by Streamable HTTP in the current MCP spec). Similar latency profile to Streamable HTTP but with long-lived connection state. |
 
 The MCP Servers tab additionally surfaces a **transport mix** donut and per-transport latency percentiles, so a degraded Streamable HTTP server is visible next to a healthy stdio server without one drowning the other.
 
@@ -190,7 +190,7 @@ flowchart TD
     MSG["userMessageId<br/><i>one per user turn</i>"]
     TRACE["traceId<br/><i>Micrometer Tracer, or local-N fallback</i>"]
     SPAN["spanId<br/><i>per Observation.Context</i>"]
-    TOOL["spring.ai.tool span<br/>mcp.transport / mcp.server / mcp.kind"]
+    TOOL["spring.ai.tool span<br/>network.transport / saip.mcp.server / mcp.method.name"]
     RAG["db.vector.client.operation span"]
     MODEL["gen_ai.client.operation span<br/>gen_ai.usage.* / response.model"]
     HITL["hitl.* log + mcp.hitl.decision<br/><i>approve / decline outcome</i>"]
@@ -371,11 +371,11 @@ Observability here is the visibility arm of the project's safety model - the com
 
 Examples of the kind of policy layer the trace stream documented above could support: rate limits per tool, operator-initiated kill switches on a misbehaving MCP server, anomaly checks against rolling baselines, replays of historical traces against a candidate rule. There is a loose analogy with the Web Application Firewall - a layer that reads observed traffic and applies operator policy. An equivalent for agent tool and MCP traffic would read from this layer's traces, not from anything new. These are illustrations of *what the data could support*, not commitments. This document does not design any of them; the milestone shipping this layer does not ship any of them.
 
-Three bridges connect the safety layers to this observability layer - two shipped, the third a wired-but-NOOP seam:
+Three bridges connect the safety layers to this observability layer, all shipped and surfaced on the [Safety](features/observability/ai-stack/safety.md) dashboard:
 
 - **`SandboxGuardMetrics`** - a Micrometer counter (`sandbox.guard.blocked`) tagged by `category` and `reason`. The sandbox increments it every time it blocks an unsafe action; operators see policy enforcement as a time series in the in-app dashboard, and external observability stacks scrape the same counter via `/actuator/prometheus`. Every prevention decision is observable - this is the *visibility* side of the Sandbox-Observability pairing, already shipped.
-- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate records the **same** `mcp.hitl.decision` counter, tagged `side` = chat. The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus`; it is not yet surfaced on an in-app dashboard tab.
-- **`McpRiskSignalSink`** - the seam for risk-signal events (external-server / re-exposed-tool risk computation, floor override, fingerprint mismatch, composition-lifecycle change). It is currently wired to a NO-OP default (`McpRiskSignalSink.NOOP`), so these events are not yet emitted as scrapable metrics - wiring a metric-publishing sink is the planned visibility side of the [MCP Server Safety](mcp-server-safety.md) risk engine.
+- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate records the **same** `mcp.hitl.decision` counter, tagged `side` = chat. The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus` and surfaced on the Safety dashboard as the *HITL decisions* chart and *HITL approval rate* KPI.
+- **`McpRiskSignalSink`** - the sink for risk-signal events (external-server / re-exposed-tool risk computation, floor override, fingerprint mismatch, composition-lifecycle change, poisoning hit). It is implemented by `McpRiskSignalLogger`, a `@Component` that replaces the `@ConditionalOnMissingBean` NO-OP default, emits the `saip.risk.signal` counter (tagged by signal `type`), and buffers recent events. Both feed the Safety dashboard's *Risk signals by type* chart and its *Risk signals* / *Tamper rejects* / *Poisoning hits* / *Floor overrides* KPIs, and the counter is scrapable via `/actuator/prometheus` - the visibility side of the [MCP Server Safety](mcp-server-safety.md) risk engine.
 
 Anything else, if it ships, will be documented under [Features → Observability](features/observability/index.md) by the milestone that ships it. Sandbox layers ([Safety Architecture](safety-architecture.md)) prevent unsafe *actions* at the boundary of a single call. The observability layer documented here records what those calls were. Whether the two are ever combined into a behavioural layer that catches unsafe *patterns* across calls is a question for later milestones, not for this document.
 
@@ -389,7 +389,9 @@ Backend pipeline (all under `org.springaicommunity.playground.observability`):
 - [`ObservabilityPersistenceService`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/ObservabilityPersistenceService.java) - trace persistence + retention cron
 - [`ObservabilityAutoRegistration`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/ObservabilityAutoRegistration.java) - `@PostConstruct` registration into every `ObservationRegistry` bean
 - [`ObservabilityProperties`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/ObservabilityProperties.java) - `@ConfigurationProperties` for its eight knobs (ring buffer size, retention days, persistence toggle, max spans per trace, prompt-content capture + byte cap, max captured messages per span, active-trace TTL)
-- [`SystemMetricsSnapshot`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/system/SystemMetricsSnapshot.java) - direct `MeterRegistry` read for the Host, Web Application, Tool Studio, MCP Servers, and MCP Inspector tabs; does not flow through the trace ring buffer
+- [`SystemMetricsSnapshot`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/system/SystemMetricsSnapshot.java) - direct `MeterRegistry` read for the Host, Ollama, Web Application, Tool Studio, MCP Servers, MCP Inspector, and Safety tabs; does not flow through the trace ring buffer
+- [`OllamaMetricsCollector`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/ollama/OllamaMetricsCollector.java) / [`OllamaMetricsTimeSeries`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/ollama/OllamaMetricsTimeSeries.java) - scheduled sampler of the local Ollama `/api/ps` + `/api/tags` runtime (via [`OllamaMonitorService`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/chat/OllamaMonitorService.java)) for the Ollama tab; an independent poll loop, not the trace ring buffer
+- [`McpRiskEventRingBuffer`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/McpRiskEventRingBuffer.java) - recent risk-signal events emitted by `McpRiskSignalLogger`, backing the Safety dashboard's *Recent risk events* timeline
 - [`TraceRecord`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/TraceRecord.java) / [`SpanRecord`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/SpanRecord.java) - serialised data models
 - [`ModelPricingService`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/pricing/ModelPricingService.java) / [`ModelPricing`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/observability/pricing/ModelPricing.java) - per-model rate lookup + cost computation
 
@@ -399,11 +401,11 @@ Instrumentation hand-off:
 - `src/main/resources/application.yaml` - observability properties + Spring AI observation toggles
 - `src/main/resources/logback-spring.xml` - MDC pattern shared by console and rolling-file appenders
 
-UI surface - see [Features → Observability](features/observability/index.md) for the twelve dashboards (and the Conversation Thread / Trace Detail dialogs) built on top of this pipeline.
+UI surface - see [Features → Observability](features/observability/index.md) for the fourteen dashboards (and the Conversation Thread / Trace Detail dialogs) built on top of this pipeline.
 
 ## Further reading
 
-- [Features → Observability](features/observability/index.md) - twelve per-tab field references (Overview, AI Usage, AI Stack, Runtime)
+- [Features → Observability](features/observability/index.md) - fourteen per-tab field references (Overview, AI Usage, AI Stack, Runtime)
 - [Features → Observability → Tokens & Cost](features/observability/ai-usage/tokens-cost.md) - Model Pricing Manager dialog, multi-currency, cost computation
 - [AI Agent Tool Safety](safety-architecture.md) - the sandbox the collector observes
 - [Application](architecture.md) - where the observability layer fits in the runtime stack

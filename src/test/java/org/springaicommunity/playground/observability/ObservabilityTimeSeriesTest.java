@@ -46,10 +46,8 @@ class ObservabilityTimeSeriesTest {
     void tracesOutsideWindowAreExcluded() {
         ObservabilityRingBuffer buffer = makeBuffer();
         long now = System.currentTimeMillis();
-        // Trace 5 hours ago — way past the 3h max window
         buffer.add(trace(now - 5L * 60 * 60 * 1000, 1_000, "ollama", "qwen3.5:9b",
                 10, 20, "OK", "stop", false, false));
-        // Trace inside the 30m window
         buffer.add(trace(now - 5 * 60 * 1000, 200, "ollama", "qwen3.5:9b",
                 5, 15, "OK", "stop", false, false));
 
@@ -65,16 +63,14 @@ class ObservabilityTimeSeriesTest {
         long now = System.currentTimeMillis();
         long bucketSize = 60_000L;
 
-        // 5 traces evenly spaced across last 5 minutes
         for (int i = 0; i < 5; i++) {
-            long ts = now - (i * bucketSize) - 30_000;   // 30s into each minute back
+            long ts = now - (i * bucketSize) - 30_000;
             buffer.add(trace(ts, 100 + i * 10, "ollama", "qwen3.5:9b",
                     1, 1, "OK", "stop", false, false));
         }
 
         Series s = new ObservabilityTimeSeries(buffer).compute(Window.LAST_5M);
 
-        // 5 buckets, 1 call each (oldest → newest)
         assertThat(s.calls()).hasSize(5);
         long sum = 0;
         for (long v : s.calls()) sum += v;
@@ -154,10 +150,10 @@ class ObservabilityTimeSeriesTest {
         ObservabilityRingBuffer buffer = makeBuffer();
         long now = System.currentTimeMillis();
 
-        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", true, false));   // tools
-        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", false, true));   // rag
-        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", true, true));    // both
-        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", false, false));  // plain
+        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", true, false));
+        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", false, true));
+        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", true, true));
+        buffer.add(trace(now - 60_000, 100, "ollama", "m", 1, 1, "OK", "stop", false, false));
 
         Series s = new ObservabilityTimeSeries(buffer).compute(Window.LAST_30M);
 
@@ -171,7 +167,6 @@ class ObservabilityTimeSeriesTest {
         long now = System.currentTimeMillis();
         long bucketStart = now - 60_000;
 
-        // Latencies: 10, 20, 30, ..., 100 ms (10 samples) — within the same bucket
         for (int i = 1; i <= 10; i++) {
             buffer.add(trace(bucketStart + i, i * 10, "ollama", "m",
                     1, 1, "OK", "stop", false, false));
@@ -179,10 +174,6 @@ class ObservabilityTimeSeriesTest {
 
         Series s = new ObservabilityTimeSeries(buffer).compute(Window.LAST_30M);
 
-        // For sorted [10..100], rank-based percentiles with linear interpolation:
-        //   p50 = 0.50 * 9  = 4.5 → between sorted[4]=50 and sorted[5]=60 → 55
-        //   p95 = 0.95 * 9  = 8.55 → between sorted[8]=90 and sorted[9]=100 → 95.5
-        //   p99 = 0.99 * 9  = 8.91 → between sorted[8]=90 and sorted[9]=100 → 99.1
         assertThat(s.overallP50LatencyMs()).isCloseTo(55.0, within(0.01));
         assertThat(s.overallP95LatencyMs()).isCloseTo(95.5, within(0.01));
         assertThat(s.overallP99LatencyMs()).isCloseTo(99.1, within(0.01));
@@ -195,7 +186,6 @@ class ObservabilityTimeSeriesTest {
         long now = System.currentTimeMillis();
         long bucketStart = now - 60_000;
 
-        // 4 traces in the same bucket, 1 error → 25%
         buffer.add(trace(bucketStart + 1, 100, "ollama", "m", 1, 1, "OK", "stop", false, false));
         buffer.add(trace(bucketStart + 2, 100, "ollama", "m", 1, 1, "OK", "stop", false, false));
         buffer.add(trace(bucketStart + 3, 100, "ollama", "m", 1, 1, "OK", "stop", false, false));
@@ -203,7 +193,6 @@ class ObservabilityTimeSeriesTest {
 
         Series s = new ObservabilityTimeSeries(buffer).compute(Window.LAST_5M);
 
-        // The bucket containing the 4 traces should report 25.0%
         boolean foundBucket = false;
         for (double rate : s.errorRatePct()) {
             if (rate > 0) {
@@ -242,7 +231,7 @@ class ObservabilityTimeSeriesTest {
         for (long v : s.outTokens()) outSum += v;
         assertThat(inSum).isEqualTo(150L);
         assertThat(outSum).isEqualTo(350L);
-        assertThat(s.totalTokens()).isEqualTo(500L);   // 100+200+50+150 totalTokens = 500
+        assertThat(s.totalTokens()).isEqualTo(500L);
     }
 
     private static ObservabilityRingBuffer makeBuffer() {
@@ -262,6 +251,7 @@ class ObservabilityTimeSeriesTest {
                 startMs, durationMs, status,
                 (long) inTokens, (long) outTokens, (long) (inTokens + outTokens),
                 finishReason, hasTools, hasTools ? 1 : 0, hasRag,
+                null, null, null, null,
                 List.of(), Map.of());
     }
 }

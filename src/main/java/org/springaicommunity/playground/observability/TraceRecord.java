@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record TraceRecord(
@@ -37,6 +38,10 @@ public record TraceRecord(
         boolean hasTools,
         int toolCallCount,
         boolean hasRag,
+        String userId,
+        String sessionId,
+        Set<String> toolNames,
+        Set<String> serverNames,
         List<SpanRecord> spans,
         Map<String, String> attributes
 ) {
@@ -44,4 +49,8 @@ public record TraceRecord(
     public static final String STATUS_OK = "OK";
     public static final String STATUS_ERROR = "ERROR";
     public static final String STATUS_CANCELLED = "CANCELLED";
+
+    static String firstNonBlank(String a, String b) {
+        return a != null && !a.isBlank() ? a : b;
+    }
 }

@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.observability.system;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -55,6 +56,27 @@ class SystemMetricsSnapshotTest {
     }
 
     @Test
+    void logbackEventsAreReadEvenWhenRegisteredAsFunctionCounter() {
+        MeterRegistry registry = new SimpleMeterRegistry();
+        FunctionCounter.builder("logback.events", 119.0, Number::doubleValue)
+                .tag("level", "info").register(registry);
+        FunctionCounter.builder("logback.events", 2.0, Number::doubleValue)
+                .tag("level", "error").register(registry);
+
+        Snapshot s = new SystemMetricsSnapshot(registry).capture();
+
+        assertThat(s.logbackEventsByLevel).containsEntry("info", 119L).containsEntry("error", 2L);
+    }
+
+    @Test
+    void capturesHostPhysicalMemoryFromOsBean() {
+        Snapshot s = new SystemMetricsSnapshot(new SimpleMeterRegistry()).capture();
+
+        assertThat(s.systemPhysicalMemoryTotalBytes).isPositive();
+        assertThat(s.systemPhysicalMemoryFreeBytes).isBetween(0L, s.systemPhysicalMemoryTotalBytes);
+    }
+
+    @Test
     void threadStatesAreCapturedPerStateTag() {
         MeterRegistry registry = new SimpleMeterRegistry();
         gauge(registry, "jvm.threads.live", Tags.empty(), 73);
@@ -72,6 +94,45 @@ class SystemMetricsSnapshotTest {
         assertThat(s.jvmThreadsByState).containsEntry("runnable", 5L);
         assertThat(s.jvmThreadsByState).containsEntry("waiting", 50L);
         assertThat(s.jvmThreadsByState).containsEntry("timed-waiting", 18L);
+    }
+
+    @Test
+    void mcpRiskSignalsAreGroupedByType() {
+        MeterRegistry registry = new SimpleMeterRegistry();
+        registry.counter("saip.risk.signal", "type", "hash-ledger-mismatch").increment();
+        registry.counter("saip.risk.signal", "type", "hash-ledger-mismatch").increment();
+        registry.counter("saip.risk.signal", "type", "poisoning-hit").increment();
+
+        Snapshot s = new SystemMetricsSnapshot(registry).capture();
+
+        assertThat(s.mcpRiskSignalByType).containsEntry("hash-ledger-mismatch", 2L);
+        assertThat(s.mcpRiskSignalByType).containsEntry("poisoning-hit", 1L);
+    }
+
+    @Test
+    void mcpHitlDecisionsAreGroupedByOutcomeAcrossSides() {
+        MeterRegistry registry = new SimpleMeterRegistry();
+        registry.counter("mcp.hitl.decision", "outcome", "approved", "side", "chat").increment();
+        registry.counter("mcp.hitl.decision", "outcome", "approved", "side", "server").increment();
+        registry.counter("mcp.hitl.decision", "outcome", "declined", "side", "chat").increment();
+
+        Snapshot s = new SystemMetricsSnapshot(registry).capture();
+
+        assertThat(s.mcpHitlByOutcome).containsEntry("approved", 2L);
+        assertThat(s.mcpHitlByOutcome).containsEntry("declined", 1L);
+    }
+
+    @Test
+    void mcpToolRiskIsGroupedByLevel() {
+        MeterRegistry registry = new SimpleMeterRegistry();
+        registry.counter("saip.tool.risk", "level", "L5").increment();
+        registry.counter("saip.tool.risk", "level", "L5").increment();
+        registry.counter("saip.tool.risk", "level", "L3").increment();
+
+        Snapshot s = new SystemMetricsSnapshot(registry).capture();
+
+        assertThat(s.mcpToolRiskByLevel).containsEntry("L5", 2L);
+        assertThat(s.mcpToolRiskByLevel).containsEntry("L3", 1L);
     }
 
     @Test
@@ -162,12 +223,10 @@ class SystemMetricsSnapshotTest {
         LongTaskTimer serverActive = LongTaskTimer.builder("http.server.requests.active")
                 .register(registry);
         LongTaskTimer.Sample sample = serverActive.start();
-        // Don't stop — leaves it as an active task
 
         Snapshot s = new SystemMetricsSnapshot(registry).capture();
 
         assertThat(s.httpServerActive).isEqualTo(1L);
-        // (no client active LongTaskTimer registered → 0)
         assertThat(s.httpClientActive).isEqualTo(0L);
 
         sample.stop();
@@ -192,7 +251,6 @@ class SystemMetricsSnapshotTest {
     @Test
     void genAiImageAndEmbeddingTimerSummariesDefaultToZeroWhenUnregistered() {
         MeterRegistry registry = new SimpleMeterRegistry();
-        // No image or embedding timer registered → fields should stay at default 0
         Snapshot s = new SystemMetricsSnapshot(registry).capture();
 
         assertThat(s.genAiImageDuration.count).isZero();
@@ -269,8 +327,6 @@ class SystemMetricsSnapshotTest {
     @Test
     void springAiInFlightGaugesSumCorrectly() {
         MeterRegistry registry = new SimpleMeterRegistry();
-        // Active gauges are LongTaskTimer in real Spring AI emit; for this unit test we
-        // use plain gauges since the snapshot uses sumGauge() over them.
         gauge(registry, "spring.ai.chat.client.active", Tags.empty(), 1);
         gauge(registry, "gen_ai.client.operation.active", Tags.empty(), 1);
         gauge(registry, "spring.ai.advisor.active", Tags.empty(), 4);

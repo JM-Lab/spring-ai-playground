@@ -89,8 +89,6 @@ class DefaultToolSpecMcpExposureTest {
             }
         }
 
-        // Built-ins are not auto-added on publish; exposure comes from the preset-derived id set
-        // followed by reconcile, mirroring the boot pipeline.
         toolSpecService.setToolMcpServerSetting(
                 new ToolSpecService.ToolMcpServerSetting(true, shippedIds));
         toolSpecService.reconcileNativeExposure();
@@ -135,10 +133,10 @@ class DefaultToolSpecMcpExposureTest {
     @Test
     void globLoaderPicksUpEverySpecFile() throws Exception {
         Map<String, Integer> expectedCounts = Map.of(
-                "/tool/default-tool-specs.json",                 7,
+                "/tool/default-tool-specs.json",                 9,
                 "/tool/default-tool-specs-builtin.json",         16,
                 "/tool/default-tool-specs-builtin-helpers.json", 10,
-                "/tool/default-tool-specs-builtin-fs.json",      10,
+                "/tool/default-tool-specs-builtin-fs.json",      11,
                 "/tool/default-tool-specs-network.json",         21,
                 "/tool/default-tool-specs-kr.json",              21
         );

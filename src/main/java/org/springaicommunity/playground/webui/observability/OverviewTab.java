@@ -72,7 +72,6 @@ public class OverviewTab extends BaseDashboardTab {
     private final KpiCard costProjectionCard = new KpiCard("Projected cost / month");
     private Window currentWindow = Window.LAST_30M;
 
-    // Hero KPIs
     private final KpiCard callsCard = new KpiCard("Calls");
     private final KpiCard tokensCard = new KpiCard("Tokens");
     private final KpiCard costCard = new KpiCard("Cost (USD)");
@@ -82,37 +81,29 @@ public class OverviewTab extends BaseDashboardTab {
     private final KpiCard cpuCard = new KpiCard("Process CPU");
     private final KpiCard activeOpsCard = new KpiCard("Active LLM ops");
 
-    // LLM section
     private final ChartCanvas callsChart = new ChartCanvas();
     private final ChartCanvas latencyChart = new ChartCanvas();
     private final ChartCanvas providerDonut = new ChartCanvas();
     private final ChartCanvas topModelsBar = new ChartCanvas();
 
-    // Tokens & Cost section (cost-over-time lives on TokensAndCostTab; here we
-    // only keep a stacked token volume sparkline)
     private final ChartCanvas tokensChart = new ChartCanvas();
 
-    // Tools & MCP section
     private final ChartCanvas toolCallsChart = new ChartCanvas();
     private final ChartCanvas transportDonut = new ChartCanvas();
     private final ChartCanvas topToolsBar = new ChartCanvas();
     private final ChartCanvas topMcpServersBar = new ChartCanvas();
 
-    // Vector / RAG section
     private final ChartCanvas vectorOpsChart = new ChartCanvas();
     private final ChartCanvas topKBar = new ChartCanvas();
 
-    // System section
     private final ChartCanvas heapChart = new ChartCanvas();
     private final ChartCanvas cpuChart = new ChartCanvas();
 
-    // Logs section
     private final ChartCanvas logbackChart = new ChartCanvas();
     private final ChartCanvas outcomeChart = new ChartCanvas();
 
     private final Grid<TraceRecord> recentTracesGrid = new Grid<>(TraceRecord.class, false);
 
-    // History buffers for system charts (sampled per refresh)
     private final Deque<double[]> heapHistory = new ArrayDeque<>(120);
     private final Deque<double[]> cpuHistory = new ArrayDeque<>(120);
 
@@ -197,9 +188,9 @@ public class OverviewTab extends BaseDashboardTab {
                 DashboardLayout.chartCard("Tool calls / minute", "from spring.ai.tool spans",
                         "Count of spring.ai.tool spans per bucket — in-process tools + external MCP combined.",
                         toolCallsChart, goTools),
-                DashboardLayout.chartCard("Transport mix", "in-process / STDIO / HTTP / SSE",
-                        "spring.ai.tool spans grouped by mcp.transport attribute. " +
-                                "in-process = local JS sandbox / SDK; STDIO/HTTP/SSE = external MCP.",
+                DashboardLayout.chartCard("Transport mix", "in-process / pipe / tcp",
+                        "spring.ai.tool spans grouped by network.transport attribute. " +
+                                "in-process = local JS sandbox / SDK; pipe (STDIO) / tcp (HTTP, SSE) = external MCP.",
                         transportDonut, goMcp),
                 DashboardLayout.chartCard("Top tools", "by call count",
                         "Most frequently invoked tool names (spring.ai.tool.definition.name).",
@@ -278,7 +269,6 @@ public class OverviewTab extends BaseDashboardTab {
         SystemMetricsSnapshot.Snapshot sys = systemMetrics.capture();
         List<String> labels = DashboardData.bucketLabelsFromStarts(s.bucketStartMs());
 
-        // Sample rolling history for heap & CPU charts (~60 samples max)
         sampleSystemHistory(sys);
         long totalCalls = s.totalCalls();
         long errorTotal = DashboardData.sum(s.errors());
@@ -381,7 +371,6 @@ public class OverviewTab extends BaseDashboardTab {
                     + "at least one priced LLM call.");
             return;
         }
-        // Extrapolate per-month assuming the current window's burn rate continues.
         double perMs = windowCost.doubleValue() / (double) windowMs;
         double perDay = perMs * 86_400_000.0;
         double perMonth = perDay * 30.0;
@@ -397,7 +386,6 @@ public class OverviewTab extends BaseDashboardTab {
         List<TraceRecord> snap = buffer.snapshot();
         int count = snap.size();
         int capacity = buffer.capacity();
-        // Rough estimate: ~1.5 KB per trace (header + spans + attrs). Cheap to compute, accurate to ±50%.
         long bytes = estimateStorageBytes(snap);
         Long oldestMs = snap.stream().mapToLong(TraceRecord::startEpochMs).min().stream()
                 .boxed().findFirst().orElse(null);
@@ -413,12 +401,11 @@ public class OverviewTab extends BaseDashboardTab {
     private static long estimateStorageBytes(List<TraceRecord> traces) {
         long total = 0;
         for (TraceRecord t : traces) {
-            // Trace-level header: ids + ~10 short fields + root attrs key/value pairs
             total += 200L;
             total += sumAttributeBytes(t.attributes());
             if (t.spans() != null) {
                 for (SpanRecord s : t.spans()) {
-                    total += 80L; // span header (id, parent, name, status, timestamps)
+                    total += 80L;
                     total += sumAttributeBytes(s.attributes());
                 }
             }
@@ -432,7 +419,7 @@ public class OverviewTab extends BaseDashboardTab {
         for (Map.Entry<String, String> e : attrs.entrySet()) {
             if (e.getKey() != null) n += e.getKey().length();
             if (e.getValue() != null) n += e.getValue().length();
-            n += 4; // delimiters / JSON quoting overhead estimate
+            n += 4;
         }
         return n;
     }
@@ -452,7 +439,6 @@ public class OverviewTab extends BaseDashboardTab {
     }
 
     private static String formatNextCleanup() {
-        // ObservabilityPersistenceService cron: "0 0 4 * * *" — daily 04:00 local time.
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime nextRun = now.withHour(4).withMinute(0).withSecond(0).withNano(0);
         if (!nextRun.isAfter(now)) nextRun = nextRun.plusDays(1);
@@ -517,11 +503,10 @@ public class OverviewTab extends BaseDashboardTab {
                 if (attrs == null) attrs = Map.of();
                 String name = attrs.getOrDefault("spring.ai.tool.definition.name", "(unnamed)");
                 b.toolCounts.merge(name, 1L, Long::sum);
-                String tr = attrs.getOrDefault("mcp.transport", "in-process");
+                String tr = attrs.getOrDefault("network.transport", "in-process");
                 b.transportCounts.merge(tr, 1L, Long::sum);
                 if (!"in-process".equalsIgnoreCase(tr)) {
-                    String server = attrs.getOrDefault("mcp.server",
-                            attrs.getOrDefault("mcp.server.name", "(unknown)"));
+                    String server = attrs.getOrDefault("saip.mcp.server", "(unknown)");
                     b.serverCounts.merge(server, 1L, Long::sum);
                 }
             }

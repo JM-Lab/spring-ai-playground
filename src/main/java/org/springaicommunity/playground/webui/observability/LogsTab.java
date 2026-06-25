@@ -36,6 +36,7 @@ import org.springaicommunity.playground.observability.Window;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.observability.components.BaseDashboardTab;
 import org.springaicommunity.playground.webui.observability.components.ObservabilityGlobalSettings;
+import org.springaicommunity.playground.webui.observability.components.ObservabilityNavLinks;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -48,6 +49,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -63,13 +65,15 @@ public class LogsTab extends BaseDashboardTab {
                     + "\\[(?<thread>[^\\]]+)\\]\\s+"
                     + "(?<level>[A-Z]+)\\s+"
                     + "(?<logger>\\S+)\\s+"
-                    + "\\[(?:user=[^ ]* sid=[^ ]* )?conv=(?<conv>[^ ]*) msg=(?<msg>[^ ]*) traceId=(?<traceId>[^ ]*) spanId=(?<spanId>[^\\]]*)\\]\\s+-\\s+"
+                    + "\\[user=(?<user>[^ ]*) sid=(?<sid>[^ ]*) conv=(?<conv>[^ ]*) msg=(?<msg>[^ ]*) "
+                    + "traceId=(?<traceId>[^ ]*) spanId=(?<spanId>[^\\]]*)\\]\\s+-\\s+"
                     + "(?<rest>.*)$");
 
     private final Path logFile;
     private final ObservabilityGlobalSettings globalSettings;
     private final Span matchCountChip = new Span();
     private final ComboBox<String> levelFilter = new ComboBox<>();
+    private final ComboBox<String> sessionFilter = new ComboBox<>();
     private final TextField textFilter = new TextField();
     private final Checkbox caseInsensitive = new Checkbox("Aa-insensitive");
     private final Checkbox regexMode = new Checkbox("Regex");
@@ -78,6 +82,7 @@ public class LogsTab extends BaseDashboardTab {
             VaadinIcon.DOWNLOAD.create());
     private final VirtualList<LogLine> list = new VirtualList<>();
     private List<LogLine> currentFiltered = List.of();
+    private boolean refreshing;
 
     public LogsTab(Path springAiPlaygroundHomeDir, ObservabilityGlobalSettings globalSettings) {
         super();
@@ -97,6 +102,8 @@ public class LogsTab extends BaseDashboardTab {
         levelFilter.setPlaceholder("Level");
         levelFilter.setWidth("120px");
         levelFilter.addValueChangeListener(e -> refresh(null));
+
+        configureDynamicFilter(sessionFilter, "Session");
 
         textFilter.setPlaceholder("Contains / Regex — filter visible lines");
         textFilter.setClearButtonVisible(true);
@@ -135,6 +142,16 @@ public class LogsTab extends BaseDashboardTab {
 
         content.add(filterRow);
 
+        Span rowHint = new Span("Drag to select text · double-click a line for details");
+        rowHint.getStyle().set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-xs)");
+        HorizontalLayout filterRow2 = new HorizontalLayout(sessionFilter, rowHint);
+        filterRow2.setWidthFull();
+        filterRow2.setPadding(false);
+        filterRow2.setAlignItems(FlexComponent.Alignment.CENTER);
+        filterRow2.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        content.add(filterRow2);
+
         list.setSizeFull();
         list.getStyle().set("background", "#1e1f24")
                 .set("color", "#e3e6eb")
@@ -156,6 +173,31 @@ public class LogsTab extends BaseDashboardTab {
         });
     }
 
+    private void configureDynamicFilter(ComboBox<String> combo, String placeholder) {
+        combo.setPlaceholder(placeholder);
+        combo.setClearButtonVisible(true);
+        combo.setWidth("180px");
+        combo.addValueChangeListener(e -> refresh(null));
+    }
+
+    private void populateDynamicFilter(ComboBox<String> combo, List<LogLine> all,
+            Function<LogLine, String> extractor) {
+        List<String> values = new ArrayList<>(all.stream()
+                .map(extractor)
+                .filter(v -> v != null && !v.isBlank())
+                .distinct()
+                .sorted()
+                .toList());
+        values.add(0, "ALL");
+        String current = combo.getValue() == null ? "ALL" : combo.getValue();
+        combo.setItems(values);
+        combo.setValue(values.contains(current) ? current : "ALL");
+    }
+
+    private static boolean notAll(String v) {
+        return v != null && !v.isBlank() && !"ALL".equals(v);
+    }
+
     private Div renderRow(LogLine line) {
         Div row = new Div();
         row.getStyle().set("display", "flex")
@@ -166,7 +208,9 @@ public class LogsTab extends BaseDashboardTab {
                 .set("word-break", "break-word")
                 .set("overflow-wrap", "anywhere")
                 .set("min-width", "0")
-                .set("cursor", "pointer");
+                .set("cursor", "text")
+                .set("user-select", "text")
+                .set("-webkit-user-select", "text");
         String lv = line.level() == null ? "" : line.level();
         if ("ERROR".equals(lv)) row.getStyle().set("background", "rgba(239,83,80,0.10)");
         else if ("WARN".equals(lv)) row.getStyle().set("background", "rgba(255,167,38,0.07)");
@@ -191,7 +235,7 @@ public class LogsTab extends BaseDashboardTab {
         msg.getStyle().set("color", "#e3e6eb").set("flex", "1 1 auto");
 
         row.add(time, levelChip, logger, trace, msg);
-        row.addClickListener(e -> openDetail(line));
+        row.getElement().addEventListener("dblclick", e -> openDetail(line));
         row.getElement().getStyle().set("transition", "background 80ms");
         row.getElement().addEventListener("mouseenter",
                 e -> row.getElement().executeJs("this.style.background='rgba(255,255,255,0.05)'"));
@@ -248,6 +292,8 @@ public class LogsTab extends BaseDashboardTab {
         body.setPadding(false);
         body.setSpacing(false);
         body.add(detailLine("Logger", line.logger()));
+        body.add(detailLine("User", line.userId()));
+        body.add(detailLine("Session", line.sessionId()));
         body.add(detailLine("Conv", line.conv()));
         body.add(detailLine("UserMessageId", line.userMessageId()));
         body.add(detailLine("TraceId", line.traceId()));
@@ -275,7 +321,14 @@ public class LogsTab extends BaseDashboardTab {
                 VaadinUtils.showInfoNotification("No traceId on this line");
             }
         });
-        d.getFooter().add(copy, traceLink, new Button("Close", e -> d.close()));
+        d.getFooter().add(copy, traceLink);
+        if (line.conv() != null && !line.conv().isEmpty()) {
+            d.getFooter().add(new Button("Open in chat", VaadinIcon.CHAT.create(), e -> {
+                ObservabilityNavLinks.openConversation(line.conv());
+                d.close();
+            }));
+        }
+        d.getFooter().add(new Button("Close", e -> d.close()));
         d.add(body);
         d.open();
     }
@@ -295,6 +348,16 @@ public class LogsTab extends BaseDashboardTab {
 
     @Override
     public void refresh(Window window) {
+        if (refreshing) return;
+        refreshing = true;
+        try {
+            doRefresh(window);
+        } finally {
+            refreshing = false;
+        }
+    }
+
+    private void doRefresh(Window window) {
         if (!Files.isRegularFile(logFile)) {
             setStatus("Log file not found: " + logFile);
             list.setItems(List.of());
@@ -311,7 +374,10 @@ public class LogsTab extends BaseDashboardTab {
             LogLine ln = parse(r);
             if (ln != null) all.add(ln);
         }
+        populateDynamicFilter(sessionFilter, all, LogLine::sessionId);
+
         String levelVal = levelFilter.getValue();
+        String sessionVal = sessionFilter.getValue();
         String contains = textFilter.getValue() == null ? "" : textFilter.getValue().trim();
         boolean ci = Boolean.TRUE.equals(caseInsensitive.getValue());
         boolean useRegex = Boolean.TRUE.equals(regexMode.getValue()) && !contains.isEmpty();
@@ -345,6 +411,7 @@ public class LogsTab extends BaseDashboardTab {
         List<LogLine> filtered = new ArrayList<>(all.size());
         for (LogLine ln : all) {
             if (levelVal != null && !"ALL".equals(levelVal) && !levelVal.equals(ln.level())) continue;
+            if (notAll(sessionVal) && !sessionVal.equals(ln.sessionId())) continue;
 
             LocalDateTime lt = parseLogTime(ln.time());
             if (lt == null) continue;
@@ -369,7 +436,8 @@ public class LogsTab extends BaseDashboardTab {
         currentFiltered = filtered;
 
         boolean hasFilter = !contains.isEmpty() || customRange
-                || (levelVal != null && !"ALL".equals(levelVal));
+                || (levelVal != null && !"ALL".equals(levelVal))
+                || notAll(sessionVal);
         matchCountChip.setText(hasFilter
                 ? ("matched " + filtered.size() + " / " + all.size())
                 : ("showing " + filtered.size() + " lines"));
@@ -447,17 +515,19 @@ public class LogsTab extends BaseDashboardTab {
         }
     }
 
-    private LogLine parse(String raw) {
+    static LogLine parse(String raw) {
         if (raw == null || raw.isBlank()) return null;
         Matcher m = LINE_PATTERN.matcher(raw);
         if (!m.matches()) {
-            return new LogLine("", "", "", "", "", "", "", raw, raw);
+            return new LogLine("", "", "", "", "", "", "", "", "", raw, raw);
         }
         return new LogLine(
                 m.group("time"),
                 m.group("level"),
                 m.group("logger"),
-                shorten(m.group("conv")),
+                m.group("user"),
+                m.group("sid"),
+                m.group("conv"),
                 m.group("msg"),
                 m.group("traceId"),
                 m.group("spanId"),
@@ -465,13 +535,9 @@ public class LogsTab extends BaseDashboardTab {
                 raw);
     }
 
-    private String shorten(String s) {
-        if (s == null || s.isEmpty()) return "";
-        return s.length() <= 8 ? s : s.substring(0, 8);
-    }
-
     public record LogLine(
             String time, String level, String logger,
+            String userId, String sessionId,
             String conv, String userMessageId,
             String traceId, String spanId,
             String message, String raw

@@ -21,20 +21,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// Per-conversation runtime selections shown beside the chat input (built-in MCP toggle, exposed tool picks,
-// RAG documents, external MCP servers, reasoning effort). Persisted in ChatHistory so each chat restores its own
-// state and deleting the chat removes it; replaces the former global localStorage keys.
 public record ChatToolPreferences(boolean useBuiltinMcp, Set<String> exposedToolIds, List<String> ragDocInfoIds,
-        Map<McpTransportType, List<String>> mcpServerNames, ReasoningEffort reasoningEffort) {
+        Map<McpTransportType, List<String>> mcpServerNames, ReasoningEffort reasoningEffort, boolean dynamicTools) {
 
     public ChatToolPreferences {
         exposedToolIds = exposedToolIds == null ? Set.of() : Set.copyOf(exposedToolIds);
         ragDocInfoIds = ragDocInfoIds == null ? List.of() : List.copyOf(ragDocInfoIds);
         mcpServerNames = mcpServerNames == null ? Map.of() : Map.copyOf(mcpServerNames);
-        reasoningEffort = reasoningEffort == null ? ReasoningEffort.OFF : reasoningEffort;
+        reasoningEffort = reasoningEffort == null ? ReasoningEffort.DEFAULT : reasoningEffort;
     }
 
     public static ChatToolPreferences defaults() {
-        return new ChatToolPreferences(false, Set.of(), List.of(), Map.of(), ReasoningEffort.OFF);
+        return new ChatToolPreferences(false, Set.of(), List.of(), Map.of(), ReasoningEffort.DEFAULT, false);
+    }
+
+    public ChatToolPreferences withDynamicTools(boolean dynamicTools) {
+        return new ChatToolPreferences(useBuiltinMcp, exposedToolIds, ragDocInfoIds, mcpServerNames,
+                reasoningEffort, dynamicTools);
     }
 }

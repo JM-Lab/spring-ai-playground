@@ -22,16 +22,22 @@ import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.springframework.ai.testfake.FakeChatClientObservationContext;
 import org.springframework.ai.testfake.FakeSpringAiObservationContext;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ObservabilityCollectorTest {
@@ -50,8 +56,7 @@ class ObservabilityCollectorTest {
     @Test
     void supportsContextAcceptsSpringAiAndGenaiAndVectorNamesAndRejectsOthers() {
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), absent(), props);
-        // 3-arg ObjectProvider variant kept as it was — no Tracer.
+                absent(), absent(), absent(), props);
 
         Observation.Context chatClient = ctx("spring.ai.chat.client");
         Observation.Context chatModel = ctx("gen_ai.client.operation");
@@ -73,7 +78,7 @@ class ObservabilityCollectorTest {
     void rootFinishAssemblesTraceWithProviderModelAndTokenTotals() {
         Tracer tracer = mockTracer("aabbcc", List.of("rootspan", "childspan"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         root.addLowCardinalityKeyValue(KeyValue.of("spring.ai.chat.client.conversation.id", "conv-X"));
@@ -107,7 +112,7 @@ class ObservabilityCollectorTest {
     void duplicateSpanIdIsNotDoubleCounted() {
         Tracer tracer = mockTracer("duptrace", List.of("modelspan", "modelspan", "rootspan"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         Observation.Context m1 = ctx("gen_ai.client.operation");
@@ -136,7 +141,7 @@ class ObservabilityCollectorTest {
     void errorInAnySpanMarksTraceStatusError() {
         Tracer tracer = mockTracer("dead", List.of("r", "c"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         Observation.Context child = ctx("gen_ai.client.operation");
@@ -156,7 +161,7 @@ class ObservabilityCollectorTest {
     void nonRootObservationAloneDoesNotFinalizeTrace() {
         Tracer tracer = mockTracer("xx", List.of("only"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context child = ctx("gen_ai.client.operation");
         collector.onStart(child);
@@ -168,9 +173,8 @@ class ObservabilityCollectorTest {
     @Test
     void supportsContextMatchesClassInOrgSpringframeworkAiPackageWhenNameIsNull() {
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), absent(), props);
+                absent(), absent(), absent(), props);
         Observation.Context fake = new FakeSpringAiObservationContext();
-        // do NOT call setName — mimics the start-time situation
         assertThat(fake.getName()).isNull();
         assertThat(collector.supportsContext(fake)).isTrue();
     }
@@ -179,10 +183,9 @@ class ObservabilityCollectorTest {
     void chatClientClassSuffixFinalizesRootEvenWhenNameIsNull() {
         Tracer tracer = mockTracer("rootByClass", List.of("rootspan"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = new FakeChatClientObservationContext();
-        // no setName — only the class-suffix path identifies this as root
 
         collector.onStart(root);
         collector.onStop(root);
@@ -196,7 +199,7 @@ class ObservabilityCollectorTest {
         props.setMaxSpansPerTrace(3);
         Tracer tracer = mockTracer("cap", List.of("r", "c1", "c2", "c3", "c4", "c5"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         collector.onStart(root);
@@ -208,8 +211,6 @@ class ObservabilityCollectorTest {
         collector.onStop(root);
 
         assertThat(buffer.snapshot()).hasSize(1);
-        // Cap is 3 entries total in the spans list (root + tool spans, FIFO insert,
-        // any past the cap are silently dropped).
         assertThat(buffer.snapshot().get(0).spans()).hasSize(3);
     }
 
@@ -217,7 +218,7 @@ class ObservabilityCollectorTest {
     void hasToolsAndToolCallCountDerivedFromToolSpans() {
         Tracer tracer = mockTracer("withtools", List.of("r", "t1", "t2"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         Observation.Context tool1 = ctx("spring.ai.tool");
@@ -239,7 +240,7 @@ class ObservabilityCollectorTest {
     void hasRagFlagIsSetWhenVectorStoreSpanPresent() {
         Tracer tracer = mockTracer("ragtrace", List.of("r", "v"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         Observation.Context vector = ctx("db.vector.client.operation");
@@ -257,7 +258,7 @@ class ObservabilityCollectorTest {
     void multiChatModelSpansSumTokenCounts() {
         Tracer tracer = mockTracer("sumtokens", List.of("r", "m1", "m2"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context root = ctx("spring.ai.chat.client");
         Observation.Context m1 = ctx("gen_ai.client.operation");
@@ -279,7 +280,6 @@ class ObservabilityCollectorTest {
         TraceRecord t = buffer.snapshot().get(0);
         assertThat(t.inputTokens()).isEqualTo(130L);
         assertThat(t.outputTokens()).isEqualTo(120L);
-        // first non-null wins for provider/model
         assertThat(t.provider()).isEqualTo("openai");
         assertThat(t.model()).isEqualTo("gpt-5.4-mini");
     }
@@ -288,7 +288,7 @@ class ObservabilityCollectorTest {
     void cleanupStaleActiveTracesEvictsAbandonedBuilders() {
         Tracer tracer = mockTracer("orphan", List.of("only"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context child = ctx("gen_ai.client.operation");
         collector.onStart(child);
@@ -304,7 +304,7 @@ class ObservabilityCollectorTest {
     void cleanupKeepsRecentActiveBuilders() {
         Tracer tracer = mockTracer("fresh", List.of("only"));
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), present(tracer), props);
+                absent(), present(tracer), absent(), props);
 
         Observation.Context child = ctx("gen_ai.client.operation");
         collector.onStart(child);
@@ -317,10 +317,8 @@ class ObservabilityCollectorTest {
 
     @Test
     void fallbackTraceIdWhenNoTracerUsesLocalPrefix() {
-        // absent() Tracer — captureSpanIds skips, traceId stays null until
-        // onStop falls back to "local-N".
         ObservabilityCollector collector = new ObservabilityCollector(buffer,
-                absent(), absent(), props);
+                absent(), absent(), absent(), props);
 
         Observation.Context root = new FakeChatClientObservationContext();
         collector.onStart(root);
@@ -328,6 +326,79 @@ class ObservabilityCollectorTest {
 
         assertThat(buffer.snapshot()).hasSize(1);
         assertThat(buffer.snapshot().get(0).traceId()).startsWith("local-");
+    }
+
+    @Test
+    void streamingToolSpanDoubleStopEmitsSingleSpan() {
+        Tracer tracer = mockTracer("tooltrace", List.of("ts1"));
+        ObservabilityCollector collector = new ObservabilityCollector(buffer,
+                absent(), present(tracer), absent(), props);
+
+        Observation.Context tool = ctx("spring.ai.tool");
+        collector.onStart(tool);
+        collector.onStop(tool);
+        collector.onStop(tool);
+
+        List<TraceRecord> snapshot = buffer.snapshot();
+        assertThat(snapshot).hasSize(1);
+        assertThat(snapshot.get(0).spans()).hasSize(1);
+        assertThat(snapshot.get(0).toolCallCount()).isEqualTo(1);
+    }
+
+    @Test
+    void lateSpanMergesIntoRootAndPersistsMergedRecord() {
+        props.setPersist(true);
+        ObservabilityPersistenceService persist = mock(ObservabilityPersistenceService.class);
+        Tracer tracer = mockTracer("roottrace", List.of("r1", "late1"));
+        ObservabilityCollector collector = new ObservabilityCollector(buffer,
+                present(persist), present(tracer), absent(), props);
+
+        Observation.Context root = ctx("spring.ai.chat.client");
+        collector.onStart(root);
+        collector.onStop(root);
+
+        Observation.Context late = ctx("gen_ai.client.operation");
+        collector.onStart(late);
+        collector.onStop(late);
+
+        ArgumentCaptor<TraceRecord> saved = ArgumentCaptor.forClass(TraceRecord.class);
+        verify(persist, times(2)).saveAsync(saved.capture());
+        assertThat(saved.getAllValues().get(1).spans()).hasSize(2);
+        assertThat(buffer.snapshot()).hasSize(1);
+    }
+
+    @Test
+    void lateSpanOnBufferMissDoesNotOverwritePersistedRoot() {
+        ObservabilityProperties smallProps = new ObservabilityProperties();
+        smallProps.setPersist(true);
+        smallProps.setRingBufferCapacity(10);
+        ObservabilityRingBuffer smallBuffer = new ObservabilityRingBuffer(smallProps);
+        ObservabilityPersistenceService persist = mock(ObservabilityPersistenceService.class);
+        Tracer tracer = mockTracer("roottrace", List.of("r1", "late1"));
+        ObservabilityCollector collector = new ObservabilityCollector(smallBuffer,
+                present(persist), present(tracer), absent(), smallProps);
+
+        Observation.Context root = ctx("spring.ai.chat.client");
+        collector.onStart(root);
+        collector.onStop(root);
+        for (int i = 0; i < 10; i++) {
+            smallBuffer.add(fillerTrace("filler-" + i));
+        }
+
+        Observation.Context late = ctx("gen_ai.client.operation");
+        collector.onStart(late);
+        collector.onStop(late);
+
+        ArgumentCaptor<TraceRecord> saved = ArgumentCaptor.forClass(TraceRecord.class);
+        verify(persist, times(1)).saveAsync(saved.capture());
+        assertThat(saved.getValue().spans()).extracting(SpanRecord::spanId).containsExactly("r1");
+    }
+
+    private TraceRecord fillerTrace(String id) {
+        return new TraceRecord(id, null, null, null, null,
+                System.currentTimeMillis(), 10L, TraceRecord.STATUS_OK,
+                null, null, null, null, false, 0, false,
+                null, null, null, null, List.of(), Map.of());
     }
 
     private Observation.Context ctx(String name) {
@@ -338,9 +409,9 @@ class ObservabilityCollectorTest {
 
     private Tracer mockTracer(String traceId, List<String> spanIds) {
         Tracer t = mock(Tracer.class);
-        when(t.currentSpan()).thenAnswer(new org.mockito.stubbing.Answer<Span>() {
+        when(t.currentSpan()).thenAnswer(new Answer<Span>() {
             int idx = 0;
-            @Override public Span answer(org.mockito.invocation.InvocationOnMock inv) {
+            @Override public Span answer(InvocationOnMock inv) {
                 String spanId = spanIds.get(Math.min(idx++, spanIds.size() - 1));
                 return mockSpan(traceId, spanId);
             }

@@ -946,7 +946,7 @@ Fill in only what's local to you (an API key, a tenant ID, the OAuth **Authorize
 The deeper mode - combine multiple catalog connections with your own custom servers and Tool Studio-authored tools in one chat. Agentic Chat picks any subset of active MCP servers per turn, so an agent can read your Notion + look up a Linear ticket + write a Slack reply in the same conversation. The catalog is the **fastest path** to that composition because it skips the URL-typing / OAuth-discovery / requiredEnv guesswork for the most common vendors.
 
 - → [Tool Studio: Key Tool Studio Capabilities](../tool-studio/index.md#key-tool-studio-capabilities) - author and publish custom tools that ride alongside catalog connections
-- → [Default Tools directory](../default-tools/index.md) - the parallel 85-tool JavaScript inventory the built-in MCP server publishes
+- → [Default Tools directory](../default-tools/index.md) - the parallel 88-tool JavaScript inventory the built-in MCP server publishes
 
 ## End-to-end flow
 

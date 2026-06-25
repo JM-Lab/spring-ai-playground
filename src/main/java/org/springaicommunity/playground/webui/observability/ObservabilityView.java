@@ -31,13 +31,16 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.observability.ObservabilityProperties;
+import org.springaicommunity.playground.observability.McpRiskEventRingBuffer;
 import org.springaicommunity.playground.observability.ObservabilityRingBuffer;
 import org.springaicommunity.playground.observability.ObservabilityTimeSeries;
 import org.springaicommunity.playground.observability.Window;
+import org.springaicommunity.playground.observability.ollama.OllamaMetricsTimeSeries;
 import org.springaicommunity.playground.observability.system.SystemMetricsSnapshot;
 import org.springaicommunity.playground.observability.system.SystemMetricsTimeSeries;
 import org.springaicommunity.playground.observability.pricing.CurrencyService;
 import org.springaicommunity.playground.observability.pricing.ModelPricingService;
+import org.springaicommunity.playground.service.chat.OllamaMonitorService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
@@ -93,6 +96,7 @@ public class ObservabilityView extends ContentWorkspaceView {
     private ModelPricingService pricingServiceRef;
 
     public ObservabilityView(ObservabilityRingBuffer buffer,
+            McpRiskEventRingBuffer riskEventBuffer,
             ObservabilityTimeSeries timeSeries,
             SystemMetricsSnapshot systemMetrics,
             SystemMetricsTimeSeries systemMetricsTimeSeries,
@@ -101,16 +105,20 @@ public class ObservabilityView extends ContentWorkspaceView {
             Path springAiPlaygroundHomeDir,
             PersistentUiDataStorage storage,
             McpClientService mcpClientService,
+            OllamaMonitorService ollamaMonitor,
+            OllamaMetricsTimeSeries ollamaMetricsTimeSeries,
             ObservabilityProperties obsProps) {
         this.storage = storage;
 
         TokensAndCostTab tokens = new TokensAndCostTab(buffer, timeSeries, pricingService, currencyService);
         HostRuntimeTab hostRuntime = new HostRuntimeTab(systemMetrics, systemMetricsTimeSeries);
         WebApplicationTab webApp = new WebApplicationTab(systemMetrics);
+        OllamaRuntimeTab ollama = new OllamaRuntimeTab(ollamaMonitor, ollamaMetricsTimeSeries, systemMetrics);
         this.logsTab = new LogsTab(springAiPlaygroundHomeDir, globalSettings);
         ToolsTab toolsView = new ToolsTab(buffer, timeSeries, systemMetrics, mcpClientService);
         McpTab mcp = new McpTab(buffer, timeSeries, systemMetrics, mcpClientService);
         McpPrimitivesTab mcpPrimitives = new McpPrimitivesTab(systemMetrics);
+        SafetyTab safety = new SafetyTab(systemMetrics, riskEventBuffer);
         VectorTab vector = new VectorTab(buffer, timeSeries);
         LlmTab llm = new LlmTab(timeSeries, systemMetrics);
         AgenticChatTab agenticChat = new AgenticChatTab(buffer, pricingService);
@@ -128,9 +136,11 @@ public class ObservabilityView extends ContentWorkspaceView {
         DashboardEntry mcpEntry = register("mcp", "MCP Servers", VaadinIcon.TOOLBOX, mcp);
         DashboardEntry mcpPrimitivesEntry = register("mcp-primitives", "MCP Inspector",
                 VaadinIcon.SEARCH, mcpPrimitives);
+        DashboardEntry safetyEntry = register("safety", "Safety", VaadinIcon.SHIELD, safety);
         DashboardEntry vectorEntry = register("vector", "Vector Database", VaadinIcon.SEARCH_PLUS, vector);
         DashboardEntry hostEntry = register("host", "Host",
                 VaadinIcon.SERVER, hostRuntime);
+        DashboardEntry ollamaEntry = register("ollama", "Ollama", VaadinIcon.HARDDRIVE, ollama);
         DashboardEntry webAppEntry = register("web-application", "Web Application",
                 VaadinIcon.GLOBE_WIRE, webApp);
         DashboardEntry logsEntry = register("logs", "Logs", VaadinIcon.FILE_TEXT_O, logsTab);
@@ -140,8 +150,8 @@ public class ObservabilityView extends ContentWorkspaceView {
                 new Section(null, List.of(overviewEntry)),
                 new Section("AI Usage", List.of(tokensEntry, llmEntry)),
                 new Section("AI Stack", List.of(toolsEntry, mcpEntry, mcpPrimitivesEntry,
-                        vectorEntry, agenticEntry)),
-                new Section("Runtime", List.of(hostEntry, webAppEntry,
+                        vectorEntry, agenticEntry, safetyEntry)),
+                new Section("Runtime", List.of(hostEntry, ollamaEntry, webAppEntry,
                         logsEntry, tracesEntry))
         ));
         sidebar.setSelectionListener(this::showEntry);

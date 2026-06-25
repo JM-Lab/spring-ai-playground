@@ -18,7 +18,6 @@ package org.springaicommunity.playground.service.tool;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Component
 public class ToolWorkspaceBootstrap {
@@ -35,16 +33,17 @@ public class ToolWorkspaceBootstrap {
     private static final Logger log = LoggerFactory.getLogger(ToolWorkspaceBootstrap.class);
     private static final String SAMPLE_RESOURCES_PATTERN = "classpath*:tool/workspace-samples/*";
 
-    private final SpringAiPlaygroundOptions options;
+    private final ToolWorkspace toolWorkspace;
     private final PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
-    public ToolWorkspaceBootstrap(SpringAiPlaygroundOptions options) {
-        this.options = options;
+    public ToolWorkspaceBootstrap(ToolWorkspace toolWorkspace) {
+        this.toolWorkspace = toolWorkspace;
     }
 
     @PostConstruct
     public void seed() {
-        Path basePath = resolveBasePath();
+        Path basePath = toolWorkspace.base();
+        migrateLegacyWorkspace(basePath);
         try {
             Files.createDirectories(basePath);
         } catch (IOException e) {
@@ -75,15 +74,15 @@ public class ToolWorkspaceBootstrap {
         }
     }
 
-    Path resolveBasePath() {
-        String configured = options.toolStudio() == null || options.toolStudio().fs() == null
-                ? null : options.toolStudio().fs().basePath();
-        if (configured == null || configured.isBlank()) {
-            // Mirror application.yaml's default — never seed directly into user.home,
-            // which would pollute the user's home directory with sample files.
-            return Paths.get(System.getProperty("user.home"), "spring-ai-playground", "fs-tool-workspace")
-                    .toAbsolutePath().normalize();
+    private void migrateLegacyWorkspace(Path basePath) {
+        if (!"workspace".equals(basePath.getFileName().toString())) return;
+        Path legacy = basePath.resolveSibling("fs-tool-workspace");
+        if (!Files.isDirectory(legacy) || Files.exists(basePath)) return;
+        try {
+            Files.move(legacy, basePath);
+            log.info("Migrated tool workspace {} -> {}", legacy, basePath);
+        } catch (IOException e) {
+            log.warn("Failed to migrate {} -> {}: {}", legacy, basePath, e.getMessage());
         }
-        return Paths.get(configured).toAbsolutePath().normalize();
     }
 }

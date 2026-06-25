@@ -124,7 +124,7 @@ class ChatHistoryPersistenceServiceTest {
     void toolPreferencesSurviveSaveAndLoad() throws IOException {
         ChatToolPreferences prefs = new ChatToolPreferences(true, Set.of("tool-a", "tool-b"),
                 List.of("doc-1"), Map.of(McpTransportType.STREAMABLE_HTTP, List.of("server-x")),
-                ReasoningEffort.MEDIUM);
+                ReasoningEffort.MEDIUM, true);
         chatHistoryPersistenceService.save(buildHistory("chat-prefs").withToolPreferences(prefs));
 
         ChatToolPreferences loaded = chatHistoryPersistenceService.loads().getFirst().toolPreferences();
@@ -133,12 +133,12 @@ class ChatHistoryPersistenceServiceTest {
         assertThat(loaded.ragDocInfoIds()).containsExactly("doc-1");
         assertThat(loaded.mcpServerNames()).containsEntry(McpTransportType.STREAMABLE_HTTP, List.of("server-x"));
         assertThat(loaded.reasoningEffort()).isEqualTo(ReasoningEffort.MEDIUM);
+        assertThat(loaded.dynamicTools()).isTrue();
     }
 
     @Test
     void nonChatFilesInSaveDirAreSkipped() throws IOException {
         chatHistoryPersistenceService.save(buildHistory("Chat-real"));
-        // system-prompt-presets.json is a JSON array written into the same chat/save dir; it must not break loads()
         Files.writeString(chatHistoryPersistenceService.getSaveDir().resolve("system-prompt-presets.json"),
                 "[{\"id\":\"user-x\",\"displayName\":\"X\",\"prompt\":\"hi\",\"kind\":\"EXAMPLE\",\"tools\":[]}]");
 

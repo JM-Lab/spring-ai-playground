@@ -45,6 +45,6 @@ For the underlying pipeline that captures these spans, see [Observability Archit
 ## Cross-references
 
 - [Index](../index.md) - observability landing + the four group pages
-- [AI Stack](../ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat
-- [Runtime](../runtime/index.md) - Host · Web Application · Logs · Traces
+- [AI Stack](../ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Safety
+- [Runtime](../runtime/index.md) - Host · Ollama · Web Application · Logs · Traces
 - [Observability Architecture](../../../observability-architecture.md)

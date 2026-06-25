@@ -1,13 +1,65 @@
 [
   {
+    "toolId": "e6166c9e-2675-5c31-8fd0-4f9f7fcc1f8b",
+    "name": "listAllowedDirectories",
+    "description": "Reports which directories the filesystem tools may touch: the readable roots (anything under them can be read) and the single working directory (the only writable location, where relative paths resolve). Call this first to learn the absolute paths before reading or writing files. Takes no arguments. Uses safety.fs.readRoots()/workspace().",
+    "staticVariables": [],
+    "params": [],
+    "code": "/**\n * Reports the filesystem boundaries these tools operate within.\n *\n * - readRoots         — absolute roots that may be READ (recursively).\n * - workingDirectory  — the single writable dir; relative paths resolve here.\n *\n * Uses host helpers: safety.fs.readRoots, safety.fs.workspace.\n */\n\nreturn {\n  readRoots: Array.from(safety.fs.readRoots()),\n  workingDirectory: safety.fs.workspace(),\n};\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": false,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
     "toolId": "79342039-cc07-5abd-81c4-81122bc08f50",
     "name": "readTextFile",
-    "description": "Reads a UTF-8 text file from disk and returns its contents as a single string.\n\nAll paths are resolved relative to the playground's configured filesystem base path; anything outside it is rejected. Uses safety.fs.readText().",
+    "description": "Reads a UTF-8 text file from disk and returns its full contents as a string. Works on any text file — Markdown, JSON, CSV, source code, .txt, and so on (not binary); choose which file with `path`.\n\nA relative path resolves under the working directory; an absolute path is allowed anywhere under a readable root (the user's home directory by default). Call listAllowedDirectories first to learn the working directory and readable roots. Uses safety.fs.readText().",
     "staticVariables": [],
     "params": [
       {
         "name": "path",
-        "description": "Relative path inside the FS base directory",
+        "description": "The file to read, INCLUDING its extension — e.g. `README.md`, `package.json`, or an absolute path like `/Users/you/Documents/report.md`. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -62,12 +114,12 @@
   {
     "toolId": "b70ab776-5a91-5dc9-bd6f-0e80b13874ad",
     "name": "listDir",
-    "description": "Lists the immediate entries (files and subdirectories) of a directory under the FS base path. Returns an array of relative names (not full paths). Uses safety.fs.list().",
+    "description": "Lists the immediate entries (files and subdirectories) of a directory. Entries inside the working directory are returned as relative names; entries elsewhere under a readable root are returned as absolute paths. Pass '.' for the working directory, or an absolute path for any readable root (call listAllowedDirectories). Uses safety.fs.list().",
     "staticVariables": [],
     "params": [
       {
         "name": "dir",
-        "description": "Relative directory path (default '.')",
+        "description": "Directory to list. Relative (default '.') resolves under the working directory; an absolute path under a readable root is also allowed.",
         "required": false,
         "type": "STRING",
         "testValue": "."
@@ -122,12 +174,12 @@
   {
     "toolId": "2af9f86e-ed27-56bf-9bf6-e307dcc76ec8",
     "name": "statFile",
-    "description": "Returns size, last-modified timestamp, and a directory flag for a path inside the FS base. Uses safety.fs.stat().",
+    "description": "Returns size, last-modified timestamp, and a directory flag for a path. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories). Uses safety.fs.stat().",
     "staticVariables": [],
     "params": [
       {
         "name": "path",
-        "description": "Relative path inside the FS base directory",
+        "description": "Path to read. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -187,7 +239,7 @@
     "params": [
       {
         "name": "path",
-        "description": "Relative path to the file",
+        "description": "Path to the file. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -247,7 +299,7 @@
     "params": [
       {
         "name": "path",
-        "description": "Relative path to the file",
+        "description": "Path to the file. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -321,7 +373,7 @@
     "params": [
       {
         "name": "path",
-        "description": "Relative path to the file",
+        "description": "Path to the file. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -416,7 +468,7 @@
       },
       {
         "name": "path",
-        "description": "Relative path to the file",
+        "description": "Path to the file. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "README.md"
@@ -497,7 +549,7 @@
     "params": [
       {
         "name": "dir",
-        "description": "Relative directory to search from (default '.')",
+        "description": "Directory to search from. Relative (default '.') resolves under the working directory; an absolute path under a readable root is also allowed.",
         "required": false,
         "type": "STRING",
         "testValue": "."
@@ -578,7 +630,7 @@
     "params": [
       {
         "name": "path",
-        "description": "Relative path to the file",
+        "description": "Path to the file. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
         "required": true,
         "type": "STRING",
         "testValue": "data.csv"
@@ -654,25 +706,25 @@
   {
     "toolId": "3119e310-999d-51d3-ba92-ef30ac1212f7",
     "name": "writeTextFile",
-    "description": "Writes a UTF-8 text file inside the FS base path (creating parent directories as needed). Overwrites any existing file. Requires `fileWrite` permission on the sandbox.",
+    "description": "Use this to save a file to disk. Writes the text `content` to the file named by `path`, and returns where it was written. You pick the filename and extension on every call, so this creates ANY UTF-8 text file — Markdown (.md), JSON, CSV, source code, HTML, plain .txt, and so on (it cannot write binary such as images). Parent directories are created automatically and an existing file is overwritten. Writes are confined to the working directory: a relative path lands there, and any path that resolves outside it (absolute paths or `../`) is rejected — call listAllowedDirectories to see the working directory. Returns { ok, path, bytes }, where `path` is the absolute location actually written. Requires `fileWrite` permission on the sandbox.",
     "staticVariables": [],
     "params": [
       {
         "name": "path",
-        "description": "Relative path to write",
+        "description": "Where to save it, INCLUDING the filename and the extension you want — e.g. `report.md`, `data.json`, `src/app.py`, `notes.txt`. Pick this per call. A relative path resolves inside the working directory (the only writable location); absolute paths and `../` escapes are rejected.",
         "required": true,
         "type": "STRING",
-        "testValue": "out.txt"
+        "testValue": "report.md"
       },
       {
         "name": "content",
-        "description": "Full text content to write (UTF-8)",
+        "description": "The complete text to write (UTF-8), in whatever format matches the extension in `path` — Markdown, JSON, CSV, source code, plain text, etc. Written verbatim, so pass the full, final file body.",
         "required": true,
         "type": "STRING",
-        "testValue": "hello"
+        "testValue": "# Report"
       }
     ],
-    "code": "/**\n * Writes a UTF-8 text file inside the FS base directory.\n *\n * - Overwrites any existing file at `path`.\n * - Path is resolved RELATIVE to the FS base; escape attempts are rejected.\n * - This tool needs the `fileWrite` sandbox permission (set on the spec).\n *\n * Uses host helper: safety.fs.writeText.\n */\n\nif (path == null || path === '') throw new Error('path required');\nif (content == null)             throw new Error('content required');\nsafety.fs.writeText(path, String(content));\nreturn { ok: true, path, bytes: new TextEncoder().encode(String(content)).length };\n",
+    "code": "/**\n * Writes a UTF-8 text file inside the workspace directory.\n *\n * - Overwrites any existing file at `path`.\n * - Path is resolved RELATIVE to the workspace; escape attempts are rejected.\n * - This tool needs the `fileWrite` sandbox permission (set on the spec).\n *\n * Uses host helper: safety.fs.writeText.\n */\n\nif (path == null || path === '') throw new Error('path required');\nif (content == null)             throw new Error('content required');\nconst writtenPath = safety.fs.writeText(path, String(content));\nreturn { ok: true, path: writtenPath, bytes: new TextEncoder().encode(String(content)).length };\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,

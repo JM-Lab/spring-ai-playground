@@ -1,13 +1,13 @@
 title: Logs
-description: Live log search with structured MDC extraction - conv, msg, traceId, and spanId are injected into every line, anchoring each log to the trace it came from.
+description: Live log search with structured MDC extraction - user, session, conv, msg, traceId, spanId are injected into every line, anchoring each log to the trace it came from.
 
 # Logs
 
 ![Logs dashboard - log viewer with filters in header (Level dropdown, Contains / Regex text field, Aa-insensitive checkbox, Regex checkbox, Follow tail checkbox, Export visible button), and a virtualised log tail showing monospace lines with timestamps, levels, logger names, MDC keys and message text](../../../assets/images/observability/logs-full.png)
 
-*Logs tab - each line carries the four MDC keys injected by the Logback pattern (`conv`, `msg`, `traceId`, `spanId`), forming the bridge between log search and trace drill-down.*
+*Logs tab - each line carries the MDC keys injected by the Logback pattern (`user`, `sid`, `conv`, `msg`, `traceId`, `spanId`), forming the bridge between log search and trace drill-down.*
 
-**Purpose** - live log search with structured MDC extraction. The Logback pattern injects `conv`, `msg`, `traceId`, `spanId` MDC keys into every line emitted during a chat turn, so a log line is always anchored to the trace it came from.
+**Purpose** - live log search with structured MDC extraction. The Logback pattern injects `user`, `sid`, `conv`, `msg`, `traceId`, `spanId` MDC keys into every line emitted during a chat turn, so a log line is always anchored to the trace it came from.
 
 ## When to look here
 
@@ -23,6 +23,7 @@ Live tail of the application's rolling log (the same stream the file appender wr
 ## Controls
 
 - **Level** dropdown - `ALL`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE`
+- **Session** dropdown - filter to one session (options populated from the visible lines)
 - **Contains / Regex** text field - substring or regex match
 - **Aa-insensitive** checkbox - case insensitivity toggle
 - **Regex** checkbox - interpret the filter as regex
@@ -35,10 +36,10 @@ Live tail of the application's rolling log (the same stream the file appender wr
 The Logback pattern emits each line with this shape:
 
 ```
-2026-05-22 00:21:01.618 [reactor-http-...] INFO  o.s.p.s.chat.ChatService [conv=Chat-6af5b06e msg=4f37... traceId=0e9b1a980c1d spanId=d23f...] - generated user message id 4f37...
+2026-05-22 00:21:01.618 [reactor-http-...] INFO  o.s.p.s.chat.ChatService [user= sid= conv=Chat-6af5b06e msg=4f37... traceId=0e9b1a980c1d spanId=d23f...] - generated user message id 4f37...
 ```
 
-The Logs tab parses each line into: `time · thread · level · logger · conv · msg · traceId · spanId · message`. Row colour:
+The Logs tab parses each line into: `time · level · logger · user · session · conv · msg · traceId · spanId · message`. Row colour:
 
 - **ERROR rows** - red tint
 - **WARN rows** - orange tint
@@ -46,14 +47,15 @@ The Logs tab parses each line into: `time · thread · level · logger · conv �
 
 ## Drilldown - Log line dialog
 
-Click any row to open the **Log line** dialog. The header shows the line's level and timestamp; the body lists the MDC fields parsed from the line - **Logger**, **Conv**, **UserMessageId**, **TraceId**, **SpanId** (each rendered as `-` when the line did not carry that key) - followed by the full raw line in a scrollable block.
+**Double-click** any row to open the **Log line** dialog - single-click leaves the text selectable, so you can drag across lines to copy them without a dialog interrupting. The header shows the line's level and timestamp; the body lists the MDC fields parsed from the line - **Logger**, **User**, **Session**, **Conv**, **UserMessageId**, **TraceId**, **SpanId** (each rendered as `-` when the line did not carry that key) - followed by the full raw line in a scrollable block.
 
-![Log line dialog - header reading Log line - INFO and the timestamp, a field list (Logger, Conv, UserMessageId, TraceId, SpanId), the full raw line in a monospace block, and a footer with Copy raw line, Open trace, and Close buttons](../../../assets/images/observability/logs-detail.png){ width="900" }
+![Log line dialog - header reading Log line - INFO and the timestamp, a field list (Logger, User, Session, Conv, UserMessageId, TraceId, SpanId), the full raw line in a monospace block, and a footer with Copy raw line, Open trace, and Close buttons](../../../assets/images/observability/logs-detail.png){ width="900" }
 
-The footer carries three actions:
+The footer carries these actions:
 
 - **Copy raw line** - copies the unparsed line to the clipboard.
 - **Open trace** - navigates to the [Traces tab](traces.md) filtered by this line's `traceId`, the bridge from a single log line to the full span tree of the request that produced it. If the line has no `traceId`, it reports that instead.
+- **Open in chat** - shown when the line carries a `conv`; opens that conversation thread.
 - **Close** - dismisses the dialog.
 
 ## Cross-references

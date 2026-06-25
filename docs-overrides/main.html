@@ -2,6 +2,8 @@
 
 {% block extrahead %}
   {{ super() }}
+  {# Google Search Console ownership verification (HTML-tag method, independent of the analytics tag). #}
+  <meta name="google-site-verification" content="bO8vYFDhRUYAm1md41Vq2CPgos2IQ9JWD-fQ7lzk3Eg" />
   <script>
     // Material renders mermaid diagrams inside closed shadow DOM, which blocks
     // our pan/zoom hook and any label-wrapping CSS. Force open mode only for

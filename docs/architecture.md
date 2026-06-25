@@ -14,7 +14,7 @@ This is one of six architecture documents that complement each other:
 - **[AI Agent Tool Safety](safety-architecture.md)** - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
 - **[MCP Server Safety](mcp-server-safety.md)** - client-side risk model for external MCP servers and re-exposed tools
 - **[Human-in-the-Loop Approval](hitl-architecture.md)** - the runtime per-call approval gate (chat dialog + MCP elicitation)
-- **[AI Agent Observability](observability-architecture.md)** - the visibility layer that captures every action the agent took and surfaces it through twelve dashboards
+- **[AI Agent Observability](observability-architecture.md)** - the visibility layer that captures every action the agent took and surfaces it through fourteen dashboards
 
 ## Overview { #overview }
 
@@ -75,7 +75,7 @@ Hand-written **Vaadin Flow** views under `src/main/java/org/springaicommunity/pl
 | `webui/mcp` | `McpServerView`, `McpServerConnectionView`, `McpServerConfigView` | Sidebar (Built-in / Active / Inactive catalog), connection form, Inspector for built-in and external MCP servers |
 | `webui/vectorstore` | `VectorStoreView` | Document upload, chunk inspection, search |
 | `webui/chat` | `ChatView` | Agentic Chat with tools and RAG |
-| `webui/observability` | `ObservabilityView` | Twelve dashboards (Overview · Tokens & Cost · AI Models · Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Host · Web Application · Logs · Traces) + Trace Detail / Conversation Thread / Model Pricing Manager dialogs |
+| `webui/observability` | `ObservabilityView` | Fourteen dashboards (Overview · Tokens & Cost · AI Models · Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Safety · Host · Ollama · Web Application · Logs · Traces) + Trace Detail / Conversation Thread / Model Pricing Manager dialogs |
 | `webui/common/sidebar` | `SidebarFilterBar`, `CategoryGroupDetails`, `SidebarItemLayout` | Shared widgets used by both the MCP Server sidebar and the Tool Studio tool list - search + Categories MultiSelect + Tags MultiSelect, collapsible per-category groups, status dot · name · pills row |
 
 Streaming responses (chat, tool execution traces) are pushed to the browser over Vaadin's WebSocket push.
@@ -159,7 +159,7 @@ The main surfaces are **connected parts of one workflow**, not isolated demos:
 - **Vector Database** prepares indexed knowledge for retrieval.
 - **Agentic Chat** composes tools (from the Built-in MCP Server or External MCP Servers) and retrieved documents into one conversational runtime.
 - **Human-in-the-Loop** is a cross-cutting runtime gate - a tool flagged for approval pauses before it runs, asking the user in Chat (dialog) or the calling client (MCP elicitation). See [Human-in-the-Loop Approval](hitl-architecture.md).
-- **Observability** is the read-only visibility layer - every other surface emits `gen_ai.*` / `spring.ai.tool` / `db.vector.client.operation` spans into the `ObservabilityCollector`, which assembles per-turn `TraceRecord`s and exposes them through twelve dashboards. See [AI Agent Observability](observability-architecture.md) for the pipeline.
+- **Observability** is the read-only visibility layer - every other surface emits `gen_ai.*` / `spring.ai.tool` / `db.vector.client.operation` spans into the `ObservabilityCollector`, which assembles per-turn `TraceRecord`s and exposes them through fourteen dashboards. See [AI Agent Observability](observability-architecture.md) for the pipeline.
 
 ## Key Data Flows
 

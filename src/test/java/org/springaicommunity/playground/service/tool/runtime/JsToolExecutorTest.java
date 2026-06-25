@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,7 +50,7 @@ public class JsToolExecutorTest {
                 STANDARD_DENY,
                 Set.of("java.lang.*", "java.math.*", "java.time.*", "java.util.*", "java.text.*", "java.net.*",
                         "java.io.*", "org.jsoup.*"),
-                Map.of()), null);
+                Map.of()), Path.of(System.getProperty("java.io.tmpdir")));
     }
 
     @Test
@@ -233,7 +234,7 @@ public class JsToolExecutorTest {
         System.setProperty(PROP_NAME, PROP_VALUE);
 
         try {
-            JsToolExecutor executor = new JsToolExecutor(5L, null, null);
+            JsToolExecutor executor = new JsToolExecutor(5L, null, Path.of(System.getProperty("java.io.tmpdir")));
 
             String jsCode = """
                     return apiKey;
@@ -267,7 +268,7 @@ public class JsToolExecutorTest {
 
     @Test
     void nonEnvPattern_shouldBeUsedAsLiteralValue() throws ClassNotFoundException {
-        JsToolExecutor executor = new JsToolExecutor(5L, null, null);
+        JsToolExecutor executor = new JsToolExecutor(5L, null, Path.of(System.getProperty("java.io.tmpdir")));
 
         String literal = "${not_uppercase}";
         String jsCode = "return value;";
@@ -332,7 +333,7 @@ public class JsToolExecutorTest {
         System.setProperty(PROP_NAME, PROP_VALUE);
 
         try {
-            JsToolExecutor executor = new JsToolExecutor(5L, null, null);
+            JsToolExecutor executor = new JsToolExecutor(5L, null, Path.of(System.getProperty("java.io.tmpdir")));
 
             String jsCode = "console.log('value is', apiKey); return 'ok';";
             Map<String, Object> params = Map.of("apiKey", "${" + PROP_NAME + "}");
@@ -378,7 +379,7 @@ public class JsToolExecutorTest {
 
         try {
             // No flag — masking is always-on (symmetric with state log + console.log).
-            JsToolExecutor executor = new JsToolExecutor(5L, null, null);
+            JsToolExecutor executor = new JsToolExecutor(5L, null, Path.of(System.getProperty("java.io.tmpdir")));
             String jsCode = "return apiKey;";
             Map<String, Object> params = Map.of("apiKey", "${" + PROP_NAME + "}");
 
@@ -442,7 +443,7 @@ public class JsToolExecutorTest {
     @Test
     void testFetchUndefinedWhenNoNetworkIo() {
         JsToolExecutor exec = new JsToolExecutor(30L, new JsSandbox(false, false, false, false, 50_000L,
-                STANDARD_DENY, Set.of(), Map.of()), null);
+                STANDARD_DENY, Set.of(), Map.of()), Path.of(System.getProperty("java.io.tmpdir")));
         String code = "return typeof fetch;";
         JsExecutionResult result = exec.execute(new JsExecutionParams(Map.of(), code));
         assertTrue(result.isOk());

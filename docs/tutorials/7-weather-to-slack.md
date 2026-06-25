@@ -14,7 +14,7 @@ This is the canonical *"try an agentic workflow"* task on the Home checklist. No
 
 ## Steps
 
-1. In **Agentic Chat**, switch to a tool-capable model (`qwen3.5:9b` works; `gemma4:e4b` chains more reliably for longer prompts), tick **Use built-in MCP server in this chat**, and confirm `getWeather` and `sendSlackMessage` are selected in the exposed-tools list.
+1. In **Agentic Chat**, switch to a tool-capable model (`qwen3.5:9b` works; `gemma4:e4b` chains more reliably for longer prompts), tick **Manual built-in tool selection**, and confirm `getWeather` and `sendSlackMessage` are selected in the exposed-tools list.
 2. Send this prompt verbatim:
 
     ```text

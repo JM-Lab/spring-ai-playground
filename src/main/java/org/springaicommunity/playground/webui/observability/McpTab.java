@@ -120,7 +120,7 @@ public class McpTab extends BaseDashboardTab {
                 DashboardLayout.chartCard("MCP calls / minute",
                         "by transport — STDIO / HTTP / SSE",
                         "Bar height = spring.ai.tool span count per bucket (external MCP only — " +
-                                "self-loopback excluded). Stacked by mcp.transport tag.",
+                                "self-loopback excluded). Stacked by network.transport tag.",
                         mcpCallsStacked),
                 DashboardLayout.chartCard("Latency p50 / p95 / p99",
                         "ms — across transports",
@@ -128,7 +128,7 @@ public class McpTab extends BaseDashboardTab {
                         latencyChart),
                 DashboardLayout.chartCard("Top servers",
                         "by call count",
-                        "spring.ai.tool spans grouped by mcp.server attribute (top 8 in window).",
+                        "spring.ai.tool spans grouped by saip.mcp.server attribute (top 8 in window).",
                         topServersBar),
                 DashboardLayout.chartCard("Top MCP tools",
                         "by call count",
@@ -136,7 +136,7 @@ public class McpTab extends BaseDashboardTab {
                         topToolsBar),
                 DashboardLayout.chartCard("Transport mix",
                         "STDIO / HTTP / SSE",
-                        "Distribution by mcp.transport tag — shows which transports the workload uses.",
+                        "Distribution by network.transport tag — shows which transports the workload uses.",
                         transportDonut),
                 DashboardLayout.chartCard("Server status",
                         "current state by server",
@@ -182,9 +182,9 @@ public class McpTab extends BaseDashboardTab {
 
         long total = b.ok + b.error;
         activeServersCard.setValue(String.valueOf(b.serverCounts.size()),
-                "Distinct mcp.server values invoked in window (external MCP only, self-loopback excluded)");
+                "Distinct saip.mcp.server values invoked in window (external MCP only, self-loopback excluded)");
         mcpCallsCard.setValue(String.valueOf(total),
-                "Σ spring.ai.tool span count where mcp.transport ≠ in-process and mcp.server ≠ self-loopback");
+                "Σ spring.ai.tool span count where network.transport ≠ in-process and saip.mcp.server ≠ self-loopback");
         distinctToolsCard.setValue(String.valueOf(b.toolCounts.size()),
                 "Distinct spring.ai.tool.definition.name values invoked through external MCP servers");
         if (total == 0) {
@@ -281,7 +281,6 @@ public class McpTab extends BaseDashboardTab {
                 List.of(DashboardPalette.INFO, DashboardPalette.SUCCESS));
 
         List<OAuthSnapshot> oauthRows = mcpClientService.snapshotOAuthState();
-        // Exclude servers without a real OAuth token (self-loopback, unauthenticated HTTP).
         long authorized = oauthRows.stream()
                 .filter(r -> "OK".equals(r.status()))
                 .filter(r -> r.accessTokenExpiresAtMs() != null || r.hasRefreshToken())
@@ -351,11 +350,10 @@ public class McpTab extends BaseDashboardTab {
                 if (!"spring.ai.tool".equals(span.name())) continue;
                 Map<String, String> attrs = span.attributes();
                 if (attrs == null) continue;
-                String transport = attrs.get("mcp.transport");
+                String transport = attrs.get("network.transport");
                 if (transport == null || "in-process".equalsIgnoreCase(transport)) continue;
                 String tool = attrs.getOrDefault("spring.ai.tool.definition.name", "(unnamed)");
-                String server = attrs.getOrDefault("mcp.server",
-                        attrs.getOrDefault("mcp.server.name", "(unknown)"));
+                String server = attrs.getOrDefault("saip.mcp.server", "(unknown)");
                 if (this.mcpClientService.isSelfLoopback(server)) continue;
                 b.toolCounts.merge(tool, 1L, Long::sum);
                 b.serverCounts.merge(server, 1L, Long::sum);

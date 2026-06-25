@@ -30,8 +30,13 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.client.advisor.toolsearch.ToolSearchToolCallingAdvisor;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.ToolSearch.IndexType;
+import org.springaicommunity.playground.SpringAiPlaygroundOptions.ToolSearch.VectorStoreMode;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
+import org.springaicommunity.playground.service.chat.HybridToolIndex;
 import org.springaicommunity.playground.service.chat.LlmWindowChatMemory;
+import org.springaicommunity.playground.service.chat.PersistentToolIndex;
 import org.springaicommunity.playground.service.mcp.McpToolCallingManager;
 import org.springaicommunity.playground.webui.GoogleAnalyticsNavigationListener;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -40,6 +45,8 @@ import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.tool.toolsearch.ToolIndex;
+import org.springframework.ai.tool.toolsearch.index.vectorstore.VectorToolIndex;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,6 +54,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -105,7 +113,6 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
                 gtmContainerId);
         settings.addInlineWithContents(TargetElement.BODY, Inline.Position.PREPEND, gtmNoscript, Inline.Wrapping.NONE);
 
-        // send_page_view is off: GoogleAnalyticsNavigationListener emits one page_view per navigation (no double count).
         String ga4Snippet = String.format("""
                 window.dataLayer = window.dataLayer || [];
                 window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
@@ -166,6 +173,10 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Bean
     public Optional<EmbeddingOptions> embeddingOptions(ApplicationContext applicationContext) {
+        return resolveEmbeddingOptions(applicationContext);
+    }
+
+    private static Optional<EmbeddingOptions> resolveEmbeddingOptions(ApplicationContext applicationContext) {
         return Arrays.stream(applicationContext.getBeanDefinitionNames())
                 .filter(name -> name.contains("EmbeddingProperties")).findFirst()
                 .map(applicationContext::getBean).map(o -> {
@@ -187,13 +198,62 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     public ToolCallingAdvisor toolCallingAdvisor(McpToolCallingManager mcpToolCallingManager) {
         return ToolCallingAdvisor.builder()
                 .toolCallingManager(mcpToolCallingManager)
-                .conversationHistoryEnabled(false) // MessageChatMemoryAdvisor already owns history
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "spring.ai.playground.chat.tool-search", name = "enabled",
+            matchIfMissing = true)
+    @ConditionalOnMissingBean(ToolIndex.class)
+    public ToolIndex toolIndex(SpringAiPlaygroundOptions playgroundOptions, EmbeddingModel embeddingModel,
+            ObjectProvider<VectorStore> vectorStore, ObservationRegistry observationRegistry,
+            ApplicationContext applicationContext, Path springAiPlaygroundHomeDir) {
+        SpringAiPlaygroundOptions.ToolSearch toolSearch = playgroundOptions.chat().toolSearch();
+        boolean exactName = toolSearch.indexType() != IndexType.VECTOR;
+        if (toolSearch.vectorStore() == VectorStoreMode.SHARED) {
+            VectorToolIndex vectorToolIndex = new VectorToolIndex(vectorStore.getObject());
+            return exactName ? new HybridToolIndex(vectorToolIndex) : vectorToolIndex;
+        }
+        SimpleVectorStore dedicatedStore = SimpleVectorStore.builder(embeddingModel)
+                .observationRegistry(observationRegistry).build();
+        Optional<EmbeddingOptions> options = resolveEmbeddingOptions(applicationContext);
+        String signature = PersistentToolIndex.signatureOf(embeddingModel.getClass().getSimpleName(),
+                options.map(EmbeddingOptions::getModel).orElse(null),
+                options.map(EmbeddingOptions::getDimensions).orElse(null));
+        return new PersistentToolIndex(dedicatedStore, signature, springAiPlaygroundHomeDir, exactName, true);
+    }
+
+    private static final String DYNAMIC_TOOLS_SUFFIX = """
+
+            You also have a `toolSearchTool`; most of your tools stay hidden until you discover them:
+            1. Search with a short phrase for the capability the user needs. The result is only a LIST OF \
+            TOOL NAMES — not an answer — and each named tool then becomes directly callable.
+            2. Choose the tool that fits the user's request and take its arguments from the user's own \
+            message; never invent values or reuse the examples in tool descriptions (sample cities, sample \
+            data).
+            3. If a required argument is missing, ask the user for it; once every required value is known, \
+            call the tool, then read its result and answer the user.
+            4. If no tool fits, tell the user that no suitable tool is available; do not force an unrelated \
+            one.""";
+
+    @Bean
+    @ConditionalOnProperty(prefix = "spring.ai.playground.chat.tool-search", name = "enabled",
+            matchIfMissing = true)
+    public ToolSearchToolCallingAdvisor dynamicToolCallingAdvisor(McpToolCallingManager mcpToolCallingManager,
+            ToolIndex toolIndex, SpringAiPlaygroundOptions playgroundOptions) {
+        return ToolSearchToolCallingAdvisor.builder()
+                .toolCallingManager(mcpToolCallingManager)
+                .toolIndex(toolIndex)
+                .maxResults(playgroundOptions.chat().toolSearch().maxResults())
+                .systemMessageSuffix(DYNAMIC_TOOLS_SUFFIX)
                 .build();
     }
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder, Advisor[] advisors) {
-        return chatClientBuilder.defaultAdvisors(advisors).build();
+        Advisor[] base = Arrays.stream(advisors)
+                .filter(advisor -> !(advisor instanceof ToolCallingAdvisor)).toArray(Advisor[]::new);
+        return chatClientBuilder.defaultAdvisors(base).build();
     }
 
 }

@@ -1,15 +1,3 @@
-// Post-processing pipeline for chat markdown messages.
-//
-// <vaadin-markdown> renders parsed HTML into its own light DOM via an in-place DOM diff
-// (marked + DOMPurify). That diff strips any node or attribute we inject as soon as the next
-// content sync runs, so during streaming our additions would flicker away. We therefore enhance
-// only once rendering has settled: a debounced MutationObserver re-applies every registered
-// enhancer SETTLE_MS after the last mutation, disconnecting itself while it works so it never
-// reacts to its own DOM writes. Enhancers must be idempotent (skip nodes they already touched)
-// because re-attach and re-render replay the whole subtree.
-//
-// Libraries are bundled locally (npm, not CDN) so highlighting and math work offline.
-
 import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github.css';
 import renderMathInElement from 'katex/contrib/auto-render';
@@ -51,12 +39,35 @@ function enhanceLinks(root) {
     });
 }
 
+const POSIX_ABS_PATH = /^\/(?:[^/\0\n]+\/?)+$/;
+const WINDOWS_ABS_PATH = /^[A-Za-z]:[\\/](?:[^\\/\0\n]+[\\/]?)*$/;
+
+function isAbsolutePath(value) {
+    return value.length > 1 && (POSIX_ABS_PATH.test(value) || WINDOWS_ABS_PATH.test(value));
+}
+
+function enhanceFilePaths(root) {
+    root.querySelectorAll('code').forEach((code) => {
+        if (code.closest('pre')) return;
+        const value = code.textContent.trim();
+        if (!isAbsolutePath(value)) return;
+        code.classList.add('saip-path');
+        code.title = 'Open in file browser';
+        if (code.dataset.saipPath) return;
+        code.dataset.saipPath = 'yes';
+        code.addEventListener('click', () => {
+            if (window.Saip && typeof window.Saip.invoke === 'function') {
+                window.Saip.invoke('openPath', value);
+            }
+        });
+    });
+}
+
 function enhanceCodeBlocks(root) {
     root.querySelectorAll('pre').forEach((pre) => {
         if (pre.querySelector(':scope > .saip-code-copy')) return;
         const code = pre.querySelector('code');
         const langClass = code && Array.from(code.classList).find((c) => c.startsWith('language-'));
-        // hljs auto-detect stamps "language-undefined" on fences without a language tag - no label for those.
         if (langClass && langClass !== 'language-mermaid' && langClass !== 'language-undefined') {
             const label = document.createElement('span');
             label.className = 'saip-code-lang';
@@ -98,10 +109,6 @@ function highlightCode(root) {
     });
 }
 
-// Replace ```mermaid blocks with a rendered SVG. We swap the <pre> for a div and let mermaid render it
-// in place (mermaid.run, the v11-recommended API). Rendering is async and, in some prod bundles, can
-// stall even after its chunks load, so a timeout falls the block back to readable source rather than
-// leaving it blank or hanging. Marked synchronously so the settle pass never processes it twice.
 function renderMermaid(root) {
     root.querySelectorAll('pre > code.language-mermaid').forEach((code) => {
         const pre = code.parentElement;
@@ -112,7 +119,6 @@ function renderMermaid(root) {
         container.className = 'mermaid saip-mermaid';
         container.textContent = source;
         pre.replaceWith(container);
-        // mermaid's internal render isn't concurrency-safe, so chain diagrams one at a time.
         mermaidQueue = mermaidQueue.then(() => {
             const timeout = new Promise((resolve, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
             return Promise.race([mermaid.run({ nodes: [container], suppressErrors: true }), timeout]).catch((e) => {
@@ -144,8 +150,270 @@ function renderMath(root) {
     }
 }
 
+function pad2(n) {
+    return String(n).padStart(2, '0');
+}
+
+function buildMailtoHref(data) {
+    const recipients = String(data.to || '').split(',').map((x) => x.trim()).filter(Boolean).join(',');
+    const params = [];
+    if (data.subject) params.push('subject=' + encodeURIComponent(data.subject));
+    if (data.cc) {
+        const cc = String(data.cc).split(',').map((x) => x.trim()).filter(Boolean).join(',');
+        if (cc) params.push('cc=' + encodeURIComponent(cc));
+    }
+    if (data.body) params.push('body=' + encodeURIComponent(data.body));
+    return 'mailto:' + recipients + (params.length ? '?' + params.join('&') : '');
+}
+
+function formatIcsUtc(value) {
+    const d = new Date(value);
+    return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate())
+        + 'T' + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + 'Z';
+}
+
+function escapeIcsText(value) {
+    return String(value == null ? '' : value)
+        .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+function buildIcs(data) {
+    const uid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '@spring-ai-playground';
+    const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Spring AI Playground//Chat//EN', 'CALSCALE:GREGORIAN',
+        'BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + formatIcsUtc(new Date().toISOString()),
+        'DTSTART:' + formatIcsUtc(data.start), 'DTEND:' + formatIcsUtc(data.end),
+        'SUMMARY:' + escapeIcsText(data.title),
+    ];
+    if (data.location) lines.push('LOCATION:' + escapeIcsText(data.location));
+    if (data.description) lines.push('DESCRIPTION:' + escapeIcsText(data.description));
+    lines.push('END:VEVENT', 'END:VCALENDAR');
+    return lines.join('\r\n');
+}
+
+function downloadIcs(data) {
+    const blob = new Blob([buildIcs(data)], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = (String(data.title || 'event').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || 'event') + '.ics';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function addIcsToCalendar(data) {
+    if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
+        window.electronAPI.invoke('calendar:open-ics', { content: buildIcs(data), filename: data.title || 'event' });
+    } else {
+        downloadIcs(data);
+    }
+}
+
+function googleCalendarUrl(data) {
+    const params = ['action=TEMPLATE', 'text=' + encodeURIComponent(data.title || ''),
+        'dates=' + formatIcsUtc(data.start) + '/' + formatIcsUtc(data.end)];
+    if (data.description) params.push('details=' + encodeURIComponent(data.description));
+    if (data.location) params.push('location=' + encodeURIComponent(data.location));
+    return 'https://calendar.google.com/calendar/render?' + params.join('&');
+}
+
+function isoSeconds(value) {
+    return new Date(value).toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function outlookCalendarUrl(data) {
+    const params = ['path=/calendar/action/compose', 'rru=addevent',
+        'subject=' + encodeURIComponent(data.title || ''),
+        'startdt=' + encodeURIComponent(isoSeconds(data.start)),
+        'enddt=' + encodeURIComponent(isoSeconds(data.end))];
+    if (data.description) params.push('body=' + encodeURIComponent(data.description));
+    if (data.location) params.push('location=' + encodeURIComponent(data.location));
+    return 'https://outlook.live.com/calendar/0/deeplink/compose?' + params.join('&');
+}
+
+function yahooCalendarUrl(data) {
+    const params = ['v=60', 'title=' + encodeURIComponent(data.title || ''),
+        'st=' + formatIcsUtc(data.start), 'et=' + formatIcsUtc(data.end)];
+    if (data.description) params.push('desc=' + encodeURIComponent(data.description));
+    if (data.location) params.push('in_loc=' + encodeURIComponent(data.location));
+    return 'https://calendar.yahoo.com/?' + params.join('&');
+}
+
+function formatEventWhen(start, end) {
+    try {
+        const opts = { dateStyle: 'medium', timeStyle: 'short' };
+        return new Date(start).toLocaleString(undefined, opts) + ' – ' + new Date(end).toLocaleString(undefined, opts);
+    } catch (e) {
+        return String(start) + ' – ' + String(end);
+    }
+}
+
+function actionField(label, value) {
+    const row = document.createElement('div');
+    row.className = 'saip-action-field';
+    const name = document.createElement('span');
+    name.className = 'saip-action-label';
+    name.textContent = label;
+    const text = document.createElement('span');
+    text.className = 'saip-action-value';
+    text.textContent = value;
+    row.appendChild(name);
+    row.appendChild(text);
+    return row;
+}
+
+function actionCardShell(icon, title) {
+    const card = document.createElement('div');
+    card.className = 'saip-action-card';
+    const head = document.createElement('div');
+    head.className = 'saip-action-head';
+    const iconEl = document.createElement('span');
+    iconEl.className = 'saip-action-icon';
+    iconEl.textContent = icon;
+    const titleEl = document.createElement('span');
+    titleEl.className = 'saip-action-title';
+    titleEl.textContent = title;
+    head.appendChild(iconEl);
+    head.appendChild(titleEl);
+    card.appendChild(head);
+    return card;
+}
+
+const actionCardRenderers = {};
+
+function registerActionCard(type, renderer) {
+    actionCardRenderers[type] = renderer;
+}
+
+function buildActionCard(data) {
+    if (!data || typeof data !== 'object') return null;
+    const renderer = actionCardRenderers[data.type];
+    return renderer ? renderer(data) : null;
+}
+
+registerActionCard('email', (data) => {
+    const card = actionCardShell('📧', 'Email draft');
+    if (data.to) card.appendChild(actionField('To', data.to));
+    if (data.cc) card.appendChild(actionField('Cc', data.cc));
+    card.appendChild(actionField('Subject', data.subject || ''));
+    if (data.body) card.appendChild(actionField('Body', data.body));
+    const button = document.createElement('a');
+    button.className = 'saip-action-btn';
+    button.href = buildMailtoHref(data);
+    button.target = '_blank';
+    button.rel = 'noopener noreferrer';
+    button.textContent = '📧 Send email';
+    card.appendChild(button);
+    return card;
+});
+
+function calendarMenuItem(label, href, onClick) {
+    const el = document.createElement(href ? 'a' : 'button');
+    el.className = 'saip-action-menu-item';
+    el.textContent = label;
+    if (href) {
+        el.href = href;
+        el.target = '_blank';
+        el.rel = 'noopener noreferrer';
+    } else {
+        el.type = 'button';
+    }
+    if (onClick) el.addEventListener('click', onClick);
+    return el;
+}
+
+registerActionCard('calendar', (data) => {
+    const card = actionCardShell('📅', 'Calendar event');
+    card.appendChild(actionField('Title', data.title || ''));
+    card.appendChild(actionField('When', formatEventWhen(data.start, data.end)));
+    if (data.location) card.appendChild(actionField('Location', data.location));
+    if (data.description) card.appendChild(actionField('Notes', data.description));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'saip-action-menu-wrap';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'saip-action-btn';
+    button.textContent = '📅 Add to calendar ▾';
+    const menu = document.createElement('div');
+    menu.className = 'saip-action-menu';
+    menu.hidden = true;
+    menu.appendChild(calendarMenuItem('Google Calendar', googleCalendarUrl(data)));
+    menu.appendChild(calendarMenuItem('Outlook', outlookCalendarUrl(data)));
+    menu.appendChild(calendarMenuItem('Yahoo Calendar', yahooCalendarUrl(data)));
+    const desktop = window.electronAPI && typeof window.electronAPI.invoke === 'function';
+    const icsLabel = desktop ? 'Open in calendar app (.ics)' : 'Download .ics (calendar app, others)';
+    menu.appendChild(calendarMenuItem(icsLabel, null, () => addIcsToCalendar(data)));
+    const closeMenu = () => {
+        menu.hidden = true;
+        document.removeEventListener('click', onOutside);
+        document.removeEventListener('keydown', onEscape);
+    };
+    const onOutside = (e) => { if (!wrap.contains(e.target)) closeMenu(); };
+    const onEscape = (e) => { if (e.key === 'Escape') closeMenu(); };
+    menu.addEventListener('click', closeMenu);
+    button.addEventListener('click', () => {
+        if (!menu.hidden) { closeMenu(); return; }
+        menu.hidden = false;
+        setTimeout(() => {
+            document.addEventListener('click', onOutside);
+            document.addEventListener('keydown', onEscape);
+        }, 0);
+    });
+    wrap.appendChild(button);
+    wrap.appendChild(menu);
+    card.appendChild(wrap);
+    return card;
+});
+
+registerActionCard('map', (data) => {
+    const query = String(data.query || '').trim();
+    if (!query) return null;
+    const card = actionCardShell('📍', data.label || 'Location');
+    const lang = (navigator.language || 'en').split('-')[0] || 'en';
+    const frame = document.createElement('iframe');
+    frame.className = 'saip-action-map';
+    frame.loading = 'lazy';
+    frame.referrerPolicy = 'no-referrer';
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
+    frame.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(query)
+        + '&z=15&hl=' + encodeURIComponent(lang) + '&output=embed';
+    card.appendChild(frame);
+    const link = document.createElement('a');
+    link.className = 'saip-action-btn';
+    link.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '📍 Open in Google Maps';
+    card.appendChild(link);
+    return card;
+});
+
+function enhanceActionCards(root) {
+    root.querySelectorAll('pre > code').forEach((code) => {
+        if (!code.classList.contains('language-saip-action')
+            && !code.classList.contains('language-saip-action-return-direct')) return;
+        const pre = code.parentElement;
+        if (pre.dataset.saipAction) return;
+        let data;
+        try {
+            data = JSON.parse(code.textContent.trim());
+        } catch (e) {
+            return;
+        }
+        const card = buildActionCard(data);
+        if (!card) return;
+        pre.dataset.saipAction = 'done';
+        pre.replaceWith(card);
+    });
+}
+
 registerEnhancer(enhanceLinks);
+registerEnhancer(enhanceFilePaths);
 registerEnhancer(renderMermaid);
+registerEnhancer(enhanceActionCards);
 registerEnhancer(highlightCode);
 registerEnhancer(renderMath);
 registerEnhancer(enhanceCodeBlocks);
@@ -164,10 +432,6 @@ function enhance(markdownEl) {
     applyNow(markdownEl);
 }
 
-// Print / Save-as-PDF. We open a blank window, copy the document's stylesheets (so highlight/katex
-// styles carry over), and clone each message's already-rendered markdown CHILDREN (plain HTML, not the
-// <vaadin-markdown> custom element, which would not upgrade in the new window). The browser print dialog
-// then offers "Save as PDF".
 function openPrintWindow() {
     const w = window.open('', '_blank');
     if (!w) return null;
@@ -175,7 +439,6 @@ function openPrintWindow() {
         try {
             w.document.head.appendChild(node.cloneNode(true));
         } catch (e) {
-            /* cross-origin stylesheet node - skip */
         }
     });
     w.document.title = 'Spring AI Playground - Chat';
@@ -210,8 +473,8 @@ function printMessages(messages) {
         });
         body.appendChild(block);
     });
-    w.onafterprint = () => { try { w.close(); } catch (e) { /* already closed */ } };
-    setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* popup blocked */ } }, 500);
+    w.onafterprint = () => { try { w.close(); } catch (e) { } };
+    setTimeout(() => { try { w.focus(); w.print(); } catch (e) { } }, 500);
 }
 
 function printContainer(root) {
@@ -224,4 +487,4 @@ function printMessage(messageEl) {
 }
 
 window.Saip = window.Saip || {};
-window.Saip.chatMarkdown = { enhance, registerEnhancer, runEnhancers, printContainer, printMessage };
+window.Saip.chatMarkdown = { enhance, registerEnhancer, registerActionCard, runEnhancers, printContainer, printMessage };

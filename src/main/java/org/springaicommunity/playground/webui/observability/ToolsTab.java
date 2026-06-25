@@ -86,8 +86,8 @@ public class ToolsTab extends BaseDashboardTab {
                 DashboardLayout.chartCard("Tool calls / minute",
                         "top 4 tools over time",
                         "Bar height = tool call count per bucket. Stacked by tool name (top 4 by lifetime). " +
-                                "Source: spring.ai.tool spans where mcp.transport is null/in-process OR " +
-                                "mcp.server is the self-loopback (Tool Studio's auto-exposure).",
+                                "Source: spring.ai.tool spans where network.transport is null/in-process OR " +
+                                "saip.mcp.server is the self-loopback (Tool Studio's auto-exposure).",
                         toolCallsStacked),
                 DashboardLayout.chartCard("Tool latency p50 / p95 / p99",
                         "ms per bucket",
@@ -110,19 +110,6 @@ public class ToolsTab extends BaseDashboardTab {
         );
 
         content.add(intro, cardRow, grid);
-    }
-
-    private static Div buildIntro(String text) {
-        Div intro = new Div();
-        intro.setText(text);
-        intro.getStyle().set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-primary-color-10pct)")
-                .set("border-left", "3px solid var(--lumo-primary-color)")
-                .set("border-radius", "var(--lumo-border-radius-s)")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-body-text-color)")
-                .set("line-height", "1.5");
-        return intro;
     }
 
     @Override
@@ -232,8 +219,8 @@ public class ToolsTab extends BaseDashboardTab {
             for (SpanRecord span : t.spans()) {
                 if (!"spring.ai.tool".equals(span.name())) continue;
                 Map<String, String> attrs = span.attributes();
-                String transport = attrs == null ? null : attrs.get("mcp.transport");
-                String server = attrs == null ? null : attrs.get("mcp.server");
+                String transport = attrs == null ? null : attrs.get("network.transport");
+                String server = attrs == null ? null : attrs.get("saip.mcp.server");
                 boolean directInProcess = transport == null || "in-process".equalsIgnoreCase(transport);
                 boolean viaSelfLoopback = this.mcpClientService.isSelfLoopback(server);
                 if (!directInProcess && !viaSelfLoopback) continue;

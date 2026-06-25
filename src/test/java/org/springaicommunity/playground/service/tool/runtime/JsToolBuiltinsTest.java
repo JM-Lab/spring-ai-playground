@@ -27,6 +27,7 @@ import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsEx
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -76,7 +77,7 @@ class JsToolBuiltinsTest {
                         Set.of("java.lang.*", "java.math.*", "java.time.*", "java.util.*",
                                 "java.text.*"),
                         Map.of()),
-                null);
+                Path.of(System.getProperty("java.io.tmpdir")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -287,24 +288,164 @@ class JsToolBuiltinsTest {
     }
 
     @Test
-    void buildGoogleCalendarCreateLinkProducesTemplateUrl() {
+    void sendEmailProducesActionBlock() {
         Map<String, Object> spec = specs.stream()
-                .filter(s -> "buildGoogleCalendarCreateLink".equals(s.get("name"))).findFirst().orElseThrow();
+                .filter(s -> "sendEmail".equals(s.get("name"))).findFirst().orElseThrow();
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("subject", "Sync");
+        args.put("body", "Hi Alice");
+        args.put("to", "alice@example.com");
+        JsExecutionResult r = executor.execute(
+                new JsExecutionParams(args, (String) spec.get("code"), paramNames(spec)));
+        assertThat(r.isOk()).as("%s", r.error()).isTrue();
+        String block = (String) r.result();
+        assertThat(block).contains("```saip-action-return-direct");
+        assertThat(block).contains("\"type\":\"email\"");
+        assertThat(block).contains("\"subject\":\"Sync\"");
+        assertThat(block).contains("\"to\":\"alice@example.com\"");
+        assertThat(block).doesNotContain("\"cc\"");
+    }
+
+    @Test
+    void addToCalendarProducesActionBlock() {
+        Map<String, Object> spec = specs.stream()
+                .filter(s -> "addToCalendar".equals(s.get("name"))).findFirst().orElseThrow();
         Map<String, Object> args = new LinkedHashMap<>();
         args.put("title", "Sync");
         args.put("start", "2026-05-13T10:00:00+09:00");
-        args.put("end",   "2026-05-13T11:00:00+09:00");
-        args.put("details",  "weekly");
+        args.put("end", "2026-05-13T11:00:00+09:00");
         args.put("location", "Zoom");
-        args.put("timeZone", "Asia/Seoul");
-        JsExecutionResult r = executor.execute(new JsExecutionParams(args, (String) spec.get("code")));
+        JsExecutionResult r = executor.execute(
+                new JsExecutionParams(args, (String) spec.get("code"), paramNames(spec)));
         assertThat(r.isOk()).as("%s", r.error()).isTrue();
-        String url = (String) r.result();
-        assertThat(url).startsWith("https://www.google.com/calendar/render?action=TEMPLATE");
-        assertThat(url).contains("text=Sync");
-        assertThat(url).containsPattern("dates=20260513T010000Z(/|%2F)20260513T020000Z");
-        assertThat(url).containsPattern("ctz=Asia(/|%2F)Seoul");
-        assertThat(url).contains("location=Zoom");
+        String block = (String) r.result();
+        assertThat(block).contains("```saip-action-return-direct");
+        assertThat(block).contains("\"type\":\"calendar\"");
+        assertThat(block).contains("\"title\":\"Sync\"");
+        assertThat(block).contains("\"start\":\"2026-05-13T01:00:00.000Z\"");
+        assertThat(block).contains("\"location\":\"Zoom\"");
+        assertThat(block).doesNotContain("\"description\"");
+    }
+
+    @Test
+    void sendEmailRejectsMissingRequired() {
+        Map<String, Object> spec = builtinSpec("sendEmail");
+        JsExecutionResult noSubject = run(spec, Map.of("body", "Hi"));
+        assertThat(noSubject.isOk()).isFalse();
+        assertThat(noSubject.error()).contains("subject required");
+        JsExecutionResult noBody = run(spec, Map.of("subject", "Sync"));
+        assertThat(noBody.isOk()).isFalse();
+        assertThat(noBody.error()).contains("body required");
+    }
+
+    @Test
+    void sendEmailIncludesCcAndToWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("subject", "Sync");
+        args.put("body", "Hi");
+        args.put("to", "a@example.com");
+        args.put("cc", "b@example.com");
+        String block = (String) run(builtinSpec("sendEmail"), args).result();
+        assertThat(block).contains("\"to\":\"a@example.com\"").contains("\"cc\":\"b@example.com\"");
+    }
+
+    @Test
+    void addToCalendarRejectsMissingTitle() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("start", "2026-05-13T10:00:00+09:00");
+        args.put("end", "2026-05-13T11:00:00+09:00");
+        JsExecutionResult r = run(builtinSpec("addToCalendar"), args);
+        assertThat(r.isOk()).isFalse();
+        assertThat(r.error()).contains("title required");
+    }
+
+    @Test
+    void addToCalendarRejectsEndNotAfterStart() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("title", "Sync");
+        args.put("start", "2026-05-13T11:00:00+09:00");
+        args.put("end", "2026-05-13T10:00:00+09:00");
+        JsExecutionResult r = run(builtinSpec("addToCalendar"), args);
+        assertThat(r.isOk()).isFalse();
+        assertThat(r.error()).contains("end must be after start");
+    }
+
+    @Test
+    void addToCalendarRejectsUnparseableDate() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("title", "Sync");
+        args.put("start", "not-a-date");
+        args.put("end", "2026-05-13T11:00:00+09:00");
+        JsExecutionResult r = run(builtinSpec("addToCalendar"), args);
+        assertThat(r.isOk()).isFalse();
+        assertThat(r.error()).contains("invalid start");
+    }
+
+    @Test
+    void showLocationProducesActionBlock() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("query", "Gyeongbokgung Palace, Seoul");
+        String block = (String) run(builtinSpec("showLocation"), args).result();
+        assertThat(block).contains("```saip-action").doesNotContain("saip-action-return-direct");
+        assertThat(block).contains("\"type\":\"map\"");
+        assertThat(block).contains("\"query\":\"Gyeongbokgung Palace, Seoul\"");
+    }
+
+    @Test
+    void showLocationRejectsMissingQuery() {
+        JsExecutionResult r = run(builtinSpec("showLocation"), Map.of());
+        assertThat(r.isOk()).isFalse();
+        assertThat(r.error()).contains("query required");
+    }
+
+    @Test
+    void addToCalendarIncludesDescriptionWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("title", "Sync");
+        args.put("start", "2026-05-13T10:00:00+09:00");
+        args.put("end", "2026-05-13T11:00:00+09:00");
+        args.put("description", "Quarterly planning");
+        String block = (String) run(builtinSpec("addToCalendar"), args).result();
+        assertThat(block).contains("\"description\":\"Quarterly planning\"");
+    }
+
+    @Test
+    void addToCalendarRejectsMissingStartAndEnd() {
+        Map<String, Object> noStart = new LinkedHashMap<>();
+        noStart.put("title", "Sync");
+        noStart.put("end", "2026-05-13T11:00:00+09:00");
+        JsExecutionResult r1 = run(builtinSpec("addToCalendar"), noStart);
+        assertThat(r1.isOk()).isFalse();
+        assertThat(r1.error()).contains("start required");
+        Map<String, Object> noEnd = new LinkedHashMap<>();
+        noEnd.put("title", "Sync");
+        noEnd.put("start", "2026-05-13T10:00:00+09:00");
+        JsExecutionResult r2 = run(builtinSpec("addToCalendar"), noEnd);
+        assertThat(r2.isOk()).isFalse();
+        assertThat(r2.error()).contains("end required");
+    }
+
+    @Test
+    void showLocationIncludesLabelWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("query", "Seoul");
+        args.put("label", "Capital of Korea");
+        String block = (String) run(builtinSpec("showLocation"), args).result();
+        assertThat(block).contains("\"label\":\"Capital of Korea\"");
+    }
+
+    private Map<String, Object> builtinSpec(String name) {
+        return specs.stream().filter(s -> name.equals(s.get("name"))).findFirst().orElseThrow();
+    }
+
+    private JsExecutionResult run(Map<String, Object> spec, Map<String, Object> args) {
+        return executor.execute(new JsExecutionParams(args, (String) spec.get("code"), paramNames(spec)));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> paramNames(Map<String, Object> spec) {
+        List<Map<String, Object>> params = (List<Map<String, Object>>) spec.getOrDefault("params", List.of());
+        return params.stream().map(p -> (String) p.get("name")).toList();
     }
 
     @ParameterizedTest(name = "{0}")
@@ -370,7 +511,7 @@ class JsToolBuiltinsTest {
     @Test
     void originalGuideToolsCarryExampleTag() {
         Set<String> originals = Set.of(
-                "extractPageContent", "getCurrentTime", "buildGoogleCalendarCreateLink",
+                "extractPageContent", "getCurrentTime",
                 "getWeather", "googlePseSearch", "openaiResponseGenerator", "sendSlackMessage");
         for (Map<String, Object> spec : specs) {
             if (originals.contains((String) spec.get("name"))) {

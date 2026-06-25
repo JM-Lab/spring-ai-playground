@@ -8,8 +8,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Local speech-to-text mic in Agentic Chat — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
+
+## [0.2.0-M10]
+
+### Added
+
+- **Agentic Chat action cards** — `sendEmail`, `addToCalendar`, and `showLocation` are review-then-act tools: the model fills the arguments and the reply renders an interactive card — an email draft, an `.ics` calendar event, or an embedded map — with a confirm button the user clicks; the tool itself never sends, schedules, or navigates, and the assistant is instructed to tell the user to click rather than claim the action is done. A `ChatClientAction` registry (extendable with a single Spring bean) plus a JS `registerActionCard` card registry generalize the pattern, `returnDirect` is inferred from a code marker so an action's card becomes its own reply, and a new **Personal assistant** preset drives them. The bundled tool catalog grows to 88 (`feat(chat,tools)`).
+- **Dynamic tool discovery** — a new Agentic Chat mode (Spring AI 2.0 `ToolSearchToolCallingAdvisor`) in which the model searches for the capability it needs through a `toolSearchTool` instead of receiving every tool definition up front, keeping the context small for large tool sets. A persistent, content-addressed `PersistentToolIndex` embeds each tool once and reuses it across conversations — warmed at boot by `ToolIndexWarmup` and persisted under `~/spring-ai-playground/tool-index/`. The chat settings drawer gains a mutually-exclusive **Dynamic tool discovery** ⟷ **Manual built-in tool selection** toggle gated on a minimum tool count, and the **Self-equipping agent** preset ships in dynamic mode (`feat(chat)`).
+- **Per-conversation filesystem workspace** — built-in filesystem tools read across the user's home but write only inside a per-conversation workspace (`<app-home>/workspace/<conversationId>/`), bridged through the tool-call identity so writes are isolated per chat and cleaned up with the conversation. A new `listAllowedDirectories` tool reports the readable roots and the active working directory, `SafeFs` is reworked around a home-read / workspace-write `FsScope`, and the workspace base unifies under the single `springAiPlaygroundHomeDir` app-home bean (`feat(tools)`).
+- **Clickable file paths in chat** — file paths the assistant emits render as clickable links; on the desktop they reveal the file in the OS file manager (read-only, no execution) through a `LocalFileBrowserService`, with the web and desktop seams kept separate (`feat(chat)`).
+- **Local speech-to-text mic in Agentic Chat** — captures voice input and runs whisper.cpp locally via an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash, alongside in-launcher Ollama model downloads (`feat(chat,electron)`).
+- **Ollama runtime and Safety observability dashboards** — two new dashboards bring the Observability set from twelve to fourteen. **Ollama** surfaces live local-runtime telemetry (server reachability, loaded models and their VRAM footprint, GPU/CPU offload, idle-unload countdown, installed-model inventory, Apple Silicon unified-memory pressure); **Safety** surfaces the MCP risk model as lifetime KPIs (risk signals, tamper rejects, poisoning hits, risk-floor overrides, HITL approval rate, sandbox guard blocks) plus a risk-event timeline, backed by a bounded `McpRiskEventRingBuffer` (`feat(observability)`).
+
+### Changed
+
+- **Observability Logs viewer** — the always-empty per-line tool / MCP-server columns are dropped (those signals live on the trace spans, not every log line), a log row opens its detail dialog on **double-click** so single-click is freed for drag-to-select and copy, and the rolling-file / console log pattern no longer emits `[tool= server=]` noise on lines that aren't tool calls (`refactor(observability)`).
+
+### Fixed
+
+- **Preset apply is blocked when a preset's tools need unset API keys** — selecting a chat preset whose tools require missing environment variables now lists the missing keys and disables **Apply** (a hard block) instead of silently applying a preset that cannot function; the bundled preset prompts and tool lists were simplified to key-less core tools so no shipped preset trips the gate (`fix(chat)`).
+- **Chat process-panel summaries show the full tool / document list** — the THINK, MCP TOOLS, and RAG summary lines no longer hard-truncate the list to ~40 characters with a literal `...`; the full list renders and the summary now ellipsis-clips at the panel edge (its `vaadin-details-summary` content fills the width) instead of cutting short and leaving empty space (`fix(chat)`).
+
+### Documentation
+
+- **Agentic Chat surfaces** — chat and tool docs rewritten for action cards, dynamic tool discovery, clickable file paths, and the per-conversation filesystem workspace, with the new **Personal assistant** preset (`docs(chat,tools)`).
+- **On-device voice input** — documented the local whisper.cpp speech-to-text mic and launcher model download (`docs`).
+- **Fourteen Observability dashboards** — new Ollama and Safety pages, dashboard-count propagation (twelve → fourteen) across the architecture and index pages, and README / home positioning updates (`docs`).
+
+### Build / Tooling
+
+- **Version bump to 0.2.0-M10** (`build(pom)`).
 
 ## [0.2.0-M9]
 

@@ -17,6 +17,7 @@ package org.springaicommunity.playground.service.tool;
 
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,13 +56,18 @@ public class ToolActivationCalculator {
     }
 
     public boolean hasMissingEnvVars(ToolSpec tool) {
+        return !missingEnvVars(tool).isEmpty();
+    }
+
+    public List<String> missingEnvVars(ToolSpec tool) {
+        List<String> missing = new ArrayList<>();
         for (String envVar : declaredEnvVars(tool)) {
             String value = envLookup.apply(envVar);
             if (value == null || value.isBlank()) {
-                return true;
+                missing.add(envVar);
             }
         }
-        return false;
+        return List.copyOf(missing);
     }
 
     public List<String> declaredEnvVars(ToolSpec tool) {

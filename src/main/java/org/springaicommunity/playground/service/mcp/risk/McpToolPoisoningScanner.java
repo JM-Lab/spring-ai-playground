@@ -17,7 +17,6 @@ package org.springaicommunity.playground.service.mcp.risk;
 
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -120,11 +119,6 @@ public class McpToolPoisoningScanner {
             if (hasLatin && hasCyrillic) return true;
         }
         return false;
-    }
-
-    public record McpRiskEventsHit(PoisoningHit hit) {
-        public record PoisoningHit(Instant at, String serverId, String toolName, String patternId,
-                String matchedText, String details) {}
     }
 
     public record PatternRule(PatternId id, Pattern pattern) {}

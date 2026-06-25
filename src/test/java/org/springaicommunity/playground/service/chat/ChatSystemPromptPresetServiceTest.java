@@ -47,8 +47,6 @@ class ChatSystemPromptPresetServiceTest {
         mapper = new ObjectMapper();
     }
 
-    // save() persists asynchronously; drain the executor before JUnit deletes @TempDir, else a late
-    // write races the cleanup and fails it with DirectoryNotEmptyException.
     @AfterEach
     void tearDown() throws Exception {
         executor.awaitCompletion(Duration.ofSeconds(5));
@@ -85,6 +83,19 @@ class ChatSystemPromptPresetServiceTest {
                 new ChatSystemPromptPresetService(home, executor, mapper, catalog);
         assertThat(reader.userPresets()).extracting(Preset::displayName).containsExactly("Reload Me");
         assertThat(reader.userPresets()).extracting(Preset::prompt).containsExactly("Persisted prompt.");
+    }
+
+    @Test
+    void dynamicToolsPresetPersistsAndReloads() throws Exception {
+        new ChatSystemPromptPresetService(home, executor, mapper, catalog)
+                .save("Dyn Agent", "Discover tools.", ChatSystemPromptPresetCatalog.PresetKind.EXAMPLE,
+                        List.of(), true);
+        executor.awaitCompletion(Duration.ofSeconds(2));
+
+        ChatSystemPromptPresetService reader =
+                new ChatSystemPromptPresetService(home, executor, mapper, catalog);
+        assertThat(reader.userPresets()).extracting(Preset::dynamicTools).containsExactly(true);
+        assertThat(reader.userPresets()).extracting(Preset::tools).containsExactly(List.of());
     }
 
     @Test

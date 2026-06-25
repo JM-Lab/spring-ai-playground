@@ -17,6 +17,8 @@ package org.springaicommunity.playground.service.mcp;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.MDC;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.config.MdcIdentityFilter;
@@ -37,9 +39,12 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
+import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -51,16 +56,22 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Component
 public class McpToolCallingManager implements ToolCallingManager {
 
     public static final String MCP_PROCESS_MESSAGE_CONSUMER = "mcpProcessMessageConsumer";
     public static final String MCP_TOOL_EXECUTION_COMPLETED_MESSAGE = "MCP tool execution completed.";
+    static final String ACTION_RETURN_DIRECT_MARKER = "```saip-action-return-direct";
+    private static final ObjectMapper ACTION_MAPPER = new ObjectMapper();
     public static final String TOOL_CONTEXT_USER_ID = "playgroundUserId";
     public static final String TOOL_CONTEXT_SESSION_ID = "playgroundSessionId";
+    public static final String TOOL_CONTEXT_CONVERSATION_ID = "playgroundConversationId";
+    public static final String DYNAMIC_TOOL_POOL = "playgroundDynamicToolPool";
 
     private static final Logger logger = LoggerFactory.getLogger(McpToolCallingManager.class);
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE = new ParameterizedTypeReference<>() {};
 
     private final ToolCallingManager toolCallingManager;
     private final ObjectProvider<ToolSpecService> toolSpecServiceProvider;
@@ -92,6 +103,7 @@ public class McpToolCallingManager implements ToolCallingManager {
     @Override
     public ToolExecutionResult executeToolCalls(Prompt prompt, ChatResponse chatResponse) {
         ToolCallingChatOptions toolCallingChatOptions = (ToolCallingChatOptions) prompt.getOptions();
+        prompt = resolveDynamicToolCalls(prompt, chatResponse, toolCallingChatOptions);
         Optional<Consumer<Object>> mcpProcessMessageConsumerAsOpt = Optional.ofNullable(
                 (Consumer<Object>) toolCallingChatOptions.getToolContext().get(MCP_PROCESS_MESSAGE_CONSUMER));
 
@@ -106,7 +118,6 @@ public class McpToolCallingManager implements ToolCallingManager {
         }
         Set<String> declinedToolCallIds = resolveDeclinedToolCalls(chatResponse,
                 toolCallingChatOptions.getToolContext());
-        // Restore identity so the per-tool observation keeps user/session after the reactive chain cleared MDC.
         Map<String, String> previousIdentity = pushIdentity(toolCallingChatOptions.getToolContext());
         ToolExecutionResult rawResult;
         try {
@@ -116,7 +127,7 @@ public class McpToolCallingManager implements ToolCallingManager {
         } finally {
             popIdentity(previousIdentity);
         }
-        ToolExecutionResult result = truncateOversizedResponses(rawResult);
+        ToolExecutionResult result = applyActionReturnDirect(truncateOversizedResponses(rawResult));
         mcpProcessMessageConsumerAsOpt.ifPresent(consumer -> {
             consumer.accept(formatToolResultForMcp(result.conversationHistory().getLast()));
             consumer.accept(MCP_TOOL_EXECUTION_COMPLETED_MESSAGE);
@@ -124,8 +135,41 @@ public class McpToolCallingManager implements ToolCallingManager {
         return result;
     }
 
-    // One enforcement point for every tool (built-in, custom, external MCP): an oversized response would
-    // otherwise be re-prefilled whole on each following round, which is what froze the heavy presets.
+    @SuppressWarnings("unchecked")
+    private Prompt resolveDynamicToolCalls(Prompt prompt, ChatResponse chatResponse,
+            ToolCallingChatOptions toolCallingChatOptions) {
+        Map<String, ToolCallback> dynamicPool =
+                (Map<String, ToolCallback>) toolCallingChatOptions.getToolContext().get(DYNAMIC_TOOL_POOL);
+        if (dynamicPool == null) return prompt;
+        Set<String> available = new HashSet<>();
+        for (ToolCallback callback : toolCallingChatOptions.getToolCallbacks())
+            available.add(callback.getToolDefinition().name());
+        List<ToolCallback> additions = new ArrayList<>();
+        Set<String> handled = new HashSet<>();
+        for (ToolCall toolCall : chatResponse.getResults().stream()
+                .flatMap(result -> result.getOutput().getToolCalls().stream()).toList()) {
+            String name = toolCall.name();
+            if (available.contains(name) || !handled.add(name)) continue;
+            ToolCallback pooled = dynamicPool.get(name);
+            additions.add(pooled != null ? pooled : notLoadedCallback(name));
+        }
+        if (additions.isEmpty()) return prompt;
+        List<ToolCallback> merged = new ArrayList<>(toolCallingChatOptions.getToolCallbacks());
+        merged.addAll(additions);
+        ToolCallingChatOptions augmented = ((ToolCallingChatOptions.Builder<?>) toolCallingChatOptions.mutate())
+                .toolCallbacks(merged).build();
+        return prompt.mutate().chatOptions(augmented).build();
+    }
+
+    private static ToolCallback notLoadedCallback(String toolName) {
+        return FunctionToolCallback.builder(toolName, (Function<Map<String, Object>, Object>) arguments ->
+                        "Tool '" + toolName + "' is not loaded. Call toolSearchTool with a short query to discover "
+                                + "the tools you need, then call the tool by its exact name.")
+                .description("Discoverable tool that has not been loaded yet")
+                .inputType(MAP_TYPE)
+                .build();
+    }
+
     private ToolExecutionResult truncateOversizedResponses(ToolExecutionResult result) {
         if (this.toolResultMaxChars <= 0 || result.conversationHistory().isEmpty()) return result;
         if (!(result.conversationHistory().getLast() instanceof ToolResponseMessage toolResponseMessage))
@@ -151,7 +195,41 @@ public class McpToolCallingManager implements ToolCallingManager {
                 .returnDirect(result.returnDirect()).build();
     }
 
-    // Same marker the clipped built-in tools emit, so the model reads a single convention everywhere.
+    private ToolExecutionResult applyActionReturnDirect(ToolExecutionResult result) {
+        if (result.returnDirect() || result.conversationHistory().isEmpty()
+                || !(result.conversationHistory().getLast() instanceof ToolResponseMessage toolResponseMessage))
+            return result;
+        List<ToolResponseMessage.ToolResponse> responses = toolResponseMessage.getResponses();
+        boolean terminal = responses.size() == 1 && responses.get(0).responseData() != null
+                && responses.get(0).responseData().contains(ACTION_RETURN_DIRECT_MARKER);
+        if (!terminal) return result;
+        ToolResponseMessage.ToolResponse only = responses.get(0);
+        List<Message> history = new ArrayList<>(result.conversationHistory());
+        history.set(history.size() - 1, ToolResponseMessage.builder().responses(List.of(
+                new ToolResponseMessage.ToolResponse(only.id(), only.name(),
+                        unwrapActionContent(only.responseData())))).build());
+        return ToolExecutionResult.builder().conversationHistory(history).returnDirect(true).build();
+    }
+
+    static String unwrapActionContent(String raw) {
+        String trimmed = raw == null ? "" : raw.trim();
+        if (!trimmed.startsWith("[") && !trimmed.startsWith("{") && !trimmed.startsWith("\"")) return raw;
+        try {
+            JsonNode node = ACTION_MAPPER.readTree(trimmed);
+            if (node.isTextual()) return node.asText();
+            if (node.isObject() && node.has("text")) return node.get("text").asText();
+            if (node.isArray()) {
+                StringBuilder sb = new StringBuilder();
+                for (JsonNode el : node) {
+                    sb.append(el.isObject() && el.has("text") ? el.get("text").asText() : el.asText());
+                }
+                if (!sb.isEmpty()) return sb.toString();
+            }
+        } catch (RuntimeException ignore) {
+        }
+        return raw;
+    }
+
     private static String truncate(String data, int max) {
         return data.substring(0, max) + "\n...[truncated " + (data.length() - max) + " of " + data.length()
                 + " chars]";
@@ -161,6 +239,7 @@ public class McpToolCallingManager implements ToolCallingManager {
         Map<String, String> previous = new LinkedHashMap<>();
         putIdentity(previous, MdcIdentityFilter.USER_ID, toolContext.get(TOOL_CONTEXT_USER_ID));
         putIdentity(previous, MdcIdentityFilter.SESSION_ID, toolContext.get(TOOL_CONTEXT_SESSION_ID));
+        putIdentity(previous, MdcIdentityFilter.CONVERSATION_ID, toolContext.get(TOOL_CONTEXT_CONVERSATION_ID));
         return previous;
     }
 

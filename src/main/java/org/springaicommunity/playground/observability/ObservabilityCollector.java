@@ -23,7 +23,9 @@ import io.micrometer.tracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springaicommunity.playground.config.MdcIdentityFilter;
 import org.springaicommunity.playground.service.chat.ChatService;
+import org.springaicommunity.playground.service.identity.UserIdentityService;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.observation.ChatClientObservationContext;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -41,10 +43,14 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -61,34 +67,52 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
     public static final String TOOL_SPAN_NAME = "spring.ai.tool";
     public static final String ADVISOR_SPAN_NAME = "spring.ai.advisor";
     public static final String VECTOR_STORE_SPAN_NAME = "db.vector.client.operation";
+    public static final String TOOL_CALL_ID_ATTR = "spring.ai.tool.call.id";
 
     private static final String CTX_START_NS = "obs.startNs";
     private static final String CTX_TRACE_ID = "obs.traceId";
     private static final String CTX_SPAN_ID = "obs.spanId";
     private static final String CTX_PARENT_SPAN_ID = "obs.parentSpanId";
+    private static final String CTX_CONVERSATION_ID = "obs.conversationId";
+    private static final String CTX_USER_MESSAGE_ID = "obs.userMessageId";
+    private static final String CTX_USER_ID = "obs.userId";
+    private static final String CTX_SESSION_ID = "obs.sessionId";
+
+    private static final String MDC_TRACE_ID = "traceId";
+    private static final String MDC_SPAN_ID = "spanId";
 
     private final ObservabilityRingBuffer buffer;
     private final ObjectProvider<ObservabilityPersistenceService> persistenceProvider;
     private final ObjectProvider<Tracer> tracerProvider;
+    private final ObjectProvider<UserIdentityService> userIdentityProvider;
+    private volatile String cachedUserId;
     private final ObservabilityProperties props;
 
     private final Map<String, TraceBuilder> active = new ConcurrentHashMap<>();
     private final AtomicLong fallbackTraceCounter = new AtomicLong();
+    private final Set<String> finalizedTraceIds = Collections.newSetFromMap(
+            Collections.synchronizedMap(new LinkedHashMap<String, Boolean>(512, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > 4096;
+                }
+            }));
 
     public ObservabilityCollector(ObservabilityRingBuffer buffer,
             ObjectProvider<ObservabilityPersistenceService> persistenceProvider,
             ObjectProvider<Tracer> tracerProvider,
+            ObjectProvider<UserIdentityService> userIdentityProvider,
             ObservabilityProperties props) {
         this.buffer = buffer;
         this.persistenceProvider = persistenceProvider;
         this.tracerProvider = tracerProvider;
+        this.userIdentityProvider = userIdentityProvider;
         this.props = props;
     }
 
     @Override
     public boolean supportsContext(Observation.Context context) {
         if (context == null) return false;
-        // Spring AI sets observation name only at start time — match by class fqn first.
         String cls = context.getClass().getName();
         if (cls.startsWith("org.springframework.ai.")) return true;
         String name = context.getName();
@@ -134,32 +158,125 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
         SpanRecord span = new SpanRecord(spanId, parentSpanId, spanName,
                 startEpochMs, durationMs, errorStatus(context), attrs);
 
+        boolean isRoot = isRoot(context);
+
+        if (!isRoot && finalizedTraceIds.contains(traceId)) {
+            TraceRecord lateTrace = lateSpanTrace(traceId, span);
+            TraceRecord merged = buffer.add(lateTrace);
+            if (merged != lateTrace) {
+                persistIfEnabled(merged);
+            }
+            return;
+        }
+
+        if (TOOL_SPAN_NAME.equals(span.name()) && !active.containsKey(traceId)) {
+            finalizedTraceIds.add(traceId);
+            persistIfEnabled(buffer.add(lateSpanTrace(traceId, span)));
+            return;
+        }
+
         TraceBuilder builder = active.computeIfAbsent(traceId, TraceBuilder::new);
         builder.addSpan(span, props.getMaxSpansPerTrace());
 
-        boolean isRoot = ROOT_SPAN_NAME.equals(context.getName())
-                || ROOT_SPAN_NAME.equals(context.getContextualName())
-                || context.getClass().getName().endsWith("ChatClientObservationContext");
         if (isRoot) {
             active.remove(traceId);
-            TraceRecord trace = builder.finalizeTrace(span);
-            buffer.add(trace);
-            ObservabilityPersistenceService persist = persistenceProvider.getIfAvailable();
-            if (persist != null && props.isPersist()) {
-                persist.saveAsync(trace);
-            }
+            finalizedTraceIds.add(traceId);
+            persistIfEnabled(buffer.add(builder.finalizeTrace(span)));
         }
+    }
+
+    private void persistIfEnabled(TraceRecord trace) {
+        ObservabilityPersistenceService persist = persistenceProvider.getIfAvailable();
+        if (persist != null && props.isPersist()) {
+            persist.saveAsync(trace);
+        }
+    }
+
+    private TraceRecord lateSpanTrace(String traceId, SpanRecord span) {
+        Set<String> toolNames = new LinkedHashSet<>();
+        Set<String> serverNames = new LinkedHashSet<>();
+        Map<String, String> a = span.attributes() == null ? Map.of() : span.attributes();
+        if (TOOL_SPAN_NAME.equals(span.name())) {
+            String toolName = toolNameOf(a);
+            if (toolName != null && !toolName.isBlank()) toolNames.add(toolName);
+            String mcpServer = a.get("saip.mcp.server");
+            if (mcpServer != null && !mcpServer.isBlank()) serverNames.add(mcpServer);
+        }
+        List<SpanRecord> spans = new ArrayList<>();
+        spans.add(span);
+        return new TraceRecord(traceId,
+                blankToNull(a.get("conversation.id")),
+                blankToNull(a.get("user_message.id")),
+                null, null,
+                span.startEpochMs(), span.durationMs(), errorStatusOf(span),
+                null, null, null, null,
+                !toolNames.isEmpty(), toolNames.size(), false,
+                blankToNull(a.get("user.id")), blankToNull(a.get("session.id")),
+                toolNames, serverNames,
+                spans, new HashMap<>());
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
+    }
+
+    private static String errorStatusOf(SpanRecord span) {
+        return TraceRecord.STATUS_ERROR.equals(span.status()) ? TraceRecord.STATUS_ERROR : TraceRecord.STATUS_OK;
+    }
+
+    private static String toolNameOf(Map<String, String> attrs) {
+        String name = attrs.get("gen_ai.tool.name");
+        if (name == null || name.isBlank()) name = attrs.get("spring.ai.tool.definition.name");
+        return name;
     }
 
     @Override
     public void onStart(Observation.Context context) {
         context.put(CTX_START_NS, System.nanoTime());
         captureSpanIds(context);
+        captureIdentity(context);
+        if (isRoot(context)) {
+            String traceId = (String) context.get(CTX_TRACE_ID);
+            if (traceId != null && !traceId.isBlank()) {
+                active.computeIfAbsent(traceId, TraceBuilder::new);
+            }
+        }
+    }
+
+    private boolean isRoot(Observation.Context context) {
+        return ROOT_SPAN_NAME.equals(context.getName())
+                || ROOT_SPAN_NAME.equals(context.getContextualName())
+                || context.getClass().getName().endsWith("ChatClientObservationContext");
+    }
+
+    private void captureIdentity(Observation.Context context) {
+        putIfPresent(context, CTX_CONVERSATION_ID, MDC.get(ChatService.MDC_CONVERSATION_ID));
+        putIfPresent(context, CTX_USER_MESSAGE_ID, MDC.get(ChatService.MDC_USER_MESSAGE_ID));
+        String userId = MDC.get(MdcIdentityFilter.USER_ID);
+        if (userId == null || userId.isBlank()) {
+            userId = fallbackUserId();
+        }
+        putIfPresent(context, CTX_USER_ID, userId);
+        putIfPresent(context, CTX_SESSION_ID, MDC.get(MdcIdentityFilter.SESSION_ID));
+    }
+
+    private String fallbackUserId() {
+        String cached = this.cachedUserId;
+        if (cached != null) return cached;
+        UserIdentityService identity = userIdentityProvider.getIfAvailable();
+        if (identity == null) return null;
+        this.cachedUserId = identity.currentUserId();
+        return this.cachedUserId;
+    }
+
+    private static void putIfPresent(Observation.Context context, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            context.put(key, value);
+        }
     }
 
     @Override
     public void onError(Observation.Context context) {
-        // attribute noted via Observation.Context.getError() — handled in errorStatus()
     }
 
     @Scheduled(fixedDelayString = "${spring.ai.playground.observability.active-trace-cleanup-ms:60000}")
@@ -169,7 +286,7 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
 
     int evictActiveOlderThan(long cutoffEpochMs) {
         int before = active.size();
-        active.entrySet().removeIf(e -> e.getValue().createdAtMs < cutoffEpochMs);
+        active.entrySet().removeIf(e -> e.getValue().lastTouchedMs < cutoffEpochMs);
         int evicted = before - active.size();
         if (evicted > 0) {
             logger.debug("Evicted {} stale active trace builders (cutoff={}ms)", evicted, cutoffEpochMs);
@@ -186,18 +303,23 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
             return;
         }
         Tracer tracer = tracerProvider.getIfAvailable();
-        if (tracer == null) {
+        Span current = tracer == null ? null : tracer.currentSpan();
+        if (current != null) {
+            context.put(CTX_TRACE_ID, current.context().traceId());
+            context.put(CTX_SPAN_ID, current.context().spanId());
+            String parent = current.context().parentId();
+            if (parent != null) {
+                context.put(CTX_PARENT_SPAN_ID, parent);
+            }
             return;
         }
-        Span current = tracer.currentSpan();
-        if (current == null) {
-            return;
-        }
-        context.put(CTX_TRACE_ID, current.context().traceId());
-        context.put(CTX_SPAN_ID, current.context().spanId());
-        String parent = current.context().parentId();
-        if (parent != null) {
-            context.put(CTX_PARENT_SPAN_ID, parent);
+        String mdcTraceId = MDC.get(MDC_TRACE_ID);
+        if (mdcTraceId != null && !mdcTraceId.isBlank()) {
+            context.put(CTX_TRACE_ID, mdcTraceId);
+            String mdcSpanId = MDC.get(MDC_SPAN_ID);
+            if (mdcSpanId != null && !mdcSpanId.isBlank()) {
+                context.put(CTX_SPAN_ID, mdcSpanId);
+            }
         }
     }
 
@@ -209,14 +331,21 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
         for (KeyValue kv : context.getHighCardinalityKeyValues()) {
             putIfNotNull(attrs, kv);
         }
-        // MDC fallback for conversationId/userMessageId
-        String conv = MDC.get(ChatService.MDC_CONVERSATION_ID);
+        String conv = identity(context, CTX_CONVERSATION_ID, ChatService.MDC_CONVERSATION_ID);
         if (conv != null) {
             attrs.putIfAbsent("conversation.id", conv);
         }
-        String msg = MDC.get(ChatService.MDC_USER_MESSAGE_ID);
+        String msg = identity(context, CTX_USER_MESSAGE_ID, ChatService.MDC_USER_MESSAGE_ID);
         if (msg != null) {
             attrs.putIfAbsent("user_message.id", msg);
+        }
+        String userId = identity(context, CTX_USER_ID, MdcIdentityFilter.USER_ID);
+        if (userId != null) {
+            attrs.putIfAbsent("user.id", userId);
+        }
+        String sessionId = identity(context, CTX_SESSION_ID, MdcIdentityFilter.SESSION_ID);
+        if (sessionId != null) {
+            attrs.putIfAbsent("session.id", sessionId);
         }
         enrichWithChatModelMessages(context, attrs);
         enrichWithChatClientResponse(context, attrs);
@@ -263,7 +392,6 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
             if (prompt != null && prompt.getInstructions() != null) {
                 List<Message> messages = prompt.getInstructions();
                 attrs.putIfAbsent("gen_ai.prompt.count", String.valueOf(messages.size()));
-                // Cap stored content per span — agentic loops can produce huge prompts.
                 int captureCount = Math.min(messages.size(), maxMessages);
                 if (captureCount < messages.size()) {
                     attrs.putIfAbsent("gen_ai.prompt.truncated_messages",
@@ -302,7 +430,6 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
                 }
             }
         } catch (Exception e) {
-            // Defensive: capture must never break the observation pipeline. Log and move on.
             logger.debug("Failed to capture prompt/completion content", e);
         }
     }
@@ -323,6 +450,14 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
         return s.substring(0, max) + " …(truncated " + (s.length() - max) + " chars)";
     }
 
+    private static String identity(Observation.Context context, String ctxKey, String mdcKey) {
+        Object captured = context.get(ctxKey);
+        if (captured instanceof String s && !s.isBlank()) {
+            return s;
+        }
+        return MDC.get(mdcKey);
+    }
+
     private void putIfNotNull(Map<String, String> attrs, KeyValue kv) {
         if (kv == null || kv.getKey() == null || kv.getValue() == null) return;
         attrs.put(kv.getKey(), kv.getValue());
@@ -334,7 +469,6 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
 
     private String simpleClassNameFallback(Observation.Context context) {
         String simple = context.getClass().getSimpleName();
-        // strip trailing "ObservationContext" / "Context" for readability
         if (simple.endsWith("ObservationContext")) simple = simple.substring(0, simple.length() - "ObservationContext".length());
         else if (simple.endsWith("Context")) simple = simple.substring(0, simple.length() - "Context".length());
         return simple;
@@ -343,15 +477,15 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
     private static final class TraceBuilder {
         private final String traceId;
         private final List<SpanRecord> spans = new ArrayList<>();
-        private final long createdAtMs = Instant.now().toEpochMilli();
+        private volatile long lastTouchedMs = Instant.now().toEpochMilli();
 
         TraceBuilder(String traceId) {
             this.traceId = traceId;
         }
 
         synchronized void addSpan(SpanRecord span, int maxSpans) {
+            lastTouchedMs = Instant.now().toEpochMilli();
             if (spans.size() >= maxSpans) return;
-            // streaming can re-finalize the same span; skip the dup so its tokens aren't double-counted
             if (span.spanId() != null) {
                 for (SpanRecord existing : spans) {
                     if (span.spanId().equals(existing.spanId())) return;
@@ -365,6 +499,8 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
             String conversationId = rootAttrs.getOrDefault("conversation.id",
                     rootAttrs.get("spring.ai.chat.client.conversation.id"));
             String userMessageId = rootAttrs.get("user_message.id");
+            String userId = rootAttrs.get("user.id");
+            String sessionId = rootAttrs.get("session.id");
 
             String provider = null;
             String model = null;
@@ -374,9 +510,9 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
             String finishReason = null;
             int toolCallCount = 0;
             boolean hasRag = false;
+            Set<String> toolNames = new LinkedHashSet<>();
+            Set<String> serverNames = new LinkedHashSet<>();
 
-            // Reactive streaming sometimes finalizes the gen_ai child after the root —
-            // also read token/model off the root span (populated via enrichWithChatClientResponse).
             for (SpanRecord s : spans) {
                 Map<String, String> a = s.attributes();
                 if (CHAT_MODEL_SPAN_NAME.equals(s.name()) || ROOT_SPAN_NAME.equals(s.name())) {
@@ -384,7 +520,7 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
                     if (model == null) {
                         String responseModel = nonSentinel(a.get("gen_ai.response.model"));
                         String requestModel = nonSentinel(a.get("gen_ai.request.model"));
-                        model = firstNonBlank(responseModel, requestModel);
+                        model = TraceRecord.firstNonBlank(responseModel, requestModel);
                     }
                     inputTokens = sumLong(inputTokens, a.get("gen_ai.usage.input_tokens"));
                     outputTokens = sumLong(outputTokens, a.get("gen_ai.usage.output_tokens"));
@@ -392,6 +528,10 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
                     if (finishReason == null) finishReason = a.get("gen_ai.response.finish_reasons");
                 } else if (TOOL_SPAN_NAME.equals(s.name())) {
                     toolCallCount++;
+                    String toolName = toolNameOf(a);
+                    if (toolName != null && !toolName.isBlank()) toolNames.add(toolName);
+                    String mcpServer = a.get("saip.mcp.server");
+                    if (mcpServer != null && !mcpServer.isBlank()) serverNames.add(mcpServer);
                 } else if (VECTOR_STORE_SPAN_NAME.equals(s.name())) {
                     hasRag = true;
                 }
@@ -421,12 +561,12 @@ public class ObservabilityCollector implements ObservationHandler<Observation.Co
                     toolCallCount > 0,
                     toolCallCount,
                     hasRag,
+                    userId,
+                    sessionId,
+                    toolNames,
+                    serverNames,
                     new ArrayList<>(spans),
                     rootAttrs);
-        }
-
-        private String firstNonBlank(String a, String b) {
-            return (a != null && !a.isBlank()) ? a : b;
         }
 
         private static String nonSentinel(String s) {

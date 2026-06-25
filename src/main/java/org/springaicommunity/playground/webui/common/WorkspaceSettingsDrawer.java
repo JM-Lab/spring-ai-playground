@@ -47,7 +47,6 @@ public class WorkspaceSettingsDrawer extends Div {
         this.scrim = buildScrim();
 
         addClassName("workspace-settings-drawer");
-        // Height hugs the content (footer sits right under it); long bodies hit max-height and scroll.
         getStyle().set("position", "absolute")
                 .set("top", "var(--lumo-space-m)")
                 .set("right", "var(--lumo-space-m)")
@@ -151,6 +150,12 @@ public class WorkspaceSettingsDrawer extends Div {
         }
         footerLayout.setVisible(true);
         return this;
+    }
+
+    public void setApplyEnabled(boolean enabled) {
+        if (applyButton != null) {
+            applyButton.setEnabled(enabled);
+        }
     }
 
     public WorkspaceSettingsDrawer setSecondaryButton(String label, Runnable action) {

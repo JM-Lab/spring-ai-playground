@@ -16,8 +16,11 @@
 package org.springaicommunity.playground.observability;
 
 import io.micrometer.common.KeyValue;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.Observation;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
@@ -38,6 +41,13 @@ import static org.mockito.Mockito.when;
 
 class McpToolObservationFilterTest {
 
+    private MeterRegistry registry;
+
+    @BeforeEach
+    void setUp() {
+        registry = new SimpleMeterRegistry();
+    }
+
     @AfterEach
     void clearMdc() {
         MDC.clear();
@@ -47,18 +57,32 @@ class McpToolObservationFilterTest {
     void addsMcpAttributesWhenToolIsMcpSourced() {
         McpClientService mcpClientService = mock(McpClientService.class);
         when(mcpClientService.lookupToolSource("weather"))
-                .thenReturn(Optional.of(new McpToolSource("weather-server", "STDIO")));
+                .thenReturn(Optional.of(new McpToolSource("weather-server", "STDIO", null)));
 
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
         ToolCallingObservationContext ctx = ctx("weather");
 
         filter.map(ctx);
 
         Map<String, String> attrs = highCardMap(ctx);
         assertThat(attrs)
-                .containsEntry(McpToolObservationFilter.MCP_KIND, "mcp")
-                .containsEntry(McpToolObservationFilter.MCP_TRANSPORT, "STDIO")
+                .containsEntry(McpToolObservationFilter.MCP_METHOD_NAME, "tools/call")
+                .containsEntry(McpToolObservationFilter.NETWORK_TRANSPORT, "pipe")
+                .doesNotContainKey(McpToolObservationFilter.NETWORK_PROTOCOL_NAME)
                 .containsEntry(McpToolObservationFilter.MCP_SERVER, "weather-server");
+    }
+
+    @Test
+    void mcpSourcedToolIncrementsToolRiskCounter() {
+        McpClientService mcpClientService = mock(McpClientService.class);
+        when(mcpClientService.lookupToolSource("weather"))
+                .thenReturn(Optional.of(new McpToolSource("weather-server", "STDIO", "L4")));
+
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
+        filter.map(ctx("weather"));
+
+        assertThat(registry.find(McpToolObservationFilter.TOOL_RISK_COUNTER)
+                .tag("level", "L4").counter().count()).isEqualTo(1.0);
     }
 
     @Test
@@ -66,15 +90,15 @@ class McpToolObservationFilterTest {
         McpClientService mcpClientService = mock(McpClientService.class);
         when(mcpClientService.lookupToolSource(anyString())).thenReturn(Optional.empty());
 
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
         ToolCallingObservationContext ctx = ctx("local-tool");
 
         filter.map(ctx);
 
         Map<String, String> attrs = highCardMap(ctx);
         assertThat(attrs)
-                .containsEntry(McpToolObservationFilter.MCP_KIND, "in-process")
-                .doesNotContainKey(McpToolObservationFilter.MCP_TRANSPORT)
+                .doesNotContainKey(McpToolObservationFilter.MCP_METHOD_NAME)
+                .doesNotContainKey(McpToolObservationFilter.NETWORK_TRANSPORT)
                 .doesNotContainKey(McpToolObservationFilter.MCP_SERVER);
     }
 
@@ -91,16 +115,17 @@ class McpToolObservationFilterTest {
         MDC.put(McpRiskMdcKeys.RISK_SERVER, "L1");
         MDC.put(McpRiskMdcKeys.RISK_PUBLISH, "L2");
 
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
         ToolCallingObservationContext ctx = ctx("github__create_issue");
 
         filter.map(ctx);
 
         Map<String, String> attrs = highCardMap(ctx);
         assertThat(attrs)
-                .containsEntry(McpToolObservationFilter.MCP_KIND, "mcp")
+                .containsEntry(McpToolObservationFilter.MCP_METHOD_NAME, "tools/call")
                 .containsEntry(McpToolObservationFilter.MCP_ORIGIN, McpRiskMdcKeys.ORIGIN_WRAPPED_EXTERNAL)
-                .containsEntry(McpToolObservationFilter.MCP_TRANSPORT, "streamable_http")
+                .containsEntry(McpToolObservationFilter.NETWORK_TRANSPORT, "tcp")
+                .containsEntry(McpToolObservationFilter.NETWORK_PROTOCOL_NAME, "http")
                 .containsEntry(McpToolObservationFilter.MCP_SERVER, "GitHub")
                 .containsEntry(McpToolObservationFilter.MCP_COMPOSITION_ID, "comp-1")
                 .containsEntry(McpToolObservationFilter.MCP_COMPOSITION_NAME, "dev-toolbox")
@@ -119,14 +144,14 @@ class McpToolObservationFilterTest {
         MDC.put(McpRiskMdcKeys.ORIGIN, McpRiskMdcKeys.ORIGIN_INTERNAL_JS);
         MDC.put(McpRiskMdcKeys.RISK_FINAL, "L0");
 
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
         ToolCallingObservationContext ctx = ctx("add_numbers");
 
         filter.map(ctx);
 
         Map<String, String> attrs = highCardMap(ctx);
         assertThat(attrs)
-                .containsEntry(McpToolObservationFilter.MCP_KIND, "in-process")
+                .doesNotContainKey(McpToolObservationFilter.MCP_METHOD_NAME)
                 .containsEntry(McpToolObservationFilter.MCP_ORIGIN, McpRiskMdcKeys.ORIGIN_INTERNAL_JS)
                 .containsEntry(McpToolObservationFilter.MCP_RISK_FINAL, "L0");
     }
@@ -141,7 +166,7 @@ class McpToolObservationFilterTest {
         MDC.put(McpRiskMdcKeys.RISK_PUBLISH, "L1");
         MDC.put(McpRiskMdcKeys.FLOOR_TRIGGER, "non_loopback_no_auth_write_capability");
 
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
         ToolCallingObservationContext ctx = ctx("write_anything");
 
         filter.map(ctx);
@@ -155,7 +180,7 @@ class McpToolObservationFilterTest {
     @Test
     void ignoresNonToolCallingContexts() {
         McpClientService mcpClientService = mock(McpClientService.class);
-        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService);
+        McpToolObservationFilter filter = new McpToolObservationFilter(mcpClientService, registry);
 
         Observation.Context other = new Observation.Context();
         other.setName("some.other.observation");

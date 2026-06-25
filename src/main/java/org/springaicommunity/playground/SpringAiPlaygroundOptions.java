@@ -80,16 +80,34 @@ public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio 
 
     public record Chat(String systemPrompt, List<String> models,
                        @NestedConfigurationProperty ChatOptionsConfig chatOptions, Integer toolResultMaxChars,
-                       Integer memoryMaxMessages, Integer historyMaxMessages, Integer defaultMaxTokens) {
+                       Integer memoryMaxMessages, Integer historyMaxMessages, Integer defaultMaxTokens,
+                       @NestedConfigurationProperty ToolSearch toolSearch) {
         public Chat {
             if (toolResultMaxChars == null) toolResultMaxChars = 12_000;
             if (memoryMaxMessages == null || memoryMaxMessages <= 0) memoryMaxMessages = 10;
             if (historyMaxMessages == null || historyMaxMessages <= 0) historyMaxMessages = 2_000;
             if (defaultMaxTokens == null || defaultMaxTokens <= 0) defaultMaxTokens = 8_192;
+            if (toolSearch == null) toolSearch = new ToolSearch(null, null, null, null, null, null);
         }
     }
 
     public record ChatOptionsConfig(String model, Double temperature, Integer maxTokens, Double topP,
                                     Integer topK, Double frequencyPenalty, Double presencePenalty,
                                     List<String> stopSequences) {}
+
+    public record ToolSearch(Boolean enabled, Boolean defaultOn, Integer minTools, Integer maxResults,
+                             IndexType indexType, VectorStoreMode vectorStore) {
+        public enum IndexType { HYBRID, VECTOR }
+
+        public enum VectorStoreMode { DEDICATED, SHARED }
+
+        public ToolSearch {
+            if (enabled == null) enabled = true;
+            if (defaultOn == null) defaultOn = false;
+            if (minTools == null || minTools < 0) minTools = 10;
+            if (maxResults == null || maxResults <= 0) maxResults = 3;
+            if (indexType == null) indexType = IndexType.HYBRID;
+            if (vectorStore == null) vectorStore = VectorStoreMode.DEDICATED;
+        }
+    }
 }

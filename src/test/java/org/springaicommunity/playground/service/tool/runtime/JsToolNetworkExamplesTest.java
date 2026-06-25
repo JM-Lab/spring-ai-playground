@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -123,7 +124,7 @@ class JsToolNetworkExamplesTest {
         executor = new JsToolExecutor(30L,
                 new JsSandbox(true, false, false, false, 5_000_000L, Set.of(),
                         Set.of("java.lang.*", "java.util.*", "org.jsoup.*"), Map.of()),
-                null);
+                Path.of(System.getProperty("java.io.tmpdir")));
     }
 
     @AfterAll

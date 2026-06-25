@@ -27,7 +27,7 @@ This is the runtime half of the safety story: the [sandbox](../safety-architectu
 Agentic Chat reaches your published tools through the built-in MCP server.
 
 1. Open **Agentic Chat**.
-2. In the tool menu above the prompt, tick **Use built-in MCP server in this chat**.
+2. In the tool menu above the prompt, tick **Manual built-in tool selection**.
 3. Confirm your tool appears in the exposed-tools list.
 
 ## 3. Trigger the tool and approve { #approve }

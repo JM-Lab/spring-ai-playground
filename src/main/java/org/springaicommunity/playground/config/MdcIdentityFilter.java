@@ -37,6 +37,7 @@ public class MdcIdentityFilter implements Filter {
 
     public static final String USER_ID = "userId";
     public static final String SESSION_ID = "sessionId";
+    public static final String CONVERSATION_ID = "conversationId";
     private static final String SESSION_ATTR = "playgroundLogSessionId";
 
     private final UserIdentityService userIdentityService;

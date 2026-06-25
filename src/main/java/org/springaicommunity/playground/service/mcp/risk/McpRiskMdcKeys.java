@@ -17,19 +17,19 @@ package org.springaicommunity.playground.service.mcp.risk;
 
 public final class McpRiskMdcKeys {
 
-    public static final String CID = "mcp.cid";
-    public static final String VIA = "mcp.via";
-    public static final String ORIGIN = "mcp.origin";
-    public static final String COMPOSITION_ID = "mcp.composition.id";
-    public static final String COMPOSITION_NAME = "mcp.composition.name";
-    public static final String EXPOSED_ALIAS = "mcp.tool.exposed_alias";
-    public static final String UPSTREAM_SERVER = "mcp.upstream.server";
-    public static final String UPSTREAM_TOOL = "mcp.upstream.tool";
-    public static final String UPSTREAM_TRANSPORT = "mcp.upstream.transport";
-    public static final String RISK_FINAL = "mcp.risk.final";
-    public static final String RISK_SERVER = "mcp.risk.server";
-    public static final String RISK_PUBLISH = "mcp.risk.publish";
-    public static final String FLOOR_TRIGGER = "mcp.risk.floor_trigger";
+    public static final String CID = "saip.cid";
+    public static final String VIA = "saip.via";
+    public static final String ORIGIN = "saip.tool.origin";
+    public static final String COMPOSITION_ID = "saip.composition.id";
+    public static final String COMPOSITION_NAME = "saip.composition.name";
+    public static final String EXPOSED_ALIAS = "saip.tool.exposed_alias";
+    public static final String UPSTREAM_SERVER = "saip.upstream.server";
+    public static final String UPSTREAM_TOOL = "saip.upstream.tool";
+    public static final String UPSTREAM_TRANSPORT = "saip.upstream.transport";
+    public static final String RISK_FINAL = "saip.risk.final";
+    public static final String RISK_SERVER = "saip.risk.server";
+    public static final String RISK_PUBLISH = "saip.risk.publish";
+    public static final String FLOOR_TRIGGER = "saip.risk.floor_trigger";
 
     public static final String VIA_CHAT = "chat";
     public static final String VIA_INSPECTOR = "inspector";

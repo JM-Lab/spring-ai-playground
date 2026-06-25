@@ -37,7 +37,7 @@ Spring AI Playground treats the local test-run as a gate, not a polish step. Thi
 
 In practice this means the act of publishing is the act of testing. You never produce a tool whose first execution happens in front of an agent.
 
-Every one of the 85 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
+Every one of the 88 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
 
 ## Built-in MCP Server
 
@@ -76,7 +76,7 @@ The JS-on-JVM design is what lets every tool in this app - both the bundled defa
 Concretely:
 
 - One artifact runs on all three OSes - the same JAR is repackaged into the Docker image and the Electron-packaged desktop launcher, all from one `pom.xml`. See [Getting Started](../../getting-started/index.md) for the platform-specific launchers.
-- All 85 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
+- All 88 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
 - Every cross-bridged helper resolves to a Java standard library or well-known JVM library, so platform quirks are handled at the JVM layer:
     - `safety.fs` rides on `java.nio.file.Path` / `Files` - `/` vs `\` and case folding are normalised before any I/O.
     - `fetch` uses the JDK `HttpClient` - same TLS stack, same redirect handling, same connection pool everywhere.
@@ -97,21 +97,21 @@ Tools call a small set of capability-scoped helpers instead of raw Java. These a
 | `atob`, `btoa` | Base64 encode / decode of strings. |
 | `crypto.subtle` | `digest` (SHA-256 / SHA-384 / SHA-512 only), `importKey` + `sign` / `verify` for HMAC, and `getRandomValues` - backed by JCE. |
 | `crypto.randomUUID()` | UUID v4. |
-| `safety.fs` | `readText`, `writeText` (auto-creates parent directories), `list`, `stat`, `exists`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find` (depth-limited walk, **follows symlinks**). Every path is resolved against the base path and rejected if `normalize()` escapes the root. Per-tool override `fsBasePath` swaps the root for that tool. |
+| `safety.fs` | `readText`, `writeText` (auto-creates parent directories), `list`, `stat`, `exists`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find` (depth-limited walk, **does not follow symlinks**), plus `workspace()` / `readRoots()` that report the boundaries. A relative path resolves under the **working directory**; **reads** are allowed anywhere under a **readable root** (the home directory by default), while **writes** are confined to the working directory. Per-tool override `fsBasePath` confines that one tool to a single base instead. |
 | `safety.parser.html` | jsoup-backed cleaner. Returns a `org.jsoup.nodes.Document` host object - methods are callable from JS, but the class itself is not in the allow-list, so user code cannot construct new jsoup instances via `Java.type(...)`. |
 | `safety.parser.xml` | XXE-hardened DOM parser: `disallow-doctype-decl=true`, external general + parameter entities disabled, `XIncludeAware=false`, `expandEntityReferences=false`. Returns a plain `{tag, attrs, text, children}` proxy tree - no host nodes leak. |
 | `safety.parser.yaml` | SnakeYAML `Yaml().load()`. **Caveat:** this is the regular constructor (not `SafeConstructor`), so YAML tags such as `!!class.name` will trigger class instantiation during `load`. Treat YAML input as trusted-source-only; do not parse user-supplied YAML with this helper. |
 | `safety.parser.csv` | Apache Commons CSV - optional `header` and `delimiter` opts. |
 | `console.log` | Captured into the Tool Studio debug pane and into the chat's tool-call trace. Environment-backed static variables are masked by substring replacement when their full resolved value appears in output. Only anchored full-string `$ENV_VAR` references are auto-collected as secrets - substring-inlined env vars are not. Log entries are capped at 1000 per execution. `console.error` is **not** installed in the current build. |
 
-Every helper above is exercised by one or more of the 85 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
+Every helper above is exercised by one or more of the 88 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
 
 ## Sandbox & Capabilities
 
 **Sandbox & Capabilities** is the collapsible pane inside Tool Action that controls how a tool's effective runtime policy differs from the global default. Every tool starts at the baseline - no network, no filesystem, deny-first class allowlist - and earns an L0 badge. Opening this pane lets you widen specific dimensions per tool, and the **Risk Level** badge updates live as you do so.
 
 ![Sandbox & Capabilities pane - expanded](../../assets/images/tool-studio-sandbox.png)
-*Sandbox & Capabilities expanded: **Deny Classes** chips list packages user JS can never touch (removing chips lowers safety - removing reflection denies → L4, removing `System` / `Runtime` / `Process` → L5); **Allow Classes** chips list packages user JS can use (adding new chips can raise risk to L3+); **Network mode** radio chooses `blocked` / `allowlist` / `strict` (default, with SSRF four-layer guard) / `open`; **Filesystem mode** chooses `off` (hidden) / `read` (L3) / `read+write` (L4) / `readwrite`; **Base path** sets the per-tool `safety.fs` root, default `${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}`.*
+*Sandbox & Capabilities expanded: **Deny Classes** chips list packages user JS can never touch (removing chips lowers safety - removing reflection denies → L4, removing `System` / `Runtime` / `Process` → L5); **Allow Classes** chips list packages user JS can use (adding new chips can raise risk to L3+); **Network mode** radio chooses `blocked` / `allowlist` / `strict` (default, with SSRF four-layer guard) / `open`; **Filesystem mode** chooses `off` (hidden) / `read` (L3) / `read+write` (L4) / `readwrite`; **Base path** sets the per-tool `safety.fs` root, default `${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/workspace}`.*
 
 The Sandbox & Capabilities pane reads and writes a `SandboxOverrides` block on the tool's spec. None of the bundled defaults touch the class lists - they only set network mode and host list - but the full surface is available. The five subsections below document the baseline, the override shape, and the per-control semantics in detail. For the normative JSON contract of the spec this pane writes - every field, JSON Schema, resolution algorithm, and Risk Level rules - see **[Safe Tool Specification 1.0](../../safe-tool-specification.md)**.
 
@@ -126,7 +126,7 @@ spring:
       tool-studio:
         timeout-seconds: 30
         fs:
-          base-path: ${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}
+          base-path: ${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/workspace}
         js-sandbox:
           allow-network-io: false
           allow-file-io: false           # single boolean - flips read and write together
@@ -179,7 +179,7 @@ A tool that legitimately needs raw Java network/filesystem access or relaxed net
 - Putting the same class in both `addAllowClasses` and `addDenyClasses` throws - the resolver enforces a single source of truth.
 - `networkMode` replaces the baseline egress level; `hostsAllow` only applies when `networkMode` is `allowlist`.
 - `fileRead` / `fileWrite` are nullable - leave them as `null` to inherit the baseline (which is the single `allow-file-io` flag); set them per-tool to split read and write.
-- `fsBasePath` swaps the `safety.fs` root for that one tool. Use sparingly - it bypasses the per-app base path.
+- `fsBasePath` confines that one tool to a single base directory (used for both read and write), instead of the default readable-roots + working-directory split. Use sparingly.
 
 ### Egress modes (network)
 
@@ -202,11 +202,11 @@ The Filesystem radio chooses how `safety.fs` behaves for the tool. The baseline 
 | Mode | `fileRead` | `fileWrite` | Risk impact |
 |---|---|---|---|
 | `off` (default) | false | false | Hidden - `safety.fs` calls reject with policy error. |
-| `read` | true | false | L3 - tool can `readText` / `list` / `stat` / `find` within the base path. |
+| `read` | true | false | L3 - tool can `readText` / `list` / `stat` / `find` anywhere under a readable root. |
 | `read+write` | true | true | L4 - tool can also `writeText`, which auto-creates parent directories. |
 | `readwrite` | true | true | L4 (same posture as `read+write`; alternate label). |
 
-All file access is rooted at the configured **Base path** (default `${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/fs-tool-workspace}`, set per-app under `tool-studio.fs.base-path`). `SafeFs.resolveAndValidate` calls `normalize()` and rejects any path whose result does not `startsWith(base)`, so `../../etc/passwd` and absolute paths outside the root both fail. `safety.fs.find` walks with `FileVisitOption.FOLLOW_LINKS` - symbolic links are traversed, so consider that when sharing the base path with untrusted directory trees.
+Two boundaries govern access. The **working directory** (`${TOOL_STUDIO_FS_BASE:${user.home}/spring-ai-playground/workspace}`, set per-app under `tool-studio.fs.base-path`) is the only writable location and the base that **relative** paths resolve against. One or more **readable roots** - the user's home directory by default - bound what **reads** can reach: `SafeFs.resolveRead` accepts a path only if it sits under a readable root, while `SafeFs.resolveWrite` accepts it only if it sits under the working directory. Both resolve symbolic links (`toRealPath`) before the boundary check, so a link whose real target escapes the boundary is rejected even when its lexical path looks contained; writes additionally refuse a symlink target outright. So an absolute path under your home reads fine, but `../../etc/passwd` (outside every root) and any write outside the working directory are rejected. `safety.fs.find` walks without following symbolic links, so a link inside a readable root cannot be used to traverse out of it. Call `listAllowedDirectories` to see the live roots and working directory.
 
 ### SSRF four-layer guard
 
@@ -375,7 +375,7 @@ You can keep many tools in your workspace, expose only a controlled subset, vali
 
     ---
 
-    **7** · starter tools - fetch a web page, look up weather, search Google, call OpenAI, post to Slack.
+    **9** · starter tools - fetch a web page, look up weather, search Google, call OpenAI, post to Slack.
 
 -   :material-toolbox:{ .lg .middle } **[Utilities](../default-tools/utilities.md)**
 
@@ -387,7 +387,7 @@ You can keep many tools in your workspace, expose only a controlled subset, vali
 
     ---
 
-    **10** · `safety.fs` pipeline - read, list, grep, slice, sort, find, write - under the FS base path.
+    **11** · `safety.fs` pipeline - list-roots, read, list, grep, slice, sort, find, write - over readable roots and a writable working directory.
 
 -   :material-web:{ .lg .middle } **[Global](../default-tools/global.md)**
 
@@ -403,7 +403,7 @@ You can keep many tools in your workspace, expose only a controlled subset, vali
 
 </div>
 
-The app ships with a bundled catalog of **85 default tools** across six JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
+The app ships with a bundled catalog of **88 default tools** across six JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
 
 **Not all of them are Local-Passed (active) by default.** A **preset** decides the starting Local-Passed subset, and **include / exclude rules** layer per-tool tweaks on top. Each preset stands on its own - `Dev Essentials`, `Korea Toolkit`, and `File Toolkit` do **not** automatically inherit Starter 5 (only `getCurrentTime` and `evalExpression` carry through deliberately).
 
@@ -412,12 +412,12 @@ The app ships with a bundled catalog of **85 default tools** across six JSON sou
 | `Starter 5` (default) | `getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression` | No setup, no API keys - works on a fresh install |
 | `Dev Essentials` | `getCurrentTime`, `evalExpression`, `uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract` | Everyday local utilities |
 | `Korea Toolkit (free)` | `getCurrentTime`, `evalExpression`, `getUpbitTicker`, `getBithumbTicker`, `searchKpopOnItunes`, `searchKBeautyProducts` | Free Korean services |
-| `File Toolkit` | `getCurrentTime`, `evalExpression`, `readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields` | Filesystem pipeline - set `TOOL_STUDIO_FS_BASE` (or rely on the `${user.home}/spring-ai-playground/fs-tool-workspace` default) |
-| `Everything` | All 85 default tools | Heavy MCP catalog |
+| `File Toolkit` | `getCurrentTime`, `evalExpression`, `listAllowedDirectories`, `readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields` | Filesystem read pipeline - reads anywhere under home, writes to the working directory; set `TOOL_STUDIO_FS_BASE` to relocate it (default `${user.home}/spring-ai-playground/workspace`) |
+| `Everything` | All 88 default tools | Heavy MCP catalog |
 
 Per-tool **include / exclude rules** layer on top: name-add → tag-add → category-add → name-remove → tag-remove → category-remove. These rules are configured at setup - the desktop launcher's **Default MCP Tools** card (include-by-tag / -category / -name, exclude-by-tag / -name) or CLI / yaml; `exclude.categories` is data-supported but currently only reachable via CLI / yaml override.
 
-Some default tools depend on environment-backed secrets - `OPENAI_API_KEY`, `GOOGLE_API_KEY` + `GOOGLE_PSE_ID`, `SLACK_WEBHOOK_URL`, the data.go.kr keychain, and the Korean provider keys - and stay inert until those are set. The consolidated list lives in [Default Tools → Environment variables](../default-tools/index.md#environment-variables-short-list); per-page details are on each reference page. The `File Toolkit` preset additionally honours `TOOL_STUDIO_FS_BASE` (defaulting to `${user.home}/spring-ai-playground/fs-tool-workspace`) for `safety.fs`. The desktop launcher's environment-variable workflow exists exactly to make this configuration ergonomic.
+Some default tools depend on environment-backed secrets - `OPENAI_API_KEY`, `GOOGLE_API_KEY` + `GOOGLE_PSE_ID`, `SLACK_WEBHOOK_URL`, the data.go.kr keychain, and the Korean provider keys - and stay inert until those are set. The consolidated list lives in [Default Tools → Environment variables](../default-tools/index.md#environment-variables-short-list); per-page details are on each reference page. The `File Toolkit` preset additionally honours `TOOL_STUDIO_FS_BASE` (defaulting to `${user.home}/spring-ai-playground/workspace`) for `safety.fs`. The desktop launcher's environment-variable workflow exists exactly to make this configuration ergonomic.
 
 ### Where preset choices live
 
@@ -437,8 +437,8 @@ You can pin the preset at boot time without touching the preference file:
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="\
-  --spring.ai.playground.default-tools.preset=dev-essentials \
-  --spring.ai.playground.default-tools.include.tags=korea"
+  --spring.ai.playground.tool-studio.default-tools.preset=dev-essentials \
+  --spring.ai.playground.tool-studio.default-tools.include.tags=korea"
 ```
 
 CLI / yaml properties take precedence at boot but are **not persisted** back to the preference file; clearing them on the next launch reverts to whatever the file says.
@@ -449,6 +449,6 @@ If a `defaultToolOverrides.json` file from an earlier milestone (≤ M5) exists,
 
 ## Using Tools in Agentic Chat
 
-Tool Studio tools can be used in Agentic Chat through MCP integration. With a tool-capable model and **Use built-in MCP server in this chat** enabled, the model can call the tools exposed by the built-in server during agentic workflows.
+Tool Studio tools can be used in Agentic Chat through MCP integration. With a tool-capable model and **Manual built-in tool selection** enabled, the model can call the tools exposed by the built-in server during agentic workflows.
 
 Agentic Chat can also call tools exposed by external MCP servers that you explicitly connect and trust.

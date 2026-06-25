@@ -28,16 +28,8 @@
       "buildResources": "resources"
     },
     "files": [
-      "config-editor.html",
-      "main.js",
-      "ollama-manager.html",
-      "ollama-manager.js",
-      "ollama-manager-preload.js",
-      "preload.js",
-      "launcher-config.js",
-      "splash.html",
-      "server-splash.html",
-      "telemetry.js",
+      "*.js",
+      "*.html",
       "static/**/*",
       "resources/**/*",
       "!resources/app.jar",
@@ -134,6 +126,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
+    "@kutalia/whisper-node-addon": "^1.1.0",
     "ace-builds": "^1.44.0",
     "js-yaml": "^4.2.0",
     "ollama": "^0.6.3",

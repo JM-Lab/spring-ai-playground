@@ -35,11 +35,13 @@ public final class LoggingMcpToolCallback implements ToolCallback {
     private final ToolCallback delegate;
     private final String serverName;
     private final Set<String> secrets;
+    private final String riskFinal;
 
-    public LoggingMcpToolCallback(ToolCallback delegate, String serverName, Set<String> secrets) {
+    public LoggingMcpToolCallback(ToolCallback delegate, String serverName, Set<String> secrets, String riskFinal) {
         this.delegate = delegate;
         this.serverName = serverName;
         this.secrets = secrets;
+        this.riskFinal = riskFinal;
     }
 
     @Override
@@ -65,8 +67,8 @@ public final class LoggingMcpToolCallback implements ToolCallback {
     private String invoke(Supplier<String> action) {
         String cid = UUID.randomUUID().toString().substring(0, 8);
         String toolName = this.delegate.getToolDefinition().name();
-        logger.info("mcp.tool.start cid={} server={} tool={} via=chat",
-                cid, this.serverName, toolName);
+        logger.info("mcp.tool.start cid={} server={} tool={} risk={} via=chat",
+                cid, this.serverName, toolName, this.riskFinal);
         long startNs = System.nanoTime();
         try {
             String result = action.get();

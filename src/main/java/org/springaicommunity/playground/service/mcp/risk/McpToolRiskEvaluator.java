@@ -26,9 +26,11 @@ import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLe
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 public class McpToolRiskEvaluator {
@@ -42,12 +44,13 @@ public class McpToolRiskEvaluator {
     private final ObjectMapper objectMapper;
     private final ToolSpecService toolSpecService;
     private final SpringAiPlaygroundOptions playgroundOptions;
+    private final McpRiskSignalSink sink;
 
     public McpToolRiskEvaluator(McpCatalogService catalogService, McpRiskInputsResolver inputsResolver,
             McpServerRiskCalculator serverCalc, McpToolPublishRiskCalculator publishCalc,
             McpToolRiskComposer composer, McpToolPoisoningScanner poisoningScanner,
             ObjectMapper objectMapper, ToolSpecService toolSpecService,
-            SpringAiPlaygroundOptions playgroundOptions) {
+            SpringAiPlaygroundOptions playgroundOptions, McpRiskSignalSink sink) {
         this.catalogService = catalogService;
         this.inputsResolver = inputsResolver;
         this.serverCalc = serverCalc;
@@ -57,6 +60,7 @@ public class McpToolRiskEvaluator {
         this.objectMapper = objectMapper;
         this.toolSpecService = toolSpecService;
         this.playgroundOptions = playgroundOptions;
+        this.sink = sink;
     }
 
     public record ServerRiskView(RiskLevel level, Map<String, Integer> axisScores, String floorTrigger) {}
@@ -84,6 +88,7 @@ public class McpToolRiskEvaluator {
         if (info == null || toolName == null || info.serverName() == null) {
             return new ToolRiskView(RiskLevel.L1, RiskLevel.L1, null, scan);
         }
+        emitPoisoningHit(info.serverName(), toolName, scan);
         if (isSelfBuiltin(info)) {
             RiskLevel sandbox = this.toolSpecService.getSandboxRiskLevel(toolName);
             return new ToolRiskView(sandbox, sandbox, null, scan);
@@ -116,5 +121,16 @@ public class McpToolRiskEvaluator {
         root.put("type", "object");
         root.put("properties", propertySchemas);
         return this.objectMapper.valueToTree(root);
+    }
+
+    private void emitPoisoningHit(String serverId, String toolName, McpToolPoisoningScanner.ScanResult scan) {
+        if (scan == null || scan.clean() || scan.matches().isEmpty()) {
+            return;
+        }
+        McpToolPoisoningScanner.Match first = scan.matches().getFirst();
+        String patterns = scan.matches().stream()
+                .map(m -> m.pattern().name()).distinct().collect(Collectors.joining(", "));
+        this.sink.onPoisoningHit(new McpRiskEvents.PoisoningHit(Instant.now(), serverId, toolName,
+                first.pattern().name(), first.matchedText(), scan.matches().size() + " match(es): " + patterns));
     }
 }

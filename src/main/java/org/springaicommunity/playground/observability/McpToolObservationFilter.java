@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.observability;
 
 import io.micrometer.common.KeyValue;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationFilter;
 import org.slf4j.MDC;
@@ -30,9 +31,11 @@ import java.util.Optional;
 @Component
 public class McpToolObservationFilter implements ObservationFilter {
 
-    public static final String MCP_TRANSPORT = "mcp.transport";
-    public static final String MCP_SERVER = "mcp.server";
-    public static final String MCP_KIND = "mcp.kind";
+    public static final String TOOL_RISK_COUNTER = "saip.tool.risk";
+    public static final String NETWORK_TRANSPORT = "network.transport";
+    public static final String NETWORK_PROTOCOL_NAME = "network.protocol.name";
+    public static final String MCP_METHOD_NAME = "mcp.method.name";
+    public static final String MCP_SERVER = "saip.mcp.server";
     public static final String MCP_ORIGIN = McpRiskMdcKeys.ORIGIN;
     public static final String MCP_COMPOSITION_ID = McpRiskMdcKeys.COMPOSITION_ID;
     public static final String MCP_COMPOSITION_NAME = McpRiskMdcKeys.COMPOSITION_NAME;
@@ -42,13 +45,14 @@ public class McpToolObservationFilter implements ObservationFilter {
     public static final String MCP_RISK_PUBLISH = McpRiskMdcKeys.RISK_PUBLISH;
     public static final String MCP_RISK_FLOOR_TRIGGER = McpRiskMdcKeys.FLOOR_TRIGGER;
 
-    static final String MCP_KIND_VALUE = "mcp";
-    static final String IN_PROCESS_KIND_VALUE = "in-process";
+    static final String TOOLS_CALL_METHOD = "tools/call";
 
     private final McpClientService mcpClientService;
+    private final MeterRegistry meterRegistry;
 
-    public McpToolObservationFilter(McpClientService mcpClientService) {
+    public McpToolObservationFilter(McpClientService mcpClientService, MeterRegistry meterRegistry) {
         this.mcpClientService = mcpClientService;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -64,30 +68,33 @@ public class McpToolObservationFilter implements ObservationFilter {
 
         String origin = MDC.get(McpRiskMdcKeys.ORIGIN);
         if (McpRiskMdcKeys.ORIGIN_WRAPPED_EXTERNAL.equals(origin)) {
-            context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, MCP_KIND_VALUE));
+            context.addHighCardinalityKeyValue(KeyValue.of(MCP_METHOD_NAME, TOOLS_CALL_METHOD));
             context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN, origin));
-            addNonBlank(context, MCP_TRANSPORT, MDC.get(McpRiskMdcKeys.UPSTREAM_TRANSPORT));
+            addTransport(context, MDC.get(McpRiskMdcKeys.UPSTREAM_TRANSPORT));
             addNonBlank(context, MCP_SERVER, MDC.get(McpRiskMdcKeys.UPSTREAM_SERVER));
             addCompositionAndRiskDimensions(context);
+            countToolRisk(MDC.get(McpRiskMdcKeys.RISK_FINAL));
             return context;
         }
 
         Optional<McpToolSource> source = mcpClientService.lookupToolSource(toolName);
         if (source.isEmpty()) {
-            context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, IN_PROCESS_KIND_VALUE));
             context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN,
                     origin == null || origin.isBlank() ? McpRiskMdcKeys.ORIGIN_INTERNAL_JS : origin));
             addCompositionAndRiskDimensions(context);
             return context;
         }
         McpToolSource s = source.get();
-        context.addHighCardinalityKeyValue(KeyValue.of(MCP_KIND, MCP_KIND_VALUE));
-        context.addHighCardinalityKeyValue(KeyValue.of(MCP_TRANSPORT, s.transport()));
+        context.addHighCardinalityKeyValue(KeyValue.of(MCP_METHOD_NAME, TOOLS_CALL_METHOD));
+        addTransport(context, s.transport());
         context.addHighCardinalityKeyValue(KeyValue.of(MCP_SERVER, s.serverName()));
         if (origin != null && !origin.isBlank()) {
             context.addHighCardinalityKeyValue(KeyValue.of(MCP_ORIGIN, origin));
         }
+        String rf = TraceRecord.firstNonBlank(MDC.get(McpRiskMdcKeys.RISK_FINAL), s.riskFinal());
+        addNonBlank(context, MCP_RISK_FINAL, rf);
         addCompositionAndRiskDimensions(context);
+        countToolRisk(rf);
         return context;
     }
 
@@ -101,8 +108,26 @@ public class McpToolObservationFilter implements ObservationFilter {
         addNonBlank(context, MCP_RISK_FLOOR_TRIGGER, MDC.get(McpRiskMdcKeys.FLOOR_TRIGGER));
     }
 
+    private void countToolRisk(String level) {
+        if (level == null || level.isBlank()) return;
+        this.meterRegistry.counter(TOOL_RISK_COUNTER, "level", level).increment();
+    }
+
     private static void addNonBlank(Observation.Context context, String key, String value) {
         if (value == null || value.isBlank()) return;
         context.addHighCardinalityKeyValue(KeyValue.of(key, value));
+    }
+
+    private static void addTransport(Observation.Context context, String rawTransport) {
+        if (rawTransport == null || rawTransport.isBlank()) return;
+        String normalized = rawTransport.trim().toLowerCase().replace('-', '_');
+        switch (normalized) {
+            case "stdio" -> context.addHighCardinalityKeyValue(KeyValue.of(NETWORK_TRANSPORT, "pipe"));
+            case "streamable_http", "sse" -> {
+                context.addHighCardinalityKeyValue(KeyValue.of(NETWORK_TRANSPORT, "tcp"));
+                context.addHighCardinalityKeyValue(KeyValue.of(NETWORK_PROTOCOL_NAME, "http"));
+            }
+            default -> context.addHighCardinalityKeyValue(KeyValue.of(NETWORK_TRANSPORT, normalized));
+        }
     }
 }

@@ -45,6 +45,7 @@ class ConversationAggregatorTest {
                 tools > 0,
                 tools,
                 rag,
+                null, null, null, null,
                 List.of(),
                 Map.of()
         );

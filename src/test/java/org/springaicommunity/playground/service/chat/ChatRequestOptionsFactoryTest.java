@@ -95,9 +95,18 @@ class ChatRequestOptionsFactoryTest {
     }
 
     @Test
+    void defaultReasoningOmitsReasoningOptionSoProviderDecides() {
+        OpenAiChatOptions openAi = (OpenAiChatOptions) this.factory.build(mock(OpenAiChatModel.class),
+                baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.DEFAULT);
+        assertNull(openAi.getReasoningEffort());
+
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(mock(OllamaChatModel.class),
+                baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.DEFAULT);
+        assertNull(ollama.getThinkOption());
+    }
+
+    @Test
     void providerJsonOverrideAppliesAndIgnoresConnectionFields() {
-        // The override tweaks request params (temperature) but cannot touch connection fields - apiKey is ignored,
-        // and the JPMS-inaccessible proxy field no longer blocks the overlay.
         ChatExtraOptions extra =
                 new ChatExtraOptions(null, null, "{\"temperature\": 0.1, \"apiKey\": \"ignored\"}", null);
 
@@ -110,8 +119,6 @@ class ChatRequestOptionsFactoryTest {
 
     @Test
     void ollamaJsonOverrideBindsSnakeCaseKeys() {
-        // OllamaChatOptions fields are @JsonProperty snake_case, so the override (and its placeholder
-        // example) must use num_ctx / top_k style keys.
         ChatExtraOptions extra = new ChatExtraOptions(null, null, "{\"num_ctx\": 8192, \"top_k\": 40}", null);
 
         ToolCallingChatOptions options = this.factory.build(mock(OllamaChatModel.class), baseOptions(), extra, null);

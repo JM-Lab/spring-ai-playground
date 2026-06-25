@@ -35,7 +35,7 @@ Spring AI Playground is organized around five product surfaces, designed to be u
 
     ---
 
-    Twelve in-app dashboards across four groups (AI Usage · AI Stack · Runtime · Overview) covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail - the operator surface that watches the other four.
+    Fourteen in-app dashboards across four groups (AI Usage · AI Stack · Runtime · Overview) covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail - the operator surface that watches the other four.
 
 </div>
 

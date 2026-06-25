@@ -16,8 +16,8 @@
 package org.springaicommunity.playground.service.tool.runtime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.springaicommunity.playground.SpringAiPlaygroundOptions.FsConfig;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
+import org.springaicommunity.playground.service.tool.ToolWorkspace;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
 import org.springaicommunity.playground.service.util.EnvVarResolver;
 import org.graalvm.polyglot.Context;
@@ -29,7 +29,6 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.lang.reflect.Array;
 import java.nio.file.Path;
@@ -37,6 +36,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -53,7 +53,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-@ConfigurationProperties(prefix = "tool-studio.sandbox")
 public class JsToolExecutor {
 
     public record JsExecutionResult(boolean isOk, Object result, String error, @JsonIgnore String debugInfo) {}
@@ -84,20 +83,30 @@ public class JsToolExecutor {
 
     private final long timeoutSeconds;
     private final EffectivePolicy defaultPolicy;
-    private final Path fsBasePath;
+    private final SafeFs.FsScope defaultScope;
     private final ExecutorService executor;
 
-    public JsToolExecutor(Long timeoutSeconds, JsSandbox jsSandbox, FsConfig fsConfig) {
+    public JsToolExecutor(Long timeoutSeconds, JsSandbox jsSandbox, Path workspaceBase) {
         this.timeoutSeconds = Optional.ofNullable(timeoutSeconds).orElse(30L);
         this.defaultPolicy = jsSandbox == null ? null : toDefaultPolicy(jsSandbox, this.timeoutSeconds);
-        this.fsBasePath = resolveFsBasePath(fsConfig);
+        this.defaultScope = buildDefaultScope(workspaceBase);
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
-    private static Path resolveFsBasePath(FsConfig fsConfig) {
-        String path = fsConfig == null || fsConfig.basePath() == null || fsConfig.basePath().isBlank()
-                ? System.getProperty("user.home") : fsConfig.basePath();
-        return Paths.get(path).toAbsolutePath().normalize();
+    private static SafeFs.FsScope buildDefaultScope(Path workspaceBase) {
+        Path workspace = workspaceBase.toAbsolutePath().normalize();
+        Path home = Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize();
+        return new SafeFs.FsScope(workspace, dedupeRoots(List.of(home, workspace)));
+    }
+
+    private static List<Path> dedupeRoots(List<Path> roots) {
+        List<Path> sorted = roots.stream().map(p -> p.toAbsolutePath().normalize()).distinct()
+                .sorted(Comparator.comparingInt(Path::getNameCount)).toList();
+        List<Path> out = new ArrayList<>();
+        for (Path p : sorted) {
+            if (out.stream().noneMatch(p::startsWith)) out.add(p);
+        }
+        return out;
     }
 
     private static EffectivePolicy toDefaultPolicy(JsSandbox sandbox, long timeoutSeconds) {
@@ -140,11 +149,28 @@ public class JsToolExecutor {
     }
 
     public JsExecutionResult execute(JsExecutionParams jsExecutionParams, EffectivePolicy policy) {
-        return execute(jsExecutionParams, policy, null);
+        return execute(jsExecutionParams, policy, null, null);
     }
 
     public JsExecutionResult execute(JsExecutionParams jsExecutionParams, EffectivePolicy policy,
                                      Path overrideFsBase) {
+        return execute(jsExecutionParams, policy, overrideFsBase, null);
+    }
+
+    private SafeFs.FsScope resolveScope(Path overrideFsBase, String conversationId) {
+        if (overrideFsBase != null) return SafeFs.FsScope.confined(overrideFsBase);
+        String segment = ToolWorkspace.safeSegment(conversationId);
+        if (segment != null) {
+            Path writeBase = this.defaultScope.workspace().resolve(segment).normalize();
+            if (writeBase.startsWith(this.defaultScope.workspace())) {
+                return new SafeFs.FsScope(writeBase, this.defaultScope.readRoots());
+            }
+        }
+        return this.defaultScope;
+    }
+
+    public JsExecutionResult execute(JsExecutionParams jsExecutionParams, EffectivePolicy policy,
+                                     Path overrideFsBase, String conversationId) {
         Map<String, Object> filteredParams = new LinkedHashMap<>();
         if (jsExecutionParams.params() != null) {
             jsExecutionParams.params().forEach((name, rawValue) -> {
@@ -186,8 +212,8 @@ public class JsToolExecutor {
 
                 logList.add("=== Execution Log ===");
                 installConsoleLog(bindings, logList, envSecretValues);
-                JsRuntimeGlobals.installAll(bindings, policy,
-                        overrideFsBase != null ? overrideFsBase : this.fsBasePath);
+                SafeFs.FsScope scope = resolveScope(overrideFsBase, conversationId);
+                JsRuntimeGlobals.installAll(bindings, policy, scope);
 
                 Value jsResultValue = awaitPromise(context.eval("js", jsCode));
                 Object jsResult = jsResultValue.isNull() ? "undefined" :

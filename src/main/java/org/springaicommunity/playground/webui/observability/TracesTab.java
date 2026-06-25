@@ -36,8 +36,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TracesTab extends BaseDashboardTab {
 
@@ -46,6 +48,9 @@ public class TracesTab extends BaseDashboardTab {
     private final ComboBox<String> modelFilter = new ComboBox<>("Model");
     private final ComboBox<String> statusFilter = new ComboBox<>("Status");
     private final TextField conversationFilter = new TextField("Conv id contains");
+    private final ComboBox<String> sessionIdFilter = new ComboBox<>("Session");
+    private final ComboBox<String> toolFilter = new ComboBox<>("Tool");
+    private final ComboBox<String> serverFilter = new ComboBox<>("MCP server");
 
     private Disposable subscription;
     private Consumer<TraceRecord> rowClickListener;
@@ -68,9 +73,13 @@ public class TracesTab extends BaseDashboardTab {
         conversationFilter.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.LAZY);
         conversationFilter.addValueChangeListener(e -> refresh());
 
-        com.vaadin.flow.component.orderedlayout.HorizontalLayout filterRow =
-                new com.vaadin.flow.component.orderedlayout.HorizontalLayout(modelFilter,
-                        statusFilter, conversationFilter);
+        configureDynamicFilter(sessionIdFilter);
+        configureDynamicFilter(toolFilter);
+        configureDynamicFilter(serverFilter);
+
+        HorizontalLayout filterRow =
+                new HorizontalLayout(modelFilter, statusFilter, conversationFilter,
+                        sessionIdFilter, toolFilter, serverFilter);
         filterRow.setSpacing(true);
         filterRow.setPadding(false);
         filterRow.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-m)");
@@ -82,6 +91,30 @@ public class TracesTab extends BaseDashboardTab {
                 .set("gap", "var(--lumo-space-m)")
                 .set("width", "100%");
         content.add(traceList);
+    }
+
+    private void configureDynamicFilter(ComboBox<String> combo) {
+        combo.setAllowCustomValue(false);
+        combo.setClearButtonVisible(true);
+        combo.addValueChangeListener(e -> refresh());
+    }
+
+    private void populateFilter(ComboBox<String> combo, Stream<String> rawValues) {
+        List<String> values = rawValues
+                .filter(v -> v != null && !v.isBlank()).distinct().sorted()
+                .collect(Collectors.toList());
+        values.add(0, "ALL");
+        String current = combo.getValue() == null ? "ALL" : combo.getValue();
+        combo.setItems(values);
+        combo.setValue(values.contains(current) ? current : "ALL");
+    }
+
+    private static Stream<String> setStream(Set<String> values) {
+        return values == null ? Stream.empty() : values.stream();
+    }
+
+    private static boolean isAll(String v) {
+        return v == null || "ALL".equals(v);
     }
 
     private Div buildTraceCard(TraceRecord trace, boolean expanded) {
@@ -157,7 +190,6 @@ public class TracesTab extends BaseDashboardTab {
 
         if (expanded) {
             Div waterfall = new Div(new SpanTimelineCanvas(trace));
-            // Cap inline preview to ~5 spans + axis.
             waterfall.getStyle().set("max-height", "168px")
                     .set("overflow-y", "auto")
                     .set("overflow-x", "hidden")
@@ -203,14 +235,11 @@ public class TracesTab extends BaseDashboardTab {
     }
 
     public void refresh() {
-        // Re-entrancy guard: ComboBox.setItems() internally calls setValue(null), which fires the
-        // value-change listener that calls refresh() again. Without this flag we recurse until SOE.
         if (refreshing) return;
         refreshing = true;
         try {
             List<TraceRecord> all = buffer.snapshot();
 
-            // populate model filter values
             List<String> models = all.stream()
                     .map(TraceRecord::model)
                     .filter(m -> m != null && !m.isBlank())
@@ -222,15 +251,25 @@ public class TracesTab extends BaseDashboardTab {
             modelFilter.setItems(models);
             modelFilter.setValue(models.contains(currentModel) ? currentModel : "ALL");
 
+            populateFilter(sessionIdFilter, all.stream().map(TraceRecord::sessionId));
+            populateFilter(toolFilter, all.stream().flatMap(t -> setStream(t.toolNames())));
+            populateFilter(serverFilter, all.stream().flatMap(t -> setStream(t.serverNames())));
+
             String statusVal = statusFilter.getValue();
             String modelVal = modelFilter.getValue();
             String convFilter = conversationFilter.getValue() == null ? "" : conversationFilter.getValue().trim();
+            String sessionVal = sessionIdFilter.getValue();
+            String toolVal = toolFilter.getValue();
+            String serverVal = serverFilter.getValue();
 
             List<TraceRecord> filtered = all.stream()
                     .filter(t -> "ALL".equals(statusVal) || statusVal == null || statusVal.equals(t.status()))
                     .filter(t -> "ALL".equals(modelVal) || modelVal == null || modelVal.equals(t.model()))
                     .filter(t -> convFilter.isEmpty()
                             || (t.conversationId() != null && t.conversationId().contains(convFilter)))
+                    .filter(t -> isAll(sessionVal) || sessionVal.equals(t.sessionId()))
+                    .filter(t -> isAll(toolVal) || (t.toolNames() != null && t.toolNames().contains(toolVal)))
+                    .filter(t -> isAll(serverVal) || (t.serverNames() != null && t.serverNames().contains(serverVal)))
                     .sorted(Comparator.comparingLong(TraceRecord::startEpochMs).reversed())
                     .collect(Collectors.toList());
             traceList.removeAll();
@@ -241,9 +280,6 @@ public class TracesTab extends BaseDashboardTab {
                         .set("padding", "var(--lumo-space-l)");
                 traceList.add(empty);
             } else {
-                // Default: expand the most recent (first after desc sort) trace if
-                // user hasn't pinned a different one — or the pinned one isn't in
-                // the filtered set anymore.
                 boolean pinnedStillVisible = expandedTraceId != null
                         && filtered.stream().anyMatch(t -> expandedTraceId.equals(t.traceId()));
                 if (!pinnedStillVisible) {

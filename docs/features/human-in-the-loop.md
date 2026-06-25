@@ -72,6 +72,7 @@ For an external MCP client (e.g. Claude Desktop) calling a `Required` tool on th
 
 - **Keep Required for anything that writes, deletes, sends, or spends** - irreversible or outward-facing actions are exactly what a person should confirm.
 - **Leave read-only, local tools Disabled** so routine calls don't nag you.
+- **Review-then-send action cards are a separate pattern.** The built-in `sendEmail` and `addToCalendar` tools ship at L0 and need no approval because they only *draft* - they never send mail or write a calendar. The outward action happens only when you click the button on the [action card](agentic-chat/index.md#action-cards) they render in chat, so that click is itself the human gate. A `send`-named tool shipping without an approval prompt is therefore not an exception to the rule above.
 
 ## Related
 

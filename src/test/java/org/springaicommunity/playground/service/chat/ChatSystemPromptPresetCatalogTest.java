@@ -30,7 +30,8 @@ class ChatSystemPromptPresetCatalogTest {
         assertThat(catalog.presets()).extracting(Preset::id)
                 .containsExactly("skill-agent", "domain-expert", "custom-role", "structured-output",
                         "research-brief", "summarizer", "translator", "socratic-tutor", "decision-matrix",
-                        "general-assistant", "coding-agent", "research-agent", "tool-using-agent",
+                        "general-assistant", "daily-assistant", "coding-agent", "research-agent",
+                        "self-equipping-agent",
                         "data-wrangler", "korea-concierge", "github-repo-analyst",
                         "release-notes-writer", "log-detective", "crypto-market-watch",
                         "trip-planner", "tech-pulse");
@@ -52,8 +53,8 @@ class ChatSystemPromptPresetCatalogTest {
 
     @Test
     void nullPromptIsNormalizedToEmpty() {
-        assertThat(new Preset("x", "X", "desc", null, null, null).prompt()).isEmpty();
-        assertThat(new Preset("x", "X", "desc", null, null, null).tools()).isEmpty();
+        assertThat(new Preset("x", "X", "desc", null, null, null, false).prompt()).isEmpty();
+        assertThat(new Preset("x", "X", "desc", null, null, null, false).tools()).isEmpty();
     }
 
     @Test
@@ -62,5 +63,23 @@ class ChatSystemPromptPresetCatalogTest {
         assertThat(catalog.findById("log-detective").orElseThrow().tools())
                 .contains("findFiles", "grepFile", "sliceFile", "stats");
         assertThat(catalog.findById("skill-agent").orElseThrow().tools()).isEmpty();
+    }
+
+    @Test
+    void selfEquippingAgentPresetUsesDynamicDiscovery() throws IOException {
+        Preset preset = new ChatSystemPromptPresetCatalog().findById("self-equipping-agent").orElseThrow();
+        assertThat(preset.dynamicTools()).isTrue();
+        assertThat(preset.tools()).isEmpty();
+    }
+
+    @Test
+    void nonDynamicPresetsDefaultToFalse() throws IOException {
+        assertThat(new ChatSystemPromptPresetCatalog().findById("data-wrangler").orElseThrow().dynamicTools())
+                .isFalse();
+    }
+
+    @Test
+    void nullDynamicToolsNormalizesToFalse() {
+        assertThat(new Preset("x", "X", "desc", null, null, null, null).dynamicTools()).isFalse();
     }
 }

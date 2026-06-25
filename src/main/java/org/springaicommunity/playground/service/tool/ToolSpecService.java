@@ -26,6 +26,7 @@ import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.config.MdcIdentityFilter;
 import org.springaicommunity.playground.service.mcp.McpServerHitlToolGate;
 import org.springaicommunity.playground.service.mcp.risk.WrappedExternalToolCallback;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
@@ -43,6 +44,7 @@ import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLe
 import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.ai.mcp.McpToolUtils;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.execution.ToolExecutionException;
@@ -130,7 +132,8 @@ public class ToolSpecService {
             SpringAiPlaygroundOptions playgroundOptions, EffectivePolicyResolver policyResolver,
             SandboxPostureCalculator postureCalculator,
             ObservationRegistry observationRegistry,
-            DefaultIntegrityVerifier integrityVerifier, ToolCategoryCatalog categoryCatalog)
+            DefaultIntegrityVerifier integrityVerifier, ToolCategoryCatalog categoryCatalog,
+            ToolWorkspace toolWorkspace)
             throws ClassNotFoundException {
         this.mcpSyncServer = syncServerProvider.getIfAvailable();
         this.mcpAsyncServer = asyncServerProvider.getIfAvailable();
@@ -147,7 +150,7 @@ public class ToolSpecService {
         this.integrityVerifier = integrityVerifier;
         this.categoryCatalog = categoryCatalog;
         this.jsToolExecutor = new JsToolExecutor(playgroundOptions.toolStudio().timeoutSeconds(),
-                this.sandboxBaseline, playgroundOptions.toolStudio().fs());
+                this.sandboxBaseline, toolWorkspace.base());
     }
 
     public void loadAll(Runnable loadAction) {
@@ -202,7 +205,6 @@ public class ToolSpecService {
                 && this.toolMcpServerSetting.autoAdd()
                 && !excluded.contains(spec.toolId())
                 && !isDefaultTool(spec.toolId())) {
-            // Auto-expose covers user-authored tools only; built-in exposure is derived from the preset at boot.
             addMcpTool(spec);
             HashSet<String> ids = new HashSet<>(this.toolMcpServerSetting.exposedToolIds());
             ids.add(spec.toolId());
@@ -272,11 +274,16 @@ public class ToolSpecService {
             return result.result();
         };
         List<ToolParamSpec> safeParamSpecs = toolParamSpecs == null ? List.of() : toolParamSpecs;
+        FunctionToolCallback.Builder<Map<String, Object>, Object> callbackBuilder =
+                FunctionToolCallback.builder(toolName, executor).description(toolDescription)
+                        .inputSchema(toJsonSchema(safeParamSpecs).toPrettyString())
+                        .inputType(MAP_PARAMETERIZED_TYPE_REFERENCE);
+        if (jsCode != null && jsCode.contains("```saip-action")) {
+            callbackBuilder.toolCallResultConverter((output, returnType) -> output == null ? "" : output.toString());
+        }
         ToolSpec newToolSpec =
                 new ToolSpec(toolId, toolName, toolDescription, staticVariables, safeParamSpecs, jsCode, codeType,
-                        FunctionToolCallback.builder(toolName, executor).description(toolDescription)
-                                .inputSchema(toJsonSchema(safeParamSpecs).toPrettyString())
-                                .inputType(MAP_PARAMETERIZED_TYPE_REFERENCE).build());
+                        callbackBuilder.build());
         toolIdSpecs.put(toolId, newToolSpec);
         logger.info("Update Tool spec: toolId={}, name={}", toolId, toolName);
         if (Objects.nonNull(toolSpec))
@@ -318,7 +325,6 @@ public class ToolSpecService {
                 .toStream().toList();
     }
 
-    // Re-exposed external tools live in their own registry, outside authored toolIdSpecs (never persisted/listed).
     public void addExternalMcpTool(ToolCallback callback, boolean hitl) {
         String name = callback.getToolDefinition().name();
         if (this.externalToolSpecs.containsKey(name)) return;
@@ -420,6 +426,7 @@ public class ToolSpecService {
                 || sandboxOverrides.fsBasePath() == null || sandboxOverrides.fsBasePath().isBlank()
                 ? null
                 : java.nio.file.Paths.get(sandboxOverrides.fsBasePath()).toAbsolutePath().normalize();
+        String conversationId = MDC.get(MdcIdentityFilter.CONVERSATION_ID);
 
         String cid = UUID.randomUUID().toString().substring(0, 8);
         Set<String> secretKeys = staticVariables.stream().map(Map.Entry::getKey).collect(Collectors.toSet());
@@ -433,7 +440,6 @@ public class ToolSpecService {
                 cid, toolName, level, caps, hosts,
                 overrideBase == null ? "-" : overrideBase, safeParams);
 
-        // Tag the in-flight spring.ai.tool observation with sandbox attrs (skipped outside a chat tool callback).
         Observation current = observationRegistry.getCurrentObservation();
         if (current != null) {
             current.lowCardinalityKeyValue("sandbox.level", level);
@@ -447,7 +453,8 @@ public class ToolSpecService {
         long startNs = System.nanoTime();
         JsExecutionResult jsExecutionResult;
         try {
-            jsExecutionResult = this.jsToolExecutor.execute(jsExecutionParams, policy, overrideBase);
+            jsExecutionResult = this.jsToolExecutor.execute(jsExecutionParams, policy, overrideBase,
+                    conversationId);
         } catch (RuntimeException e) {
             long durMs = (System.nanoTime() - startNs) / 1_000_000L;
             logger.warn("tool.exec.crash cid={} tool={} level={} durationMs={} error={}",
@@ -480,7 +487,6 @@ public class ToolSpecService {
         return riskLevelFor(spec == null ? null : spec.sandboxOverrides());
     }
 
-    // Display name of the tool's category (sibling to riskLevelOf), so tool selectors share one source.
     public String categoryOf(ToolSpec spec) {
         return this.categoryCatalog.resolveOrFallback(spec == null ? null : spec.category()).displayName();
     }

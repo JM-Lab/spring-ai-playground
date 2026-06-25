@@ -75,7 +75,7 @@ class DefaultToolCatalogSmokeTest {
                                     "java.lang.reflect.*"),
                             Set.of("java.lang.*", "java.math.*", "java.time.*", "java.util.*", "java.text.*"),
                             Map.of()),
-                    null);
+                    Path.of(System.getProperty("java.io.tmpdir")));
         } catch (IOException e) {
             throw new IllegalStateException("failed to load tool catalog", e);
         }

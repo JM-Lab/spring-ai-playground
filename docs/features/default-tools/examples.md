@@ -1,15 +1,15 @@
 title: Default Tool Examples
-description: Default Tools - Examples reference. 7 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
+description: Default Tools - Examples reference. 9 starter tools covering web fetch, datetime, productivity, search, AI, and messaging.
 
 # Default Tools - Examples
 
-The seven tools in `default-tool-specs.json` are the **starter examples**. They span the surfaces a beginner is likely to want first - fetch a web page, get the current time, build a calendar link, look up weather, search the web, call an LLM, send a Slack message - and double as ready-to-copy templates for the helper API you will use in your own tools.
+The nine tools in `default-tool-specs.json` are the **starter examples**. They span the surfaces a beginner is likely to want first - fetch a web page, get the current time, draft an email, add a calendar event, show a location on a map, look up weather, search the web, call an LLM, send a Slack message - and double as ready-to-copy templates for the helper API you will use in your own tools.
 
-Three of the seven need an API key or webhook URL to be useful (`googlePseSearch`, `openaiResponseGenerator`, `sendSlackMessage`). The rest work out of the box on a fresh install - `getCurrentTime` and `evalExpression` are members of every shipped preset because they have no dependency at all.
+Three of the nine need an API key or webhook URL to be useful (`googlePseSearch`, `openaiResponseGenerator`, `sendSlackMessage`). The rest work out of the box on a fresh install - `getCurrentTime` and `evalExpression` are members of every shipped preset because they have no dependency at all.
 
-All 7 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` or host-`allowlist` mode with [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) for the tools that fetch.
+All 9 inherit Tool Studio's default sandbox: deny-first class allowlist, no filesystem, network in `strict` or host-`allowlist` mode with [the SSRF four-layer guard](../tool-studio/index.md#ssrf-four-layer-guard) for the tools that fetch.
 
-## The 7 examples { #the-examples }
+## The 9 examples { #the-examples }
 
 <div class="tcg-grid" markdown>
 
@@ -195,15 +195,15 @@ return (
 </div>
 </div>
 
-<div class="tcg-card t-google tcg-card--clickable" id="buildGoogleCalendarCreateLink" data-tool-id="buildGoogleCalendarCreateLink" data-tool-title="buildGoogleCalendarCreateLink" markdown>
-<div class="tcg-name"><span class="tcg-name__text">buildGoogleCalendarCreateLink</span> <span class="cost">🆓</span></div>
-<div class="tcg-art" markdown>:simple-googlecalendar:</div>
-<div class="tcg-type">productivity · example · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-card tcg-card--clickable" id="sendEmail" data-tool-id="sendEmail" data-tool-title="sendEmail" markdown>
+<div class="tcg-name"><span class="tcg-name__text">sendEmail</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-email-outline:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
 <div class="tcg-body" markdown>
-Builds a Google Calendar "Add Event" URL with prefilled fields.
+Drafts an email and renders a **Send email** action card in chat - the user clicks to send it from their own mail app (review-then-send).
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `start` · `end` · `details` · `location` · `timeZone`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `to` · `cc` · `subject` · `body`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
@@ -211,83 +211,130 @@ Builds a Google Calendar "Add Event" URL with prefilled fields.
 
 **More detail**
 
-The tool only generates a URL; the user must open it and click "Save" in Google Calendar.
-
-If the user provides a rough input for date, time, or location 
-(e.g., "tomorrow 10am", "Seoul", "New York"), the agent is expected
-to parse and convert these inputs into proper ISO-8601 date strings 
-for start/end and a valid IANA time zone identifier for timeZone 
-before passing them to this tool.
+Calling this tool does **not** send anything. It returns a fenced `saip-action` block (`type: email`) that the chat renders as an **Email draft** card with a **📧 Send email** button; the button opens a prefilled `mailto:` link in the user's own mail app. This is **review-then-send** - the model only drafts, and the user reviews the fields and sends. The model must never claim the email was sent, and the From address is the user's own default mail account.
 
 **Parameters**
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `title` | `STRING` | ✓ | Event title shown in Google Calendar. |
-| `start` | `STRING` | ✓ | Event start time. The agent should convert any rough user input (like 'tomorrow 10am') into a valid ISO-8601 string. (e.g., 2025-12-16T10:00:00+09:... |
-| `end` | `STRING` | ✓ | Event end time. Must be after start. The agent should ensure proper ISO-8601 format(e.g., 2025-12-16T10:00:00+09:00). |
-| `details` | `STRING` |  | Optional event description or agenda. |
-| `location` | `STRING` |  | Optional event location text. The agent can resolve rough location names to standard city names if needed. |
-| `timeZone` | `STRING` |  | IANA time zone identifier (e.g., Asia/Seoul). If the user provides a city or location name, the agent should convert it to a valid IANA time zone b... |
+| `to` | `STRING` |  | Recipient email address(es), comma-separated. Optional. |
+| `cc` | `STRING` |  | Cc email address(es), comma-separated. Optional. |
+| `subject` | `STRING` | ✓ | Email subject line. |
+| `body` | `STRING` | ✓ | Email body text. Plain text; line breaks are kept. |
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
 
-```javascript
-/**
- * Build a Google Calendar "Add event" URL (action=TEMPLATE).
- *
- * This tool ONLY generates a URL.
- * The user must open the link and click "Save" in Google Calendar.
- *
- * INPUT NOTES:
- * - start / end: Date object or ISO-8601 string parseable by Date()
- * - dates are encoded in UTC (Google Calendar requirement)
- * - timeZone (ctz) controls UI display, not the UTC timestamps
- *
- */
+````javascript
+if (subject == null || String(subject).trim() === '') throw new Error('subject required');
+if (body == null || String(body).trim() === '') throw new Error('body required');
+const action = { type: 'email', subject: String(subject), body: String(body) };
+const toValue = to == null ? '' : String(to).trim();
+const ccValue = cc == null ? '' : String(cc).trim();
+if (toValue !== '') action.to = toValue;
+if (ccValue !== '') action.cc = ccValue;
+return 'Email ready below — review it and click the Send email button to send it from your own mail app.\n\n```saip-action-return-direct\n' + JSON.stringify(action) + '\n```';
+````
 
-function toDate(v) {
-  const d = v instanceof Date ? v : new Date(String(v));
-  if (isNaN(d.getTime())) {
-    throw new Error('Invalid date value: ' + v);
-  }
-  return d;
-}
+</details>
 
-// Google Calendar expects UTC timestamps like: 20251216T010000Z
-function formatAsUtcCompact(d) {
-  return d
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}Z$/, 'Z');
-}
+</div>
+</div>
 
-const s = toDate(start);
-const e = toDate(end);
+<div class="tcg-card tcg-card--clickable" id="addToCalendar" data-tool-id="addToCalendar" data-tool-title="addToCalendar" markdown>
+<div class="tcg-name"><span class="tcg-name__text">addToCalendar</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-calendar-plus:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-body" markdown>
+Builds a calendar event and renders an **Add to calendar** action card in chat - a dropdown to add the event to Google Calendar, Outlook, or Yahoo Calendar, or to get a standard `.ics` file (the `.ics` opens directly in your calendar app on the desktop, or downloads in a browser).
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `title` · `start` · `end` · `location` · `description`</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
+<div class="tcg-detail-template" hidden markdown>
 
-if (e <= s) {
-  throw new Error('end must be after start');
-}
+**More detail**
 
-const base = 'https://www.google.com/calendar/render?action=TEMPLATE';
-const params = [];
+Calling this tool does **not** add anything to a calendar. It returns a fenced `saip-action` block (`type: calendar`) that the chat renders as a **Calendar event** card with an **📅 Add to calendar** dropdown offering Google Calendar, Outlook, Yahoo Calendar, and an `.ics` option; on the desktop app the `.ics` opens directly in your calendar app, in a browser it downloads a standard `.ics` file client-side that the user imports. The agent must convert rough date/time input into ISO-8601 and ensure `end` is after `start`.
 
-params.push('text=' + encodeURIComponent(String(title || '')));
-params.push(
-  'dates=' +
-    encodeURIComponent(formatAsUtcCompact(s) + '/' + formatAsUtcCompact(e))
-);
+**Parameters**
 
-if (details) params.push('details=' + encodeURIComponent(String(details)));
-if (location) params.push('location=' + encodeURIComponent(String(location)));
-if (timeZone) params.push('ctz=' + encodeURIComponent(String(timeZone)));
+| Param | Type | Req | Description |
+|---|---|---|---|
+| `title` | `STRING` | ✓ | Event title. |
+| `start` | `STRING` | ✓ | Start time as ISO-8601 (convert rough input first, e.g. 2026-01-15T10:00:00+09:00). |
+| `end` | `STRING` | ✓ | End time as ISO-8601, after start. |
+| `location` | `STRING` |  | Optional location text. |
+| `description` | `STRING` |  | Optional event description. |
 
-return base + '&' + params.join('&');
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
-```
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
+
+````javascript
+if (title == null || String(title).trim() === '') throw new Error('title required');
+if (start == null || String(start).trim() === '') throw new Error('start required');
+if (end == null || String(end).trim() === '') throw new Error('end required');
+const s = new Date(String(start));
+const e = new Date(String(end));
+if (isNaN(s.getTime())) throw new Error('invalid start: ' + start);
+if (isNaN(e.getTime())) throw new Error('invalid end: ' + end);
+if (e <= s) throw new Error('end must be after start');
+const action = { type: 'calendar', title: String(title), start: s.toISOString(), end: e.toISOString() };
+const loc = location == null ? '' : String(location).trim();
+const desc = description == null ? '' : String(description).trim();
+if (loc !== '') action.location = loc;
+if (desc !== '') action.description = desc;
+return 'Event ready below — review it and click the Add to calendar button to add it to your own calendar.\n\n```saip-action-return-direct\n' + JSON.stringify(action) + '\n```';
+````
+
+</details>
+
+</div>
+</div>
+
+<div class="tcg-card tcg-card--clickable" id="showLocation" data-tool-id="showLocation" data-tool-title="showLocation" markdown>
+<div class="tcg-name"><span class="tcg-name__text">showLocation</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-map-marker:</div>
+<div class="tcg-type">productivity · util <span class="risk risk-l0">L0</span></div>
+<div class="tcg-body" markdown>
+Renders an interactive Google Map of a place directly in the chat - no API key needed.
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `query` · `label`</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
+<div class="tcg-detail-template" hidden markdown>
+
+**More detail**
+
+Calling this tool returns a fenced `saip-action` block (`type: map`) that the chat renders as a **Location** card with a keyless embedded Google Map centered on the place, plus an **Open in Google Maps** link. It is display-only - the map loads client-side from the `query` (a place name, address, or `lat,lng`); no account, key, or server call is involved. Useful right after a geocoding or weather tool so the user can see where the result is.
+
+**Parameters**
+
+| Param | Type | Req | Description |
+|---|---|---|---|
+| `query` | `STRING` | ✓ | Place name, address, or 'lat,lng' to show on the map. |
+| `label` | `STRING` |  | Optional short caption shown above the map. |
+
+**Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
+
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
+
+````javascript
+if (query == null || String(query).trim() === '') throw new Error('query required');
+const action = { type: 'map', query: String(query).trim() };
+const lbl = label == null ? '' : String(label).trim();
+if (lbl !== '') action.label = lbl;
+return 'Location shown on the map below.\n\n```saip-action\n' + JSON.stringify(action) + '\n```';
+````
 
 </details>
 
@@ -519,17 +566,17 @@ return { status: 'ok' };
 
 ## Composition patterns (starter chains)
 
-These seven tools are picked so any pair plugs together - a perfect first agentic-workflow surface. Two patterns you can reproduce after Local Pass:
+These nine tools are picked so any pair plugs together - a perfect first agentic-workflow surface. Two patterns you can reproduce after Local Pass:
 
 - **Search → summarise** - `googlePseSearch(query)` returns ranked snippets; pass them as a prompt fragment into `openaiResponseGenerator` so the model cites recent sources rather than parametric memory.
 - **Fetch → notify** - `getWeather(location)` (or `getOpenMeteoForecast` from [Global](global.md)) → `sendSlackMessage(text)` to post a daily threshold alert to a channel.
-- **Time + Calendar** - `getCurrentTime(timeZone)` produces an ISO timestamp the model can offset, then `buildGoogleCalendarCreateLink(title, start, end, ...)` returns a one-click "Add to Calendar" URL.
+- **Time + Calendar** - `getCurrentTime(timeZone)` produces an ISO timestamp the model can offset, then `addToCalendar(title, start, end, ...)` renders an **Add to calendar** action card with a dropdown to add the event to Google/Outlook/Yahoo Calendar or get a standard `.ics` file.
 
 Deeper walk-throughs in [Tutorial 8: Default Tool Recipes](../../tutorials/8-default-tool-recipes.md).
 
 ## Keys & secrets
 
-Three of the seven need a credential. The launcher's **Environment Variables** card is the recommended place to set them; the static-variable substring is masked from `console.log` and from the chat tool-call trace whenever it appears as a full string in the output.
+Three of the nine need a credential. The launcher's **Environment Variables** card is the recommended place to set them; the static-variable substring is masked from `console.log` and from the chat tool-call trace whenever it appears as a full string in the output.
 
 | Tool | Env var | Where to issue |
 |---|---|---|

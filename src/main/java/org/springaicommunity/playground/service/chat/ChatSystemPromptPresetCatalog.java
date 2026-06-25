@@ -43,11 +43,12 @@ public class ChatSystemPromptPresetCatalog {
     }
 
     public record Preset(String id, String displayName, String description, String prompt, PresetKind kind,
-            List<String> tools) {
+            List<String> tools, Boolean dynamicTools) {
         public Preset {
             prompt = prompt == null ? "" : prompt;
             kind = kind == null ? PresetKind.EXAMPLE : kind;
             tools = tools == null ? List.of() : List.copyOf(tools);
+            dynamicTools = dynamicTools != null && dynamicTools;
         }
 
         @JsonIgnore

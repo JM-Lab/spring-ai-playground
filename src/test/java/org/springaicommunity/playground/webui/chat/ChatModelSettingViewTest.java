@@ -39,6 +39,8 @@ import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -85,9 +87,27 @@ class ChatModelSettingViewTest {
         ChatModelSettingView view = newView("qwen3.5:2b-mlx");
         ChatSystemPromptPresetCatalog.Preset adHoc = new ChatSystemPromptPresetCatalog.Preset(
                 "lib-edited", "Edited in library", "", "You are a tool-using agent.",
-                ChatSystemPromptPresetCatalog.PresetKind.EXAMPLE, List.of("getWeather", "getCurrentTime"));
+                ChatSystemPromptPresetCatalog.PresetKind.EXAMPLE, List.of("getWeather", "getCurrentTime"), false);
         view.applyPreset(adHoc);
         assertThat(view.getSelectedPresetTools()).containsExactly("getWeather", "getCurrentTime");
+    }
+
+    @Test
+    void applyingDynamicPresetMarksDynamicToolDiscovery() {
+        ChatModelSettingView view = newView("qwen3.5:2b-mlx");
+        ChatSystemPromptPresetCatalog.Preset dynamic = new ChatSystemPromptPresetCatalog.Preset(
+                "dyn", "Dynamic agent", "", "You discover tools on demand.",
+                ChatSystemPromptPresetCatalog.PresetKind.EXAMPLE, List.of(), true);
+        view.applyPreset(dynamic);
+        assertThat(view.isActivePresetDynamicTools()).isTrue();
+        assertThat(view.getSelectedPresetTools()).isEmpty();
+    }
+
+    @Test
+    void applyingStaticPresetClearsDynamicToolDiscovery() {
+        ChatModelSettingView view = newView("qwen3.5:2b-mlx");
+        view.applyPreset(presetWithTools(List.of("getCurrentTime")));
+        assertThat(view.isActivePresetDynamicTools()).isFalse();
     }
 
     @Test
@@ -96,11 +116,37 @@ class ChatModelSettingViewTest {
     }
 
     @Test
+    void presetWithMissingKeyToolBlocksApply() {
+        ChatModelSettingView view = viewWithMissingKeys(
+                name -> name.equals("searchNaver") ? List.of("NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET") : List.of(),
+                enabled -> { });
+        view.applyPreset(presetWithTools(List.of("getCurrentTime", "searchNaver")));
+        assertThat(view.validate()).isFalse();
+    }
+
+    @Test
+    void presetWithAllToolKeysPresentAllowsApply() {
+        ChatModelSettingView view = viewWithMissingKeys(name -> List.of(), enabled -> { });
+        view.applyPreset(presetWithTools(List.of("getCurrentTime", "searchNaver")));
+        assertThat(view.validate()).isTrue();
+    }
+
+    @Test
+    void selectingPresetWithMissingKeyToolDisablesApplyButton() {
+        boolean[] applyEnabled = {true};
+        ChatModelSettingView view = viewWithMissingKeys(
+                name -> name.equals("getKrxStockPrice") ? List.of("DATA_GO_KR_STOCK_KEY") : List.of(),
+                enabled -> applyEnabled[0] = enabled);
+        view.applyPreset(presetWithTools(List.of("getKrxStockPrice")));
+        assertThat(applyEnabled[0]).isFalse();
+    }
+
+    @Test
     void memoryWindowRoundTripsThroughDrawer() {
         ChatModelSettingView view = new ChatModelSettingView(List.of("qwen3.5:2b-mlx", "qwen3.5:4b-mlx"), "",
                 ChatOptions.builder().model("qwen3.5:2b-mlx").build(), new ChatExtraOptions(null, null, null, 7),
                 ChatProvider.OLLAMA, this.presetService, this.downloadService, List.of(), spec -> "L0",
-                spec -> "General", 10);
+                spec -> "General", 10, name -> List.of(), enabled -> { });
         assertThat(view.getChatExtraOptions().memoryWindow()).isEqualTo(7);
     }
 
@@ -127,13 +173,28 @@ class ChatModelSettingViewTest {
     private ChatModelSettingView viewWithStop(ChatProvider provider, List<String> stop) {
         return new ChatModelSettingView(List.of("model-a"), "",
                 ChatOptions.builder().model("model-a").build(), new ChatExtraOptions(null, stop, null, null),
-                provider, this.presetService, this.downloadService, List.of(), spec -> "L0", spec -> "General", 10);
+                provider, this.presetService, this.downloadService, List.of(), spec -> "L0", spec -> "General", 10,
+                name -> List.of(), enabled -> { });
     }
 
     private ChatModelSettingView newView(String model) {
         return new ChatModelSettingView(List.of("qwen3.5:2b-mlx", "qwen3.5:4b-mlx"), "",
                 ChatOptions.builder().model(model).build(), ChatExtraOptions.defaults(), ChatProvider.OLLAMA,
-                this.presetService, this.downloadService, List.of(), spec -> "L0", spec -> "General", 10);
+                this.presetService, this.downloadService, List.of(), spec -> "L0", spec -> "General", 10,
+                name -> List.of(), enabled -> { });
+    }
+
+    private ChatModelSettingView viewWithMissingKeys(Function<String, List<String>> missingKeys,
+            Consumer<Boolean> applyEnabledSetter) {
+        return new ChatModelSettingView(List.of("qwen3.5:2b-mlx"), "",
+                ChatOptions.builder().model("qwen3.5:2b-mlx").build(), ChatExtraOptions.defaults(), ChatProvider.OLLAMA,
+                this.presetService, this.downloadService, List.of(), spec -> "L0", spec -> "General", 10,
+                missingKeys, applyEnabledSetter);
+    }
+
+    private static ChatSystemPromptPresetCatalog.Preset presetWithTools(List<String> tools) {
+        return new ChatSystemPromptPresetCatalog.Preset("kr", "KR", "", "prompt",
+                ChatSystemPromptPresetCatalog.PresetKind.EXAMPLE, tools, false);
     }
 
     private static void fireCustomValue(ChatModelSettingView view, String typed) throws Exception {

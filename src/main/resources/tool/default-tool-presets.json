@@ -44,11 +44,12 @@
   {
     "id": "file-toolkit",
     "displayName": "File Toolkit",
-    "description": "Filesystem pipeline (read, list, grep, slice, sort, find, cut) plus getCurrentTime and evalExpression. Set TOOL_STUDIO_FS_BASE for a custom workspace root.",
+    "description": "Filesystem read pipeline (discover roots, read, list, grep, slice, sort, find, cut) plus getCurrentTime and evalExpression. Reads anywhere under your home directory; call listAllowedDirectories to see the roots, or set TOOL_STUDIO_FS_BASE to relocate the working directory.",
     "isDefault": false,
     "tools": [
       "getCurrentTime",
       "evalExpression",
+      "listAllowedDirectories",
       "readTextFile",
       "listDir",
       "grepFile",

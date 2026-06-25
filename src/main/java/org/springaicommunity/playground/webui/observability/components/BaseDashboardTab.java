@@ -55,6 +55,19 @@ public abstract class BaseDashboardTab extends VerticalLayout {
         expand(content);
     }
 
+    protected static Div buildIntro(String text) {
+        Div intro = new Div();
+        intro.setText(text);
+        intro.getStyle().set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-primary-color-10pct)")
+                .set("border-left", "3px solid var(--lumo-primary-color)")
+                .set("border-radius", "var(--lumo-border-radius-s)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-body-text-color)")
+                .set("line-height", "1.5");
+        return intro;
+    }
+
     public Component getSettingsPanel() {
         VerticalLayout panel = new VerticalLayout();
         panel.setPadding(false);

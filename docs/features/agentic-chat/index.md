@@ -21,6 +21,7 @@ This unified interface lets you:
 
 - document selection for RAG grounding
 - MCP connection selection for tool-enabled execution
+- manual tool selection or **dynamic tool discovery** - the model searches a large catalog on demand
 - per-turn reasoning effort and provider-aware generation options
 - system-prompt presets and variable-driven templates
 - real-time visibility into retrieved context, reasoning, and tool usage
@@ -48,16 +49,32 @@ The control is provider-aware and only appears for models that support it. The l
 
 ### Choosing tools and documents
 
-The **tools** icon on the selector row opens the tool popover. It is the per-chat switch for what the agent may call:
+The **tools** icon on the selector row opens the tool popover. It is the per-chat switch for what the agent may call, and it offers two mutually exclusive ways to decide:
 
-![The tool selector popover - a Use built-in MCP server toggle, then multi-select boxes for Custom tools, Built-in tools to expose, and Composed external tools](../../assets/images/chat/chat-tool-selector.png){ width="412" }
+![The tool selector popover - a Dynamic tool discovery checkbox on top, then a Manual built-in tool selection toggle with multi-select boxes for Custom tools, Built-in tools, and Composed external tools](../../assets/images/chat/chat-tool-selector.png){ width="404" }
 
-- **Use built-in MCP server in this chat** - master toggle for the in-process tools.
-- **Custom tools** - tools you built in [Tool Studio](../tool-studio/index.md).
-- **Built-in tools to expose** - the Local-Passed built-in tools; tick which ones this chat may call.
-- **Composed external tools** - tools re-exposed from connected external MCP servers, each risk-scored and human-in-the-loop governed.
+- **Dynamic tool discovery** - let the model find tools on demand instead of choosing them by hand (see [below](#dynamic-tool-discovery)).
+- **Manual built-in tool selection** - the master toggle for picking exactly which in-process tools this chat exposes. When it is on, the three selectors below become active:
+    - **Custom tools** - tools you built in [Tool Studio](../tool-studio/index.md).
+    - **Built-in tools** - the Local-Passed built-in tools; tick which ones this chat may call.
+    - **Composed external tools** - tools re-exposed from connected external MCP servers, each risk-scored and human-in-the-loop governed.
 
-The document selector beside it enables [Vector Database](../vector-database.md) collections for RAG grounding. Both selections are remembered per conversation.
+Ticking one mode unticks the other. Beside the popover, the **MCP servers** selector picks which connected external servers feed the chat, and the **document** selector enables [Vector Database](../vector-database.md) collections for RAG grounding. All of these selections are remembered per conversation.
+
+### Dynamic tool discovery { #dynamic-tool-discovery }
+
+By default a chat sends the model the full schema of every tool you expose - fine for a handful, but a broad agent setup can push **tens of thousands of tokens of definitions into every turn**. **Dynamic tool discovery** removes that cost: the chat hands the model a single `toolSearchTool`, and the model searches the catalog on demand instead of receiving every definition up front. Tick it at the top of the tool popover (the exposed-tools box then reads **Dynamic — searching all tools**); it stays disabled until the searchable pool clears the `tool-search.min-tools` floor (default 10), so add more in [Tool Studio](../tool-studio/index.md) if it is greyed out.
+
+It is also how the built-in **[Self-equipping agent](prompt-presets.md)** preset works. For the full picture - why it matters for agents, the 34-64% token-savings experiment behind it, how it lets a small local model drive a large toolbox, and the configuration - see **[Dynamic tool discovery](dynamic-tool-discovery.md)**.
+
+### Voice input
+
+The microphone icon by the prompt box dictates your message - click to start, click again to stop. Transcribed text streams into the input as you speak and keeps anything you already typed. The backend is picked automatically by where the app runs:
+
+- **Desktop app** - on-device **Whisper**: the native desktop app transcribes your voice locally on the machine, with no cloud round-trip. It is opt-in - turn it on and download a model once in the launcher's settings ([Local Speech-to-Text card](../../getting-started/desktop.md#local-speech-to-text-whisper)). Supported on Apple Silicon Macs; Intel Macs show a short notice instead.
+- **Chrome browser** - the browser's built-in Web Speech API: nothing to download, but recognition is handled by the browser. Safari and Firefox prompt you to switch to Chrome or the desktop app.
+
+While recording, the mic doubles as a stop button with a countdown wedge that fills as silence builds up - it auto-stops after a few seconds of quiet, or click to stop immediately. It is the input-side complement to [Read aloud](#message-actions).
 
 ### System prompts and presets
 
@@ -103,6 +120,26 @@ Each conversation is stamped with the provider that created it. If you open a sa
 Assistant turns render as full Markdown. Code blocks are syntax-highlighted (highlight.js) with a language label and a one-click copy button; math renders with KaTeX both inline (`$...$`) and as display blocks (`$$...$$`); and fenced ` ```mermaid ` blocks render as diagrams. Links open in a new tab. Rendering runs once the turn finishes streaming.
 
 ![A rendered assistant turn - a highlighted Python code block with a copy button, inline and display math, a Mermaid flow diagram, and a small table](../../assets/images/chat/chat-rich-render.png){ width="583" }
+
+### Action cards
+
+Some built-in tools render an interactive **action card** instead of plain text. When the model calls `sendEmail` it produces an **Email draft** card; `addToCalendar` produces a **Calendar event** card; and `showLocation` embeds an interactive **Location** map. The first two show the fields the model filled in plus a button to act on the draft - the email card a single **Send email** button, the calendar card an **Add to calendar** dropdown:
+
+![An Email draft action card - To, Cc, Subject and Body fields with a blue Send email button](../../assets/images/chat/action-card-email.png){ width="546" }
+
+![A Calendar event action card - Title, When, Location and Notes fields with a blue Add to calendar dropdown offering Google Calendar, Outlook, Yahoo, and .ics](../../assets/images/chat/action-card-calendar.png){ width="546" }
+
+These follow a **review-then-send** rule: the model only *drafts*, it never sends. **Send email** opens a prefilled `mailto:` link in your own mail app; **Add to calendar** opens a menu to add the event to Google Calendar, Outlook, or Yahoo Calendar, or to get a standard `.ics` file - in the desktop app the `.ics` opens directly in your OS calendar app, in a browser it downloads for you to import. You stay in the loop for the outward action - a sibling of the [human-in-the-loop approval](../human-in-the-loop.md) gate. (Mechanically, any tool - including one you author in [Tool Studio](../tool-studio/index.md) - whose output carries a fenced `saip-action` block is rendered as a card; if it emits the `saip-action-return-direct` variant it is also treated as the final step of the request, so the turn ends without a follow-up model reply.) The `showLocation` card is display-only - it embeds a keyless map plus an **Open in Google Maps** link and sends nothing:
+
+![A Location action card embedding an interactive map of a place, with an Open in Google Maps link](../../assets/images/chat/action-card-map.png){ width="546" }
+
+### Clickable file paths
+
+On the **desktop app**, a backtick-wrapped absolute path in a reply becomes clickable - click it to reveal that file or folder in your OS file browser:
+
+![A chat reply with an absolute file path rendered as a clickable link](../../assets/images/chat/clickable-file-path.png){ width="808" }
+
+It is a convenience for the [filesystem tools](../default-tools/filesystem.md), not a capability the model can trigger - only your click does anything. It is scoped server-side to the same **readable roots** (your home directory by default), and it only ever *reveals* a path, never opens or runs a file. In a plain browser, headless, or Docker run the path is just text.
 
 ### Message actions
 
@@ -208,7 +245,7 @@ By leveraging these elements, Agentic Chat goes beyond basic Q&A and becomes a p
 
 Agentic Chat is a **consumer** of three inventories curated elsewhere in the Playground. Use these references to know what's available before composing a chat session:
 
-- **[Default Tools](../default-tools/index.md)** - 85 pre-loaded built-in tools (Examples · Utilities · Filesystem · Global · Korea) callable directly from chat without any external setup. Each carries a Risk Level (L0-L5) and `${ENV_VAR}` requirements per page.
+- **[Default Tools](../default-tools/index.md)** - 88 pre-loaded built-in tools (Examples · Utilities · Filesystem · Global · Korea) callable directly from chat without any external setup. Each carries a Risk Level (L0-L5) and `${ENV_VAR}` requirements per page.
 - **[Default MCP Servers](../default-mcp-catalog/index.md)** - 57 preset external MCP server connections (Gmail, Notion, GitHub, Linear, BigQuery, Stripe, ...). One-click activation from the MCP Server sidebar adds them as tool sources for chat.
 - **[Vector Database](../vector-database.md)** - indexed document collections that the **RAG advisor chain** retrieves from at chat time (`SpringAiPlaygroundRagAdvisor` short-circuits when no documents are selected, so retrieval is opt-in per conversation).
 

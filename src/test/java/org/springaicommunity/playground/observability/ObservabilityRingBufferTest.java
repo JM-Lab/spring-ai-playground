@@ -18,8 +18,10 @@ package org.springaicommunity.playground.observability;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +50,6 @@ class ObservabilityRingBufferTest {
 
         assertThat(buffer.size()).isEqualTo(50);
         List<TraceRecord> snapshot = buffer.snapshot();
-        // oldest 10 should be gone; first remaining is trace-10
         assertThat(snapshot.get(0).traceId()).isEqualTo("trace-10");
         assertThat(snapshot.get(snapshot.size() - 1).traceId()).isEqualTo("trace-59");
     }
@@ -120,7 +121,7 @@ class ObservabilityRingBufferTest {
 
         List<TraceRecord> a = new CopyOnWriteArrayList<>();
         List<TraceRecord> b = new CopyOnWriteArrayList<>();
-        CountDownLatch latch = new CountDownLatch(4); // 2 subscribers × 2 traces
+        CountDownLatch latch = new CountDownLatch(4);
         Disposable subA = buffer.liveStream().subscribe(t -> {
             a.add(t);
             latch.countDown();
@@ -141,11 +142,107 @@ class ObservabilityRingBufferTest {
         }
     }
 
+    @Test
+    void mergeDedupesReFinalizedSpansBySpanId() {
+        ObservabilityRingBuffer buffer = new ObservabilityRingBuffer(new ObservabilityProperties());
+        SpanRecord span = toolSpan("span-1", "get_weather");
+
+        buffer.add(traceWithSpans("t-1", 1, List.of(span)));
+        TraceRecord merged = buffer.add(traceWithSpans("t-1", 1, List.of(span)));
+
+        assertThat(buffer.size()).isEqualTo(1);
+        assertThat(merged.spans()).hasSize(1);
+        assertThat(merged.toolCallCount()).isEqualTo(1);
+    }
+
+    @Test
+    void mergeRecountsToolCallsWhenFragmentsJoinTheirRoot() {
+        ObservabilityRingBuffer buffer = new ObservabilityRingBuffer(new ObservabilityProperties());
+
+        buffer.add(traceWithSpans("t-root", 0, List.of()));
+        buffer.add(traceWithSpans("t-root", 1, List.of(toolSpan("s1", "alpha"))));
+        buffer.add(traceWithSpans("t-root", 1, List.of(toolSpan("s2", "beta"))));
+        TraceRecord merged = buffer.add(traceWithSpans("t-root", 1, List.of(toolSpan("s3", "gamma"))));
+
+        assertThat(merged.toolCallCount()).isEqualTo(3);
+        assertThat(merged.spans()).hasSize(3);
+        assertThat(merged.toolNames()).containsExactlyInAnyOrder("alpha", "beta", "gamma");
+    }
+
+    @Test
+    void exactTraceIdMergesFromBeyondTheRecentWindow() {
+        ObservabilityProperties props = new ObservabilityProperties();
+        props.setRingBufferCapacity(100);
+        ObservabilityRingBuffer buffer = new ObservabilityRingBuffer(props);
+
+        buffer.add(traceWithSpans("t-root", 0,
+                List.of(new SpanRecord("root-span", null, ObservabilityCollector.ROOT_SPAN_NAME,
+                        System.currentTimeMillis(), 10L, TraceRecord.STATUS_OK, Map.of()))));
+        for (int i = 0; i < 20; i++) {
+            buffer.add(makeTrace("filler-" + i));
+        }
+
+        TraceRecord merged = buffer.add(traceWithSpans("t-root", 1, List.of(toolSpan("s-late", "late"))));
+
+        assertThat(merged.traceId()).isEqualTo("t-root");
+        assertThat(merged.spans()).hasSize(2);
+        assertThat(buffer.size()).isEqualTo(21);
+    }
+
+    @Test
+    void dedupesStreamingToolCallReEmittedUnderDifferentFallbackTraceIds() {
+        ObservabilityRingBuffer buffer = new ObservabilityRingBuffer(new ObservabilityProperties());
+
+        buffer.add(traceWithSpans("local-1", 1, List.of(toolSpanWithCallId("span-a", "ask_question", "call_x"))));
+        TraceRecord merged = buffer.add(
+                traceWithSpans("local-2", 1, List.of(toolSpanWithCallId("span-b", "ask_question", "call_x"))));
+
+        assertThat(buffer.size()).isEqualTo(1);
+        assertThat(merged.spans()).hasSize(1);
+        assertThat(merged.toolCallCount()).isEqualTo(1);
+        assertThat(merged.traceId()).isEqualTo("local-1");
+    }
+
+    @Test
+    void distinctToolCallIdsAreKeptAsSeparateTraces() {
+        ObservabilityRingBuffer buffer = new ObservabilityRingBuffer(new ObservabilityProperties());
+
+        buffer.add(traceWithSpans("local-1", 1, List.of(toolSpanWithCallId("span-a", "ask_question", "call_x"))));
+        buffer.add(traceWithSpans("local-2", 1, List.of(toolSpanWithCallId("span-b", "ask_question", "call_y"))));
+
+        assertThat(buffer.size()).isEqualTo(2);
+    }
+
     private TraceRecord makeTrace(String id) {
         return new TraceRecord(
                 id, "conv-" + id, "msg-" + id, "ollama", "qwen3.5:9b",
                 System.currentTimeMillis(), 100L, TraceRecord.STATUS_OK,
                 10L, 20L, 30L, "stop", false, 0, false,
+                null, null, null, null,
                 List.of(), Map.of());
+    }
+
+    private static SpanRecord toolSpan(String spanId, String toolName) {
+        return new SpanRecord(spanId, null, ObservabilityCollector.TOOL_SPAN_NAME,
+                System.currentTimeMillis(), 5L, TraceRecord.STATUS_OK,
+                Map.of("gen_ai.tool.name", toolName));
+    }
+
+    private static SpanRecord toolSpanWithCallId(String spanId, String toolName, String callId) {
+        return new SpanRecord(spanId, null, ObservabilityCollector.TOOL_SPAN_NAME,
+                System.currentTimeMillis(), 5L, TraceRecord.STATUS_OK,
+                Map.of("gen_ai.tool.name", toolName, ObservabilityCollector.TOOL_CALL_ID_ATTR, callId));
+    }
+
+    private static TraceRecord traceWithSpans(String traceId, int toolCallCount, List<SpanRecord> spans) {
+        Set<String> toolNames = new LinkedHashSet<>();
+        for (SpanRecord span : spans) {
+            String name = span.attributes().get("gen_ai.tool.name");
+            if (name != null) toolNames.add(name);
+        }
+        return new TraceRecord(traceId, null, null, null, null,
+                System.currentTimeMillis(), 10L, TraceRecord.STATUS_OK,
+                null, null, null, null, toolCallCount > 0, toolCallCount, false,
+                null, null, toolNames, null, spans, Map.of());
     }
 }

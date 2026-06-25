@@ -135,9 +135,9 @@ return { tag: release.tag_name, publishedAt: release.published_at, url: release.
 
 ## Recipe 3 - City weather → Calendar event (`cityForecastEvent`)
 
-**Default tools used:** [`geocodeAddress`](../features/default-tools/global.md) ・ [`getOpenMeteoForecast`](../features/default-tools/global.md) ・ [`buildGoogleCalendarCreateLink`](../features/default-tools/examples.md)
+**Default tools used:** [`geocodeAddress`](../features/default-tools/global.md) ・ [`getOpenMeteoForecast`](../features/default-tools/global.md) ・ [`addToCalendar`](../features/default-tools/examples.md)
 
-**What we're building** - given a city name, forward-geocode it through Nominatim, fetch tomorrow's hourly forecast from Open-Meteo, and if it is going to be sunny in the afternoon, return an "Add to Google Calendar" URL pre-filled with a "Beach trip" event. The agent then offers the link to the user. No keys needed for the geo + weather half; only the calendar URL builder is free.
+**What we're building** - given a city name, forward-geocode it through Nominatim, fetch tomorrow's hourly forecast from Open-Meteo, and if it is going to be sunny in the afternoon, emit an **Add to calendar** action card (the same `saip-action` block the `addToCalendar` tool produces) pre-filled with a "Beach trip" event. The user reviews the card and picks a destination (Google/Outlook/Yahoo Calendar or an `.ics` file). No keys needed - the geo, weather, and calendar pieces are all free.
 
 **Sandbox** - `networkMode: strict`.
 
@@ -145,7 +145,7 @@ return { tag: release.tag_name, publishedAt: release.published_at, url: release.
 
 **JS action:**
 
-```javascript
+````javascript
 const city = params.city;
 const eventTitle = params.eventTitle || 'Outdoor plan';
 const timeZone = params.timeZone || 'UTC';
@@ -176,20 +176,20 @@ for (let i = 0; i < times.length; i++) {
 }
 if (!pick) return { city: display_name, ok: false, reason: 'no sunny afternoon in next 3 days' };
 
-// 4. build a Google Calendar Add-Event URL for that slot
-const start = pick.iso.replace(/[-:]/g, '').replace('T', 'T') + '00';
-const endDate = new Date(new Date(pick.iso).getTime() + 2 * 60 * 60 * 1000)
-                  .toISOString().slice(0, 16).replace(/[-:]/g, '');
-const calUrl =
-  'https://calendar.google.com/calendar/render?action=TEMPLATE' +
-  `&text=${encodeURIComponent(eventTitle + ' - ' + display_name.split(',')[0])}` +
-  `&dates=${start}/${endDate}` +
-  `&details=${encodeURIComponent('Forecast says ' + pick.pp + '% chance of rain at ' + pick.iso)}` +
-  `&location=${encodeURIComponent(display_name)}` +
-  `&ctz=${encodeURIComponent(timeZone)}`;
+// 4. emit an "Add to calendar" action card for that slot (same shape as the addToCalendar tool)
+const start = new Date(pick.iso).toISOString();
+const end = new Date(new Date(pick.iso).getTime() + 2 * 60 * 60 * 1000).toISOString();
+const action = {
+  type: 'calendar',
+  title: eventTitle + ' - ' + display_name.split(',')[0],
+  start: start,
+  end: end,
+  location: display_name,
+  description: 'Forecast says ' + pick.pp + '% chance of rain at ' + pick.iso
+};
 
-return { city: display_name, slot: pick.iso, rainProbability: pick.pp, addToCalendarUrl: calUrl };
-```
+return 'Found a sunny afternoon - review it and click Add to calendar.\n\n```saip-action-return-direct\n' + JSON.stringify(action) + '\n```';
+````
 
 **Test value** - `city`: `Seoul`, `timeZone`: `Asia/Seoul`.
 

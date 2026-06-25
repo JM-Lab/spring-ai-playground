@@ -206,6 +206,20 @@ class ToolSpecServiceTest {
         Assertions.assertEquals(expectedSchema.replace("\r\n", "\n"), schema.replace("\r\n", "\n"));
     }
 
+    @Test
+    void saipActionToolDoesNotSetCallbackReturnDirect() {
+        ToolSpec spec = toolSpecService.update("sa-1", "saReturnDirect", "",
+                List.of(), List.of(), "return '```saip-action-return-direct';", CodeType.Javascript);
+        assertThat(spec.toolCallback().getToolMetadata().returnDirect()).isFalse();
+    }
+
+    @Test
+    void saipActionResultConverterReturnsRawBlock() {
+        ToolSpec spec = toolSpecService.update("sa-2", "saRawBlock", "",
+                List.of(), List.of(), "return '```saip-action {\"type\":\"email\"}';", CodeType.Javascript);
+        String out = spec.toolCallback().call("{}");
+        assertThat(out).isEqualTo("```saip-action {\"type\":\"email\"}");
+    }
 
     private static ToolSpec freshSpec(String id, String name, boolean draft) {
         return new ToolSpec(id, name, "desc",
@@ -361,7 +375,6 @@ class ToolSpecServiceTest {
         toolSpecService.setExposureMode(ToolSpecService.ExposureMode.COMPOSED_ONLY);
         assertThat(currentMcpNames()).doesNotContain("modeToolOne");
 
-        // A tool created while composed-only stays off the server but its exposure intent is remembered.
         toolSpecService.update(freshSpec("mode-2", "modeToolTwo", false));
         assertThat(currentMcpNames()).doesNotContain("modeToolTwo");
 
@@ -482,9 +495,7 @@ class ToolSpecServiceTest {
         Map<String, Object> masked = ToolSpecService.maskSecrets(merged, secrets);
 
         assertThat(masked.get("query")).isEqualTo("spring ai");
-        // long secret → last 2 chars visible
         assertThat(masked.get("naverClientId")).isEqualTo("***34");
-        // short secret (≤ 4 chars) → fully redacted
         assertThat(masked.get("naverClientSecret")).isEqualTo("***");
         assertThat(masked.get("nullKey")).isNull();
         assertThat(masked.toString()).doesNotContain("abcdef1234").doesNotContain("xy");

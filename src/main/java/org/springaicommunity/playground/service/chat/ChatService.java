@@ -29,6 +29,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
+import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.client.advisor.toolsearch.ToolSearchToolCallingAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -42,6 +45,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
@@ -61,7 +65,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.springaicommunity.playground.service.SpringAiPlaygroundRagAdvisor.RAG_PROCESS_MESSAGE_CONSUMER;
+import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.DYNAMIC_TOOL_POOL;
 import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.MCP_PROCESS_MESSAGE_CONSUMER;
+import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.TOOL_CONTEXT_CONVERSATION_ID;
 import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.TOOL_CONTEXT_SESSION_ID;
 import static org.springaicommunity.playground.service.mcp.McpToolCallingManager.TOOL_CONTEXT_USER_ID;
 import static org.springaicommunity.playground.service.vectorstore.VectorStoreService.DOC_INFO_ID;
@@ -81,8 +87,6 @@ public class ChatService {
 
     public record ChatMeta(String model, Usage usage, List<Document> retrievedDocuments) {}
 
-    // One LLM round inside a streamed turn (a tool loop runs several); flags tell the UI which process
-    // stage the round's tokens belong to.
     public record RoundUsage(int promptTokens, int completionTokens, int totalTokens,
             boolean toolCallRound, boolean thinkRound) {}
 
@@ -96,12 +100,15 @@ public class ChatService {
     private final SharedDataReader<List<VectorStoreDocumentInfo>> vectorStoreDocumentsReader;
     private final SharedDataReader<List<McpServerInfo>> mcpServerInfosReader;
     private final ChatRequestOptionsFactory chatRequestOptionsFactory;
+    private final ToolCallingAdvisor toolCallingAdvisor;
+    private final ObjectProvider<ToolSearchToolCallingAdvisor> dynamicToolCallingAdvisorProvider;
 
     public ChatService(ChatModel chatModel, ChatClient chatClient, ChatMemory chatMemory,
             SpringAiPlaygroundOptions playgroundOptions,
             SharedDataReader<List<VectorStoreDocumentInfo>> vectorStoreDocumentsReader,
             SharedDataReader<List<McpServerInfo>> mcpServerInfosReader,
-            ChatRequestOptionsFactory chatRequestOptionsFactory) {
+            ChatRequestOptionsFactory chatRequestOptionsFactory, ToolCallingAdvisor toolCallingAdvisor,
+            ObjectProvider<ToolSearchToolCallingAdvisor> dynamicToolCallingAdvisorProvider) {
         this.systemPrompt = playgroundOptions.chat().systemPrompt();
         this.defaultMemoryWindow = playgroundOptions.chat().memoryMaxMessages();
         this.models = playgroundOptions.chat().models();
@@ -114,6 +121,8 @@ public class ChatService {
         this.vectorStoreDocumentsReader = vectorStoreDocumentsReader;
         this.mcpServerInfosReader = mcpServerInfosReader;
         this.chatRequestOptionsFactory = chatRequestOptionsFactory;
+        this.toolCallingAdvisor = toolCallingAdvisor;
+        this.dynamicToolCallingAdvisorProvider = dynamicToolCallingAdvisorProvider;
     }
 
     public Flux<String> stream(ChatHistory chatHistory, String prompt, String filterExpression,
@@ -139,9 +148,6 @@ public class ChatService {
                     boolean finished = SignalType.ON_COMPLETE.equals(signalType)
                             || SignalType.CANCEL.equals(signalType);
                     if (finished && Objects.nonNull(beforeHistoryCommit)) beforeHistoryCommit.accept(signalType);
-                    // An errored stream still owns the user turn (plus any partial text committed upstream);
-                    // persist it so a failure cannot lose the conversation. UI finalization already ran via
-                    // the caller's doOnError, so beforeHistoryCommit stays complete/cancel-only.
                     if ((finished || SignalType.ON_ERROR.equals(signalType))
                             && Objects.nonNull(completeChatHistoryConsumer))
                         completeChatHistoryConsumer.accept(chatHistory);
@@ -163,7 +169,6 @@ public class ChatService {
         AtomicReference<ChatClientResponse> lastChatResponse = new AtomicReference<>();
         StringBuilder accumulatedText = new StringBuilder();
         String userMessageId = UUID.randomUUID().toString();
-        // Captured on the servlet thread (MdcIdentityFilter set it) to propagate into the reactive chain below.
         String userId = MDC.get(MdcIdentityFilter.USER_ID);
         String sessionId = MDC.get(MdcIdentityFilter.SESSION_ID);
         AtomicBoolean roundHadToolCalls = new AtomicBoolean();
@@ -208,8 +213,6 @@ public class ChatService {
                 })
                 .doFinally(signalType -> {
                     try {
-                        // ON_ERROR is treated like CANCEL: keep the streamed-so-far text and usage metadata
-                        // instead of dropping the round on a mid-stream failure.
                         boolean interrupted = SignalType.CANCEL.equals(signalType)
                                 || SignalType.ON_ERROR.equals(signalType);
                         if ((SignalType.ON_COMPLETE.equals(signalType) || interrupted) &&
@@ -226,8 +229,6 @@ public class ChatService {
                 });
     }
 
-    // A non-zero usage chunk marks the end of one LLM round inside the stream (tool loops produce several);
-    // the flags are consumed-and-reset so each round is classified by what it actually streamed.
     private static void emitRoundUsage(ChatClientResponse chatClientResponse,
             Consumer<RoundUsage> roundUsageConsumer, AtomicBoolean roundHadToolCalls,
             AtomicBoolean roundHadThinking) {
@@ -264,15 +265,18 @@ public class ChatService {
                             advisor.param(RAG_PROCESS_MESSAGE_CONSUMER, ragProcessMessageConsumer);
                     }
                 });
+        chatClientRequestSpec = chatClientRequestSpec.advisors(toolCallingAdvisorFor(chatHistory));
         if (Objects.nonNull(mcpToolProcessMessageConsumer) && Objects.nonNull(toolCallbacks) &&
                 !toolCallbacks.isEmpty()) {
             Map<String, Object> toolContext = new HashMap<>();
             toolContext.put(MCP_PROCESS_MESSAGE_CONSUMER, mcpToolProcessMessageConsumer);
             if (Objects.nonNull(humanQuestionHandler))
                 toolContext.put(HumanQuestionHandler.TOOL_CONTEXT_KEY, humanQuestionHandler);
-            // Carry identity via tool context so McpToolCallingManager can restore it on the tool-exec thread.
             putIfPresent(toolContext, TOOL_CONTEXT_USER_ID, MDC.get(MdcIdentityFilter.USER_ID));
             putIfPresent(toolContext, TOOL_CONTEXT_SESSION_ID, MDC.get(MdcIdentityFilter.SESSION_ID));
+            putIfPresent(toolContext, TOOL_CONTEXT_CONVERSATION_ID, chatHistory.conversationId());
+            if (chatHistory.toolPreferences().dynamicTools())
+                toolContext.put(DYNAMIC_TOOL_POOL, toToolCallbackMap(toolCallbacks));
             chatClientRequestSpec.tools((Object[]) toolCallbacks.toArray(new ToolCallback[0])).toolContext(toolContext);
         }
         return Optional.ofNullable(chatHistory.systemPrompt()).filter(Predicate.not(String::isBlank))
@@ -281,6 +285,25 @@ public class ChatService {
 
     private static void putIfPresent(Map<String, Object> toolContext, String key, String value) {
         if (value != null && !value.isBlank()) toolContext.put(key, value);
+    }
+
+    private static Map<String, ToolCallback> toToolCallbackMap(List<ToolCallback> toolCallbacks) {
+        Map<String, ToolCallback> pool = new HashMap<>();
+        for (ToolCallback callback : toolCallbacks) {
+            if (callback.getToolDefinition() != null && callback.getToolDefinition().name() != null)
+                pool.putIfAbsent(callback.getToolDefinition().name(), callback);
+        }
+        return pool;
+    }
+
+    private Advisor toolCallingAdvisorFor(ChatHistory chatHistory) {
+        if (chatHistory.toolPreferences().dynamicTools()) {
+            ToolSearchToolCallingAdvisor dynamic = this.dynamicToolCallingAdvisorProvider.getIfAvailable();
+            if (dynamic != null) {
+                return dynamic;
+            }
+        }
+        return this.toolCallingAdvisor;
     }
 
     public String call(ChatHistory chatHistory, String prompt, String filterExpression,
@@ -312,8 +335,12 @@ public class ChatService {
                 .filter(message -> MessageType.USER.equals(message.getMessageType())).findFirst()
                 .map(Message::getMetadata).ifPresentOrElse(metadata -> {
                             ChatResponseMetadata chatResponseMetadata = chatResponse.getMetadata();
-                            metadata.put(CHAT_META, new ChatMeta(chatResponseMetadata.getModel(), chatResponseMetadata.getUsage(),
-                                    (List<Document>) chatClientResponse.context().get(DOCUMENT_CONTEXT)));
+                            ChatMeta chatMeta = new ChatMeta(chatResponseMetadata.getModel(),
+                                    chatResponseMetadata.getUsage(),
+                                    (List<Document>) chatClientResponse.context().get(DOCUMENT_CONTEXT));
+                            synchronized (metadata) {
+                                metadata.put(CHAT_META, chatMeta);
+                            }
                         },
                         () -> logger.error("No user message found in chat history to update metadata. [conversationId={}]",
                                 chatHistory.conversationId()));

@@ -21,7 +21,7 @@ Every tool you build earns a **Local Pass** — a local test-run with your sampl
 
 > **Security scope.** The in-process sandbox is defense-in-depth for the local build-and-vet loop. It is not adversarial-grade isolation and not a gateway. To run tool code you do not trust, nest it in container or microVM isolation. See [Isolation tiers](https://spring-ai-community.github.io/spring-ai-playground/safety-architecture/#isolation-tiers).
 
-Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, and Traces, backed by a ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — so the tools you let an agent call are also the tools you can see in detail after the fact.
+Safe execution does not end at publication. Every chat, tool call, vector lookup, and MCP invocation that runs in the app lands in the built-in **Observability dashboards** spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Safety, Host, Ollama, Web Application, Logs, and Traces, backed by a ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the conversation thread, and deep-link back into Agentic Chat — so the tools you let an agent call are also the tools you can see in detail after the fact.
 
 In Tool Studio, new or updated built-in tools are test-run before they are published to the built-in MCP server. You do not need to know Java, Spring, or JVM internals to use it. If you can install a desktop app and write a small JavaScript function, you can build tools here and connect them to hosts and clients such as Claude Desktop, Claude Code, Cursor, IDEs, and other MCP-compatible environments.
 
@@ -162,8 +162,8 @@ Full setup details for both modes live in [Getting Started: Alternative Runtimes
 - **Provider Agnostic**: Switch between Ollama, OpenAI, and other OpenAI-compatible APIs without changing the overall workflow.
 - **OS-Independent Tool Runtime**: Tools are authored once as JavaScript and run through the same bundled runtime, so the same tool definition works consistently across macOS, Windows, and Linux.
 - **Single-Agent Execution**: Use validated built-in tools together with grounded context (RAG) in Agentic Chat to handle focused, practical workflows without needing a larger orchestration layer. Agentic Chat can also call tools exposed by MCP servers that you explicitly connect and trust.
-- **Agentic Chat Workbench**: A Prompt Library of ready-to-use presets and `{{variable}}` templates, per-turn reasoning effort (Off/Low/Medium/High), a configurable per-chat memory window, and rich rendering of syntax-highlighted code, KaTeX math, and Mermaid diagrams. See [Agentic Chat](docs/features/agentic-chat/index.md).
-- **Observability Dashboards**: Built-in dashboards spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Host, Web Application, Logs, and Traces, backed by an in-memory ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the full conversation thread, and deep-link straight back into Agentic Chat.
+- **Agentic Chat Workbench**: A Prompt Library of ready-to-use presets and `{{variable}}` templates, per-turn reasoning effort (Off/Low/Medium/High), a configurable per-chat memory window, dynamic tool discovery, review-then-act action cards (email, calendar, map), clickable file paths, on-device voice input, and rich rendering of syntax-highlighted code, KaTeX math, and Mermaid diagrams. See [Agentic Chat](docs/features/agentic-chat/index.md).
+- **Observability Dashboards**: Built-in dashboards spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Safety, Host, Ollama, Web Application, Logs, and Traces, backed by an in-memory ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the full conversation thread, and deep-link straight back into Agentic Chat.
 
 The intended workflow is practical and composable:
 
@@ -184,7 +184,9 @@ It complements agent builders by providing a reliable execution layer.
 
 ## Built on Spring AI
 
-Spring AI Playground doubles as a working reference implementation of the Spring AI framework — every surface in the app maps to a real Spring AI API, so you can use this repo as an end-to-end example of how those pieces fit together.
+Spring AI Playground started as a way to explore Spring AI; as Spring AI and the ecosystem moved toward agents and MCP, it grew into a safe local execution layer for the tools agents call.
+
+It also doubles as a working reference implementation of the Spring AI framework — every surface in the app maps to a real Spring AI API, so you can use this repo as an end-to-end example of how those pieces fit together.
 
 - **ChatClient + advisor pipeline** drives Agentic Chat — message memory, the `RetrievalAugmentationAdvisor` for RAG, and the Tool Calling pipeline are composed through `ChatClient.builder()` and a custom `SpringAiPlaygroundRagAdvisor`.
 - **MCP client and server starters together** — `spring-ai-starter-mcp-client` connects to the external MCP servers in the preset catalog and to the built-in MCP server in the same JVM, while `spring-ai-starter-mcp-server-webmvc` publishes every Local-Pass tool you author through the `spring-ai-playground-tool-mcp` connection on `/mcp`.
@@ -268,7 +270,6 @@ These are the next pieces we plan to add while keeping the project focused on pr
 
 ### Next Up
 
-- **Local speech-to-text mic in Agentic Chat**: voice input captured and transcribed locally via whisper.cpp through an Electron Node addon (no cloud round-trip). Whisper model selection and download surface in the desktop launcher's config editor and startup splash.
 - **Modular RAG pipeline studio in Vector Database**: composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, with a reworked chunk-confirmation dialog and Name + Description fields on documents.
 - **Built-in MCP Server Authentication**: lock down the locally-exposed MCP server endpoint with token-based access (external MCP connections already covered by OAuth 2.1 and env-backed secrets).
 - **Multimodal Support**: image and audio input/output with supported multimodal-capable models.

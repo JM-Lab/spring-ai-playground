@@ -31,6 +31,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import org.springaicommunity.playground.observability.ObservabilityRingBuffer;
 import org.springaicommunity.playground.observability.SpanRecord;
 import org.springaicommunity.playground.observability.TraceRecord;
+import org.springaicommunity.playground.webui.observability.components.ObservabilityNavLinks;
 import org.springaicommunity.playground.webui.observability.components.SpanTimelineCanvas;
 
 import java.util.LinkedHashSet;
@@ -69,14 +70,28 @@ public class TraceDetailDialog extends Dialog {
         Button jsonButton = new Button("Show raw JSON", e -> showRawJson(trace));
         Button closeButton = new Button("Close", e -> close());
         if (buffer != null && trace.conversationId() != null && !trace.conversationId().isBlank()) {
-            Button threadButton = new Button("Open conversation thread", e -> {
+            getFooter().add(new Button("Open conversation thread", e -> {
                 close();
                 new ConversationThreadDialog(trace.conversationId(), buffer, trace.traceId()).open();
-            });
-            getFooter().add(threadButton, jsonButton, closeButton);
-        } else {
-            getFooter().add(jsonButton, closeButton);
+            }));
         }
+        if (trace.serverNames() != null) {
+            for (String server : trace.serverNames()) {
+                getFooter().add(new Button("Server: " + server, e -> {
+                    close();
+                    ObservabilityNavLinks.openMcpServer(server);
+                }));
+            }
+        }
+        if (trace.toolNames() != null) {
+            for (String tool : trace.toolNames()) {
+                getFooter().add(new Button("Tool: " + tool, e -> {
+                    close();
+                    ObservabilityNavLinks.openTool(tool);
+                }));
+            }
+        }
+        getFooter().add(jsonButton, closeButton);
 
         add(body);
     }
@@ -99,6 +114,8 @@ public class TraceDetailDialog extends Dialog {
         div.add(line("Tools", String.valueOf(trace.toolCallCount())));
         div.add(line("RAG", trace.hasRag() ? "yes" : "no"));
         div.add(line("Conversation", nullSafe(trace.conversationId())));
+        div.add(line("Session", nullSafe(trace.sessionId())));
+        div.add(line("User", nullSafe(trace.userId())));
         div.add(line("Finish reason", nullSafe(trace.finishReason())));
         return div;
     }
@@ -144,13 +161,13 @@ public class TraceDetailDialog extends Dialog {
         Map<String, String> attrs = s.attributes();
         if (attrs == null || attrs.isEmpty()) return row;
 
-        // Highlight key metadata first so the important fields aren't drowned out by prompt content.
         Set<String> highlightKeys = new LinkedHashSet<>();
         for (String k : new String[] {
                 "gen_ai.system", "gen_ai.request.model", "gen_ai.response.model",
                 "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens",
                 "gen_ai.response.finish_reasons",
-                "spring.ai.tool.definition.name", "mcp.server", "mcp.transport",
+                "spring.ai.tool.definition.name", "saip.mcp.server",
+                "mcp.method.name", "network.transport", "network.protocol.name",
                 "db.system", "db.vector.query.top_k",
                 "error.type", "error.message"
         }) {
@@ -169,10 +186,8 @@ public class TraceDetailDialog extends Dialog {
             row.add(meta);
         }
 
-        // Inline prompt/completion content blocks (the killer feature for debugging).
         addContentBlocks(row, attrs);
 
-        // Everything else collapsed behind a Details panel — exposes ALL attributes for drill-down.
         Set<String> remaining = new LinkedHashSet<>(attrs.keySet());
         remaining.removeAll(highlightKeys);
         remaining.removeIf(k -> k.startsWith("gen_ai.prompt.") || k.startsWith("gen_ai.completion."));

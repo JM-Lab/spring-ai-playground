@@ -1,14 +1,68 @@
-description: Default Tools - Filesystem reference. 10 safety.fs-wrapped tools (read · list · stat · grep · slice · sort · cut · find · write) rooted at the FS base.
+description: Default Tools - Filesystem reference. 11 safety.fs-wrapped tools (list-roots · read · list · stat · grep · count · slice · sort · cut · find · write) over readable roots and a writable working directory.
 
 # Default Tools - Filesystem
 
-The 10 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools - a small shell-style filesystem pipeline covering read, list, stat, grep, slice, sort, cut, find, and write. **All paths are resolved against the per-app base path** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/fs-tool-workspace`); any path whose `normalize()` lands outside the base is rejected before any I/O.
+The 11 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools - a small shell-style filesystem pipeline covering list-roots, read, list, stat, grep, count, slice, sort, cut, find, and write. They operate within two boundaries:
+
+- **Readable roots** - directories the tools may **read** from, recursively. The user's home directory is a readable root by default.
+- A **working directory** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/workspace`) - the only **writable** location, and where relative paths resolve. When a tool runs inside a chat, writes are confined to a **per-conversation subdirectory** of it (`<workspace>/<conversationId>/`), created on first write and removed when you delete the conversation; `listAllowedDirectories` reports that exact path at runtime.
+
+So a relative path resolves under the working directory; an absolute path may be **read** anywhere under a readable root, but **writes** are confined to the working directory. Call **`listAllowedDirectories`** first to learn the exact absolute paths before reading or writing.
 
 Because they ride on `java.nio.file.Path` / `Files`, separator handling (`/` vs `\`), case folding, and symlink semantics are normalised at the JVM layer - these tools behave identically on macOS, Windows, and Linux. See [Tool Studio: Cross-platform by design](../tool-studio/index.md#cross-platform-by-design) for the mechanics, and [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode) for the read-only / read-write sandbox split.
 
-## The 10 filesystem tools { #the-filesystem-tools }
+## The 11 filesystem tools { #the-filesystem-tools }
 
 <div class="tcg-grid" markdown>
+
+<div class="tcg-card tcg-card--clickable" id="listAllowedDirectories" data-tool-id="listAllowedDirectories" data-tool-title="listAllowedDirectories" markdown>
+<div class="tcg-name"><span class="tcg-name__text">listAllowedDirectories</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-folder-key-outline:</div>
+<div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
+<div class="tcg-body" markdown>
+Reports the filesystem boundaries these tools operate within: the readable roots (anything under them can be read) and the working directory (the only writable location; a per-conversation subdirectory when run from a chat). Call this first. Uses safety.fs.readRoots() / workspace().
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; -</div>
+<div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
+</div>
+<div class="tcg-cta">Click for full reference · params · sandbox · JS source</div>
+<div class="tcg-detail-template" hidden markdown>
+
+**More detail**
+
+Reports which directories the filesystem tools may touch: the readable roots (anything under them can be read) and the working directory (the only writable location, where relative paths resolve; a per-conversation subdirectory when run from a chat). Call this first to learn the absolute paths before reading or writing files. Takes no arguments. Uses safety.fs.readRoots() / workspace().
+
+**Parameters**
+
+*(none - takes no arguments)*
+
+**Sandbox** - Sandbox needs **`fileRead`** (L3). Reports the boundaries only; it reads no file contents.
+
+<details class="tcg-sysprompt" markdown>
+<summary>JS source</summary>
+
+```javascript
+/**
+ * Reports the filesystem boundaries these tools operate within.
+ *
+ * - readRoots         — absolute roots that may be READ (recursively).
+ * - workingDirectory  — the single writable dir; relative paths resolve here.
+ *
+ * Uses host helpers: safety.fs.readRoots, safety.fs.workspace.
+ */
+
+return {
+  readRoots: Array.from(safety.fs.readRoots()),
+  workingDirectory: safety.fs.workspace(),
+};
+
+```
+
+</details>
+
+</div>
+</div>
 
 <div class="tcg-card tcg-card--clickable" id="readTextFile" data-tool-id="readTextFile" data-tool-title="readTextFile" markdown>
 <div class="tcg-name"><span class="tcg-name__text">readTextFile</span> <span class="cost">🆓</span></div>
@@ -26,15 +80,15 @@ Reads a UTF-8 text file from disk and returns its contents as a single string.
 
 **More detail**
 
-All paths are resolved relative to the playground's configured filesystem base path; anything outside it is rejected. Uses safety.fs.readText().
+A relative path resolves under the working directory; an absolute path is allowed anywhere under a readable root (the user's home directory by default). Call `listAllowedDirectories` first to learn the working directory and readable roots. Uses safety.fs.readText().
 
 **Parameters**
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path inside the FS base directory |
+| `path` | `STRING` | ✓ | Path to read - relative (under the working directory) or absolute (under a readable root) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -66,7 +120,7 @@ return safety.fs.readText(path);
 <div class="tcg-art" markdown>:material-folder-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Lists the immediate entries (files and subdirectories) of a directory under the FS base path. Returns an array of relative names (not full paths). Uses safety.fs.list().
+Lists the immediate entries (files and subdirectories) of a directory. Entries in the working directory come back as relative names; entries elsewhere under a readable root come back as absolute paths. Uses safety.fs.list().
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `dir`</div>
@@ -79,9 +133,9 @@ Lists the immediate entries (files and subdirectories) of a directory under the 
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `dir` | `STRING` |  | Relative directory path (default '.') |
+| `dir` | `STRING` |  | Directory to list - relative (default '.', under the working directory) or absolute (under a readable root) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -111,7 +165,7 @@ return safety.fs.list(target);
 <div class="tcg-art" markdown>:material-information-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l3">L3</span></div>
 <div class="tcg-body" markdown>
-Returns size, last-modified timestamp, and a directory flag for a path inside the FS base. Uses safety.fs.stat().
+Returns size, last-modified timestamp, and a directory flag for a path (relative under the working directory, or absolute under a readable root). Uses safety.fs.stat().
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path`</div>
@@ -124,9 +178,9 @@ Returns size, last-modified timestamp, and a directory flag for a path inside th
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path inside the FS base directory |
+| `path` | `STRING` | ✓ | Path to read - relative (under the working directory) or absolute (under a readable root) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -170,9 +224,9 @@ Counts the lines in a UTF-8 text file. Uses safety.fs.lineCount().
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path to the file |
+| `path` | `STRING` | ✓ | Path to the file - relative (under the working directory) or absolute (under a readable root) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -212,11 +266,11 @@ Returns a slice of lines from a UTF-8 text file (head / tail / range). `start` i
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path to the file |
+| `path` | `STRING` | ✓ | Path to the file - relative (under the working directory) or absolute (under a readable root) |
 | `start` | `INTEGER` |  | First line index (0-based inclusive; negatives from end) |
 | `end` | `INTEGER` |  | End line index (0-based exclusive; negatives from end) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -261,13 +315,13 @@ Sorts the lines of a UTF-8 text file and returns the sorted lines as an array. O
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path to the file |
+| `path` | `STRING` | ✓ | Path to the file - relative (under the working directory) or absolute (under a readable root) |
 | `reverse` | `BOOLEAN` |  | Sort descending |
 | `numeric` | `BOOLEAN` |  | Sort lines numerically |
 | `caseInsensitive` | `BOOLEAN` |  | Ignore case when comparing |
 | `unique` | `BOOLEAN` |  | Drop duplicate lines |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -319,12 +373,12 @@ Searches a UTF-8 text file for lines matching a JavaScript regex. Returns an arr
 | Param | Type | Req | Description |
 |---|---|---|---|
 | `pattern` | `STRING` | ✓ | Regex pattern (JavaScript flavour) |
-| `path` | `STRING` | ✓ | Relative path to the file |
+| `path` | `STRING` | ✓ | Path to the file - relative (under the working directory) or absolute (under a readable root) |
 | `caseInsensitive` | `BOOLEAN` |  | Match case-insensitively |
 | `numbered` | `BOOLEAN` |  | Prefix each result with 'N:' (1-based line number) |
 | `limit` | `INTEGER` |  | Max matches to return (0 = no limit) |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -372,12 +426,12 @@ Recursively finds files matching a glob inside a directory. Glob supports `*` an
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `dir` | `STRING` |  | Relative directory to search from (default '.') |
+| `dir` | `STRING` |  | Directory to search from - relative (default '.') or absolute (under a readable root) |
 | `glob` | `STRING` |  | Glob pattern (default '*') |
 | `maxDepth` | `INTEGER` |  | Max recursion depth (0 = unlimited) |
 | `type` | `STRING` |  | 'file' \| 'dir' \| omit for both |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -425,12 +479,12 @@ Extracts selected fields from each line of a delimited file (CSV/TSV/etc.). Uses
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path to the file |
+| `path` | `STRING` | ✓ | Path to the file - relative (under the working directory) or absolute (under a readable root) |
 | `fields` | `ARRAY` | ✓ | Array of 1-based field indices to keep, e.g. [1, 3] |
 | `delimiter` | `STRING` |  | Field delimiter character or regex (default '\t' tab) |
 | `regex` | `BOOLEAN` |  | Treat `delimiter` as a regex pattern instead of literal |
 
-**Sandbox** - Sandbox needs **`fileRead`** (L3). Paths resolve against `TOOL_STUDIO_FS_BASE` (defaults to `${user.home}/spring-ai-playground/fs-tool-workspace`).
+**Sandbox** - Sandbox needs **`fileRead`** (L3). A relative path resolves under the working directory; an absolute path may sit anywhere under a readable root (`${user.home}` by default). Call `listAllowedDirectories` to see both.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -469,7 +523,7 @@ return safety.fs.cut(path, {
 <div class="tcg-art" markdown>:material-file-edit-outline:</div>
 <div class="tcg-type">file · pipeline <span class="risk risk-l4">L4</span></div>
 <div class="tcg-body" markdown>
-Writes a UTF-8 text file inside the FS base path (creating parent directories as needed). Overwrites any existing file. Requires `fileWrite` permission on the sandbox.
+Writes a UTF-8 text file inside the working directory (creating parent directories as needed). Overwrites any existing file. Requires `fileWrite` permission on the sandbox.
 </div>
 <div class="tcg-stats" markdown>
 <div class="tcg-stats__line" markdown>**Params** &nbsp; `path` · `content`</div>
@@ -482,20 +536,20 @@ Writes a UTF-8 text file inside the FS base path (creating parent directories as
 
 | Param | Type | Req | Description |
 |---|---|---|---|
-| `path` | `STRING` | ✓ | Relative path to write |
+| `path` | `STRING` | ✓ | Path to write, inside the working directory |
 | `content` | `STRING` | ✓ | Full text content to write (UTF-8) |
 
-**Sandbox** - Sandbox needs **`fileWrite`** (L4). Paths resolve against `TOOL_STUDIO_FS_BASE`; the helper auto-creates parent directories.
+**Sandbox** - Sandbox needs **`fileWrite`** (L4). `TOOL_STUDIO_FS_BASE` (default `${user.home}/spring-ai-playground/workspace`) is the workspace root; writes from a chat are confined to a per-conversation subdirectory under it, and the returned `path` is the absolute location actually written. The helper auto-creates parent directories.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
 
 ```javascript
 /**
- * Writes a UTF-8 text file inside the FS base directory.
+ * Writes a UTF-8 text file inside the workspace directory.
  *
  * - Overwrites any existing file at `path`.
- * - Path is resolved RELATIVE to the FS base; escape attempts are rejected.
+ * - Path is resolved RELATIVE to the workspace; escape attempts are rejected.
  * - This tool needs the `fileWrite` sandbox permission (set on the spec).
  *
  * Uses host helper: safety.fs.writeText.
@@ -503,8 +557,8 @@ Writes a UTF-8 text file inside the FS base path (creating parent directories as
 
 if (path == null || path === '') throw new Error('path required');
 if (content == null)             throw new Error('content required');
-safety.fs.writeText(path, String(content));
-return { ok: true, path, bytes: new TextEncoder().encode(String(content)).length };
+const writtenPath = safety.fs.writeText(path, String(content));
+return { ok: true, path: writtenPath, bytes: new TextEncoder().encode(String(content)).length };
 
 ```
 
@@ -517,7 +571,7 @@ return { ok: true, path, bytes: new TextEncoder().encode(String(content)).length
 
 ## Composition patterns (shell-style filesystem chains)
 
-These ten tools mirror the standard Unix-shell pipeline shape, but every step is a JSON-returning function so the agent can reason between calls:
+These eleven tools mirror the standard Unix-shell pipeline shape, but every step is a JSON-returning function so the agent can reason between calls:
 
 - **Read → filter → trim → save** - `listDir(dir)` → `grepFile(pattern, path)` → `sliceFile(path, start, end)` → `writeTextFile(outPath, content)`. The canonical "summarise recent errors from a log directory" flow.
 - **Find → cut → ETL** - `findFiles(dir, glob='*.csv')` → loop with `cutFileFields(path, fields=[1,3])` to project a directory of CSVs into one structured dataset.
@@ -532,7 +586,7 @@ One configuration value, no real secrets.
 
 | Variable | What it does | Default | Where to set |
 |---|---|---|---|
-| `TOOL_STUDIO_FS_BASE` | Per-app `safety.fs` base path - every path resolved against it; `normalize()` rejects any escape. | `${user.home}/spring-ai-playground/fs-tool-workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
+| `TOOL_STUDIO_FS_BASE` | The `safety.fs` **working directory** - the only writable location, and where relative paths resolve. Reads also reach the readable roots (the home directory by default). | `${user.home}/spring-ai-playground/workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
 
 The `File Toolkit` preset opts every read tool into `fileRead` automatically; `writeTextFile` requires `fileWrite` (L4) which you enable per-tool in the **Sandbox & Capabilities** pane - see [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode).
 

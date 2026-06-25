@@ -105,7 +105,7 @@ The bottom of the page is a grid of the **most recent 10 traces**, refreshed in 
 ## Cross-references
 
 - [AI Usage](ai-usage/index.md) - Tokens & Cost · AI Models
-- [AI Stack](ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat
-- [Runtime](runtime/index.md) - Host · Web Application · Logs · Traces
+- [AI Stack](ai-stack/index.md) - Tool Studio · MCP Servers · MCP Inspector · Vector Database · Agentic Chat · Safety
+- [Runtime](runtime/index.md) - Host · Ollama · Web Application · Logs · Traces
 - [Tokens & Cost → Model Pricing Manager](ai-usage/tokens-cost.md#configuring-cost-model-pricing-manager-dialog) - configure per-model rates and display currency
 - [Observability Architecture](../../observability-architecture.md) - pipeline, storage tiers, configuration
