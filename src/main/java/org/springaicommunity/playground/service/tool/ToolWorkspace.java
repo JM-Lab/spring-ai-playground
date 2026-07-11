@@ -18,6 +18,7 @@ package org.springaicommunity.playground.service.tool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.tool.runtime.SafeFs;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -42,6 +43,11 @@ public class ToolWorkspace {
         return base;
     }
 
+    public SafeFs.FsScope scopeFor(String conversationId) {
+        Path dir = conversationDir(conversationId);
+        return SafeFs.FsScope.confined(dir != null ? dir : base);
+    }
+
     public Path conversationDir(String conversationId) {
         String segment = safeSegment(conversationId);
         if (segment == null) return null;
@@ -62,6 +68,17 @@ public class ToolWorkspace {
             });
         } catch (IOException e) {
             log.warn("Failed to clean conversation workspace {}: {}", dir, e.getMessage());
+        }
+    }
+
+    public int conversationFileCount(String conversationId) {
+        Path dir = conversationDir(conversationId);
+        if (dir == null || !Files.isDirectory(dir)) return 0;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            return (int) walk.filter(Files::isRegularFile).count();
+        } catch (IOException e) {
+            log.warn("Failed to count conversation workspace {}: {}", dir, e.getMessage());
+            return 0;
         }
     }
 

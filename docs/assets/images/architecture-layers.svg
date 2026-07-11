@@ -89,7 +89,7 @@
   <text class="box-label" x="785" y="516">ChatMemory</text>
   <text class="box-sub" x="785" y="536">MessageWindowChatMemory (last 10)</text>
   <rect class="box" x="30" y="560" width="290" height="58" rx="6" ry="6"/>
-  <text class="box-label" x="175" y="582">McpToolCallingManager</text>
+  <text class="box-label" x="175" y="582">AgentLoopManager</text>
   <text class="box-sub" x="175" y="602">implements Spring AI ToolCallingManager · HITL gate</text>
   <rect class="box" x="335" y="560" width="290" height="58" rx="6" ry="6"/>
   <text class="box-label" x="480" y="582">MCP Server</text>

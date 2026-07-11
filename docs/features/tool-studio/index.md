@@ -37,7 +37,7 @@ Spring AI Playground treats the local test-run as a gate, not a polish step. Thi
 
 In practice this means the act of publishing is the act of testing. You never produce a tool whose first execution happens in front of an agent.
 
-Every one of the 88 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
+Every one of the 115 bundled [Default Tools](../default-tools/index.md) crossed this same gate before being shipped - they live as ready-to-fork reference for the workflow above.
 
 ## Built-in MCP Server
 
@@ -76,7 +76,7 @@ The JS-on-JVM design is what lets every tool in this app - both the bundled defa
 Concretely:
 
 - One artifact runs on all three OSes - the same JAR is repackaged into the Docker image and the Electron-packaged desktop launcher, all from one `pom.xml`. See [Getting Started](../../getting-started/index.md) for the platform-specific launchers.
-- All 88 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
+- All 115 default tools are pure JavaScript executed through GraalVM Polyglot. No native dependencies, no per-OS build step, no install-time compile.
 - Every cross-bridged helper resolves to a Java standard library or well-known JVM library, so platform quirks are handled at the JVM layer:
     - `safety.fs` rides on `java.nio.file.Path` / `Files` - `/` vs `\` and case folding are normalised before any I/O.
     - `fetch` uses the JDK `HttpClient` - same TLS stack, same redirect handling, same connection pool everywhere.
@@ -104,7 +104,7 @@ Tools call a small set of capability-scoped helpers instead of raw Java. These a
 | `safety.parser.csv` | Apache Commons CSV - optional `header` and `delimiter` opts. |
 | `console.log` | Captured into the Tool Studio debug pane and into the chat's tool-call trace. Environment-backed static variables are masked by substring replacement when their full resolved value appears in output. Only anchored full-string `$ENV_VAR` references are auto-collected as secrets - substring-inlined env vars are not. Log entries are capped at 1000 per execution. `console.error` is **not** installed in the current build. |
 
-Every helper above is exercised by one or more of the 88 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
+Every helper above is exercised by one or more of the 107 [Default Tools](../default-tools/index.md) - open one in Tool Studio to see the helper in working code, then use **Copy And New Tool** to fork it.
 
 ## Sandbox & Capabilities
 
@@ -216,13 +216,13 @@ Active only when egress is `strict`. From `SafeHttpFetch.enforce` and `enforceSs
 2. **Egress switch** - based on the resolved mode. Only `strict` continues to the next layers.
 3. **Literal IP vs DNS branch** - if the host parses as a literal IPv4/IPv6 address, check that address directly. Otherwise resolve via DNS (`InetAddress.getAllByName`) and check **every** returned address. DNS failure or empty resolution both block - fail-closed.
 4. **Private/reserved address check** - rejects:
-   - loopback (`127.0.0.0/8`, `::1`)
-   - link-local (`169.254.0.0/16`, `fe80::/10`)
-   - site-local (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
-   - any-local (`0.0.0.0`, `::`)
-   - multicast (`224.0.0.0/4`, `ff00::/8`)
-   - IPv6 ULA (`fc00::/7`)
-   - **CGNAT** (`100.64.0.0/10`) - explicitly handled because Java's `isSiteLocalAddress()` does not cover this range
+    - loopback (`127.0.0.0/8`, `::1`)
+    - link-local (`169.254.0.0/16`, `fe80::/10`)
+    - site-local (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+    - any-local (`0.0.0.0`, `::`)
+    - multicast (`224.0.0.0/4`, `ff00::/8`)
+    - IPv6 ULA (`fc00::/7`)
+    - **CGNAT** (`100.64.0.0/10`) - explicitly handled because Java's `isSiteLocalAddress()` does not cover this range
 
 ### Risk Level Reference
 
@@ -236,6 +236,7 @@ Computed by `SandboxPostureCalculator.compute` from the tool's effective policy.
 | `networkMode` = `open` | any host | L4 |
 | `fileRead = true` (write false) | file read only | L3 |
 | `fileWrite = true` | write capability | L4 |
+| `destructive = true` | irreversible data operation (move / delete / recursive dir removal) | **L5** |
 | Removed deny entry - non-critical | 1-2 entries dropped | L3 |
 | Removed deny entry - non-critical | 3+ entries dropped | L4 |
 | Removed deny entry - critical | any of `System` / `Runtime` / `Process` / `ProcessBuilder` | **L5** |
@@ -251,7 +252,7 @@ Practical interpretation:
 - **L0** = baseline defaults. Every starter tool runs here.
 - **L3** = narrowed network access or file-read; reviewable.
 - **L4** = broad network, file-write, or substantial deny-list relaxation - review carefully before exposing through MCP.
-- **L5** = critical class re-enabled - process spawn, reflection escape, or raw file write. Treat as effectively unsandboxed and reserve for trusted authors only.
+- **L5** = critical class re-enabled (process spawn, reflection escape, raw file write) or a `destructive: true` filesystem tool. Treat as effectively unsandboxed or irreversible, and reserve for trusted authors only. `destructive` is declared in the spec JSON, not editable in this pane - the badge reads it and the value survives an edit-and-save round trip.
 
 ### Human-in-the-loop approval
 
@@ -337,7 +338,7 @@ When a tool is created or updated in Tool Studio, it is dynamically discovered a
 - **Built-in MCP Server Native Tools drawer** (gear icon in the Tool Studio header): the single surface controlling **which Local-Passed tools the built-in MCP server exposes**. Three sections - **Tools exposed** chip summary for the confirmed setting; **Custom tools** selector for tools you authored; **Built-in tools** selector listing the **Local-Passed** built-in tools so you can tick which to expose. The **Auto-expose newly published tools** toggle controls whether newly published (Local-Passed) tools join the server automatically. Which built-in tools are Local-Passed in the first place is decided at **setup** (desktop launcher / CLI) and per-tool via **Publish** in the tool list - not here.
 - **Draft state + MCP exposure gate**: a tool that has not earned a Local Pass stays in the **Drafts** section, is **not** exposed through the built-in MCP server, and is **not** callable from Agentic Chat. Only published (Local-Passed) tools cross the gate.
 - <a id="tool-list-sidebar"></a>**Tool list sidebar**: tools group under a fixed taxonomy (Text, Data, Date/Time, Math, Encoding, Crypto, Security, Files, Web, Productivity, Messaging, AI APIs, Custom) with chip-based filters. The sidebar uses the **same `SidebarFilterBar` + `CategoryGroupDetails` + `SidebarItemLayout` widgets the MCP Server view uses** (search + Categories MultiSelect + Tags MultiSelect + collapsible per-category groups + status dot · name · pills row). Filters compose identically on both screens - see [MCP Server → Filter bar](../mcp-server/index.md#filter-bar) for the same widget in the catalog context.
-- **Sandbox Capabilities view**: per-tool overrides for `addAllowClasses` / `removeAllowClasses` / `addDenyClasses` / `removeDenyClasses`, `hostsAllow`, `fileRead` / `fileWrite`, `fsBasePath`, and `networkMode` - with a live risk-level badge (L0-L5). See [Sandbox & Capabilities](#sandbox-capabilities).
+- **Sandbox Capabilities view**: per-tool overrides for `addAllowClasses` / `removeAllowClasses` / `addDenyClasses` / `removeDenyClasses`, `hostsAllow`, `fileRead` / `fileWrite`, `fsBasePath`, and `networkMode` - with a live risk-level badge (L0-L5). The spec-declared `destructive` flag is read-only here: it feeds the badge (L5, labelled *Destructive*) and is preserved on save. See [Sandbox & Capabilities](#sandbox-capabilities).
 - **Tool Specification View**: inspect the generated JSON schema, metadata, parameter contract, and the resulting `McpToolDefinition` envelope (manifest hash, code hash, audit timestamps).
 - **Copy And New Tool**: clone an existing tool as a template instead of starting from scratch.
 - **Structured Parameters**: define required inputs, descriptions, and test values for model-side tool calling.
@@ -403,7 +404,7 @@ You can keep many tools in your workspace, expose only a controlled subset, vali
 
 </div>
 
-The app ships with a bundled catalog of **88 default tools** across six JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
+The app ships with a bundled catalog of **115 default tools** across six JSON source bundles. They are ready to call from chat the moment a model provider is connected, and they also serve as editable references when you start writing your own.
 
 **Not all of them are Local-Passed (active) by default.** A **preset** decides the starting Local-Passed subset, and **include / exclude rules** layer per-tool tweaks on top. Each preset stands on its own - `Dev Essentials`, `Korea Toolkit`, and `File Toolkit` do **not** automatically inherit Starter 5 (only `getCurrentTime` and `evalExpression` carry through deliberately).
 
@@ -413,7 +414,7 @@ The app ships with a bundled catalog of **88 default tools** across six JSON sou
 | `Dev Essentials` | `getCurrentTime`, `evalExpression`, `uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract` | Everyday local utilities |
 | `Korea Toolkit (free)` | `getCurrentTime`, `evalExpression`, `getUpbitTicker`, `getBithumbTicker`, `searchKpopOnItunes`, `searchKBeautyProducts` | Free Korean services |
 | `File Toolkit` | `getCurrentTime`, `evalExpression`, `listAllowedDirectories`, `readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields` | Filesystem read pipeline - reads anywhere under home, writes to the working directory; set `TOOL_STUDIO_FS_BASE` to relocate it (default `${user.home}/spring-ai-playground/workspace`) |
-| `Everything` | All 88 default tools | Heavy MCP catalog |
+| `Everything` | All 115 default tools | Heavy MCP catalog |
 
 Per-tool **include / exclude rules** layer on top: name-add → tag-add → category-add → name-remove → tag-remove → category-remove. These rules are configured at setup - the desktop launcher's **Default MCP Tools** card (include-by-tag / -category / -name, exclude-by-tag / -name) or CLI / yaml; `exclude.categories` is data-supported but currently only reachable via CLI / yaml override.
 

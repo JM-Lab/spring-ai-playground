@@ -31,15 +31,15 @@ Plus a **preset catalog of external MCP servers** — Gmail, Notion, Slack, GitH
 
 <p align="center">
   <b>Spring AI Playground — Demo</b><br/>
-  Connect an MCP server · compose a safe proxy · human-in-the-loop approval · full observability
+  It sees your photos, maps them from EXIF · destructive deletes pause for your approval · 100% local
 </p>
 
 <p align="center">
-  <a href="docs/assets/images/spring-ai-playground-demo.mp4">
-    <img src="docs/assets/images/spring-ai-playground-demo-poster.png" width="800" alt="Spring AI Playground demo — agentic chat with human-in-the-loop approval of an external MCP tool, plus observability"/>
+  <a href="https://youtu.be/9t9DELt2bRM">
+    <img src="docs/assets/images/spring-ai-playground-ep6-poster.png" width="800" alt="Spring AI Playground demo - a local model reads photo EXIF, pins the shots on a map, and pauses at a tool approval dialog before deleting files"/>
   </a>
   <br/>
-  <sub>▶ Click to watch the demo — or see it autoplay on the <a href="https://spring-ai-community.github.io/spring-ai-playground/">docs site</a></sub>
+  <sub>▶ <a href="https://youtu.be/9t9DELt2bRM">Watch: It Asks Before It Deletes (1 minute)</a> · <a href="https://youtu.be/dR6XRs2-nEY">30-second trailer</a> · full demo on the <a href="https://spring-ai-community.github.io/spring-ai-playground/">docs site</a></sub>
 </p>
 
 ## The Problem
@@ -162,7 +162,7 @@ Full setup details for both modes live in [Getting Started: Alternative Runtimes
 - **Provider Agnostic**: Switch between Ollama, OpenAI, and other OpenAI-compatible APIs without changing the overall workflow.
 - **OS-Independent Tool Runtime**: Tools are authored once as JavaScript and run through the same bundled runtime, so the same tool definition works consistently across macOS, Windows, and Linux.
 - **Single-Agent Execution**: Use validated built-in tools together with grounded context (RAG) in Agentic Chat to handle focused, practical workflows without needing a larger orchestration layer. Agentic Chat can also call tools exposed by MCP servers that you explicitly connect and trust.
-- **Agentic Chat Workbench**: A Prompt Library of ready-to-use presets and `{{variable}}` templates, per-turn reasoning effort (Off/Low/Medium/High), a configurable per-chat memory window, dynamic tool discovery, review-then-act action cards (email, calendar, map), clickable file paths, on-device voice input, and rich rendering of syntax-highlighted code, KaTeX math, and Mermaid diagrams. See [Agentic Chat](docs/features/agentic-chat/index.md).
+- **Agentic Chat Workbench**: A Prompt Library of ready-to-use presets and `{{variable}}` templates, per-turn reasoning effort (Off/Low/Medium/High), a configurable per-chat memory window, dynamic tool discovery, image attachments as native multimodal input for vision models, review-then-act action cards (email, calendar, map), clickable file paths, on-device voice input, and rich rendering of syntax-highlighted code, KaTeX math, and Mermaid diagrams. See [Agentic Chat](docs/features/agentic-chat/index.md).
 - **Observability Dashboards**: Built-in dashboards spanning Overview, Tokens & Cost, AI Models, Tool Studio, MCP Servers, MCP Inspector, Vector Database, Agentic Chat, Safety, Host, Ollama, Web Application, Logs, and Traces, backed by an in-memory ring buffer with dated disk persistence. Drill from a row into the trace timeline and raw spans, jump to the full conversation thread, and deep-link straight back into Agentic Chat.
 
 The intended workflow is practical and composable:
@@ -190,7 +190,7 @@ It also doubles as a working reference implementation of the Spring AI framework
 
 - **ChatClient + advisor pipeline** drives Agentic Chat — message memory, the `RetrievalAugmentationAdvisor` for RAG, and the Tool Calling pipeline are composed through `ChatClient.builder()` and a custom `SpringAiPlaygroundRagAdvisor`.
 - **MCP client and server starters together** — `spring-ai-starter-mcp-client` connects to the external MCP servers in the preset catalog and to the built-in MCP server in the same JVM, while `spring-ai-starter-mcp-server-webmvc` publishes every Local-Pass tool you author through the `spring-ai-playground-tool-mcp` connection on `/mcp`.
-- **Tool Calling Manager + custom `ToolCallback`** — Tool Studio tools and external MCP tools both register through a single `McpToolCallingManager`, with `LoggingMcpToolCallback` adding correlation ids and secret masking around every call.
+- **Tool Calling Manager + custom `ToolCallback`** — Tool Studio tools and external MCP tools both run through a single `AgentLoopManager` (the app's `ToolCallingManager`, adding per-turn round bounds and the human-in-the-loop gate), with `LoggingMcpToolCallback` adding correlation ids and secret masking around every call.
 - **Vector store + ETL pipeline** — `SimpleVectorStore` plus the Spring AI Tika document reader power Vector Database, exposed through the same reader / chunker / pre-retrieval / retrieval / post-retrieval stages the framework ships.
 - **Micrometer Observation API** — `ObservationRegistry` is wired into `ToolCallingManager` and `SimpleVectorStore`, so spans emitted by Spring AI's semantic conventions (`gen_ai.client.operation`, `spring.ai.chat.client`) flow straight into the in-app Observability dashboards alongside chat-client spans.
 
@@ -249,11 +249,17 @@ If you have a contribution that fits the current scope (bug report, doc fix, usa
 
 ## Anonymous Usage Telemetry
 
-The official build sends anonymous usage data (page views, feature interaction events,
-device/browser info) to the maintainer's Google Tag Manager / Google Analytics account so
-the most-used features can be prioritized. IPs are anonymized by Google. The same opt-out switch applies
-to both the web app and every desktop launcher window (splash, server-splash, config
-editor, Ollama manager):
+The official build sends anonymous usage data (page views, feature-usage events such as
+which model, preset, or tool kind is used, device/browser info) to the maintainer's
+Google Tag Manager / Google Analytics account so the most-used features can be
+prioritized. It is content-free: no prompts, documents, file names, URLs, or API keys,
+and names of things you create yourself (tools, presets, custom MCP servers) are masked.
+The complete event table is in the
+[Configuration reference](https://spring-ai-community.github.io/spring-ai-playground/getting-started/configuration/#telemetry-events),
+and every sender is auditable in code (search for `UsageEventTracker`). IPs are
+anonymized by Google. Development-mode runs never send telemetry. The same opt-out
+switch applies to both the web app and every desktop launcher window (splash,
+server-splash, config editor, Ollama manager):
 
 - **Server / Docker / `mvn`**: `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false`
 - **Desktop launcher**: set `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` before launching
@@ -272,4 +278,3 @@ These are the next pieces we plan to add while keeping the project focused on pr
 
 - **Modular RAG pipeline studio in Vector Database**: composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, with a reworked chunk-confirmation dialog and Name + Description fields on documents.
 - **Built-in MCP Server Authentication**: lock down the locally-exposed MCP server endpoint with token-based access (external MCP connections already covered by OAuth 2.1 and env-backed secrets).
-- **Multimodal Support**: image and audio input/output with supported multimodal-capable models.

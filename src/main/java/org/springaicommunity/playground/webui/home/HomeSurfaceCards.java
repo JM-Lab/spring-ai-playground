@@ -24,8 +24,10 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
@@ -44,32 +46,40 @@ class HomeSurfaceCards extends Div {
 
     private static final Logger logger = LoggerFactory.getLogger(HomeSurfaceCards.class);
 
-    private enum StatusTone {NORMAL, MUTED, WARNING}
+    private enum StatusTone { NORMAL, MUTED, WARNING }
 
     private final ToolSpecService toolSpecService;
     private final ToolSpecPersistenceService toolSpecPersistenceService;
     private final McpServerInfoService mcpServerInfoService;
     private final McpClientService mcpClientService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
+    private final McpCatalogService mcpCatalogService;
+    private final ChatHistoryService chatHistoryService;
 
     private final Span toolStatus;
     private final Span mcpStatus;
     private final Span vectorStatus;
+    private final Span chatStatus;
 
     HomeSurfaceCards(ToolSpecService toolSpecService,
             ToolSpecPersistenceService toolSpecPersistenceService,
             McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService,
-            VectorStoreDocumentService vectorStoreDocumentService) {
+            VectorStoreDocumentService vectorStoreDocumentService,
+            McpCatalogService mcpCatalogService,
+            ChatHistoryService chatHistoryService) {
         this.toolSpecService = toolSpecService;
         this.toolSpecPersistenceService = toolSpecPersistenceService;
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
+        this.mcpCatalogService = mcpCatalogService;
+        this.chatHistoryService = chatHistoryService;
 
         this.toolStatus = cardStatusSpan();
         this.mcpStatus = cardStatusSpan();
         this.vectorStatus = cardStatusSpan();
+        this.chatStatus = cardStatusSpan();
 
         setWidthFull();
         getStyle()
@@ -81,7 +91,7 @@ class HomeSurfaceCards extends Div {
                 createSurfaceCard("Tool Studio",
                         "Build and test JavaScript tools",
                         VaadinIcon.TOOLS, ToolStudioView.class, toolStatus),
-                createSurfaceCard("MCP Server",
+                createSurfaceCard("Built-in MCP Server",
                         "Expose tools and inspect connections",
                         VaadinIcon.TOOLBOX, McpServerView.class, mcpStatus),
                 createSurfaceCard("Vector Database",
@@ -89,7 +99,7 @@ class HomeSurfaceCards extends Div {
                         VaadinIcon.SEARCH_PLUS, VectorStoreView.class, vectorStatus),
                 createSurfaceCard("Agentic Chat",
                         "Run tools inside grounded chat",
-                        VaadinIcon.CHAT, ChatView.class, null)
+                        VaadinIcon.CHAT, ChatView.class, chatStatus)
         );
     }
 
@@ -114,6 +124,11 @@ class HomeSurfaceCards extends Div {
             applyVectorStatus();
         } catch (Exception e) {
             logger.debug("Vector status query failed", e);
+        }
+        try {
+            applyChatStatus();
+        } catch (Exception e) {
+            logger.debug("Chat status query failed", e);
         }
     }
 
@@ -149,22 +164,24 @@ class HomeSurfaceCards extends Div {
                 .flatMap(List::stream)
                 .filter(info -> !Objects.equals(info, defaultInfo))
                 .toList();
-        if (external.isEmpty()) {
-            setStatus(mcpStatus, "Only built-in MCP server running", StatusTone.MUTED);
-            return;
-        }
+        int readyToAdd = mcpCatalogService.getCatalog().size();
         long awaitingAuth = external.stream()
                 .filter(info -> mcpClientService.getStatus(info).status()
                         == McpClientService.ServerStatus.AWAITING_AUTHORIZATION)
                 .count();
-        long total = external.size();
+        long connected = external.size() - awaitingAuth;
+
         if (awaitingAuth > 0) {
             setStatus(mcpStatus,
-                    awaitingAuth + " awaiting authorization · " + (total - awaitingAuth) + " connected",
+                    "Live · " + awaitingAuth + " awaiting auth · " + connected + " connected",
                     StatusTone.WARNING);
+        } else if (connected > 0) {
+            setStatus(mcpStatus,
+                    "Live · " + connected + " connected · " + readyToAdd + " ready to add",
+                    StatusTone.NORMAL);
         } else {
             setStatus(mcpStatus,
-                    total + " external server" + plural(total) + " connected",
+                    "Live · " + readyToAdd + " ready to add",
                     StatusTone.NORMAL);
         }
     }
@@ -176,6 +193,17 @@ class HomeSurfaceCards extends Div {
         } else {
             setStatus(vectorStatus,
                     count + " document" + plural(count) + " indexed",
+                    StatusTone.NORMAL);
+        }
+    }
+
+    private void applyChatStatus() {
+        int count = chatHistoryService.getChatHistoryList().size();
+        if (count == 0) {
+            setStatus(chatStatus, "Built-in tools ready · start a conversation", StatusTone.MUTED);
+        } else {
+            setStatus(chatStatus,
+                    "Built-in tools ready · " + count + " conversation" + plural(count),
                     StatusTone.NORMAL);
         }
     }

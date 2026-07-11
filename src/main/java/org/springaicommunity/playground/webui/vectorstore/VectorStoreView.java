@@ -17,6 +17,7 @@ package org.springaicommunity.playground.webui.vectorstore;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ModalityMode;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dependency.CssImport;
@@ -38,11 +39,13 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
+import org.springaicommunity.playground.service.analytics.UsageAnalyticsService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentInfo;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
 import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
@@ -76,14 +79,19 @@ public class VectorStoreView extends ContentWorkspaceView {
 
     private final VectorStoreService vectorStoreService;
     private final VectorStoreDocumentService vectorStoreDocumentService;
+    private final UsageAnalyticsService usageAnalyticsService;
+    private final UsageEventTracker usageEventTracker;
     private final VectorStoreDocumentView vectorStoreDocumentView;
     private final VectorStoreContentView vectorStoreContentView;
     private final WorkspaceSettingsDrawer searchSettingsDrawer;
 
     public VectorStoreView(PersistentUiDataStorage persistentUiDataStorage, VectorStoreService vectorStoreService,
-            VectorStoreDocumentService vectorStoreDocumentService) {
+            VectorStoreDocumentService vectorStoreDocumentService, UsageAnalyticsService usageAnalyticsService,
+            UsageEventTracker usageEventTracker) {
         this.vectorStoreService = vectorStoreService;
         this.vectorStoreDocumentService = vectorStoreDocumentService;
+        this.usageAnalyticsService = usageAnalyticsService;
+        this.usageEventTracker = usageEventTracker;
 
         this.vectorStoreDocumentView =
                 new VectorStoreDocumentView(vectorStoreDocumentService, buildPropertyChangeSupport());
@@ -199,6 +207,9 @@ public class VectorStoreView extends ContentWorkspaceView {
 
     private void handleDocumentAdding(Collection<VectorStoreDocumentInfo> newEventDocumentInfos) {
         newEventDocumentInfos.forEach(this.vectorStoreService::add);
+        newEventDocumentInfos.forEach(docInfo -> this.usageEventTracker.track(UI.getCurrent(),
+                "rag_document_indexed", this.usageAnalyticsService.documentIndexedParams(
+                        docInfo.getDocumentFileName(), docInfo.documentListSupplier().get().size())));
         handleDocumentSelecting(newEventDocumentInfos);
     }
 

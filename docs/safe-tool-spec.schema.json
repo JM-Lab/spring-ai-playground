@@ -133,7 +133,8 @@
         },
         "fileRead":   { "type": ["boolean", "null"], "description": "Tri-state: null inherits, true allows, false explicitly blocks." },
         "fileWrite":  { "type": ["boolean", "null"], "description": "Tri-state: null inherits, true allows, false explicitly blocks." },
-        "fsBasePath": { "type": ["string",  "null"], "description": "Override the default safety.fs/v1 base path. Null inherits." }
+        "fsBasePath": { "type": ["string",  "null"], "description": "Override the default safety.fs/v1 base path. Null inherits." },
+        "destructive": { "type": ["boolean", "null"], "description": "Flags a tool that removes or relocates data (delete, move, recursive dir removal). True scores Risk Level L5. Absent/null/false means not destructive." }
       }
     },
 

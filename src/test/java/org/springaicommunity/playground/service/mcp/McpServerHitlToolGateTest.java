@@ -23,6 +23,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ClientCapabilities;
 import io.modelcontextprotocol.spec.McpSchema.ElicitResult;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
+import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,6 +121,11 @@ class McpServerHitlToolGateTest {
 
         assertEquals(0, delegateCalls.get());
         assertTrue(result.isError());
+        assertTrue(deniedText(result).contains("Do not call"));
+    }
+
+    private static String deniedText(CallToolResult result) {
+        return ((TextContent) result.content().get(0)).text();
     }
 
     @Test

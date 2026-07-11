@@ -49,7 +49,7 @@ The mode **defaults to Required above `L0`** and to Disabled at `L0` - the more 
 When you [proxy an external tool](mcp-server/proxy.md) through the built-in server, each row in the **Composed Tools** drawer has a **HITL** toggle:
 
 - Ticking **HITL** means *"require explicit human approval before this tool runs when called from an external MCP client. Chat on this device gates these tools too."*
-- It also **lowers the tool's displayed risk by one band** (a `HITL -1` annotation), because a human now gates every call - see [Composed risk and HITL mitigation](../mcp-server-safety.md#composed-risk).
+- It also **lowers the tool's displayed risk by one band** (a `HITL -1` annotation), because a human now gates every call - see [Composed risk and HITL mitigation](../mcp-server-safety.md#composed-risk). Built-in tools that ship with approval required (the filesystem write and destructive tools) carry the same credit, rendered as a dual chip such as `L5 → L4`.
 
 You can toggle approval per tool, or for all selected tools at once. The same setting is available in YAML via the `hitl: true` key on a composed tool - see the [Configuration reference](../getting-started/configuration.md#mcp).
 
@@ -60,7 +60,7 @@ When the agent calls a gated tool, a dialog appears titled **Tool approval requi
 - **Approve** → the tool runs, and the conversation continues with its result.
 - **Decline** → the tool does **not** run. The model is told you declined so it won't silently retry; it either finds another way or tells you the action couldn't be completed.
 
-If you don't answer within two minutes, or close the dialog, the call is **declined** automatically - approval fails safe. If the agent requested several tools at once, each gated one is confirmed on its own; ungated calls run without interruption.
+If you don't answer within two minutes (configurable), or close the dialog, the call is **declined** automatically - approval fails safe. If the agent requested several gated tools in the same step, they appear together in **one dialog** with a row per call, so you answer them all at once; ungated calls run without interruption.
 
 Walk through it end to end in [Tutorial 11 - Approve a Tool in Chat](../tutorials/11-human-approval.md).
 
@@ -77,6 +77,7 @@ For an external MCP client (e.g. Claude Desktop) calling a `Required` tool on th
 ## Related
 
 - [Human-in-the-Loop Approval (architecture)](../hitl-architecture.md) - the two gates, loopback de-duplication, and fail-safe internals
+- [Agent Loop](../agent-loop-architecture.md) - the round governance this gate runs inside (round bounds, decline memory, dialog timeouts)
 - [MCP Server Proxy](mcp-server/proxy.md) - re-expose external tools with per-tool approval
 - [Tool Studio](tool-studio/index.md) - author tools and their sandbox + approval policy
 - [Agentic Chat](agentic-chat/index.md) - where approvals are answered

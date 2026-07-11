@@ -11,7 +11,7 @@ description: Tutorial 1 - author a tool in Tool Studio, earn its Local Pass, and
 
 Tool Studio wraps an HTTP API - or any small piece of JavaScript - into an MCP-callable tool. The runtime is GraalVM Polyglot JavaScript inside the JVM with a deny-first sandbox: raw network, file, native, and thread access are all blocked at the Java level. Tools reach the outside world through built-in helpers - `fetch` (with a 4-layer SSRF guard), `safety.fs` (rooted at a configurable base path), and `safety.parser.{html,yaml,csv,xml}` - which is enough for REST API wrappers and small computations, which is most of what a model needs.
 
-The bundled catalog ships 88 default tools. The **Starter 5** preset is exposed through the built-in MCP server out of the box - that's what this tutorial picks from:
+The bundled catalog ships 115 default tools. The **Starter 5** preset is exposed through the built-in MCP server out of the box - that's what this tutorial picks from:
 
 | Tool | Pattern |
 |---|---|

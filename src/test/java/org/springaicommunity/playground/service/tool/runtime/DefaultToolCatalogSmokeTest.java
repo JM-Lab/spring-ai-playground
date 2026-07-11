@@ -131,6 +131,10 @@ class DefaultToolCatalogSmokeTest {
                 "# README\n\nSample workspace seeded by smoke test.\n\n## TODO\n- one\n- two\n\n## FIXME\nplaceholder\n\nL8\nL9\nL10\nL11\nL12\n");
         Files.writeString(workspace.resolve("data.csv"),
                 "id,name,score\n1,alice,87\n2,bob,93\n3,carol,72\n");
+        Files.writeString(workspace.resolve("report.md"), "# old title\n\nSample body for edit smoke test.\n");
+        Files.writeString(workspace.resolve("draft.md"), "draft content\n");
+        Files.createDirectories(workspace.resolve("uploads"));
+        Files.writeString(workspace.resolve("uploads").resolve("data.csv"), "id,name\n1,alice\n2,bob\n");
     }
 
     private boolean isLocal(Map<String, Object> spec) {

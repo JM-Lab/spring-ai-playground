@@ -2,7 +2,7 @@
   {
     "toolId": "e6166c9e-2675-5c31-8fd0-4f9f7fcc1f8b",
     "name": "listAllowedDirectories",
-    "description": "Reports which directories the filesystem tools may touch: the readable roots (anything under them can be read) and the single working directory (the only writable location, where relative paths resolve). Call this first to learn the absolute paths before reading or writing files. Takes no arguments. Uses safety.fs.readRoots()/workspace().",
+    "description": "Reports which directories the filesystem tools may touch: the readable roots (your home directory and the app's spring-ai-playground folder - anything under them can be read) and the single working directory for this chat (the only writable location, where relative paths resolve). Files the user uploads are saved under the working directory's uploads/ subfolder, so after calling this you can listDir the working directory or its uploads/ folder to see the files already there, then readTextFile one to re-process it. Call this first to learn the absolute paths. Takes no arguments. Uses safety.fs.readRoots()/workspace().",
     "staticVariables": [],
     "params": [],
     "code": "/**\n * Reports the filesystem boundaries these tools operate within.\n *\n * - readRoots         — absolute roots that may be READ (recursively).\n * - workingDirectory  — the single writable dir; relative paths resolve here.\n *\n * Uses host helpers: safety.fs.readRoots, safety.fs.workspace.\n */\n\nreturn {\n  readRoots: Array.from(safety.fs.readRoots()),\n  workingDirectory: safety.fs.workspace(),\n};\n",
@@ -771,6 +771,533 @@
     "humanInTheLoop": {
       "mode": "REQUIRED",
       "promptTemplate": "The assistant wants to write to a file. Allow '{toolName}' with {args}?"
+    },
+    "draft": true
+  },
+  {
+    "toolId": "7f3a1c92-6b4d-4e28-9a1f-2c5d8e0b71a4",
+    "name": "searchInFiles",
+    "description": "Searches file CONTENTS across a directory tree for lines matching a JavaScript regex, returning every hit as { file, line, text }. This is recursive multi-file search: unlike grepFile (one file) or findFiles (matches file NAMES only), this opens each file under `dir` whose name matches `glob` and scans its lines. Use it to answer 'which files mention X' or 'where is Y used'. A relative `dir` resolves under the working directory; an absolute `dir` must sit under a readable root (call listAllowedDirectories). Binary/non-UTF-8 files are skipped. Uses safety.fs.searchInFiles().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "pattern",
+        "description": "Regex pattern (JavaScript flavour) matched against each line's content",
+        "required": true,
+        "type": "STRING",
+        "testValue": "TODO|FIXME"
+      },
+      {
+        "name": "dir",
+        "description": "Directory to search from. Relative (default '.') resolves under the working directory; an absolute path under a readable root is also allowed.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "."
+      },
+      {
+        "name": "glob",
+        "description": "Filename glob to limit which files are scanned (default '*'). Supports `*` and `?`.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "*.md"
+      },
+      {
+        "name": "caseInsensitive",
+        "description": "Match case-insensitively",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "false"
+      },
+      {
+        "name": "maxDepth",
+        "description": "Max recursion depth (0 = unlimited)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "0"
+      },
+      {
+        "name": "limit",
+        "description": "Max total matches to return (0 = default cap)",
+        "required": false,
+        "type": "INTEGER",
+        "testValue": "200"
+      }
+    ],
+    "code": "/**\n * Recursively searches file CONTENTS for a regex and returns { file, line, text } hits.\n *\n * Opens each regular file under `dir` whose name matches `glob` and scans its\n * lines. Non-UTF-8 (binary) files are skipped. `limit` caps total matches.\n *\n * Uses host helper: safety.fs.searchInFiles.\n */\n\nif (pattern == null || pattern === '') throw new Error('pattern required');\nconst target = (dir == null || dir === '') ? '.' : dir;\nconst g = (glob == null || glob === '') ? '*' : glob;\nreturn safety.fs.searchInFiles(target, g, pattern, {\n  caseInsensitive: !!caseInsensitive,\n  maxDepth: Number.isInteger(maxDepth) ? maxDepth : 0,\n  limit: Number.isInteger(limit) ? limit : 0,\n});\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": false,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": false
+      }
+    },
+    "draft": true
+  },
+  {
+    "toolId": "3e9d5a71-8c2b-4f16-b0d3-6a4e1f9c250b",
+    "name": "appendTextFile",
+    "description": "Appends UTF-8 text to the END of a file, creating it if it does not exist. Unlike writeTextFile (which overwrites the whole file), this adds `content` after the existing bytes, so it is ideal for logs, incremental output, and streaming results. Writes are confined to the working directory: a relative path lands there, and any path that resolves outside it (absolute or `../`) is rejected. Returns { ok, path, bytesAppended }. Uses safety.fs.appendText().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "path",
+        "description": "File to append to, INCLUDING the filename and extension. A relative path resolves inside the working directory (the only writable location); absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "log.txt"
+      },
+      {
+        "name": "content",
+        "description": "The UTF-8 text to append verbatim after the existing content.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "another line\n"
+      }
+    ],
+    "code": "/**\n * Appends UTF-8 text to the end of a file (creating it if absent).\n *\n * - Confined to the workspace; escape attempts are rejected.\n * - Needs the `fileWrite` sandbox permission.\n *\n * Uses host helper: safety.fs.appendText.\n */\n\nif (path == null || path === '') throw new Error('path required');\nif (content == null)             throw new Error('content required');\nconst writtenPath = safety.fs.appendText(path, String(content));\nreturn { ok: true, path: writtenPath, bytesAppended: new TextEncoder().encode(String(content)).length };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to append to a file. Allow '{toolName}' with {args}?"
+    },
+    "draft": true
+  },
+  {
+    "toolId": "b2c8f04e-1a7d-4936-8e52-9f3b6d0c74a1",
+    "name": "editTextFile",
+    "description": "Makes a targeted edit to an existing text file by replacing an exact substring, WITHOUT rewriting the whole file. Give the exact `oldString` to find and the `newString` to put in its place. By default `oldString` must occur EXACTLY ONCE (otherwise the call is rejected as ambiguous, so include enough surrounding context to make it unique); set replaceAll=true to replace every occurrence. Use this instead of writeTextFile whenever you only need to change part of a file. Writes are confined to the working directory. Returns { ok, path, replacements }. Uses safety.fs.editText().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "path",
+        "description": "File to edit, INCLUDING the filename and extension. A relative path resolves inside the working directory (the only writable location); absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "report.md"
+      },
+      {
+        "name": "oldString",
+        "description": "The exact text to find. Must match verbatim (including whitespace). Unless replaceAll is true it must occur exactly once, so include surrounding context to make it unique.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "old title"
+      },
+      {
+        "name": "newString",
+        "description": "The replacement text. Pass an empty string to delete the matched text.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "new title"
+      },
+      {
+        "name": "replaceAll",
+        "description": "Replace every occurrence instead of requiring a single unique match",
+        "required": false,
+        "type": "BOOLEAN",
+        "testValue": "false"
+      }
+    ],
+    "code": "/**\n * Replaces an exact substring in an existing workspace file.\n *\n * - Default: `oldString` must occur exactly once (else rejected as ambiguous).\n * - replaceAll=true replaces every occurrence.\n * - Confined to the workspace; needs the `fileWrite` sandbox permission.\n *\n * Uses host helper: safety.fs.editText.\n */\n\nif (path == null || path === '')           throw new Error('path required');\nif (oldString == null || oldString === '') throw new Error('oldString required');\nconst result = safety.fs.editText(path, String(oldString), newString == null ? '' : String(newString), !!replaceAll);\nreturn { ok: true, path: result.path, replacements: result.replacements };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to edit a file. Allow '{toolName}' on {args}?"
+    },
+    "draft": true
+  },
+  {
+    "toolId": "5d1e7b3a-9c48-4a2f-b16e-807c3f2d95b6",
+    "name": "copyFile",
+    "description": "Copies a file to a new location. The source may be any readable file (under a readable root such as your home directory, or an uploaded file in the working directory); the destination must be inside the working directory (the only writable location). Parent directories are created automatically and an existing destination is overwritten. The source is left untouched. Returns { ok, path } where `path` is where the copy was written. Uses safety.fs.copy().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "from",
+        "description": "Source file to copy. A relative path resolves under the working directory; an absolute path must sit under a readable root (call listAllowedDirectories).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "uploads/data.csv"
+      },
+      {
+        "name": "to",
+        "description": "Destination path, INCLUDING the filename. Must resolve inside the working directory; absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "data-copy.csv"
+      }
+    ],
+    "code": "/**\n * Copies a file. Source = any readable root; destination = workspace only.\n * Overwrites an existing destination and leaves the source intact.\n *\n * Uses host helper: safety.fs.copy.\n */\n\nif (from == null || from === '') throw new Error('from required');\nif (to == null || to === '')     throw new Error('to required');\nconst path = safety.fs.copy(String(from), String(to));\nreturn { ok: true, path };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to copy a file (this may overwrite the destination). Allow '{toolName}' with {args}?"
+    },
+    "draft": true
+  },
+  {
+    "toolId": "9a4c2e18-7d6b-45f3-8b19-0e5a1c7f43d2",
+    "name": "moveFile",
+    "description": "Moves or renames a file within the working directory. Both the source and destination must be inside the working directory (the only writable location). Parent directories are created automatically and an existing destination is overwritten. This is destructive: the source no longer exists at its old path afterwards, and it cannot be undone. Returns { ok, path } where `path` is the new location. Uses safety.fs.move().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "from",
+        "description": "Source file to move. Must resolve inside the working directory; absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "draft.md"
+      },
+      {
+        "name": "to",
+        "description": "Destination path, INCLUDING the new filename. Must resolve inside the working directory.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "final.md"
+      }
+    ],
+    "code": "/**\n * Moves or renames a file. Both source and destination are workspace-only.\n * Overwrites an existing destination. Destructive: the source is removed.\n *\n * Uses host helper: safety.fs.move.\n */\n\nif (from == null || from === '') throw new Error('from required');\nif (to == null || to === '')     throw new Error('to required');\nconst path = safety.fs.move(String(from), String(to));\nreturn { ok: true, path };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null,
+      "destructive": true
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true,
+        "destructive": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to move/rename a file (this may overwrite the destination, and the source is removed). Allow '{toolName}' with {args}?"
+    },
+    "draft": true
+  },
+  {
+    "toolId": "c6b3f92d-4e81-4a57-9d20-1f8b6e3a05c7",
+    "name": "deleteFile",
+    "description": "Permanently deletes a single file from the working directory (the only writable location). This is destructive and cannot be undone. Directories are rejected: use deleteDir for those. Returns { ok, deleted, path } where `deleted` is true if a file was removed (false if it did not exist). Uses safety.fs.delete().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "path",
+        "description": "File to delete. Must resolve inside the working directory; absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "obsolete.txt"
+      }
+    ],
+    "code": "/**\n * Permanently deletes a single file inside the workspace.\n * Directories are rejected (use deleteDir). Irreversible.\n *\n * Uses host helper: safety.fs.delete.\n */\n\nif (path == null || path === '') throw new Error('path required');\nconst deleted = safety.fs.delete(String(path));\nreturn { ok: true, deleted, path: String(path) };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null,
+      "destructive": true
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true,
+        "destructive": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to DELETE a file. Allow '{toolName}' to remove {args}? This cannot be undone."
+    },
+    "draft": true
+  },
+  {
+    "toolId": "e81a5d34-2b9f-4c60-8a71-3d6e0b9f4c28",
+    "name": "deleteDir",
+    "description": "Permanently deletes a directory AND ALL of its contents (recursive) from the working directory (the only writable location). This is destructive and cannot be undone. The working directory root itself cannot be deleted, and plain files are rejected (use deleteFile). Returns { ok, removed, path } where `removed` is the number of entries deleted. Uses safety.fs.deleteDir().",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "path",
+        "description": "Directory to delete recursively. Must resolve inside the working directory (and cannot be the working directory root); absolute paths and `../` escapes are rejected.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "tmp"
+      }
+    ],
+    "code": "/**\n * Permanently deletes a directory and ALL its contents (recursive).\n * Workspace-only; the workspace root and plain files are rejected. Irreversible.\n *\n * Uses host helper: safety.fs.deleteDir.\n */\n\nif (path == null || path === '') throw new Error('path required');\nconst removed = safety.fs.deleteDir(String(path));\nreturn { ok: true, removed, path: String(path) };\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "FILE",
+    "tags": [
+      "pipeline"
+    ],
+    "sandboxOverrides": {
+      "addAllowClasses": [],
+      "removeAllowClasses": [],
+      "addDenyClasses": [],
+      "removeDenyClasses": [],
+      "networkMode": "blocked",
+      "hostsAllow": [],
+      "fileRead": true,
+      "fileWrite": true,
+      "fsBasePath": null,
+      "destructive": true
+    },
+    "toolSafety": {
+      "version": "1.0",
+      "runtime": {
+        "id": "spring-ai-playground/polyglot-js",
+        "minVersion": "0.2.0",
+        "ecmaVersion": "2024",
+        "javaInterop": false,
+        "helpers": [
+          "safety.fs/v1"
+        ],
+        "console": true
+      },
+      "category": {
+        "source": "builtin",
+        "id": "FILE"
+      },
+      "capabilities": {
+        "network": {
+          "mode": "blocked",
+          "hosts": []
+        },
+        "fileRead": true,
+        "fileWrite": true,
+        "destructive": true
+      }
+    },
+    "humanInTheLoop": {
+      "mode": "REQUIRED",
+      "promptTemplate": "The assistant wants to DELETE a directory and ALL its contents (recursive). Allow '{toolName}' on {args}? This cannot be undone."
     },
     "draft": true
   }

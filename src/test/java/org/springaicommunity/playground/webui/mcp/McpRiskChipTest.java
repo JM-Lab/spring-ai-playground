@@ -52,4 +52,22 @@ class McpRiskChipTest {
         assertThat(McpRiskChip.labelFor(RiskLevel.L0)).isEqualTo("Verified");
         assertThat(McpRiskChip.labelFor(RiskLevel.L5)).isEqualTo("Critical");
     }
+
+    @Test
+    void mitigatedRendersInherentToEffectiveArrow() {
+        McpRiskChip chip = McpRiskChip.mitigated(RiskLevel.L4, RiskLevel.L5, null);
+        assertThat(chip.getText()).isEqualTo("L5 → L4 — High");
+    }
+
+    @Test
+    void mitigatedAppendsFloorTrigger() {
+        McpRiskChip chip = McpRiskChip.mitigated(RiskLevel.L4, RiskLevel.L5, "non_loopback_no_auth_write_capability");
+        assertThat(chip.getText()).isEqualTo("L5 → L4 — High (floor: no-auth-write)");
+    }
+
+    @Test
+    void mitigatedWithEqualLevelsRendersPlainChip() {
+        McpRiskChip chip = McpRiskChip.mitigated(RiskLevel.L3, RiskLevel.L3, null);
+        assertThat(chip.getText()).isEqualTo("L3 — Moderate");
+    }
 }

@@ -180,7 +180,9 @@ public class McpServerHitlToolGate {
 
     private static CallToolResult denied(String toolName) {
         return CallToolResult.builder()
-                .addTextContent("Tool '" + toolName + "' was not run: human-in-the-loop approval was not granted.")
+                .addTextContent("Tool '" + toolName + "' was not run: human-in-the-loop approval was not granted. "
+                        + "Do not call '" + toolName + "' again for this request; ask the user to run it "
+                        + "manually if it is still needed.")
                 .isError(true)
                 .build();
     }

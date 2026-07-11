@@ -179,7 +179,7 @@ class ChatHistoryPersistenceServiceTest {
         Path expected = chatHistoryPersistenceService.getSaveDir().resolve("chat-async-delete.json");
         assertThat(Files.exists(expected)).isTrue();
 
-        chatHistoryPersistenceService.deleteAsync(history);
+        chatHistoryPersistenceService.deleteAsync(history, true);
         persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
 
         assertThat(Files.exists(expected)).isFalse();

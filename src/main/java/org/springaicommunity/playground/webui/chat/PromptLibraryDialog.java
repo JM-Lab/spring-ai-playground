@@ -255,15 +255,25 @@ public class PromptLibraryDialog extends Dialog {
                 form.setColspan(field, 2);
         }
         MultiSelectComboBox<ToolSpec> toolsPicker = newToolsPicker(preset.tools());
-        this.detailPanel.add(form, preview, toolsPicker);
+        Checkbox dynamicTools = newDynamicToolsCheckbox(toolsPicker);
+        dynamicTools.setValue(preset.dynamicTools());
+        this.detailPanel.add(form, preview, dynamicTools, toolsPicker);
         updatePreview.run();
 
-        Button save = new Button("Save as preset",
-                event -> saveFilledTemplate(preset, values, orderedSelection(toolsPicker), false));
-        Button saveApply = new Button("Save as preset & apply",
-                event -> saveFilledTemplate(preset, values, orderedSelection(toolsPicker), true));
-        saveApply.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        this.detailPanel.add(buttonRow(save, saveApply));
+        Button save = new Button("Save as preset...", event -> {
+            Map<String, String> resolved = resolve(values);
+            openSaveAsPresetDialog(presetName(preset, resolved),
+                    this.templateRenderer.render(preset.prompt(), resolved),
+                    dynamicTools.getValue() ? List.of() : orderedSelection(toolsPicker), dynamicTools.getValue());
+        });
+        Button apply = new Button("Apply to chat", event -> {
+            Map<String, String> resolved = resolve(values);
+            applyAndClose(new Preset(preset.id(), preset.displayName(), preset.description(),
+                    this.templateRenderer.render(preset.prompt(), resolved), PresetKind.EXAMPLE,
+                    dynamicTools.getValue() ? List.of() : orderedSelection(toolsPicker), dynamicTools.getValue()));
+        });
+        apply.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        this.detailPanel.add(buttonRow(save, apply));
     }
 
     private Component highlightedTemplateText(String prompt) {
@@ -392,22 +402,6 @@ public class PromptLibraryDialog extends Dialog {
         return box;
     }
 
-    private void saveFilledTemplate(Preset template, Map<String, Supplier<String>> values, List<String> tools,
-            boolean apply) {
-        Map<String, String> resolved = resolve(values);
-        String rendered = this.templateRenderer.render(template.prompt(), resolved);
-        Preset saved = this.presetService.save(presetName(template, resolved), rendered,
-                PresetKind.EXAMPLE, tools);
-        if (apply) {
-            applyAndClose(saved);
-        } else {
-            this.selectedId = saved.id();
-            buildList();
-            showDetail(saved);
-            VaadinUtils.showInfoNotification("Saved preset \"" + saved.displayName() + "\"");
-        }
-    }
-
     private String presetName(Preset template, Map<String, String> resolved) {
         String summary = resolved.values().stream()
                 .filter(StringUtils::hasText).filter(value -> !value.contains("\n"))
@@ -431,7 +425,8 @@ public class PromptLibraryDialog extends Dialog {
         this.detailPanel.add(prompt);
 
         Button save = new Button("Save as preset",
-                event -> openSaveAsPresetDialog(preset.displayName(), prompt.getValue(), preset.tools()));
+                event -> openSaveAsPresetDialog(preset.displayName(), prompt.getValue(), preset.tools(),
+                        preset.dynamicTools()));
         Button apply = new Button("Apply to chat", event -> applyAndClose(
                 new Preset(preset.id(), preset.displayName(), preset.description(), prompt.getValue(),
                         PresetKind.EXAMPLE, preset.tools(), preset.dynamicTools())));
@@ -439,7 +434,8 @@ public class PromptLibraryDialog extends Dialog {
         this.detailPanel.add(buttonRow(save, apply));
     }
 
-    private void openSaveAsPresetDialog(String suggestedName, String prompt, List<String> initialTools) {
+    private void openSaveAsPresetDialog(String suggestedName, String prompt, List<String> initialTools,
+            boolean dynamic) {
         if (!StringUtils.hasText(prompt)) {
             VaadinUtils.showErrorNotification("Nothing to save - the prompt is empty.");
             return;
@@ -450,6 +446,7 @@ public class PromptLibraryDialog extends Dialog {
         nameField.setValue(suggestedName == null ? "" : suggestedName);
         MultiSelectComboBox<ToolSpec> toolsPicker = newToolsPicker(initialTools);
         Checkbox dynamicTools = newDynamicToolsCheckbox(toolsPicker);
+        dynamicTools.setValue(dynamic);
         Button save = new Button("Save", event -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);

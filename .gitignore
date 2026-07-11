@@ -37,7 +37,10 @@ build/
 ### Vaadin ###
 package.json
 package-lock.json
+pnpm-lock.yaml
+.npmrc
 tsconfig.json
+tsconfig.json.*.bak
 types.d.ts
 vite.config.ts
 vite.generated.ts
@@ -49,3 +52,4 @@ vite.generated.ts
 /src/main/bundles/
 /log
 site/
+__pycache__/

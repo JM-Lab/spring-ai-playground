@@ -10,6 +10,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
 
+## [0.2.0-M11]
+
+### Added
+
+- **Bounded agent loop** — Agentic Chat's tool-calling loop is now governed by `AgentLoopManager`, a decorator on Spring AI's `ToolCallingManager` — the Spring AI loop itself stays untouched. A per-turn `AgentTurn` enforces a soft round cap (16 — every further call is answered with a synthetic "wrap up" so the model closes out), a hard cap (18 — `returnDirect` forces the loop shut), an identical-call repeat guard, and a per-turn interactive-tool budget, while an `AgentRoundInterceptor` chain (loop guard → HITL approval → file upload → image reference) can claim any tool call before it executes. Multiple HITL approvals in one round batch into a single dialog, and a cancelled upload or declined approval answers the call cleanly instead of re-triggering it forever. Tunable via `spring.ai.playground.chat.agent-loop.*`, with guard outcomes counted on the `chat.tool.loop` meter (`feat(chat)`).
+- **Image attachments — native multimodal vision input** — attach up to five images per message via the picture button, drag-and-drop, or paste. Images are resized and EXIF-tagged in the browser, stored content-addressed under the app home, rendered as removable chips with a lightbox and an `N/5` counter, and handed to the model as native multimodal input; a capability check warns when the selected model cannot actually see (including the Apple Silicon `-mlx` false-positive case). A new `describeImage` tool re-summons an earlier image into the current turn, and **Image analyst** / **Document detective** presets ship on top — the bundled tool catalog grows to 115 (`feat(chat)`, `feat(chat,tools)`).
+- **Desktop tray, auto-update, and Ollama auto-start** — the launcher gains a system tray (macOS menubar template icon, settings deep links, Ollama and Voice model managers, update checks, quit). Update checks rank milestones stage-aware (M < RC < GA); on Windows and Linux the update downloads and installs in place via `electron-updater` (NSIS / deb / rpm metadata now published with each release), while unsigned macOS stays semi-automatic with a browser-download fallback. When the selected profile needs Ollama and it is not running, the launcher starts it automatically (app bundle or brew CLI, 15-second readiness poll, tray toggle to opt out), and Whisper voice-model management moves out of the config editor into its own manager window (`feat(electron)`).
+- **Home as a launchpad** — the home view reworks into an adaptive hero CTA, provider readiness chips, a live System & Observability panel (bind posture, risk levels, KPIs — every number computed from the running services), a passive checklist, and recent activity; the PWA install card is dropped. On the desktop app, setup links (environment variables, provider set-up) deep-link straight into the launcher's config window instead of the docs site (`feat(home)`).
+- **Default chat model `qwen3.5:4b` and a wider model menu** — the Ollama default moves from `qwen3.5:2b` to `qwen3.5:4b`, the smallest build that ships vision tensors, so image chat works out of the box. The menu expands to the qwen3.5 2b/4b/9b, qwen3.6 27b/35b, and gemma4 e2b/e4b/12b/31b families plus `gpt-oss:20b` and `deepseek-r1:8b`, and on Apple Silicon the standard GGUF builds stay in the menu alongside the `-mlx` catalog (MLX builds ship no vision tensors). The **Self-equipping agent** preset becomes the chat default and the Prompt Library is reworked around it, joined by a new **Workspace organizer** preset (`feat(chat)`).
+- **Filesystem search, edit, and a destructive tier** — seven new built-in filesystem tools (`searchInFiles`, `editTextFile`, `appendTextFile`, `copyFile`, `moveFile`, `deleteFile`, `deleteDir`) round out the per-conversation workspace, growing the filesystem family from 11 to 18 tools; destructive operations rate the new **L5** risk ceiling and pause for human approval (`feat(tools)`).
+- **Visualization action cards and in-chat file upload** — a fourteen-tool visualization family renders ECharts charts, diffs, and multi-point Leaflet maps as review-then-act cards, and a `requestFileUpload` tool lets the model ask for a file mid-conversation: an upload dialog opens, spreadsheets convert to CSV (SheetJS) inside the conversation workspace, and images arrive base64-ready (`feat(chat,tools)`).
+- **Dual-level tool risk chips** — built-in and external tool chips show both the inherent risk and the HITL-mitigated effective level, so the mitigation is visible instead of silently replacing the raw score (`feat(mcp)`).
+- **Anonymous usage telemetry (opt-out)** — production builds send content-free usage events (thirteen kinds — page views, chat / model / preset / tool usage) with authored names masked; development runs never send, and one switch (`SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false`) covers the web app, every launcher window, and the spawned backend (`feat(analytics)`).
+- **Keep workspace files when deleting a chat** — deleting a conversation now asks whether its per-conversation workspace files should be kept or removed (`feat(chat)`).
+
+### Fixed
+
+- **Tool fingerprints are key-order independent** — reordered JSON keys in an upstream tool schema no longer flag a false rug-pull on the hash ledger (`fix(mcp)`).
+- **Built-in MCP loopback carries the conversation id** — chat tool calls that loop back through `/mcp` propagate the conversation identity, so per-conversation workspace writes land in the right directory (`fix(mcp)`).
+- **Unknown tool calls answered with a recovery hint** — a model naming a tool that is not exposed gets a corrective tool response instead of crashing the stream (`fix(mcp)`).
+- **Home update banner ranks M / RC / GA correctly and skips on desktop** — version comparison is stage-aware on both the Java and launcher sides, and the desktop app (launcher-managed updates) suppresses the web banner (`fix(home)`).
+- **macOS keychain probe skipped when no secrets store exists** — first launch no longer triggers a keychain prompt before anything has been saved (`fix(electron)`).
+
+### Documentation
+
+- **Agent Loop architecture** — new `docs/agent-loop-architecture.md` (the `ToolCallingManager` seam, round verdicts, interceptor chain, limits) cross-linked from the architecture set, plus `configuration.md` coverage of `chat.agent-loop.*` (`docs`).
+- **Multimodal Vision** — the Image Attachments page is retitled **Multimodal Vision Input** with refreshed captures, and three new tutorials land: file upload (13), image analysis (14), and a document-detective filesystem pipeline (15) (`docs`).
+- **OWASP MCP Top 10 coverage mapping** — a page mapping the playground's controls onto the OWASP MCP Top 10, linked from the architecture nav (`docs`).
+- **Filesystem tools, destructive tier, and preset rework** documented across the tool and chat pages (`docs`).
+- **Usage telemetry & README refresh** — the telemetry event table and opt-out switch documented; the README links the 30-second YouTube trailer and picks up the new model defaults (`docs`).
+
+### Build / Tooling
+
+- **Version bump to 0.2.0-M11** (`build(pom)`).
+
 ## [0.2.0-M10]
 
 ### Added

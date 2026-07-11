@@ -32,7 +32,7 @@ Every channel ships the same Spring Boot fat JAR. The default mode is the web ap
 
 In other words:
 
-- The **desktop app and PWA** are the primary user-facing experience - full Vaadin UI, tool authoring, agentic chat. The built-in MCP server is reachable over `streamable-http` so the in-app Inspector and other HTTP clients can introspect it.
+- The **desktop app** (or the same UI served to a browser) is the primary user-facing experience - full Vaadin UI, tool authoring, agentic chat. The built-in MCP server is reachable over `streamable-http` so the in-app Inspector and other HTTP clients can introspect it.
 - The **stdio path** is the same product with the stdio profile layered in for direct MCP client integration. Docker handles it for non-Java users; the raw JAR handles it for Java developers and CI integrations.
 
 The web UI on port 8282 keeps booting in stdio mode too, so a Docker user can both connect Claude Desktop over stdio and open the Inspector in a browser at the same time when they pass `-p 8282:8282`.

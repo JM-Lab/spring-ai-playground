@@ -35,10 +35,31 @@ class HomeInfoVersionTest {
     }
 
     @Test
+    void rcOutranksMilestoneAndGaOutranksRc() {
+        assertThat(HomeInfoView.isNewer("0.2.0-RC1", "0.2.0-M11")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.0-RC2", "0.2.0-RC1")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.0", "0.2.0-RC2")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.0-M12", "0.2.0-RC1")).isFalse();
+        assertThat(HomeInfoView.isNewer("0.2.0-RC1", "0.2.0-RC1")).isFalse();
+        assertThat(HomeInfoView.isNewer("0.2.0-RC1", "0.2.0")).isFalse();
+        assertThat(HomeInfoView.isNewer("0.3.0-M1", "0.2.0")).isTrue();
+    }
+
+    @Test
     void higherCoreVersionWins() {
         assertThat(HomeInfoView.isNewer("0.3.0-M1", "0.2.0-M8")).isTrue();
         assertThat(HomeInfoView.isNewer("0.1.9", "0.2.0-M8")).isFalse();
         assertThat(HomeInfoView.isNewer("1.0.0-M1", "0.9.9")).isTrue();
+    }
+
+    @Test
+    void patchReleaseOutranksLowerPatchAtAnyStage() {
+        assertThat(HomeInfoView.isNewer("0.2.1", "0.2.0")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.1-M1", "0.2.0")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.1-RC1", "0.2.0")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.0", "0.2.1-M1")).isFalse();
+        assertThat(HomeInfoView.isNewer("0.2.10", "0.2.9")).isTrue();
+        assertThat(HomeInfoView.isNewer("0.2.1", "0.2.1")).isFalse();
     }
 
     @Test
@@ -49,9 +70,10 @@ class HomeInfoVersionTest {
     }
 
     @Test
-    void parseVersionMapsMilestoneAndGa() {
-        assertThat(HomeInfoView.parseVersion("0.2.0-M8")).containsExactly(0, 2, 0, 8);
-        assertThat(HomeInfoView.parseVersion("0.2.0")).containsExactly(0, 2, 0, Integer.MAX_VALUE);
-        assertThat(HomeInfoView.parseVersion("1.4.2-SNAPSHOT")).containsExactly(1, 4, 2, 0);
+    void parseVersionMapsStageAndNumber() {
+        assertThat(HomeInfoView.parseVersion("0.2.0-M8")).containsExactly(0, 2, 0, 1, 8);
+        assertThat(HomeInfoView.parseVersion("0.2.0-RC1")).containsExactly(0, 2, 0, 2, 1);
+        assertThat(HomeInfoView.parseVersion("0.2.0")).containsExactly(0, 2, 0, 3, 0);
+        assertThat(HomeInfoView.parseVersion("1.4.2-SNAPSHOT")).containsExactly(1, 4, 2, 0, 0);
     }
 }

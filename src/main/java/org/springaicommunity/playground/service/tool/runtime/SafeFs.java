@@ -22,6 +22,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,6 +49,10 @@ public final class SafeFs {
 
     public record FileStat(long size, long mtime, boolean directory) {}
 
+    public record EditResult(Path path, int replacements) {}
+
+    public record Match(String file, int line, String text) {}
+
     public record FsScope(Path workspace, List<Path> readRoots) {
         public FsScope {
             workspace = workspace.toAbsolutePath().normalize();
@@ -64,12 +70,25 @@ public final class SafeFs {
         return Files.readString(resolveRead(scope, userPath), StandardCharsets.UTF_8);
     }
 
+    public static byte[] readBytes(FsScope scope, String userPath) throws IOException {
+        return Files.readAllBytes(resolveRead(scope, userPath));
+    }
+
     public static Path writeText(FsScope scope, String userPath, String content) throws IOException {
         Path target = resolveWrite(scope, userPath);
         if (target.getParent() != null && !Files.exists(target.getParent())) {
             Files.createDirectories(target.getParent());
         }
         Files.writeString(target, content == null ? "" : content, StandardCharsets.UTF_8);
+        return target;
+    }
+
+    public static Path writeBytes(FsScope scope, String userPath, byte[] content) throws IOException {
+        Path target = resolveWrite(scope, userPath);
+        if (target.getParent() != null && !Files.exists(target.getParent())) {
+            Files.createDirectories(target.getParent());
+        }
+        Files.write(target, content == null ? new byte[0] : content);
         return target;
     }
 
@@ -253,6 +272,179 @@ public final class SafeFs {
                     out.add(displayPath(scope, p));
                 }
             });
+        }
+        return out;
+    }
+
+    public static Path appendText(FsScope scope, String userPath, String content) throws IOException {
+        Path target = resolveWrite(scope, userPath);
+        if (target.getParent() != null && !Files.exists(target.getParent())) {
+            Files.createDirectories(target.getParent());
+        }
+        Files.writeString(target, content == null ? "" : content, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        return target;
+    }
+
+    public static EditResult editText(FsScope scope, String userPath, String oldString, String newString,
+                                      boolean replaceAll) throws IOException {
+        if (oldString == null || oldString.isEmpty()) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "edit-old-required",
+                    "editText: oldString required");
+        }
+        Path target = resolveWrite(scope, userPath);
+        if (!Files.isRegularFile(target)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "edit-file-missing",
+                    "editText: file not found: " + userPath);
+        }
+        String content = Files.readString(target, StandardCharsets.UTF_8);
+        int first = content.indexOf(oldString);
+        if (first < 0) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "edit-no-match",
+                    "editText: oldString not found in " + userPath);
+        }
+        String replacement = newString == null ? "" : newString;
+        int count;
+        String updated;
+        if (replaceAll) {
+            count = countOccurrences(content, oldString);
+            updated = content.replace(oldString, replacement);
+        } else {
+            int second = content.indexOf(oldString, first + oldString.length());
+            if (second >= 0) {
+                throw reject(JsHelperException.Kind.INVALID_INPUT, "edit-ambiguous",
+                        "editText: oldString matches multiple times in " + userPath
+                                + " (use replaceAll or a longer, unique oldString)");
+            }
+            count = 1;
+            updated = content.substring(0, first) + replacement + content.substring(first + oldString.length());
+        }
+        Files.writeString(target, updated, StandardCharsets.UTF_8);
+        return new EditResult(target, count);
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
+    }
+
+    public static Path copy(FsScope scope, String fromPath, String toPath) throws IOException {
+        Path source = resolveRead(scope, fromPath);
+        Path target = resolveWrite(scope, toPath);
+        if (!Files.isRegularFile(source)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "copy-source-not-file",
+                    "copy: source is not a regular file: " + fromPath);
+        }
+        if (target.getParent() != null && !Files.exists(target.getParent())) {
+            Files.createDirectories(target.getParent());
+        }
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
+    }
+
+    public static Path move(FsScope scope, String fromPath, String toPath) throws IOException {
+        Path source = resolveWrite(scope, fromPath);
+        Path target = resolveWrite(scope, toPath);
+        if (!Files.exists(source)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "move-source-missing",
+                    "move: source does not exist: " + fromPath);
+        }
+        if (target.getParent() != null && !Files.exists(target.getParent())) {
+            Files.createDirectories(target.getParent());
+        }
+        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
+    }
+
+    public static boolean delete(FsScope scope, String userPath) throws IOException {
+        Path target = resolveWrite(scope, userPath);
+        if (Files.isDirectory(target)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "delete-is-directory",
+                    "delete: path is a directory (use deleteDir): " + userPath);
+        }
+        return Files.deleteIfExists(target);
+    }
+
+    public static long deleteDir(FsScope scope, String userPath) throws IOException {
+        Path target = resolveWrite(scope, userPath);
+        if (target.equals(scope.workspace())) {
+            throw reject(JsHelperException.Kind.SECURITY, "deletedir-workspace-root",
+                    "deleteDir: refusing to delete the workspace root");
+        }
+        if (!Files.exists(target)) {
+            return 0L;
+        }
+        if (!Files.isDirectory(target)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "deletedir-not-a-directory",
+                    "deleteDir: path is not a directory (use delete): " + userPath);
+        }
+        List<Path> entries;
+        try (Stream<Path> walk = Files.walk(target)) {
+            entries = walk.sorted(Comparator.reverseOrder()).toList();
+        }
+        long removed = 0L;
+        for (Path p : entries) {
+            if (Files.deleteIfExists(p)) removed++;
+        }
+        return removed;
+    }
+
+    public static List<Match> searchInFiles(FsScope scope, String userDir, String glob, String pattern,
+                                            boolean caseInsensitive, int maxDepth, int limit) throws IOException {
+        if (pattern == null || pattern.isEmpty()) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "search-pattern-required",
+                    "searchInFiles: pattern required");
+        }
+        String input = userDir == null || userDir.isEmpty() ? "." : userDir;
+        Path root = resolveRead(scope, input);
+        if (!Files.isDirectory(root)) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "search-not-a-directory",
+                    "searchInFiles: not a directory: " + userDir);
+        }
+        String globPattern = glob == null || glob.isEmpty() ? "*" : glob;
+        PathMatcher matcher;
+        try {
+            matcher = FileSystems.getDefault().getPathMatcher("glob:" + globPattern);
+        } catch (Exception e) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "search-invalid-glob",
+                    "searchInFiles: invalid glob: " + e.getMessage());
+        }
+        Pattern regex;
+        try {
+            int flags = caseInsensitive ? Pattern.CASE_INSENSITIVE : 0;
+            regex = Pattern.compile(pattern, flags);
+        } catch (PatternSyntaxException e) {
+            throw reject(JsHelperException.Kind.INVALID_INPUT, "search-invalid-pattern",
+                    "searchInFiles: invalid pattern: " + e.getMessage());
+        }
+        int depth = maxDepth <= 0 ? Integer.MAX_VALUE : maxDepth;
+        int cap = limit > 0 ? limit : 1_000;
+        List<Path> files = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(root, depth)) {
+            walk.filter(Files::isRegularFile)
+                    .filter(p -> matcher.matches(p.getFileName()))
+                    .forEach(files::add);
+        }
+        List<Match> out = new ArrayList<>();
+        for (Path file : files) {
+            if (out.size() >= cap) break;
+            List<String> lines;
+            try {
+                lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                continue;
+            }
+            for (int i = 0; i < lines.size(); i++) {
+                if (out.size() >= cap) break;
+                if (regex.matcher(lines.get(i)).find()) {
+                    out.add(new Match(displayPath(scope, file), i + 1, lines.get(i)));
+                }
+            }
         }
         return out;
     }

@@ -64,4 +64,32 @@ class ChatContentViewActionBlockTest {
         List<String> blocks = ChatContentView.extractActionBlocks(text);
         assertThat(blocks).containsExactly("```saip-action-return-direct\n{\"type\":\"map\"}\n```");
     }
+
+    @Test
+    void actionBlocksToAppendSkipsBlocksAlreadyInText() {
+        String block = "```saip-action\n{\"type\":\"pointmap\"}\n```";
+        assertThat(ChatContentView.actionBlocksToAppend(null, List.of(block))).containsExactly(block);
+        assertThat(ChatContentView.actionBlocksToAppend("prose only", List.of(block))).containsExactly(block);
+        assertThat(ChatContentView.actionBlocksToAppend("prose\n\n" + block + "\n", List.of(block))).isEmpty();
+        assertThat(ChatContentView.actionBlocksToAppend("prose", List.of())).isEmpty();
+        assertThat(ChatContentView.actionBlocksToAppend("prose", null)).isEmpty();
+    }
+
+    @Test
+    void textWithActionBlocksAppendsMissingBlocks() {
+        String block = "```saip-action\n{\"type\":\"pointmap\"}\n```";
+        assertThat(ChatContentView.textWithActionBlocks("done.", List.of(block)))
+                .isEqualTo("done.\n\n" + block + "\n");
+        assertThat(ChatContentView.textWithActionBlocks(null, List.of(block)))
+                .isEqualTo("\n\n" + block + "\n");
+        assertThat(ChatContentView.textWithActionBlocks("done.\n\n" + block + "\n", List.of(block)))
+                .isEqualTo("done.\n\n" + block + "\n");
+    }
+
+    @Test
+    void textWithActionBlocksLeavesTextWithoutBlockList() {
+        assertThat(ChatContentView.textWithActionBlocks("done.", null)).isEqualTo("done.");
+        assertThat(ChatContentView.textWithActionBlocks("done.", "not-a-list")).isEqualTo("done.");
+        assertThat(ChatContentView.textWithActionBlocks(null, List.of())).isNull();
+    }
 }

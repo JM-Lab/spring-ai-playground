@@ -64,6 +64,7 @@ public class SandboxCapabilitiesView extends Details {
     private final Icon postureIcon;
     private final Set<String> yamlBaselineDeny;
     private final Set<String> yamlBaselineAllow;
+    private Boolean destructive;
 
     private final RadioButtonGroup<HumanInTheLoop.Mode> hitlModeField;
     private final TextField hitlPromptTemplateField;
@@ -252,11 +253,12 @@ public class SandboxCapabilitiesView extends Details {
         Boolean fileWrite = fileMode == null ? null : "read+write".equals(fileMode);
         String fsBasePath = this.fsBasePathField.getValue();
         return new ToolSpec.SandboxOverrides(addAllow, removeAllow, addDeny, removeDeny, networkMode, hosts,
-                fileRead, fileWrite, fsBasePath);
+                fileRead, fileWrite, fsBasePath, this.destructive);
     }
 
     public void applyOverrides(ToolSpec.SandboxOverrides overrides) {
         if (overrides == null) return;
+        this.destructive = overrides.destructive();
         Set<String> resolvedAllow = new LinkedHashSet<>(this.yamlBaselineAllow);
         if (overrides.removeAllowClasses() != null) resolvedAllow.removeAll(overrides.removeAllowClasses());
         if (overrides.addAllowClasses() != null) resolvedAllow.addAll(overrides.addAllowClasses());
@@ -435,12 +437,12 @@ public class SandboxCapabilitiesView extends Details {
         Set<String> userDeny = this.denyClassesField.getValue();
         Set<String> userAllow = this.allowClassesField.getValue();
         return this.postureCalculator.compute(
-                new Inputs(mode, hosts, fileRead, fileWrite,
+                new Inputs(mode, hosts, fileRead, fileWrite, Boolean.TRUE.equals(this.destructive),
                         this.yamlBaselineDeny, userDeny, this.yamlBaselineAllow, userAllow));
     }
 
     private record PostureSignals(String networkMode, boolean fileRead, boolean fileWrite,
-                                  boolean customClasses) {}
+                                  boolean destructive, boolean customClasses) {}
 
     private PostureSignals currentSignals() {
         String mode = this.networkModeField.getValue();
@@ -449,7 +451,7 @@ public class SandboxCapabilitiesView extends Details {
         boolean fileWrite = "read+write".equals(fileMode);
         boolean customClasses = !diff(this.allowClassesField.getValue(), this.yamlBaselineAllow).isEmpty()
                 || !diff(this.denyClassesField.getValue(), this.yamlBaselineDeny).isEmpty();
-        return new PostureSignals(mode, fileRead, fileWrite, customClasses);
+        return new PostureSignals(mode, fileRead, fileWrite, Boolean.TRUE.equals(this.destructive), customClasses);
     }
 
     static String postureLabel(RiskLevel level, PostureSignals signals) {
@@ -470,7 +472,7 @@ public class SandboxCapabilitiesView extends Details {
                 if ("open".equalsIgnoreCase(signals.networkMode())) yield "Open network";
                 yield "Elevated";
             }
-            case L5 -> "Side effects";
+            case L5 -> signals != null && signals.destructive() ? "Destructive" : "Side effects";
         };
     }
 

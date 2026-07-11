@@ -97,7 +97,7 @@ class McpClientServiceUnitTest {
         when(evaluator.evaluateTool(any(), eq("bad"), anyString(), isNull()))
                 .thenThrow(new IllegalStateException("evaluator exploded"));
         when(evaluator.evaluateTool(any(), eq("good"), anyString(), isNull()))
-                .thenReturn(new ToolRiskView(RiskLevel.L3, RiskLevel.L3, null, null));
+                .thenReturn(new ToolRiskView(RiskLevel.L3, RiskLevel.L3, RiskLevel.L3, null, null));
         McpClientCommonProperties props = new McpClientCommonProperties();
         props.setName("test-app");
         props.setVersion("0.0.1-test");

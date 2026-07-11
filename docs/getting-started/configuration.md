@@ -39,7 +39,7 @@ The default active profile is **`ollama`** (`spring.profiles.default: ollama`). 
 
 Activate with `SPRING_PROFILES_ACTIVE=openai`, layer with `SPRING_PROFILES_INCLUDE=mcp-stdio`, or use `--spring.profiles.active=` / `-Dspring.profiles.active=`.
 
-On an **Apple Silicon Mac** the `mlx` profile is layered onto `ollama` automatically (default chat model `qwen3.5:4b-mlx` plus a `-mlx` model menu). An `EnvironmentPostProcessor` gates it on `spring.ai.playground.ollama.mlx-auto-select` (default `true`) and the OS/arch check, so it never activates on Intel, Windows, Linux, or Docker. Pass `--spring.ai.playground.ollama.mlx-auto-select=false` to opt out. The desktop launcher disables this and resolves MLX builds itself - see [Alternative Runtimes → Apple Silicon and MLX models](alternative-runtimes.md#apple-silicon-mlx).
+On an **Apple Silicon Mac** the `mlx` profile is layered onto `ollama` automatically (default chat model `qwen3.5:4b-mlx` plus a model menu of `-mlx` builds alongside the standard GGUF builds, which stay in the menu for image chat - MLX builds ship without vision tensors). An `EnvironmentPostProcessor` gates it on `spring.ai.playground.ollama.mlx-auto-select` (default `true`) and the OS/arch check, so it never activates on Intel, Windows, Linux, or Docker. Pass `--spring.ai.playground.ollama.mlx-auto-select=false` to opt out. The desktop launcher disables this and resolves MLX builds itself - see [Alternative Runtimes → Apple Silicon and MLX models](alternative-runtimes.md#apple-silicon-mlx).
 
 ## Server & web { #server }
 
@@ -68,9 +68,9 @@ Provider selection (which Spring AI model backs each capability):
 |---|---|---|
 | `spring.ai.ollama.base-url` | `http://localhost:11434` | Point at a remote/host Ollama via `SPRING_AI_OLLAMA_BASE_URL` (common in Docker). |
 | `spring.ai.ollama.init.pull-model-strategy` | `when_missing` | Auto-pull models on startup. |
-| `spring.ai.ollama.chat.options.model` | `qwen3.5:2b` | Default chat model. |
+| `spring.ai.ollama.chat.options.model` | `qwen3.5:4b` | Default chat model. |
 | `spring.ai.ollama.embedding.options.model` | `qwen3-embedding:0.6b` | Default embedding model. |
-| `spring.ai.playground.chat.models` | `qwen3.5:2b, qwen3.5:9b, qwen3.6:35b, gemma4:e4b, gpt-oss:20b, deepseek-r1:8b` | The model menu shown in the chat UI. |
+| `spring.ai.playground.chat.models` | `qwen3.5:2b/4b/9b, qwen3.6:27b/35b, gemma4:e2b/e4b/12b/31b, gpt-oss:20b, deepseek-r1:8b` | The model menu shown in the chat UI. |
 | `spring.ai.playground.ollama.mlx-auto-select` | `true` | On Apple Silicon, auto-activate the [`mlx` profile](#profiles) (MLX model defaults). Set `false` to keep the generic model names. |
 
 **OpenAI profile** (`openai`):
@@ -88,7 +88,35 @@ Tool / MCP-server API keys (GitHub PAT, `BRAVE_API_KEY`, `MS_TENANT_ID`, Google 
 
 | Knob | How to set | Default | Notes |
 |---|---|---|---|
-| Google Tag Manager in the UI | `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` (env) or `-Dspring.ai.playground.telemetry.enabled=false` | enabled | When `false`, the app omits the GTM tag and disables its own GA. Set this for QA / offline / privacy. |
+| Google Tag Manager in the UI | `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` (env) or `-Dspring.ai.playground.telemetry.enabled=false` | enabled (production builds only) | When `false`, the app omits the GTM tag and disables its own GA. Development mode (`mvnw spring-boot:run`, IDE runs) never sends telemetry regardless of this switch. Set this for QA / offline / privacy. |
+
+### What is collected { #telemetry-events }
+
+Telemetry is anonymous and content-free: no prompts, no responses, no file names, no
+URLs, no API keys, no server addresses. Names of things you create yourself (tools,
+presets, custom MCP servers) are masked to `authored` / `custom` / `external` - only
+names that ship in the built-in catalogs are ever sent as-is. Every sender goes through
+one class, so the complete list is auditable in code: search the repository for
+`UsageEventTracker`.
+
+| Event | Parameters | Fired when |
+|---|---|---|
+| `page_view` | route path | Navigating between views |
+| `chat_message_sent` | provider, model, reasoning, dynamic_tools, tool_count, image_count, rag_enabled | Sending a chat message |
+| `model_selected` | provider, model | Applying chat settings |
+| `model_downloaded` | model, via | An Ollama model download completes |
+| `tool_called` | tool_name (catalog names only), source, risk_level, hitl | A tool call finishes in chat |
+| `preset_applied` / `preset_blocked` | preset_id (catalog ids only), dynamic_tools, tool_count | Applying a preset / the key gate blocks Apply |
+| `mcp_server_added` | transport, catalog_id (catalog ids only), oauth | Saving and connecting an MCP server |
+| `mcp_tools_exposed` | mode, builtin_count, composed_count, max_risk | Applying the Expose Tools drawer |
+| `rag_document_indexed` | doc_type, chunk_count | Embedding a document into the vector store |
+| `tool_authored` | action, sandbox_overrides, hitl | Saving a tool in Tool Studio |
+| `action_card_rendered` | card_type | A visualization action card renders in chat |
+| `voice_input_used` | mode | Starting voice input |
+| `usage_snapshot` (at most once per day) | aggregate counters only: recent call/token/error/latency totals, conversation count, installed model count, VRAM, top quantization, HITL and risk-signal totals | First page load of the day |
+
+Session-level user properties: `app_version`, `app_surface` (web/desktop), `platform`,
+`chat_provider`, `embedding_provider`, `embedding_model`, `tool_search_index`.
 
 ## MCP built-in server & exposure { #mcp }
 
@@ -105,13 +133,27 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 | `spring.ai.playground.chat.tool-result-max-chars` | relaxed-binding env | `12000` | Caps the characters of any single tool result before it returns to the model in the [Agentic Chat](../features/agentic-chat/index.md) loop - built-in, authored, or external. Oversized results are truncated (with a marker) so one verbose tool call cannot blow up the context window. `0` disables the cap. |
 | `spring.ai.playground.chat.memory-max-messages` | relaxed-binding env | `10` | How many recent messages are sent to the model each turn - the conversation **memory window**. Overridable per chat from the settings drawer's **Recent messages** field. See [Context Engineering → Conversation memory](../context-engineering-architecture.md#conversation-memory). |
 | `spring.ai.playground.chat.history-max-messages` | relaxed-binding env | `2000` | Safety cap on the **full local conversation store** that the screen and on-disk history read from; messages beyond this are dropped. The memory window above is what the model actually sees. |
+| `spring.ai.playground.chat.default-preset` | relaxed-binding env | `self-equipping-agent` | The [prompt preset](../features/agentic-chat/prompt-presets.md) a **brand-new chat** opens with - its system prompt plus, for a dynamic preset, [dynamic tool discovery](../features/agentic-chat/dynamic-tool-discovery.md). It does not touch the built-in MCP exposure. Empty or an unknown id falls back to a plain chat. |
 | `spring.ai.playground.chat.tool-search.enabled` | relaxed-binding env | `true` | Master switch for **[dynamic tool discovery](../features/agentic-chat/dynamic-tool-discovery.md)** - the `toolSearchTool` advisor, the boot-time tool index, and the chat checkbox. `false` removes the feature entirely. |
-| `spring.ai.playground.chat.tool-search.default-on` | relaxed-binding env | `false` | Whether new chats start in dynamic-discovery mode. A preset can still switch it on per conversation. |
+| `spring.ai.playground.chat.tool-search.default-on` | relaxed-binding env | `false` | Whether new chats start in dynamic-discovery mode when no preset decides it. Note the shipped `chat.default-preset` (`self-equipping-agent`, below) already opens new chats in dynamic mode; this flag matters once you change or clear that preset. |
 | `spring.ai.playground.chat.tool-search.min-tools` | relaxed-binding env | `10` | Minimum searchable tools before the chat's **Dynamic tool discovery** checkbox enables - discovery only pays off with a real catalog to search. |
 | `spring.ai.playground.chat.tool-search.max-results` | relaxed-binding env | `3` | Tool names returned per `toolSearchTool` search. |
 | `spring.ai.playground.chat.tool-search.index-type` | relaxed-binding env | `HYBRID` | `HYBRID` (exact tool-name match, then vector search) or `VECTOR` (vector only). |
 | `spring.ai.playground.chat.tool-search.vector-store` | relaxed-binding env | `DEDICATED` | `DEDICATED` (a private, persisted tool index) or `SHARED` (reuse the RAG vector store). See [Context Engineering → Tools](../context-engineering-architecture.md#tools). |
 | `spring.ai.mcp.server.request-timeout` | relaxed-binding env | `150` | Seconds. |
+
+## Agent loop { #agent-loop }
+
+`spring.ai.playground.chat.agent-loop.*` bounds the [Agentic Chat](../features/agentic-chat/index.md) tool-calling loop and its interactive dialogs. See [Agent Loop](../agent-loop-architecture.md) for how these are enforced. Defaults suit a broad agent; raise the round caps only if a legitimate multi-step task needs more tool rounds.
+
+| Property | Env | Default | Notes |
+|---|---|---|---|
+| `spring.ai.playground.chat.agent-loop.soft-max-rounds` | relaxed-binding env | `16` | Once a turn exceeds this many tool rounds, further tool calls are answered with a "wrap up now" message instead of running, nudging the model to reply with what it has. |
+| `spring.ai.playground.chat.agent-loop.hard-max-rounds` | relaxed-binding env | `18` | Hard stop: the loop is ended with a final message if the model keeps calling tools past this. Raised to `soft-max-rounds` if set lower. |
+| `spring.ai.playground.chat.agent-loop.max-identical-calls` | relaxed-binding env | `3` | How many times a tool may be called with identical arguments in one turn before repeats are short-circuited (a legitimate re-read is fine; a stuck loop is not). |
+| `spring.ai.playground.chat.agent-loop.interactions-per-round` | relaxed-binding env | `1` | How many interactive dialogs (approval, file upload, image pick) may open per round. Keep at `1` so a round's blocking waits cannot stack past the stream timeout. |
+| `spring.ai.playground.chat.agent-loop.approval-timeout-seconds` | relaxed-binding env | `120` | How long a human-in-the-loop approval dialog waits before failing safe to **decline**. Clamped below the 300s stream timeout. |
+| `spring.ai.playground.chat.agent-loop.dialog-timeout-seconds` | relaxed-binding env | `180` | How long a file-upload or image dialog waits before returning "not provided". Clamped below the 300s stream timeout. |
 
 ## Observability { #observability }
 

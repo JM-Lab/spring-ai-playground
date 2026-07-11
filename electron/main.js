@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, clipboard, screen, shell, safeStorage, systemPreferences, session, } =
+const { app, BrowserWindow, ipcMain, dialog, clipboard, screen, shell, safeStorage, systemPreferences, session, Tray, Menu, nativeImage, Notification, } =
 require
 ('electron');
 const path = require('path');
@@ -17,6 +17,8 @@ const {
   SPLASH_PATH,
   CONFIG_EDITOR_PATH,
   OLLAMA_MANAGER_PATH,
+  WHISPER_MANAGER_PATH,
+  WHISPER_MANAGER_PRELOAD_PATH,
   SERVER_SPLASH_PATH,
   CONFIG_TEMPLATES,
   DEFAULT_STARTER_TEMPLATE_IDS,
@@ -27,6 +29,7 @@ const {
 const ollamaManager = require('./ollama-manager');
 const whisperManager = require('./whisper-manager');
 const whisperStt = require('./whisper-stt');
+const updater = require('./updater');
 
 function warmWhisperSttInBackground() {
   if (!whisperManager.isSttEnabled()) {
@@ -53,6 +56,8 @@ let dynamicServerUrl = null;
 const TELEMETRY_DISABLED = process.env.SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED === 'false';
 const TELEMETRY_QUERY_STRING = TELEMETRY_DISABLED ? '?telemetry=0' : '';
 const isDev = !app.isPackaged;
+const DOCS_BASE = 'https://spring-ai-community.github.io/spring-ai-playground';
+const DOCS_DESKTOP = `${DOCS_BASE}/getting-started/desktop`;
 let isQuitting = false;
 let allowAppExit = false;
 let shutdownPromise = null;
@@ -86,6 +91,11 @@ let activeOllamaDownload = null;
 let nextOllamaDownloadId = 1;
 let allowOllamaManagerWindowClose = false;
 let ollamaManagerCloseInProgress = false;
+let tray = null;
+let trayUpdateState = { available: false, version: null, url: null };
+let whisperManagerWindow = null;
+let allowWhisperManagerWindowClose = false;
+let whisperManagerCloseInProgress = false;
 
 function openMicrophonePrivacySettings() {
   if (process.platform === 'darwin') {
@@ -450,6 +460,12 @@ function writeSecretsStore(store) {
 }
 
 function getSecretsStorageStatus() {
+  const hasStore = fs.existsSync(getSecretsStorePath())
+    || fs.existsSync(path.join(getConfigDirectory(), 'secrets.json.enc'));
+  // macOS: probing OS encryption reaches the keychain and can prompt on ad-hoc builds; skip it until a secret is actually saved.
+  if (process.platform === 'darwin' && !hasStore && secretsEncryptionAvailable == null) {
+    return { encrypted: true, label: 'Encrypted by your OS secure storage' };
+  }
   const encrypted = isSecretsEncryptionAvailable();
   return {
     encrypted,
@@ -564,7 +580,7 @@ function getDefaultRuntimeSettings() {
 }
 
 function getDefaultPreferences() {
-  return { autoCopyLogs: true, skipOllamaCheck: false };
+  return { autoCopyLogs: true, skipOllamaCheck: false, autoStartOllama: true };
 }
 
 function isFirstLaunch(index) {
@@ -885,6 +901,10 @@ function getOllamaBinaryCandidates() {
       path.join(localAppData, 'Ollama', 'ollama.exe'),
     ];
   }
+  if (process.platform === 'darwin') {
+    // packaged apps get the stripped launchd PATH, so brew CLI installs need absolute paths
+    return ['/opt/homebrew/bin/ollama', '/usr/local/bin/ollama'];
+  }
   return [];
 }
 
@@ -926,6 +946,7 @@ function ensurePreferences(index) {
   }
   if (typeof index.preferences.autoCopyLogs !== 'boolean') index.preferences.autoCopyLogs = true;
   if (typeof index.preferences.skipOllamaCheck !== 'boolean') index.preferences.skipOllamaCheck = false;
+  if (typeof index.preferences.autoStartOllama !== 'boolean') index.preferences.autoStartOllama = true;
 }
 
 function getRuntimeSettingsPayload(index, secretSuggestions = collectSecretSuggestions()) {
@@ -962,6 +983,8 @@ function buildSpawnArguments(jrePath, jarPath, configPath, runtimeSettings, conf
       configArg,
       // Electron owns the MLX decision, so disable the JVM-side auto-activator.
       '--spring.ai.playground.ollama.mlx-auto-select=false',
+      // The tray owns update checks, so the home view skips its own banner.
+      '--spring.ai.playground.desktop.managed-updates=true',
       ...appArgs,
     ],
     env: { ...process.env, ...envVariables },
@@ -1193,6 +1216,27 @@ async function prepareOllamaForLaunch(configPath) {
   if (ollamaInfo.running) {
     appendLog(`Ollama is already running at ${ollamaInfo.baseUrl}.`);
     return true;
+  }
+  const autoStartOllama = index.preferences?.autoStartOllama ?? true;
+  if (autoStartOllama && ollamaInfo.ollamaInstalled && ollamaInfo.canAutoStart) {
+    appendLog('Ollama is not running; starting it automatically. Disable this in tray > System > Start Ollama with app.');
+    notifyOllamaAutoStart();
+    try {
+      const startResult = await startOllamaService();
+      if (startResult.mode === 'started') {
+        for (let attempt = 0; attempt < 15; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const recheck = await getOllamaEnvironmentInfo(yamlText);
+          if (recheck.running) {
+            appendLog(`Ollama is now running at ${recheck.baseUrl}.`);
+            return true;
+          }
+        }
+        appendLog('Ollama did not become ready within 15 seconds.', true);
+      }
+    } catch (error) {
+      appendLog(`Failed to start Ollama automatically: ${error.message || String(error)}`, true);
+    }
   }
   if (!ollamaInfo.ollamaInstalled) {
     appendLog('Ollama is not installed. Open https://ollama.com/download to install it if this profile needs local models.', true);
@@ -1457,7 +1501,17 @@ function getJarPath() {
   return path.join(process.resourcesPath, 'app.jar');
 }
 
-function createConfigWindow() {
+function createConfigWindow(section = null) {
+  if (!tempServer) {
+    startTempServer()
+      .then((server) => {
+        if (tempServer) server.stop();
+        else tempServer = server;
+        createConfigWindow(section);
+      })
+      .catch((error) => appendLog(`Failed to restart launcher asset server: ${error.message || String(error)}`, true));
+    return;
+  }
   const { workAreaSize } = screen.getPrimaryDisplay();
   configWindow = new BrowserWindow({
     width: 1080,
@@ -1475,7 +1529,7 @@ function createConfigWindow() {
   });
   configWindow.on('closed', () => {
     configWindow = null;
-    if (!mainWindow && !serverSplashWindow && !ollamaManagerWindow && !isQuitting) app.quit();
+    if (!mainWindow && !serverSplashWindow && !ollamaManagerWindow && !whisperManagerWindow && !isQuitting) app.quit();
   });
   configWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     appendLog(`Config window failed to load (${errorCode}): ${errorDescription} - ${validatedURL || CONFIG_EDITOR_PATH}`, true);
@@ -1484,7 +1538,8 @@ function createConfigWindow() {
     fitConfigWindowToContent();
   });
 
-  configWindow.loadURL(tempServer.getUrl(CONFIG_EDITOR_PATH) + TELEMETRY_QUERY_STRING);
+  const sectionHash = section ? '#' + String(section).replace(/^#/, '') : '';
+  configWindow.loadURL(tempServer.getUrl(CONFIG_EDITOR_PATH) + TELEMETRY_QUERY_STRING + sectionHash);
   configWindow.once('ready-to-show', () => configWindow.show());
 }
 
@@ -1562,6 +1617,17 @@ function createOllamaManagerWindow() {
   if (ollamaManagerWindow && !ollamaManagerWindow.isDestroyed()) {
     ollamaManagerWindow.focus();
     return ollamaManagerWindow;
+  }
+
+  if (!tempServer) {
+    startTempServer()
+      .then((server) => {
+        if (tempServer) server.stop();
+        else tempServer = server;
+        createOllamaManagerWindow();
+      })
+      .catch((error) => appendLog(`Failed to restart launcher asset server: ${error.message || String(error)}`, true));
+    return null;
   }
 
   allowOllamaManagerWindowClose = false;
@@ -1663,6 +1729,404 @@ function createOllamaManagerWindow() {
     ollamaManagerWindow.show();
   });
   return ollamaManagerWindow;
+}
+
+async function fitWhisperManagerWindowToContent() {
+  if (!whisperManagerWindow || whisperManagerWindow.isDestroyed()) return;
+  const { workAreaSize } = screen.getPrimaryDisplay();
+  try {
+    const contentHeight = await whisperManagerWindow.webContents.executeJavaScript(
+      `(() => {
+        const root = document.querySelector('.shell');
+        const body = document.body;
+        const measure = (element) => {
+          if (!element) return 0;
+          const styles = window.getComputedStyle(element);
+          const marginTop = parseFloat(styles.marginTop || '0');
+          const marginBottom = parseFloat(styles.marginBottom || '0');
+          return Math.ceil(Math.max(
+            element.scrollHeight || 0,
+            element.offsetHeight || 0,
+            element.getBoundingClientRect().height || 0
+          ) + marginTop + marginBottom);
+        };
+        const rootHeight = measure(root);
+        if (rootHeight > 0) return rootHeight;
+        return measure(body);
+      })()`,
+      true
+    );
+    if (!Number.isFinite(contentHeight)) return;
+    const bounds = whisperManagerWindow.getContentBounds();
+    const targetHeight = Math.max(420, Math.min(workAreaSize.height - 120, contentHeight + 8));
+    if (Math.abs(bounds.height - targetHeight) < 8) return;
+    whisperManagerWindow.setContentSize(bounds.width, targetHeight);
+  } catch {
+  }
+}
+
+function createWhisperManagerWindow() {
+  if (whisperManagerWindow && !whisperManagerWindow.isDestroyed()) {
+    whisperManagerWindow.focus();
+    return whisperManagerWindow;
+  }
+
+  if (!tempServer) {
+    startTempServer()
+      .then((server) => {
+        if (tempServer) server.stop();
+        else tempServer = server;
+        createWhisperManagerWindow();
+      })
+      .catch((error) => appendLog(`Failed to restart launcher asset server: ${error.message || String(error)}`, true));
+    return null;
+  }
+
+  allowWhisperManagerWindowClose = false;
+  const { workAreaSize } = screen.getPrimaryDisplay();
+
+  whisperManagerWindow = new BrowserWindow({
+    width: 860,
+    height: Math.max(460, workAreaSize.height - 260),
+    minWidth: 720,
+    minHeight: 420,
+    show: false,
+    autoHideMenuBar: true,
+    parent: configWindow || undefined,
+    modal: false,
+    icon: getWindowIconPath(),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: WHISPER_MANAGER_PRELOAD_PATH,
+    },
+  });
+  const requestWhisperManagerClose = async () => {
+    if (!whisperManagerWindow || whisperManagerWindow.isDestroyed()) return { closed: true };
+    if (whisperManagerCloseInProgress) return { closed: false, busy: true };
+    if (allowWhisperManagerWindowClose || !whisperManager.isDownloading()) {
+      allowWhisperManagerWindowClose = true;
+      whisperManagerWindow.close();
+      return { closed: true };
+    }
+    const choice = dialog.showMessageBoxSync(whisperManagerWindow, {
+      type: 'warning',
+      title: 'Cancel download and close?',
+      buttons: ['Keep downloading', 'Cancel and close'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      message: 'A voice model download is in progress.',
+      detail: 'If you continue, the current download stops. The partial file is kept so you can resume later.',
+    });
+    if (choice !== 1) {
+      whisperManagerWindow.focus();
+      return { closed: false, canceled: true };
+    }
+    whisperManagerCloseInProgress = true;
+    try {
+      whisperManager.cancelModelDownload();
+      allowWhisperManagerWindowClose = true;
+      if (whisperManagerWindow && !whisperManagerWindow.isDestroyed()) whisperManagerWindow.close();
+      return { closed: true };
+    } finally {
+      whisperManagerCloseInProgress = false;
+    }
+  };
+  whisperManagerWindow.on('close', (event) => {
+    if (allowWhisperManagerWindowClose || !whisperManager.isDownloading()) return;
+    if (whisperManagerCloseInProgress) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    requestWhisperManagerClose().catch((error) => {
+      appendLog(`Failed to close Whisper manager cleanly: ${error.message || String(error)}`, true);
+    });
+  });
+  whisperManagerWindow.on('closed', () => {
+    allowWhisperManagerWindowClose = false;
+    whisperManagerCloseInProgress = false;
+    whisperManagerWindow = null;
+  });
+  whisperManagerWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    appendLog(`Whisper manager failed to load (${errorCode}): ${errorDescription} - ${validatedURL || WHISPER_MANAGER_PATH}`, true);
+  });
+  whisperManagerWindow.webContents.on('render-process-gone', (event, details) => {
+    appendLog(`Whisper manager render process gone (${details?.reason || 'unknown'}); reloading.`, true);
+    if (whisperManagerWindow && !whisperManagerWindow.isDestroyed()) whisperManagerWindow.reload();
+  });
+  whisperManagerWindow.webContents.on('did-finish-load', () => {
+    fitWhisperManagerWindowToContent();
+  });
+  whisperManagerWindow.loadURL(tempServer.getUrl(WHISPER_MANAGER_PATH) + TELEMETRY_QUERY_STRING);
+  whisperManagerWindow.once('ready-to-show', async () => {
+    await fitWhisperManagerWindowToContent();
+    whisperManagerWindow.show();
+  });
+  return whisperManagerWindow;
+}
+
+function osAnchor() {
+  if (process.platform === 'darwin') return 'macos';
+  if (process.platform === 'win32') return 'windows';
+  return 'linux';
+}
+
+function trayIconNames() {
+  if (process.platform === 'darwin') return { base: 'trayTemplate.png', update: 'trayUpdateTemplate.png' };
+  if (process.platform === 'win32') return { base: 'tray.ico', update: 'tray-update.ico' };
+  return { base: 'tray-32.png', update: 'tray-update-32.png' };
+}
+
+function loadTrayIcon(fileName) {
+  const image = nativeImage.createFromPath(path.join(__dirname, 'static', 'icons', 'tray', fileName));
+  if (image.isEmpty()) return null;
+  if (process.platform === 'darwin') image.setTemplateImage(true);
+  return image;
+}
+
+function getTrayImage() {
+  return loadTrayIcon(trayIconNames().base)
+    || nativeImage.createFromPath(getWindowIconPath()).resize({ width: 16, height: 16 });
+}
+
+function getTrayUpdateImage() {
+  return loadTrayIcon(trayIconNames().update);
+}
+
+function openConfigSection(section) {
+  if (configWindow && !configWindow.isDestroyed()) {
+    configWindow.show();
+    configWindow.focus();
+    const payload = JSON.stringify(String(section));
+    configWindow.webContents
+      .executeJavaScript(`typeof window.__openConfigSection === 'function' && window.__openConfigSection(${payload})`)
+      .catch(() => {});
+    return;
+  }
+  createConfigWindow(section);
+}
+
+function openOllamaManagerFromTray() {
+  try {
+    const index = readConfigIndex();
+    const configId = currentConfigId || index.activeConfigId;
+    const record = index.configs.find((config) => config.id === configId);
+    const configPath = getConfigFilePath(configId);
+    ollamaManagerContext = {
+      yamlText: fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '',
+      configId: configId ?? null,
+      configName: record?.name || 'Current setting',
+      environmentInfo: null,
+    };
+  } catch {
+    ollamaManagerContext = { yamlText: '', configId: null, configName: 'Current setting', environmentInfo: null };
+  }
+  createOllamaManagerWindow();
+}
+
+function isOpenAtLoginEnabled() {
+  try {
+    return Boolean(app.getLoginItemSettings().openAtLogin);
+  } catch {
+    return false;
+  }
+}
+
+function isAutoStartOllamaEnabled() {
+  try {
+    return readConfigIndex().preferences?.autoStartOllama ?? true;
+  } catch {
+    return true;
+  }
+}
+
+function setAutoStartOllama(enabled) {
+  try {
+    const index = readConfigIndex();
+    ensurePreferences(index);
+    index.preferences.autoStartOllama = Boolean(enabled);
+    saveConfigIndex(index);
+  } catch (error) {
+    appendLog(`Failed to save Ollama auto-start preference: ${error.message || String(error)}`, true);
+  }
+}
+
+function notifyOllamaAutoStart() {
+  try {
+    if (!Notification.isSupported()) return;
+    new Notification({
+      title: 'Starting Ollama',
+      body: 'Ollama is starting with Spring AI Playground. Turn this off in tray > System > Start Ollama with app.',
+      silent: true,
+    }).show();
+  } catch {
+  }
+}
+
+function trayFactoryReset() {
+  const choice = dialog.showMessageBoxSync({
+    type: 'warning',
+    title: 'Factory Reset',
+    message: 'Reset Spring AI Playground to factory defaults?',
+    detail: 'This deletes all saved settings, secrets, and workspace data, then restarts the app. This cannot be undone.',
+    buttons: ['Cancel', 'Reset and Restart'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (choice === 1) factoryReset();
+}
+
+function buildTrayTemplate() {
+  const version = app.getVersion();
+  return [
+    { label: `Spring AI Playground  v${version}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Settings', submenu: [
+      { label: 'Config Type & Saved Settings…', click: () => openConfigSection('config-card') },
+      { label: 'Edit Config (YAML)…', click: () => openConfigSection('yaml-editor') },
+      { label: 'Default MCP Tools…', click: () => openConfigSection('tools-card') },
+      { label: 'Environment Variables…', click: () => openConfigSection('env-card') },
+      { label: 'JVM & App Args…', click: () => openConfigSection('jvm-card') },
+    ] },
+    { type: 'separator' },
+    { label: 'Ollama Model Manager…', click: () => openOllamaManagerFromTray() },
+    { label: 'Voice (STT) Model Manager…', click: () => createWhisperManagerWindow() },
+    { type: 'separator' },
+    { label: 'Updates', submenu: [
+      { label: 'Check for Updates', click: () => runUpdateCheck({ manual: true }) },
+      ...(trayUpdateState.available && trayUpdateState.url
+        ? [updater.supportsAutoInstall()
+          ? { label: `Download and Install ${trayUpdateState.version}…`, click: () => downloadAndInstallUpdate() }
+          : { label: `Download ${trayUpdateState.version}…`, click: () => shell.openExternal(trayUpdateState.url) }]
+        : []),
+      { type: 'separator' },
+      { label: 'Install Help (this OS)…', click: () => shell.openExternal(`${DOCS_DESKTOP}#${osAnchor()}`) },
+      { label: 'Documentation…', click: () => shell.openExternal(`${DOCS_BASE}/`) },
+    ] },
+    { type: 'separator' },
+    { label: 'Open App Home Folder…', click: () => {
+      const dir = getSpringAiPlaygroundHomeDir();
+      try { fs.mkdirSync(dir, { recursive: true }); } catch {}
+      shell.openPath(dir);
+    } },
+    { type: 'separator' },
+    { label: 'System', submenu: [
+      {
+        label: 'Launch at startup',
+        type: 'checkbox',
+        checked: isOpenAtLoginEnabled(),
+        click: (item) => { try { app.setLoginItemSettings({ openAtLogin: item.checked }); } catch {} },
+      },
+      {
+        label: 'Start Ollama with app',
+        type: 'checkbox',
+        checked: isAutoStartOllamaEnabled(),
+        click: (item) => setAutoStartOllama(item.checked),
+      },
+      { label: 'Factory Reset…', click: () => trayFactoryReset() },
+    ] },
+    { type: 'separator' },
+    { label: 'Quit', click: () => shutdownApplication({ exitCode: 0 }) },
+  ];
+}
+
+function refreshTrayMenu() {
+  if (tray && !tray.isDestroyed()) tray.setContextMenu(Menu.buildFromTemplate(buildTrayTemplate()));
+}
+
+function createTray() {
+  if (tray) return tray;
+  tray = new Tray(getTrayImage());
+  tray.setToolTip('Spring AI Playground');
+  if (process.platform !== 'darwin') tray.on('click', () => tray.popUpContextMenu());
+  refreshTrayMenu();
+  return tray;
+}
+
+function destroyTray() {
+  if (tray) {
+    try { tray.destroy(); } catch {}
+    tray = null;
+  }
+}
+
+function updateTrayForAvailableUpdate(version) {
+  if (!tray || tray.isDestroyed()) return;
+  tray.setToolTip(`Spring AI Playground - update ${version} available`);
+  const updateImage = getTrayUpdateImage();
+  if (updateImage) {
+    tray.setImage(updateImage);
+    if (process.platform === 'darwin') tray.setTitle('');
+    return;
+  }
+  if (process.platform === 'darwin') tray.setTitle(' ●');
+}
+
+let updateDownloadInProgress = false;
+
+async function downloadAndInstallUpdate() {
+  if (updateDownloadInProgress) return;
+  updateDownloadInProgress = true;
+  try {
+    appendLog(`Downloading update ${trayUpdateState.version} in the background.`);
+    const update = await updater.downloadUpdatePackage((progress) => {
+      if (tray && !tray.isDestroyed()) {
+        tray.setToolTip(`Spring AI Playground - downloading update ${Math.round(progress.percent || 0)}%`);
+      }
+    });
+    if (tray && !tray.isDestroyed()) tray.setToolTip(`Spring AI Playground - update ${update.version} ready`);
+    const choice = await dialog.showMessageBox({
+      type: 'info',
+      title: 'Update Ready',
+      message: `Update ${update.version} downloaded.`,
+      detail: 'Restart now to install it, or keep working and it installs when you quit.',
+      buttons: ['Restart and Install', 'Install on Quit'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (choice.response === 0) update.installNow();
+    else update.installOnQuit();
+  } catch (error) {
+    appendLog(`Automatic update failed: ${error.message || String(error)}. Opening the download page instead.`, true);
+    if (trayUpdateState.url) shell.openExternal(trayUpdateState.url);
+  } finally {
+    updateDownloadInProgress = false;
+  }
+}
+
+async function runUpdateCheck({ manual = false } = {}) {
+  const result = await updater.checkForUpdate(app.getVersion());
+  if (result.status === 'update-available') {
+    trayUpdateState = { available: true, version: result.version, url: result.downloadUrl || result.releaseUrl };
+    updateTrayForAvailableUpdate(result.version);
+  } else {
+    trayUpdateState = { available: false, version: null, url: null };
+    if (tray && !tray.isDestroyed()) {
+      tray.setToolTip('Spring AI Playground');
+      tray.setImage(getTrayImage());
+      if (process.platform === 'darwin') tray.setTitle('');
+    }
+  }
+  refreshTrayMenu();
+  if (manual) {
+    const outcomes = {
+      'update-available': ['info', `Update available: ${result.version}`,
+        updater.supportsAutoInstall()
+          ? 'Use the Updates menu to download and install it.'
+          : 'Use the Updates menu to download it.'],
+      'up-to-date': ['info', 'You are on the latest version.', `Current version: ${app.getVersion()}`],
+      'dev': ['info', 'Development build.', 'Update checks are skipped in development.'],
+      'error': ['warning', 'Could not check for updates.', result.error || 'Network error.'],
+      'unknown': ['warning', 'Could not determine the latest version.', ''],
+    };
+    const [type, message, detail] = outcomes[result.status] || outcomes.unknown;
+    dialog.showMessageBox({ type, message, detail, buttons: ['OK'], noLink: true });
+  }
+  return result;
 }
 
 function getSerializableDownloadQueue() {
@@ -2196,6 +2660,7 @@ async function shutdownApplication({ exitCode = 0, logMessage = null } = {}) {
   if (shutdownPromise) return shutdownPromise;
   shutdownPromise = (async () => {
     isQuitting = true;
+    destroyTray();
     const shutdownWaitMs = getShutdownWaitMs(activeConfigPath || getConfigFilePath(currentConfigId || readConfigIndex().activeConfigId));
     const shutdownWaitSeconds = Math.round(shutdownWaitMs / 1000);
 
@@ -2537,6 +3002,10 @@ function startSpringServerWhenSecretsReady() {
 
 ipcMain.handle('config:load', async () => buildConfigLoadPayload());
 
+ipcMain.handle('config:open-section', (event, section) => {
+  openConfigSection(typeof section === 'string' && section ? section : null);
+});
+
 ipcMain.handle('config:get-tools-preset', async () => {
   try {
     const prefPath = getDefaultToolsPreferencePath();
@@ -2718,7 +3187,7 @@ ipcMain.handle('config:reset', async () => {
   app.exit(0);
 });
 
-ipcMain.handle('app:factoryReset', async () => {
+async function factoryReset() {
   if (serverProcess) {
     await stopSpringServer();
   }
@@ -2734,7 +3203,9 @@ ipcMain.handle('app:factoryReset', async () => {
   isQuitting = true;
   app.relaunch({ args: process.argv.slice(1).concat(['--relaunch', '--factory-reset']) });
   app.exit(0);
-});
+}
+
+ipcMain.handle('app:factoryReset', async () => factoryReset());
 
 ipcMain.handle('config:delete', async () => {
   const index = readConfigIndex();
@@ -2768,6 +3239,12 @@ ipcMain.handle('config:launch', async (event, payload) => {
   index.meta.hasCompletedInitialSetup = true;
   index.meta.initialSetupCompletedVersion = app.getVersion();
   saveConfigIndex(index);
+  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.close(); mainWindow = null; }
+  if (serverSplashWindow && !serverSplashWindow.isDestroyed()) { serverSplashWindow.close(); serverSplashWindow = null; }
+  if (serverProcess) {
+    appendLog('Stopping current server to apply the updated configuration...');
+    await stopSpringServer();
+  }
   launchApplicationWithConfig(configPath);
   return buildConfigLoadPayload(selectedConfigId);
 });
@@ -2853,6 +3330,56 @@ ipcMain.handle('ollama-manager:request-close', async () => {
     return { closed: true };
   } finally {
     ollamaManagerCloseInProgress = false;
+  }
+});
+
+ipcMain.handle('whisper-manager:open', async () => {
+  createWhisperManagerWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('whisper-manager:get-context', async () => {
+  let status = null;
+  try {
+    status = whisperManager.getInstallationStatus({});
+  } catch (error) {
+    appendLog(`Failed to read STT status: ${error.message || String(error)}`, true);
+  }
+  return { serverUrl: dynamicServerUrl, status, whisperHome: whisperManager.whisperHomeDir() };
+});
+
+ipcMain.handle('whisper-manager:fit-window', async () => {
+  await fitWhisperManagerWindowToContent();
+  return { ok: true };
+});
+
+ipcMain.handle('whisper-manager:request-close', async () => {
+  if (!whisperManagerWindow || whisperManagerWindow.isDestroyed()) return { closed: true };
+  if (whisperManagerCloseInProgress) return { closed: false, busy: true };
+  if (!whisperManager.isDownloading()) {
+    allowWhisperManagerWindowClose = true;
+    whisperManagerWindow.close();
+    return { closed: true };
+  }
+  const choice = dialog.showMessageBoxSync(whisperManagerWindow, {
+    type: 'warning',
+    title: 'Cancel download and close?',
+    buttons: ['Keep downloading', 'Cancel and close'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    message: 'A voice model download is in progress.',
+    detail: 'If you continue, the current download stops. The partial file is kept so you can resume later.',
+  });
+  if (choice !== 1) return { closed: false, canceled: true };
+  whisperManagerCloseInProgress = true;
+  try {
+    whisperManager.cancelModelDownload();
+    allowWhisperManagerWindowClose = true;
+    if (whisperManagerWindow && !whisperManagerWindow.isDestroyed()) whisperManagerWindow.close();
+    return { closed: true };
+  } finally {
+    whisperManagerCloseInProgress = false;
   }
 });
 
@@ -3148,6 +3675,9 @@ app.whenReady().then(async () => {
     const configPath = getConfigFilePath(index.activeConfigId);
     launchApplicationWithConfig(configPath);
   }
+
+  createTray();
+  runUpdateCheck({ manual: false }).catch(() => {});
 
   if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
 });

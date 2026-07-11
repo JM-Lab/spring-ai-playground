@@ -17,12 +17,13 @@ package org.springaicommunity.playground.service.tool;
 
 import java.util.List;
 
-public record HumanQuestion(String header, String question, List<Option> options, boolean multiSelect) {
+public record HumanQuestion(String id, String header, String question, List<Option> options,
+                            boolean multiSelect) {
 
     public record Option(String label, String description) {}
 
-    public static HumanQuestion approval(String header, String question) {
-        return new HumanQuestion(header, question,
+    public static HumanQuestion approval(String id, String header, String question) {
+        return new HumanQuestion(id, header, question,
                 List.of(new Option("Approve", "Run the tool with these arguments"),
                         new Option("Decline", "Cancel; do not run the tool")),
                 false);

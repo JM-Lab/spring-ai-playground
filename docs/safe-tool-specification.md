@@ -397,8 +397,8 @@ When the resolved posture grants the corresponding capability, the runtime expos
 
 | Helper | Required posture | Purpose |
 |---|---|---|
-| `safety.fs/v1` (read group) | `capabilities.fileRead = true` | `readText`, `list`, `exists`, `stat`, `grep`, `lineCount`, `slice`, `cut`, `sort`, `find` - all rooted at `fsBasePath` with path-escape protection |
-| `safety.fs/v1` (write) | `capabilities.fileWrite = true` | `writeText` only |
+| `safety.fs/v1` (read group) | `capabilities.fileRead = true` | `readText`, `list`, `exists`, `stat`, `grep`, `searchInFiles`, `lineCount`, `slice`, `cut`, `sort`, `find` - all rooted at `fsBasePath` with path-escape protection |
+| `safety.fs/v1` (write group) | `capabilities.fileWrite = true` | `writeText`, `appendText`, `editText`, `copy` (create / amend inside the workspace); `move`, `delete`, `deleteDir` additionally require `destructive: true` and are irreversible |
 | `safety.parser/v1` (or `tool-safety-helpers/v1#parser`) | always available | Jsoup HTML, SnakeYAML `load`, RFC 4180 CSV, DTD/XXE-hardened XML - see Section 8.4 for the per-helper contract and known security caveats |
 | `safety.http/v1` | `capabilities.network.mode != "blocked"` | Outbound HTTP via `fetch` with the SSRF four-layer guard active in `strict` mode (in `allowlist` mode only the explicit host allow-list is enforced - no IP/DNS-rebind guard) |
 | `tool-safety-helpers/v1#crypto` | always available | The `crypto.subtle` API and related primitives |
@@ -472,7 +472,8 @@ Implementations MUST treat `sandboxOverrides` as the author's declared widening 
   "hostsAllow":         ["api.upbit.com"],
   "fileRead":           null,
   "fileWrite":          null,
-  "fsBasePath":         null
+  "fsBasePath":         null,
+  "destructive":        false
 }
 ```
 
@@ -487,11 +488,13 @@ Implementations MUST treat `sandboxOverrides` as the author's declared widening 
 | `fileRead` | boolean OR null | **yes** | inherit baseline (default = `false`) |
 | `fileWrite` | boolean OR null | **yes** | inherit baseline (default = `false`) |
 | `fsBasePath` | string OR null | **yes** | inherit baseline path |
+| `destructive` | boolean OR null | no | absent / null / `false` - not destructive. `true` marks a tool that removes or relocates data (delete, move, recursive dir removal) and scores **L5** |
 
 Notes:
 
 - For `networkMode`, `fileRead`, `fileWrite`, `fsBasePath` the distinction between `null` (inherit) and an explicit value (override) is significant. Setting `fileRead: false` explicitly is different from omitting the field - explicit `false` MUST clear any baseline that would have granted read access.
 - `addAllowClasses` ∩ `addDenyClasses` MUST be empty after merge with baseline. A resolver detecting overlap MUST raise a deterministic resolver error rather than silently picking one.
+- `destructive` is a plain capability flag, not tristate: it defaults to `false` and is not inherited from any baseline. A `true` value raises the Risk Level to **L5** regardless of the other fields, reflecting that the operation's data loss is not recoverable from the file itself. It does not change what the sandbox permits (a destructive tool still needs `fileWrite`); it changes only the scored posture and the review bar.
 - An empty `SandboxOverrides` block (all fields null/empty) is equivalent to no block at all; consumers MUST treat them interchangeably.
 
 ### 10.2 Resolution algorithm
@@ -629,6 +632,7 @@ elif capabilities.network.mode == "strict":  risk := max(risk, L3)
 elif capabilities.network.mode == "open":    risk := max(risk, L4)
 if fileWrite:                                risk := max(risk, L4)
 elif fileRead:                               risk := max(risk, L3)
+if destructive:                              risk := max(risk, L5)
 
 for cls in (baseline.deny - sandboxOverrides.removeDenyClasses):
     if cls matches System|Runtime|Process|ProcessBuilder:  risk := max(risk, L5)

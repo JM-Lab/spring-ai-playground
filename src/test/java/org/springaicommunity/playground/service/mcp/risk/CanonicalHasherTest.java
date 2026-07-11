@@ -15,10 +15,12 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.mcp.catalog.McpToolDescriptor;
 import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpec.CodeType;
@@ -107,7 +109,7 @@ class CanonicalHasherTest {
         ToolSpec base = tool("id", "getCurrentTime", "return new Date();");
         ToolSpec loosened = tool("id", "getCurrentTime", "return new Date();")
                 .withSandboxOverrides(new SandboxOverrides(Set.of(), Set.of(), Set.of(), Set.of(),
-                        "open", Set.of("evil.example"), Boolean.TRUE, Boolean.TRUE, null));
+                        "open", Set.of("evil.example"), Boolean.TRUE, Boolean.TRUE, null, null));
         assertNotEquals(hasher.hashTool(base), hasher.hashTool(loosened),
                 "a privilege-loosening sandbox change must alter the canonical hash");
     }
@@ -117,6 +119,17 @@ class CanonicalHasherTest {
         assertNotEquals(
                 hasher.hashTool(tool("id", "getCurrentTime", "x")),
                 hasher.hashTool(tool("id", "getWeather", "x")));
+    }
+
+    @Test
+    void mcpToolHashMatchesPinnedProfileVector() {
+        JsonNode schema = new ObjectMapper().readTree(
+                "{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"]}");
+        assertEquals("2308889d3c635456f52daa70ce97bdc9f4691e2854d48afe76fb67f6c4f9973a",
+                hasher.hashMcpTool("search_web", "Search the web and return top results.",
+                        schema, McpToolDescriptor.Annotations.EMPTY),
+                "pinned canonicalization vector: a mismatch means the sorted-key compact profile drifted"
+                        + " and every stored fingerprint would silently re-baseline");
     }
 
     private McpServerInfo server(String connectionJson, long created, Long lastUsed) {

@@ -136,7 +136,7 @@ public class ChatHistoryServiceTest {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
         this.chatMemory.add(chatHistory.conversationId(), new UserMessage("User Message"));
         ChatHistory titled = chatHistoryService.updateChatHistory(chatHistory);
-        chatHistoryService.deleteChatHistory(titled);
+        chatHistoryService.deleteChatHistory(titled, true);
 
         ChatHistory recommitted = chatHistoryService.updateChatHistory(titled);
 
@@ -162,7 +162,7 @@ public class ChatHistoryServiceTest {
         ChatHistory chatHistory = chatHistoryService.createChatHistory("To Delete", chatOptions);
         String conversationId = chatHistory.conversationId();
 
-        chatHistoryService.deleteChatHistory(chatHistory);
+        chatHistoryService.deleteChatHistory(chatHistory, true);
         List<ChatHistory> historyList = chatHistoryService.getChatHistoryList();
 
         assertFalse(historyList.stream().anyMatch(h -> h.conversationId().equals(conversationId)));
@@ -181,7 +181,7 @@ public class ChatHistoryServiceTest {
 
         chatHistoryService.updateChatHistory(chatHistory.mutate("", System.currentTimeMillis()));
 
-        chatHistoryService.deleteChatHistory(chatHistory);
+        chatHistoryService.deleteChatHistory(chatHistory, true);
         chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_EMPTY_EVENT, null, conversationId);
 
         chatHistoryChangeSupport.firePropertyChange(ChatView.CHAT_HISTORY_SELECT_EVENT, null, conversationId);
@@ -216,7 +216,7 @@ public class ChatHistoryServiceTest {
         Path expected = chatHistoryPersistenceService.getSaveDir().resolve(chatHistory.conversationId() + ".json");
         assertThat(expected).exists();
 
-        chatHistoryService.deleteChatHistory(chatHistory);
+        chatHistoryService.deleteChatHistory(chatHistory, true);
         persistenceExecutor.awaitCompletion(Duration.ofSeconds(2));
 
         assertThat(expected).doesNotExist();

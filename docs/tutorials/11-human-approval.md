@@ -52,7 +52,7 @@ Ask again, but this time click **Decline**.
 The tool does **not** run. Instead the model is told you declined approval and that it should not retry - so it either finds another way or replies that the action couldn't be completed because you declined. Nothing executed; the decline is recorded in the run.
 
 !!! warning "Approval fails safe"
-    If you don't answer within two minutes, or close the dialog, the call is treated as **declined** and does not run. A gated tool only runs on an explicit **Approve**.
+    If you don't answer within two minutes (the `agent-loop.approval-timeout-seconds` [setting](../getting-started/configuration.md#agent-loop)), or close the dialog, the call is treated as **declined** and does not run. A gated tool only runs on an explicit **Approve**.
 
 ## What you learned { #recap }
 

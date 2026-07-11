@@ -447,7 +447,7 @@ class ToolSpecServiceTest {
         SandboxOverrides allowlistOnly = new SandboxOverrides(
                 Set.of(), Set.of(), Set.of(), Set.of(),
                 "allowlist", Set.of("wttr.in"),
-                null, null, null);
+                null, null, null, null);
 
         JsExecutionResult result = toolSpecService.executeTool(
                 "allowlistOnlyTool", List.<Map.Entry<String, String>>of(),
@@ -473,7 +473,7 @@ class ToolSpecServiceTest {
                 Set.of(), Set.of(),
                 Set.of(), Set.of("java.lang.System"),
                 "blocked", Set.of(),
-                null, null, null);
+                null, null, null, null);
 
         JsExecutionResult result = toolSpecService.executeTool(
                 "criticalRemovedTool", List.<Map.Entry<String, String>>of(),

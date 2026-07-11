@@ -87,7 +87,7 @@ spring:
         stdio:
           connections:
             weather-mcp-server:
-              command: /Users/jm/myenv/bin/python
+              command: python3
               args:
                 - -m
                 - mcp_weather_server

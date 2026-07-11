@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="telemetry.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download and Manage Speech-to-Text Models</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f7f4ee;
+            --panel: rgba(255, 255, 255, 0.97);
+            --panel-2: #fff8ee;
+            --border: rgba(95, 106, 100, 0.16);
+            --text: hsl(214, 35%, 15%);
+            --muted: hsl(214, 20%, 47%);
+            --accent: #1f7a5a;
+            --accent-2: #d2a147;
+            --danger: #c0392b;
+            --warning: #9d6a00;
+            --success: #217a42;
+            --radius: 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        html {
+            overflow-y: auto;
+            scrollbar-gutter: stable;
+        }
+        body {
+            margin: 0;
+            background:
+                radial-gradient(circle at top left, rgba(31, 122, 90, 0.14), transparent 26%),
+                radial-gradient(circle at top right, rgba(210, 161, 71, 0.16), transparent 22%),
+                linear-gradient(180deg, #fbf6ee 0%, #efe4d4 100%);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        .shell {
+            display: grid;
+            grid-template-rows: auto auto auto;
+            gap: 16px;
+            padding: 20px;
+            min-width: 0;
+            overflow-x: clip;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 14px 30px rgba(33, 43, 54, 0.08);
+        }
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: end;
+            padding: 18px 20px;
+        }
+        .hero-copy {
+            min-width: 0;
+            flex: 1;
+        }
+        .hero h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            letter-spacing: -0.02em;
+        }
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.5;
+            max-width: 780px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            padding: 16px 18px;
+        }
+        .mini {
+            background: rgba(255,255,255,0.72);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .mini-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .mini-value {
+            font-size: 13px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .panel-body {
+            display: grid;
+            gap: 14px;
+            padding: 16px 18px;
+        }
+        .section-title h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .section-title p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .checkbox-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 12px 14px;
+            background: #fffdfa;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            cursor: pointer;
+            line-height: 1.45;
+        }
+        .checkbox-row input {
+            margin-top: 2px;
+            width: 18px;
+            height: 18px;
+        }
+        .model-card {
+            display: grid;
+            gap: 10px;
+            padding: 16px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            min-width: 0;
+        }
+        .meta-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .meta-value {
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .model-select-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        select {
+            flex: 1;
+            min-width: 320px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #fffdfa;
+            color: var(--text);
+            font: inherit;
+        }
+        .badge {
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            background: #f2f4f6;
+            border: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        progress {
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 0;
+        }
+        progress::-webkit-progress-bar {
+            background: rgba(31, 122, 90, 0.12);
+            border-radius: 999px;
+        }
+        progress::-webkit-progress-value {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            border-radius: 999px;
+        }
+        .progress-text {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+        .model-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .button-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .button-content svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 11px 16px;
+            font: inherit;
+            cursor: pointer;
+        }
+        button.primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            color: #fff;
+            font-weight: 700;
+        }
+        button.secondary {
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .notice {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(192, 57, 43, 0.22);
+            background: #fff1ef;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .restart-hint {
+            font-size: 13px;
+            color: var(--success);
+        }
+        .footer {
+            padding: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .footer-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 6px 0;
+        }
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .status-good { color: var(--success); }
+        .status-warn { color: var(--warning); }
+        .status-bad { color: var(--danger); }
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 360px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(32, 55, 64, 0.96);
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(33, 43, 54, 0.24);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 160ms ease, transform 160ms ease;
+            z-index: 30;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.error {
+            background: rgba(192, 57, 43, 0.96);
+        }
+        @media (max-width: 980px) {
+            .status-bar { grid-template-columns: 1fr; }
+            select { min-width: 0; width: 100%; }
+            .footer-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .footer-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="card hero">
+        <div class="hero-copy">
+            <h1>Download and Manage Speech-to-Text Models</h1>
+            <p>Enable voice input and download a local Whisper model. Larger models are more accurate but load more memory while transcribing. Changes apply the next time the app launches.</p>
+        </div>
+        <div class="hero-actions">
+            <button class="secondary" id="open-folder-button" type="button" title="Open the whisper model folder" aria-label="Open the whisper model folder">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span>Open Folder</span></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card status-bar" id="status-bar"></div>
+
+    <div class="card">
+        <div class="panel-body">
+            <div class="section-title">
+                <h2>Local Speech-to-Text</h2>
+                <p>Whisper runs on demand inside the app. Pick a model, download it, and set it active.</p>
+            </div>
+            <label class="checkbox-row" for="stt-enabled-check">
+                <input id="stt-enabled-check" type="checkbox">
+                <span>Use voice input (load Whisper on demand). Memory cost depends on the model below.</span>
+            </label>
+            <div class="model-card">
+                <div class="meta-label">Choose model</div>
+                <div class="model-select-row">
+                    <select id="stt-model-select"></select>
+                    <span id="stt-model-badge" class="badge">…</span>
+                </div>
+                <div id="stt-model-description" class="meta-value" style="color: var(--muted);">Pick a model to see its description.</div>
+                <div id="stt-memory-note" class="meta-value" style="color: var(--muted);">…</div>
+                <div id="stt-progress-wrap" hidden>
+                    <progress id="stt-progress" value="0" max="100"></progress>
+                    <div id="stt-progress-text" class="progress-text">0 MB / ?</div>
+                </div>
+                <div class="model-actions">
+                    <button class="primary" id="stt-download-button" type="button" title="Download the selected model">
+                        <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span id="stt-download-label">Download model</span></span>
+                    </button>
+                    <button class="secondary" id="stt-cancel-button" type="button" hidden>
+                        <span class="button-content"><span>Cancel download</span></span>
+                    </button>
+                    <button class="secondary" id="stt-set-active-button" type="button" hidden title="Set the selected (already downloaded) model as active">
+                        <span class="button-content"><span>Set active</span></span>
+                    </button>
+                    <button class="secondary" id="stt-refresh-button" type="button" title="Re-check installed models">
+                        <span class="button-content"><span>Refresh</span></span>
+                    </button>
+                    <button class="secondary" id="stt-open-folder-button" type="button" title="Open the whisper model folder">
+                        <span class="button-content"><span>Open folder</span></span>
+                    </button>
+                </div>
+                <div id="stt-restart-hint" class="restart-hint" hidden>Setting changed. Restart the app to apply.</div>
+                <div id="stt-error" class="notice" hidden></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bar">
+        <div class="footer" id="footer-status">Preparing speech-to-text manager...</div>
+        <div class="footer-actions">
+            <button class="secondary" id="close-window" type="button" title="Close this window" aria-label="Close this window">
+                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg><span>Close</span></span>
+            </button>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  const state = {
+    context: null,
+    serverUrl: null,
+    catalog: null,
+    status: null,
+  };
+
+  const statusBar = document.getElementById('status-bar');
+  const footerStatus = document.getElementById('footer-status');
+  const toast = document.getElementById('toast');
+  const sttEnabledCheck = document.getElementById('stt-enabled-check');
+  const sttModelSelect = document.getElementById('stt-model-select');
+  const sttModelBadge = document.getElementById('stt-model-badge');
+  const sttModelDescription = document.getElementById('stt-model-description');
+  const sttMemoryNote = document.getElementById('stt-memory-note');
+  const sttDownloadButton = document.getElementById('stt-download-button');
+  const sttDownloadLabel = document.getElementById('stt-download-label');
+  const sttCancelButton = document.getElementById('stt-cancel-button');
+  const sttSetActiveButton = document.getElementById('stt-set-active-button');
+  const sttRefreshButton = document.getElementById('stt-refresh-button');
+  const sttOpenFolderButton = document.getElementById('stt-open-folder-button');
+  const heroOpenFolderButton = document.getElementById('open-folder-button');
+  const sttProgressWrap = document.getElementById('stt-progress-wrap');
+  const sttProgress = document.getElementById('stt-progress');
+  const sttProgressText = document.getElementById('stt-progress-text');
+  const sttRestartHint = document.getElementById('stt-restart-hint');
+  const sttError = document.getElementById('stt-error');
+  const closeWindowButton = document.getElementById('close-window');
+
+  let toastTimer = null;
+  let fitWindowTimers = [];
+  let closeWindowInProgress = false;
+
+  const STT_MODELS_ENDPOINT_FALLBACK = 'http://127.0.0.1:8282';
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function setFooter(text, isError = false) {
+    footerStatus.textContent = text;
+    footerStatus.className = isError ? 'footer status-bad' : 'footer';
+  }
+
+  function showToast(text, isError = false) {
+    if (!toast) return;
+    toast.textContent = text;
+    toast.className = isError ? 'toast show error' : 'toast show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.className = isError ? 'toast error' : 'toast';
+    }, 2600);
+  }
+
+  function scheduleWindowFit() {
+    for (const timer of fitWindowTimers) clearTimeout(timer);
+    fitWindowTimers = [setTimeout(() => {
+      window.whisperManagerAPI.invoke('whisper-manager:fit-window').catch(() => {});
+    }, 200)];
+  }
+
+  function initWindowFitObservers() {
+    window.addEventListener('load', () => scheduleWindowFit());
+  }
+
+  const formatBytes = (n) => {
+    if (n == null) return '?';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+    return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  };
+
+  const formatRamMb = (mb) => mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB RAM` : `${mb} MB RAM`;
+
+  const fetchModelCatalog = async () => {
+    try {
+      const base = state.serverUrl || STT_MODELS_ENDPOINT_FALLBACK;
+      const res = await fetch(base + '/api/stt/models', { cache: 'no-store' });
+      if (res.ok) return await res.json();
+    } catch (_) { }
+    return [
+      { id: 'tiny', filename: 'ggml-tiny.bin', sizeBytes: 77704715, runtimeRamMb: 200, multilingual: true,
+        description: 'Multilingual model, but accuracy is only acceptable for short English-only utterances. Pick something larger for any other language.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin' },
+      { id: 'base', filename: 'ggml-base.bin', sizeBytes: 147951465, runtimeRamMb: 270, multilingual: true,
+        description: 'Multilingual basic model. Noticeably better than tiny for non-English speech, still skips long words.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin' },
+      { id: 'small', filename: 'ggml-small.bin', sizeBytes: 487601967, runtimeRamMb: 700, multilingual: true,
+        description: 'Multilingual, balanced quality. Reliable for everyday speech in major languages.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin' },
+      { id: 'medium-q5', filename: 'ggml-medium-q5_0.bin', sizeBytes: 539212467, runtimeRamMb: 800, multilingual: true,
+        description: 'Multilingual, solid quality. Quantized to roughly half the size of medium.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin' },
+      { id: 'large-v3-turbo-q5', filename: 'ggml-large-v3-turbo-q5_0.bin', sizeBytes: 574041195, runtimeRamMb: 830,
+        multilingual: true, recommended: true,
+        description: 'Quantized large-v3-turbo. Best speed-vs-accuracy balance with the smallest memory footprint among the high-quality options.',
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin' },
+      { id: 'large-v3-turbo', filename: 'ggml-large-v3-turbo.bin', sizeBytes: 1624555275, runtimeRamMb: 2000, multilingual: true,
+        description: 'Turbo decoder at full precision. Faster than large-v3 with similar accuracy.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin' },
+      { id: 'large-v3', filename: 'ggml-large-v3.bin', sizeBytes: 3094623691, runtimeRamMb: 3500, multilingual: true,
+        description: 'Most accurate, multilingual. Slowest and largest, only worth it if turbo is not enough.',
+        recommended: false,
+        downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin' },
+    ];
+  };
+
+  const STT_QUALITY_HINTS = {
+    'tiny':                'English mostly · low quality',
+    'base':                'multilingual · basic',
+    'small':               'multilingual · fair',
+    'medium-q5':           'multilingual · good',
+    'large-v3-turbo-q5':   'multilingual · high · recommended',
+    'large-v3-turbo':      'multilingual · high · full precision',
+    'large-v3':            'multilingual · best · slowest',
+  };
+
+  const populateModelSelect = (catalog, preferredFilename) => {
+    sttModelSelect.innerHTML = '';
+    catalog.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m.filename;
+      const hint = STT_QUALITY_HINTS[m.id] || (m.multilingual ? 'multilingual' : 'English-only');
+      opt.textContent = `${m.id} — ${formatBytes(m.sizeBytes)} (${hint})`;
+      opt.dataset.id = m.id;
+      opt.dataset.size = String(m.sizeBytes);
+      opt.dataset.ramMb = String(m.runtimeRamMb || 0);
+      opt.dataset.description = m.description;
+      opt.dataset.downloadUrl = m.downloadUrl;
+      opt.dataset.recommended = String(m.recommended);
+      sttModelSelect.appendChild(opt);
+    });
+    const recommended = catalog.find((m) => m.recommended);
+    sttModelSelect.value = preferredFilename
+      || (recommended ? recommended.filename : (catalog[0] && catalog[0].filename) || '');
+  };
+
+  const renderStatusBar = () => {
+    const status = state.status || {};
+    const am = status.activeModel || {};
+    const enabled = status.enabled !== false;
+    const home = status.whisperHome || (state.context && state.context.whisperHome) || '-';
+    statusBar.innerHTML = `
+      <div class="mini">
+        <div class="mini-label">Voice input</div>
+        <div class="mini-value">${enabled ? '<span class="status-good">On next launch</span>' : '<span class="status-bad">Off</span>'}</div>
+      </div>
+      <div class="mini">
+        <div class="mini-label">Active model</div>
+        <div class="mini-value">${am.downloaded
+          ? `<span class="status-good">${escapeHtml(am.filename)}</span> (${formatBytes(am.sizeBytes)})`
+          : `<span class="status-warn">${escapeHtml(am.filename || '(none)')} — not downloaded</span>`}</div>
+      </div>
+      <div class="mini">
+        <div class="mini-label">Model folder</div>
+        <div class="mini-value">${escapeHtml(home)}</div>
+      </div>
+    `;
+  };
+
+  const updateSummary = () => {
+    const enabled = sttEnabledCheck.checked;
+    const am = (state.status && state.status.activeModel) || {};
+    const downloaded = am.downloaded;
+    const enabledTxt = enabled
+      ? 'Voice input is on for the next launch.'
+      : 'Voice input is off. Whisper will not load.';
+    const modelTxt = downloaded
+      ? `Active model ${am.filename} (${formatBytes(am.sizeBytes)}) is ready.`
+      : `Active model ${am.filename || '(none)'} is not downloaded yet.`;
+    setFooter(`${enabledTxt} ${modelTxt}`);
+    renderStatusBar();
+  };
+
+  const renderSelectedModelInfo = () => {
+    const opt = sttModelSelect.selectedOptions[0];
+    if (!opt) return;
+    const recommended = opt.dataset.recommended === 'true';
+    sttModelDescription.innerHTML = (recommended
+      ? '<strong style="color:var(--success);">Recommended.</strong> '
+      : '') + escapeHtml(opt.dataset.description || '');
+    const ramMb = Number(opt.dataset.ramMb || 0);
+    sttMemoryNote.textContent = ramMb
+      ? `Memory: this model loads about ${formatRamMb(ramMb)} into native memory (separate from the JVM heap) while transcribing.`
+      : '';
+    const installed = (state.status && state.status.installedModels || [])
+      .find((m) => m.filename === opt.value);
+    const isActive = state.status
+      && state.status.activeModel
+      && state.status.activeModel.filename === opt.value
+      && state.status.activeModel.downloaded;
+    if (installed) {
+      sttModelBadge.textContent = isActive ? 'Active' : `Downloaded (${formatBytes(installed.sizeBytes)})`;
+      sttModelBadge.style.background = isActive
+        ? 'rgba(33, 122, 66, 0.14)'
+        : '#f2f4f6';
+      sttDownloadLabel.textContent = 'Re-download';
+      sttSetActiveButton.hidden = isActive;
+    } else {
+      sttModelBadge.textContent = 'Not downloaded';
+      sttModelBadge.style.background = '#fff1ef';
+      sttDownloadLabel.textContent = 'Download model';
+      sttSetActiveButton.hidden = true;
+    }
+  };
+
+  const renderSttStatus = (status) => {
+    if (!status) return;
+    state.status = status;
+    sttEnabledCheck.checked = status.enabled !== false;
+    const downloadingNow = Boolean(status.download);
+    sttCancelButton.hidden = !downloadingNow;
+    sttProgressWrap.hidden = !downloadingNow;
+    if (downloadingNow) {
+      const downloaded = status.download.downloadedBytes || 0;
+      const total = status.download.totalBytes;
+      sttProgress.value = total ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
+      sttProgressText.textContent = `${formatBytes(downloaded)} / ${formatBytes(total)}${total ? ' (' + Math.round((downloaded / total) * 100) + '%)' : ''}`;
+    }
+    renderSelectedModelInfo();
+    updateSummary();
+    scheduleWindowFit();
+  };
+
+  const refreshSttStatus = async () => {
+    try {
+      const filename = sttModelSelect.value || undefined;
+      const status = await window.whisperManagerAPI.invoke('stt:status', filename ? { modelFilename: filename } : {});
+      renderSttStatus(status);
+    } catch (err) {
+      setFooter('Status check failed: ' + (err.message || err), true);
+    }
+  };
+
+  const openFolder = async () => {
+    try { await window.whisperManagerAPI.invoke('stt:open-folder'); } catch (_) { }
+  };
+
+  sttEnabledCheck.addEventListener('change', async () => {
+    const enabled = sttEnabledCheck.checked;
+    try {
+      await window.whisperManagerAPI.invoke('stt:set-enabled', { enabled });
+      sttRestartHint.hidden = false;
+      await refreshSttStatus();
+    } catch (e) {
+      sttError.textContent = e.message || String(e);
+      sttError.hidden = false;
+      sttEnabledCheck.checked = !enabled;
+    }
+  });
+
+  sttModelSelect.addEventListener('change', () => {
+    renderSelectedModelInfo();
+    refreshSttStatus();
+  });
+
+  sttRefreshButton.addEventListener('click', refreshSttStatus);
+  sttOpenFolderButton.addEventListener('click', openFolder);
+  heroOpenFolderButton.addEventListener('click', openFolder);
+
+  sttSetActiveButton.addEventListener('click', async () => {
+    const filename = sttModelSelect.value;
+    if (!filename) return;
+    try {
+      await window.whisperManagerAPI.invoke('stt:set-preferred-model', { filename });
+      sttRestartHint.hidden = false;
+      await refreshSttStatus();
+      showToast(`${filename} is now the active model.`);
+    } catch (e) {
+      sttError.textContent = e.message || String(e);
+      sttError.hidden = false;
+    }
+  });
+
+  sttDownloadButton.addEventListener('click', async () => {
+    const opt = sttModelSelect.selectedOptions[0];
+    if (!opt) return;
+    const filename = opt.value;
+    const url = opt.dataset.downloadUrl;
+    sttError.hidden = true;
+    sttError.textContent = '';
+    sttRestartHint.hidden = true;
+    sttProgress.value = 0;
+    sttProgressText.textContent = 'Connecting…';
+    sttProgressWrap.hidden = false;
+    sttCancelButton.hidden = false;
+    sttDownloadButton.disabled = true;
+    scheduleWindowFit();
+    try {
+      const result = await window.whisperManagerAPI.invoke('stt:download-model', { url, filename });
+      if (result && result.ok) {
+        sttProgressText.textContent = `Done — ${formatBytes(result.size)}`;
+        sttRestartHint.hidden = false;
+        showToast(`Downloaded ${filename}.`);
+      } else if (result && result.error) {
+        sttError.textContent = result.error;
+        sttError.hidden = false;
+      }
+    } catch (e) {
+      sttError.textContent = e.message || String(e);
+      sttError.hidden = false;
+    } finally {
+      sttDownloadButton.disabled = false;
+      sttCancelButton.hidden = true;
+      await refreshSttStatus();
+    }
+  });
+
+  sttCancelButton.addEventListener('click', async () => {
+    try { await window.whisperManagerAPI.invoke('stt:cancel-download'); } catch (_) { }
+  });
+
+  window.whisperManagerAPI.on('stt:download-progress', ({ downloadedBytes, totalBytes }) => {
+    sttProgressWrap.hidden = false;
+    const pct = totalBytes ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+    sttProgress.value = pct;
+    sttProgressText.textContent = `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)} (${pct}%)`;
+  });
+
+  window.whisperManagerAPI.on('stt:download-complete', () => {
+    refreshSttStatus();
+  });
+
+  window.whisperManagerAPI.on('stt:download-error', ({ message }) => {
+    sttError.textContent = message || 'Download failed.';
+    sttError.hidden = false;
+    sttProgressWrap.hidden = true;
+    refreshSttStatus();
+  });
+
+  async function requestCloseWindow() {
+    if (closeWindowInProgress) return;
+    closeWindowInProgress = true;
+    closeWindowButton.disabled = true;
+    try {
+      const downloadingNow = Boolean(state.status && state.status.download);
+      if (downloadingNow) {
+        setFooter('Stopping the current download and removing partial files...');
+      }
+      const result = await window.whisperManagerAPI.invoke('whisper-manager:request-close');
+      if (!result || !result.closed) {
+        closeWindowInProgress = false;
+        closeWindowButton.disabled = false;
+        if (result && result.busy) {
+          setFooter('Close is already in progress. Please wait...');
+          return;
+        }
+        if (downloadingNow) {
+          setFooter('Continuing the current download.');
+        }
+      }
+    } catch (error) {
+      closeWindowInProgress = false;
+      closeWindowButton.disabled = false;
+      setFooter(error.message || String(error), true);
+      showToast(error.message || String(error), true);
+    }
+  }
+
+  closeWindowButton.addEventListener('click', requestCloseWindow);
+
+  async function boot() {
+    try {
+      initWindowFitObservers();
+      try {
+        state.context = await window.whisperManagerAPI.invoke('whisper-manager:get-context');
+      } catch (_) {
+        state.context = null;
+      }
+      state.serverUrl = (state.context && state.context.serverUrl) || null;
+      const initialStatus = (state.context && state.context.status)
+        || await window.whisperManagerAPI.invoke('stt:status', {});
+      state.catalog = await fetchModelCatalog();
+      const preferred = (initialStatus && initialStatus.preferredModelFilename)
+        || (initialStatus && initialStatus.activeModel && initialStatus.activeModel.filename);
+      populateModelSelect(state.catalog, preferred);
+      renderSttStatus(initialStatus);
+    } catch (e) {
+      setFooter('Initialisation failed: ' + (e.message || e), true);
+    }
+  }
+
+  boot();
+</script>
+</body>
+</html>

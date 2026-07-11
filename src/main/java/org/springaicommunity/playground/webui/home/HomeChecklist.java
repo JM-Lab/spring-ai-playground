@@ -205,8 +205,9 @@ class HomeChecklist extends Div {
                 new ChecklistItem("Create your first tool",
                         "Extend the app with a JavaScript tool of your own.",
                         hasUserTool, ToolStudioView.class),
-                new ChecklistItem("Try an agentic workflow",
-                        "Ask the assistant: \"Get today's weather and send it to Slack.\"",
+                new ChecklistItem("Equip an agent and ask it",
+                        "Apply a Prompt Library preset or pick tools in chat settings, then ask something "
+                                + "that uses them. The default agent can also find tools on its own.",
                         hasAgenticExperience, ChatView.class)
         );
     }

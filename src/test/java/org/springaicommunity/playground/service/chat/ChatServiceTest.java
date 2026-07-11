@@ -33,14 +33,17 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -110,7 +113,7 @@ class ChatServiceTest {
 
         List<ChatService.RoundUsage> rounds = new ArrayList<>();
         chatService.stream(chatHistory, "Test Chat", null, null, null, null, null, null, rounds::add, null, null,
-                null).toStream().collect(Collectors.joining());
+                null, null, null, List.of()).toStream().collect(Collectors.joining());
 
         assertEquals(1, rounds.size());
         ChatService.RoundUsage round = rounds.get(0);
@@ -119,6 +122,39 @@ class ChatServiceTest {
         assertEquals(331, round.totalTokens());
         assertFalse(round.toolCallRound());
         assertFalse(round.thinkRound());
+    }
+
+    @Test
+    void testApplyImageRefsToLastUserMessage() {
+        long timestamp = System.currentTimeMillis();
+        UserMessage userMessage = new UserMessage("look at this");
+        ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
+                (DefaultChatOptions) ChatOptions.builder().build(),
+                () -> List.of(userMessage, new AssistantMessage("ok")));
+        Media media = Media.builder().id("abc123").name("photo.jpg")
+                .mimeType(MimeType.valueOf("image/jpeg")).data(new byte[] {1}).build();
+
+        ChatService.applyImageRefsToLastUserMessage(chatHistory, List.of(media));
+
+        Object refs = userMessage.getMetadata().get(ChatService.USER_IMAGES);
+        assertTrue(refs instanceof List<?>);
+        Map<?, ?> ref = (Map<?, ?>) ((List<?>) refs).get(0);
+        assertEquals("abc123", ref.get(ChatService.USER_IMAGE_HASH));
+        assertEquals("photo.jpg", ref.get(ChatService.USER_IMAGE_FILE_NAME));
+        assertEquals("image/jpeg", ref.get(ChatService.USER_IMAGE_MIME_TYPE));
+    }
+
+    @Test
+    void testApplyImageRefsSkipsWhenNoMedia() {
+        long timestamp = System.currentTimeMillis();
+        UserMessage userMessage = new UserMessage("plain text");
+        ChatHistory chatHistory = new ChatHistory("test-chat", "Test Chat", timestamp, timestamp, "System prompt",
+                (DefaultChatOptions) ChatOptions.builder().build(), () -> List.of(userMessage));
+
+        ChatService.applyImageRefsToLastUserMessage(chatHistory, List.of());
+        ChatService.applyImageRefsToLastUserMessage(chatHistory, null);
+
+        assertFalse(userMessage.getMetadata().containsKey(ChatService.USER_IMAGES));
     }
 
     @Test
@@ -165,7 +201,7 @@ class ChatServiceTest {
         SpringAiPlaygroundOptions playgroundOptions =
                 new SpringAiPlaygroundOptions(null, true, "", new SpringAiPlaygroundOptions.Chat("systemPrompt",
                         List.of("MockLlmProvider"), null, null, null,
-                        null, null, null), null, null);
+                        null, null, null, null, null), null, null);
         ChatMemory chatMemory = mock(ChatMemory.class);
         ChatService service = new ChatService(chatModel, chatClient, chatMemory, playgroundOptions,
                 vectorStoreDocumentService, null, new ChatRequestOptionsFactory(new ObjectMapper(), null), null,

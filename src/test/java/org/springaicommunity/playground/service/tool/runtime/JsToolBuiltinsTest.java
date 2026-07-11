@@ -50,6 +50,26 @@ class JsToolBuiltinsTest {
             "evalExpression", "timezoneConvert", "cronNext", "jwtVerify"
     );
 
+    private static final Map<String, String> VIZ_TYPES = Map.ofEntries(
+            Map.entry("plotPointsOnMap", "pointmap"),
+            Map.entry("renderChart", "chart"),
+            Map.entry("renderDiagram", "diagram"),
+            Map.entry("showImage", "image"),
+            Map.entry("renderDiff", "diff"),
+            Map.entry("renderTable", "table"),
+            Map.entry("renderStatCards", "stats"),
+            Map.entry("renderComparison", "comparison"),
+            Map.entry("renderTimeline", "timeline"),
+            Map.entry("renderCandlestick", "candlestick"),
+            Map.entry("renderHeatmap", "heatmap"),
+            Map.entry("renderSankey", "sankey"),
+            Map.entry("renderFunnel", "funnel"),
+            Map.entry("renderTreemap", "treemap"),
+            Map.entry("renderGraph", "graph"),
+            Map.entry("renderWindRose", "windrose"),
+            Map.entry("renderChoropleth", "choropleth"),
+            Map.entry("renderGeoHeat", "geoheat"));
+
     private static List<Map<String, Object>> specs;
     private static JsToolExecutor executor;
 
@@ -434,6 +454,83 @@ class JsToolBuiltinsTest {
         assertThat(block).contains("\"label\":\"Capital of Korea\"");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vizTools")
+    void vizToolEmitsSaipActionBlockWithType(String name) {
+        Map<String, Object> spec = builtinSpec(name);
+        JsExecutionResult result = runSpec(spec);
+        assertThat(result.isOk())
+                .as("viz tool %s — error: %s, debug: %s", name, result.error(), result.debugInfo())
+                .isTrue();
+        String block = (String) result.result();
+        assertThat(block).as("%s must emit a saip-action block", name).contains("```saip-action");
+        assertThat(block).as("%s must emit type %s", name, VIZ_TYPES.get(name))
+                .contains("\"type\":\"" + VIZ_TYPES.get(name) + "\"");
+    }
+
+    static Stream<String> vizTools() {
+        return VIZ_TYPES.keySet().stream().sorted();
+    }
+
+    @Test
+    void renderChartIncludesSeriesNameWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("chartType", "bar");
+        args.put("labels", "[\"A\",\"B\"]");
+        args.put("series", "[1,2]");
+        args.put("seriesName", "Revenue");
+        String block = (String) run(builtinSpec("renderChart"), args).result();
+        assertThat(block).contains("\"seriesName\":\"Revenue\"");
+    }
+
+    @Test
+    void renderChartOmitsSeriesNameWhenBlank() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("chartType", "bar");
+        args.put("labels", "[\"A\",\"B\"]");
+        args.put("series", "[1,2]");
+        String block = (String) run(builtinSpec("renderChart"), args).result();
+        assertThat(block).doesNotContain("seriesName");
+    }
+
+    @Test
+    void renderWindRoseIncludesSeriesNameWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("directions", "[\"N\",\"E\",\"S\",\"W\"]");
+        args.put("series", "[1,2,3,4]");
+        args.put("seriesName", "Gusts");
+        String block = (String) run(builtinSpec("renderWindRose"), args).result();
+        assertThat(block).contains("\"seriesName\":\"Gusts\"");
+    }
+
+    @Test
+    void renderGeoHeatIncludesStyleWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("points", "[{\"lat\":37.5,\"lng\":127.0,\"intensity\":5}]");
+        args.put("style", "dark");
+        String block = (String) run(builtinSpec("renderGeoHeat"), args).result();
+        assertThat(block).contains("\"type\":\"geoheat\"").contains("\"style\":\"dark\"");
+    }
+
+    @Test
+    void renderGeoHeatOmitsStyleWhenInvalid() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("points", "[{\"lat\":37.5,\"lng\":127.0,\"intensity\":5}]");
+        args.put("style", "rainbow");
+        String block = (String) run(builtinSpec("renderGeoHeat"), args).result();
+        assertThat(block).doesNotContain("style");
+    }
+
+    @Test
+    void renderChoroplethIncludesNamePropertyWhenSupplied() {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("geoJson", "{\"type\":\"FeatureCollection\",\"features\":[]}");
+        args.put("values", "[]");
+        args.put("nameProperty", "NAME_1");
+        String block = (String) run(builtinSpec("renderChoropleth"), args).result();
+        assertThat(block).contains("\"type\":\"choropleth\"").contains("\"nameProperty\":\"NAME_1\"");
+    }
+
     private Map<String, Object> builtinSpec(String name) {
         return specs.stream().filter(s -> name.equals(s.get("name"))).findFirst().orElseThrow();
     }
@@ -581,7 +678,7 @@ class JsToolBuiltinsTest {
             String type = (String) param.get("type");
             args.put((String) param.get("name"), convertTestValue(testValue, type));
         }
-        return executor.execute(new JsExecutionParams(args, (String) spec.get("code")));
+        return executor.execute(new JsExecutionParams(args, (String) spec.get("code"), paramNames(spec)));
     }
 
     private static Object convertTestValue(String raw, String type) {

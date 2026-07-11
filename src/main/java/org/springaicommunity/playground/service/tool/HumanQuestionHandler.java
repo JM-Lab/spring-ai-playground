@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @FunctionalInterface
-public interface HumanQuestionHandler {
+public interface HumanQuestionHandler extends PendingInteraction {
 
     String TOOL_CONTEXT_KEY = "humanQuestionHandler";
 

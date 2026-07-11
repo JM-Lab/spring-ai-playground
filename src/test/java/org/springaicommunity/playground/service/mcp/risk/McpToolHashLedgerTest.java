@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.service.mcp.risk;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,7 +65,7 @@ class McpToolHashLedgerTest {
             @Override public void onCompositionLifecycle(McpRiskEvents.CompositionLifecycle event) {}
             @Override public void onPoisoningHit(McpRiskEvents.PoisoningHit event) {}
         };
-        this.ledger = new McpToolHashLedger(tempHome, objectMapper, executor, sink);
+        this.ledger = new McpToolHashLedger(tempHome, objectMapper, new CanonicalHasher(objectMapper), executor, sink);
     }
 
     @AfterEach
@@ -78,7 +79,7 @@ class McpToolHashLedgerTest {
         Files.createDirectories(ledgerFile.getParent());
         Files.writeString(ledgerFile, "{ not a fingerprint array ]]]");
         McpToolHashLedger recovered = assertDoesNotThrow(
-                () -> new McpToolHashLedger(tempHome, objectMapper, executor, sink));
+                () -> new McpToolHashLedger(tempHome, objectMapper, new CanonicalHasher(objectMapper), executor, sink));
         assertTrue(recovered.get("github", "list_repos").isEmpty());
     }
 
@@ -97,6 +98,22 @@ class McpToolHashLedgerTest {
         String hash1 = ledger.computeContentHash("tool", "version 1 description", null, annotations);
         String hash2 = ledger.computeContentHash("tool", "version 2 description", null, annotations);
         assertNotEquals(hash1, hash2);
+    }
+
+    @Test
+    void contentHashIgnoresInputSchemaKeyOrder() {
+        JsonNode a = objectMapper.readTree("{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"y\":{\"type\":\"number\"}}}");
+        JsonNode b = objectMapper.readTree("{\"properties\":{\"y\":{\"type\":\"number\"},\"x\":{\"type\":\"string\"}},\"type\":\"object\"}");
+        McpToolDescriptor.Annotations ann = new McpToolDescriptor.Annotations(null, true, false, true, true);
+        assertEquals(ledger.computeContentHash("t", "d", a, ann), ledger.computeContentHash("t", "d", b, ann));
+    }
+
+    @Test
+    void contentHashChangesWhenSchemaContentChanges() {
+        JsonNode a = objectMapper.readTree("{\"properties\":{\"x\":{\"type\":\"string\"}}}");
+        JsonNode b = objectMapper.readTree("{\"properties\":{\"x\":{\"type\":\"number\"}}}");
+        McpToolDescriptor.Annotations ann = new McpToolDescriptor.Annotations(null, true, false, true, true);
+        assertNotEquals(ledger.computeContentHash("t", "d", a, ann), ledger.computeContentHash("t", "d", b, ann));
     }
 
     @Test
@@ -146,8 +163,8 @@ class McpToolHashLedgerTest {
         ledger.checkAndRecord("notion", "read_page", "hash-2");
         executor.awaitCompletion(Duration.ofSeconds(5));
 
-        McpToolHashLedger reopened = new McpToolHashLedger(tempHome, objectMapper, executor,
-                McpRiskSignalSink.NOOP);
+        McpToolHashLedger reopened = new McpToolHashLedger(tempHome, objectMapper,
+                new CanonicalHasher(objectMapper), executor, McpRiskSignalSink.NOOP);
         assertEquals(2, reopened.snapshot().size());
         assertEquals("hash-1", reopened.get("github", "list_repos").orElseThrow().contentHash());
         assertEquals("hash-2", reopened.get("notion", "read_page").orElseThrow().contentHash());

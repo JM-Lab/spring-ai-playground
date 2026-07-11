@@ -25,7 +25,7 @@ import java.util.Set;
 public class SandboxPostureCalculator {
 
     public record Inputs(String networkMode, Set<String> allowedHosts,
-                         boolean fileRead, boolean fileWrite,
+                         boolean fileRead, boolean fileWrite, boolean destructive,
                          Set<String> baselineDeny, Set<String> userDeny,
                          Set<String> baselineAllow, Set<String> userAllow) {}
 
@@ -47,6 +47,9 @@ public class SandboxPostureCalculator {
             level = max(level, RiskLevel.L4);
         } else if (inputs.fileRead()) {
             level = max(level, RiskLevel.L3);
+        }
+        if (inputs.destructive()) {
+            level = max(level, RiskLevel.L5);
         }
 
         Set<String> removedDeny = new HashSet<>(inputs.baselineDeny() == null ? Set.of() : inputs.baselineDeny());

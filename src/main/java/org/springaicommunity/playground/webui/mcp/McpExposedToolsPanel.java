@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.webui.mcp;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Div;
@@ -42,6 +43,7 @@ import org.springaicommunity.playground.service.mcp.risk.McpToolRiskComposer;
 import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.tool.ToolSpecService.ExposureMode;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.mcp.inspector.InspectorHelpers;
 
 import java.util.ArrayList;
@@ -58,6 +60,7 @@ public class McpExposedToolsPanel {
     private final McpClientService clientService;
     private final McpToolRiskEvaluator riskEvaluator;
     private final ToolSpecService toolSpecService;
+    private final UsageEventTracker usageEventTracker;
 
     private final Map<String, McpComposition.Member> selected = new LinkedHashMap<>();
     private Select<ExposureMode> modeField;
@@ -66,13 +69,14 @@ public class McpExposedToolsPanel {
 
     public McpExposedToolsPanel(McpExposedToolService exposedToolService, McpCompositionService compositionService,
             McpServerInfoService serverInfoService, McpClientService clientService, McpToolRiskEvaluator riskEvaluator,
-            ToolSpecService toolSpecService) {
+            ToolSpecService toolSpecService, UsageEventTracker usageEventTracker) {
         this.exposedToolService = exposedToolService;
         this.compositionService = compositionService;
         this.serverInfoService = serverInfoService;
         this.clientService = clientService;
         this.riskEvaluator = riskEvaluator;
         this.toolSpecService = toolSpecService;
+        this.usageEventTracker = usageEventTracker;
     }
 
     public Component build() {
@@ -140,6 +144,11 @@ public class McpExposedToolsPanel {
                 ? this.selected.size() + " composed tool(s) exposed" : "composed tools off";
         Notification.show("Built-in server exposure: " + modeLabel(mode) + " — " + composed, 3000,
                 Notification.Position.BOTTOM_END);
+        this.usageEventTracker.track(UI.getCurrent(), "mcp_tools_exposed", Map.of(
+                "mode", mode.name(),
+                "builtin_count", this.toolSpecService.getMcpToolList().size(),
+                "composed_count", this.selected.size(),
+                "max_risk", this.capField.getValue().name()));
     }
 
     private static String modeLabel(ExposureMode mode) {
@@ -217,7 +226,7 @@ public class McpExposedToolsPanel {
         String originalDescription = tool.description() == null ? "" : tool.description();
         McpToolRiskEvaluator.ToolRiskView risk = this.riskEvaluator.evaluateTool(server, tool.name(),
                 tool.description(), toolInfo.propertySchemas());
-        RiskLevel baseLevel = risk.finalLevel();
+        RiskLevel baseLevel = risk.inherentLevel();
         McpComposition.Member existing = this.selected.get(rowKey);
 
         Checkbox check = new Checkbox(existing != null);

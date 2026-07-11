@@ -77,7 +77,8 @@ public class ToolPrimitive extends Div {
         }
         if (risk != null && risk.finalLevel() != null) {
             String tip = buildRiskTooltip(risk);
-            titleRow.add(new McpRiskChip(risk.finalLevel(), risk.floorTrigger()).withTooltip(tip));
+            titleRow.add(McpRiskChip.mitigated(risk.finalLevel(), risk.inherentLevel(), risk.floorTrigger())
+                    .withTooltip(tip));
         }
         add(titleRow);
 
@@ -244,6 +245,11 @@ public class ToolPrimitive extends Div {
 
     private static String buildRiskTooltip(McpToolRiskEvaluator.ToolRiskView risk) {
         StringBuilder sb = new StringBuilder(McpRiskChip.levelRationale(risk.finalLevel()));
+        if (risk.inherentLevel() != null && risk.inherentLevel() != risk.finalLevel()) {
+            sb.append(" · inherent ").append(risk.inherentLevel().name())
+                    .append(" lowered to ").append(risk.finalLevel().name())
+                    .append(" by required approval (HITL)");
+        }
         if (risk.publishLevel() != null && risk.publishLevel() != risk.finalLevel()) {
             sb.append(" · publish ").append(risk.publishLevel().name());
         }

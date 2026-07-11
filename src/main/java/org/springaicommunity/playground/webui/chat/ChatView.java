@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.chat;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dependency.CssImport;
@@ -32,6 +33,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.service.analytics.UsageAnalyticsService;
 import org.springaicommunity.playground.service.chat.ChatExportService;
 import org.springaicommunity.playground.service.chat.ChatExtraOptions;
 import org.springaicommunity.playground.service.chat.ChatHistory;
@@ -43,8 +45,11 @@ import org.springaicommunity.playground.service.chat.ChatSystemPromptTemplateRen
 import org.springaicommunity.playground.service.chat.ChatToolPreferences;
 import org.springaicommunity.playground.service.chat.OllamaModelDownloadService;
 import org.springaicommunity.playground.service.chat.ReasoningEffort;
+import org.springaicommunity.playground.service.chat.VisionCapabilityService;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.risk.McpCompositionToolCallbackProvider;
+import org.springaicommunity.playground.service.tool.ChatImageStore;
+import org.springaicommunity.playground.service.tool.ConversationFileUploadStore;
 import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
@@ -52,6 +57,7 @@ import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
 import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
@@ -63,6 +69,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -97,9 +104,14 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     private final McpCompositionToolCallbackProvider compositionProvider;
     private final SpringAiPlaygroundOptions playgroundOptions;
     private final ChatClientActionRegistry clientActionRegistry;
+    private final ConversationFileUploadStore fileUploadStore;
+    private final ChatImageStore imageStore;
+    private final VisionCapabilityService visionCapabilityService;
     private final ChatSystemPromptPresetService chatSystemPromptPresetService;
     private final ChatSystemPromptTemplateRenderer chatSystemPromptTemplateRenderer;
     private final OllamaModelDownloadService ollamaModelDownloadService;
+    private final UsageAnalyticsService usageAnalyticsService;
+    private final UsageEventTracker usageEventTracker;
     private final ChatHistoryView chatHistoryView;
     private final WorkspaceSettingsDrawer settingsDrawer;
     private ChatModelSettingView chatModelSettingView;
@@ -114,7 +126,10 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
             ChatSystemPromptTemplateRenderer chatSystemPromptTemplateRenderer,
             OllamaModelDownloadService ollamaModelDownloadService,
             McpCompositionToolCallbackProvider compositionProvider, SpringAiPlaygroundOptions playgroundOptions,
-            ChatClientActionRegistry clientActionRegistry) {
+            ChatClientActionRegistry clientActionRegistry, ConversationFileUploadStore fileUploadStore,
+            ChatImageStore imageStore,
+            VisionCapabilityService visionCapabilityService, UsageAnalyticsService usageAnalyticsService,
+            UsageEventTracker usageEventTracker) {
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
@@ -130,6 +145,11 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
         this.compositionProvider = compositionProvider;
         this.playgroundOptions = playgroundOptions;
         this.clientActionRegistry = clientActionRegistry;
+        this.fileUploadStore = fileUploadStore;
+        this.imageStore = imageStore;
+        this.visionCapabilityService = visionCapabilityService;
+        this.usageAnalyticsService = usageAnalyticsService;
+        this.usageEventTracker = usageEventTracker;
 
         PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_SELECT_EVENT,
@@ -218,7 +238,10 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
                 this.chatSystemPromptPresetService, this.ollamaModelDownloadService, builtinToolSpecs(),
                 this.toolSpecService::riskLevelOf, this.toolSpecService::categoryOf,
                 this.chatService.getDefaultMemoryWindow(),
-                this::presetToolMissingKeys, this.settingsDrawer::setApplyEnabled);
+                this::presetToolMissingKeys, enabled -> {
+                    this.settingsDrawer.setApplyEnabled(enabled);
+                    if (!enabled) trackPresetBlocked();
+                });
         return this.chatModelSettingView;
     }
 
@@ -241,6 +264,8 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
         String model = this.chatModelSettingView.getChatOptions().getModel();
         if (!this.ollamaModelDownloadService.isDownloaded(model)) {
             new ModelDownloadDialog(model, this.ollamaModelDownloadService, () -> {
+                this.usageEventTracker.track(VaadinUtils.getUi(this), "model_downloaded",
+                        Map.of("model", model, "via", "app"));
                 if (Objects.nonNull(this.chatModelSettingView)) this.chatModelSettingView.refreshModelItems();
                 applySettingsAndNewChat();
             }).open();
@@ -261,6 +286,28 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
                 this.chatModelSettingView.getSystemPromptTextArea(), this.chatModelSettingView.getChatOptions(),
                 this.chatModelSettingView.getChatExtraOptions(), toolPreferences));
         this.settingsDrawer.close();
+        trackSettingsApplied();
+    }
+
+    private void trackSettingsApplied() {
+        UI ui = VaadinUtils.getUi(this);
+        this.usageEventTracker.track(ui, "model_selected", Map.of(
+                "provider", this.chatService.getChatProvider().name().toLowerCase(Locale.ROOT),
+                "model", this.chatModelSettingView.getChatOptions().getModel()));
+        Preset preset = this.chatModelSettingView.getActivePreset();
+        if (preset == null) return;
+        this.usageEventTracker.track(ui, "preset_applied", Map.of(
+                "preset_id", this.usageAnalyticsService.presetLabel(preset),
+                "dynamic_tools", this.chatModelSettingView.isActivePresetDynamicTools(),
+                "tool_count", this.chatModelSettingView.getSelectedPresetTools().size()));
+    }
+
+    private void trackPresetBlocked() {
+        if (Objects.isNull(this.chatModelSettingView)) return;
+        Preset preset = this.chatModelSettingView.getActivePreset();
+        if (preset == null) return;
+        this.usageEventTracker.track(VaadinUtils.getUi(this), "preset_blocked",
+                Map.of("preset_id", this.usageAnalyticsService.presetLabel(preset)));
     }
 
     private void applyPresetExposureAndNewChat(List<ToolSpec> matched) {
@@ -351,7 +398,26 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     }
 
     private void addNewChatContent() {
-        addNewChatContent(this.chatService.getSystemPrompt(), this.chatService.getDefaultOptions());
+        Preset def = defaultChatPreset();
+        if (def == null) {
+            addNewChatContent(this.chatService.getSystemPrompt(), this.chatService.getDefaultOptions());
+            return;
+        }
+        String prompt = (def.prompt() == null || def.prompt().isBlank())
+                ? this.chatService.getSystemPrompt() : def.prompt();
+        ChatToolPreferences prefs = def.dynamicTools()
+                ? ChatToolPreferences.defaults().withDynamicTools(true)
+                : ChatToolPreferences.defaults();
+        this.chatHistoryView.clearSelectHistory();
+        changeChatContent(this.chatHistoryService.createChatHistory(prompt, this.chatService.getDefaultOptions(),
+                ChatExtraOptions.defaults(), prefs));
+    }
+
+    private Preset defaultChatPreset() {
+        String id = this.playgroundOptions.chat().defaultPreset();
+        if (id == null || id.isBlank()) return null;
+        return this.chatSystemPromptPresetService.presets().stream()
+                .filter(preset -> id.equals(preset.id())).findFirst().orElse(null);
     }
 
     private void addNewChatContent(String systemPrompt, ChatOptions chatOptions) {
@@ -372,7 +438,8 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
                 this.completeChatHistoryConsumer, this.mcpClientService,
                 this.toolSpecService, this.toolSpecPersistenceService, this.toolActivationCalculator,
                 this.mcpServerInfoService, this.chatExportService,
-                this.compositionProvider, this.playgroundOptions, this.clientActionRegistry);
+                this.compositionProvider, this.playgroundOptions, this.clientActionRegistry, this.fileUploadStore,
+                this.imageStore, this.visionCapabilityService, this.usageAnalyticsService, this.usageEventTracker);
         ChatOptions chatOptions = chatHistory.chatOptions();
         String label = String.format("%s: %s", this.chatService.getChatModelProvider(), chatOptions.getModel());
         VaadinUtils.getUi(this).access(() -> {

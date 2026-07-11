@@ -74,6 +74,7 @@ public class ChatModelSettingView extends VerticalLayout {
     private final FlexLayout presetToolChips = new FlexLayout();
     private List<String> activePresetTools = List.of();
     private boolean activePresetDynamicTools;
+    private Preset activePreset;
     private final ComboBox<String> modelComboBox;
     private final IntegerField maxTokensInput;
     private final NumberField temperatureInput;
@@ -438,6 +439,7 @@ public class ChatModelSettingView extends VerticalLayout {
         this.systemPromptPresetComboBox.setWidthFull();
         this.systemPromptPresetComboBox.addValueChangeListener(event -> {
             Preset selected = event.getValue();
+            this.activePreset = selected;
             this.activePresetTools = selected == null ? List.of() : selected.tools();
             this.activePresetDynamicTools = selected != null && selected.dynamicTools();
             if (selected != null) {
@@ -473,10 +475,15 @@ public class ChatModelSettingView extends VerticalLayout {
         this.systemPromptTextArea.setValue(preset.prompt());
         if (this.selectablePresets.contains(preset)) this.systemPromptPresetComboBox.setValue(preset);
         else this.systemPromptPresetComboBox.clear();
+        this.activePreset = preset;
         this.activePresetTools = preset.tools();
         this.activePresetDynamicTools = preset.dynamicTools();
         refreshPresetToolChips();
         refreshPresetToolGaps();
+    }
+
+    public Preset getActivePreset() {
+        return this.activePreset;
     }
 
     public List<String> getSelectedPresetTools() {

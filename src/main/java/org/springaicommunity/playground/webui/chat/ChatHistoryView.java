@@ -19,6 +19,7 @@ import tools.jackson.core.type.TypeReference;
 import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.dialog.DialogVariant;
 import com.vaadin.flow.component.html.Span;
@@ -142,10 +143,23 @@ public class ChatHistoryView extends WorkspaceSidebar implements BeforeEnterObse
         this.getCurrentChatHistoryAsOpt().ifPresent(chatHistory -> {
             Dialog dialog = VaadinUtils.headerDialog("Delete: " + chatHistory.title());
             dialog.setModality(ModalityMode.STRICT);
-            dialog.add("Are you sure you want to delete this history permanently?");
+
+            VerticalLayout content = new VerticalLayout();
+            content.setPadding(false);
+            content.add(new Span("Are you sure you want to delete this history permanently?"));
+
+            int workspaceFileCount = this.chatHistoryService.workspaceFileCount(chatHistory);
+            Checkbox deleteWorkspaceCheck = new Checkbox(
+                    "Also delete " + workspaceFileCount + " workspace file(s) created by this chat");
+            if (workspaceFileCount > 0) {
+                deleteWorkspaceCheck.setValue(true);
+                content.add(deleteWorkspaceCheck);
+            }
+            dialog.add(content);
 
             Button deleteButton = new Button("Delete", e -> {
-                this.chatHistoryService.deleteChatHistory(chatHistory);
+                boolean deleteWorkspace = workspaceFileCount > 0 && deleteWorkspaceCheck.getValue();
+                this.chatHistoryService.deleteChatHistory(chatHistory, deleteWorkspace);
                 this.changeChatHistoryContent(null);
                 dialog.close();
             });

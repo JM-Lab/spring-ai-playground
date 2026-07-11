@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.webui.mcp;
 
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.router.PageTitle;
@@ -23,6 +24,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
+import org.springaicommunity.playground.service.analytics.UsageAnalyticsService;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
@@ -36,6 +38,7 @@ import org.springaicommunity.playground.service.mcp.risk.McpToolRiskEvaluator;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
 import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
@@ -68,6 +71,8 @@ public class McpServerView extends ContentWorkspaceView {
     private final McpExposedToolService mcpExposedToolService;
     private final McpCompositionService mcpCompositionService;
     private final ToolSpecService toolSpecService;
+    private final UsageAnalyticsService usageAnalyticsService;
+    private final UsageEventTracker usageEventTracker;
     private final McpServerConnectionView mcpServerConnectionView;
     private final PropertyChangeSupport mcpServerInfoChangeSupport;
     private McpContentView mcpContentView;
@@ -77,7 +82,8 @@ public class McpServerView extends ContentWorkspaceView {
             McpCatalogService mcpCatalogService, McpTagSuggestionService mcpTagSuggestionService,
             McpToolRiskEvaluator mcpToolRiskEvaluator, McpRegistrationRiskPreview mcpRegistrationRiskPreview,
             McpExposedToolService mcpExposedToolService, McpCompositionService mcpCompositionService,
-            ToolSpecService toolSpecService) {
+            ToolSpecService toolSpecService, UsageAnalyticsService usageAnalyticsService,
+            UsageEventTracker usageEventTracker) {
         this.mcpServerInfoService = mcpServerInfoService;
         this.mcpClientService = mcpClientService;
         this.mcpCategoryService = mcpCategoryService;
@@ -87,6 +93,8 @@ public class McpServerView extends ContentWorkspaceView {
         this.mcpExposedToolService = mcpExposedToolService;
         this.mcpCompositionService = mcpCompositionService;
         this.toolSpecService = toolSpecService;
+        this.usageAnalyticsService = usageAnalyticsService;
+        this.usageEventTracker = usageEventTracker;
         this.mcpServerInfoChangeSupport = new PropertyChangeSupport(this);
 
         this.mcpServerConnectionView =
@@ -108,6 +116,8 @@ public class McpServerView extends ContentWorkspaceView {
                     this.mcpServerConnectionView.updateMcpConnections();
                     this.mcpServerConnectionView.selectMcpConnectionContent(updateMcpServerInfo);
                     VaadinUtils.showInfoNotification("MCP Connection Saved!");
+                    this.usageEventTracker.track(UI.getCurrent(), "mcp_server_added",
+                            this.usageAnalyticsService.mcpServerAddedParams(updateMcpServerInfo));
                 }
                 case MCP_CONNECTION_DELETE_EVENT -> {
                     this.mcpServerConnectionView.updateMcpConnections();
@@ -128,7 +138,7 @@ public class McpServerView extends ContentWorkspaceView {
                 "Choose what the built-in MCP server exposes — built-in tools, composed external tools, or both");
         McpExposedToolsPanel exposeToolsPanel = new McpExposedToolsPanel(this.mcpExposedToolService,
                 this.mcpCompositionService, this.mcpServerInfoService, this.mcpClientService,
-                this.mcpToolRiskEvaluator, this.toolSpecService);
+                this.mcpToolRiskEvaluator, this.toolSpecService, this.usageEventTracker);
         exposeToolsDrawer.setBodyFactory(exposeToolsPanel::build);
         exposeToolsDrawer.setApplyButton("Apply", exposeToolsPanel::apply);
 

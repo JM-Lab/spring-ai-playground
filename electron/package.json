@@ -12,17 +12,22 @@
     "start": "electron .",
     "prepare:resources": "node scripts/prepare-resources.mjs",
     "prepare:resources:native": "node scripts/prepare-resources.mjs",
-    "dist": "electron-builder",
-    "dist:mac:dir": "electron-builder --mac dir",
-    "dist:mac:dmg": "electron-builder --mac dmg",
-    "dist:win": "electron-builder --win nsis",
-    "dist:linux": "electron-builder --linux deb rpm",
-    "dist:linux:deb": "electron-builder --linux deb",
-    "dist:linux:rpm": "electron-builder --linux rpm"
+    "dist": "electron-builder --publish never",
+    "dist:mac:dir": "electron-builder --mac dir --publish never",
+    "dist:mac:dmg": "electron-builder --mac dmg --publish never",
+    "dist:win": "electron-builder --win nsis --publish never",
+    "dist:linux": "electron-builder --linux deb rpm --publish never",
+    "dist:linux:deb": "electron-builder --linux deb --publish never",
+    "dist:linux:rpm": "electron-builder --linux rpm --publish never"
   },
   "build": {
     "appId": "com.springai.playground",
     "productName": "Spring AI Playground",
+    "publish": {
+      "provider": "github",
+      "owner": "spring-ai-community",
+      "repo": "spring-ai-playground"
+    },
     "directories": {
       "output": "dist",
       "buildResources": "resources"
@@ -128,6 +133,7 @@
   "dependencies": {
     "@kutalia/whisper-node-addon": "^1.1.0",
     "ace-builds": "^1.44.0",
+    "electron-updater": "^6.8.9",
     "js-yaml": "^4.2.0",
     "ollama": "^0.6.3",
     "tree-kill": "^1.2.2"

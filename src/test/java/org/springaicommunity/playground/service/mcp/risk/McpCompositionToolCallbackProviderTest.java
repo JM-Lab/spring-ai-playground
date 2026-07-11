@@ -94,8 +94,8 @@ class McpCompositionToolCallbackProviderTest {
     @Test
     void withholdsExposedToolWhenDefinitionChangedSinceApproval() throws Exception {
         PersistenceExecutor executor = new PersistenceExecutor();
-        McpToolHashLedger ledger = new McpToolHashLedger(tempHome, new ObjectMapper(), executor,
-                McpRiskSignalSink.NOOP);
+        McpToolHashLedger ledger = new McpToolHashLedger(tempHome, new ObjectMapper(),
+                new CanonicalHasher(new ObjectMapper()), executor, McpRiskSignalSink.NOOP);
         // A rug-pull: the recorded definition changed, leaving the tool awaiting re-review.
         ledger.checkAndRecord("GitHub", "list_repos", "hash-v1");
         ledger.checkAndRecord("GitHub", "list_repos", "hash-v2");

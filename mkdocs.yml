@@ -31,6 +31,8 @@ plugins:
       cards_layout_options:
         background_color: "#3F51B5"
         color: "#FFFFFF"
+hooks:
+  - docs-overrides/hooks/count_guard.py
 theme:
   name: material
   custom_dir: docs-overrides
@@ -79,8 +81,10 @@ nav:
       - "AI Agent Tool Safety": safety-architecture.md
       - "MCP Server Safety": mcp-server-safety.md
       - "Human-in-the-Loop Approval": hitl-architecture.md
+      - "Agent Loop": agent-loop-architecture.md
       - "AI Agent Observability": observability-architecture.md
       - "Context Engineering": context-engineering-architecture.md
+      - "OWASP MCP Top 10": mcp-owasp-top-10.md
   - "Features":
       - features/index.md
       - "Tool Studio":
@@ -92,6 +96,7 @@ nav:
               - "Filesystem": features/default-tools/filesystem.md
               - "Global": features/default-tools/global.md
               - "Korea": features/default-tools/korea.md
+              - "Visualization & cards": features/default-tools/visualization.md
       - "MCP Server":
           - features/mcp-server/index.md
           - "Default MCP Servers":
@@ -110,6 +115,7 @@ nav:
           - "Self-equipping Agents": features/agentic-chat/dynamic-tool-discovery.md
           - "Prompt Templates": features/agentic-chat/prompt-templates.md
           - "Prompt Presets": features/agentic-chat/prompt-presets.md
+          - "Multimodal Vision": features/agentic-chat/image-attachments.md
       - "Human-in-the-Loop": features/human-in-the-loop.md
       - "Observability":
           - features/observability/index.md
@@ -146,6 +152,10 @@ nav:
       - "9. MCP Everything Walkthrough": tutorials/9-mcp-everything.md
       - "10. Proxy an MCP Server": tutorials/10-proxy-external-tool.md
       - "11. Approve a Tool in Chat": tutorials/11-human-approval.md
+      - "12. Template to Preset": tutorials/12-template-to-preset.md
+      - "13. Upload and Analyze a File": tutorials/13-upload-a-file.md
+      - "14. Attach and Analyze an Image": tutorials/14-analyze-an-image.md
+      - "15. Investigate Documents": tutorials/15-investigate-documents.md
   # Changelog is published in the repo as CHANGELOG.md (and rendered at
   # /changelog/ when reached by URL via the docs/changelog.md include).
   # Intentionally omitted from main nav to avoid duplicating GitHub-hosted
@@ -174,6 +184,10 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - admonition
+  # Numbered steps in tutorials are split into separate <ol> blocks by the
+  # images between items; sane_lists keeps the authored start number (start=)
+  # so step numbering renders 1, 2, 3 instead of resetting to 1.
+  - sane_lists
   - tables
   - toc:
       # Right-rail TOC shows only h2 (## headings). h3+ stay in body

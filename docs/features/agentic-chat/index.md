@@ -13,6 +13,7 @@ This unified interface lets you:
 - run RAG workflows grounded in indexed documents
 - execute tool-enabled agent flows through MCP
 - steer the model with reusable system-prompt **[presets](prompt-presets.md)** and **[templates](prompt-templates.md)** from the Prompt Library
+- attach **[images](image-attachments.md)** for native multimodal input to vision-capable models
 - dial **reasoning effort** up or down per turn
 - read responses with syntax-highlighted code, rendered math, and diagrams
 - test complete agent strategies by combining documents and tools in a single chat session
@@ -66,6 +67,10 @@ Ticking one mode unticks the other. Beside the popover, the **MCP servers** sele
 By default a chat sends the model the full schema of every tool you expose - fine for a handful, but a broad agent setup can push **tens of thousands of tokens of definitions into every turn**. **Dynamic tool discovery** removes that cost: the chat hands the model a single `toolSearchTool`, and the model searches the catalog on demand instead of receiving every definition up front. Tick it at the top of the tool popover (the exposed-tools box then reads **Dynamic — searching all tools**); it stays disabled until the searchable pool clears the `tool-search.min-tools` floor (default 10), so add more in [Tool Studio](../tool-studio/index.md) if it is greyed out.
 
 It is also how the built-in **[Self-equipping agent](prompt-presets.md)** preset works. For the full picture - why it matters for agents, the 34-64% token-savings experiment behind it, how it lets a small local model drive a large toolbox, and the configuration - see **[Dynamic tool discovery](dynamic-tool-discovery.md)**.
+
+### Multimodal vision input
+
+The picture icon by the prompt box attaches images (up to five per message) - or drop a file onto the prompt, or paste a screenshot. Attached images show as removable chips above the prompt, are resized and EXIF-tagged in the browser, stored content-addressed under the playground home, and sent to the model as native multimodal input. A capability check warns when the selected model cannot actually see (including the mlx false-positive case on Apple Silicon). The full pipeline - storage, vision checks, error handling, and the `describeImage` re-reference tool - is on the [Multimodal Vision Input](image-attachments.md) page.
 
 ### Voice input
 
@@ -123,13 +128,32 @@ Assistant turns render as full Markdown. Code blocks are syntax-highlighted (hig
 
 ### Action cards
 
-Some built-in tools render an interactive **action card** instead of plain text. When the model calls `sendEmail` it produces an **Email draft** card; `addToCalendar` produces a **Calendar event** card; and `showLocation` embeds an interactive **Location** map. The first two show the fields the model filled in plus a button to act on the draft - the email card a single **Send email** button, the calendar card an **Add to calendar** dropdown:
+Some built-in tools render an interactive **action card** instead of plain text - a real-world action to confirm, a chart, a map, a diagram, or a structured view of data - rather than a wall of prose. Each card is emitted by a specific tool, and they fall into a few groups:
+
+**Real-world actions (review-then-act).** `sendEmail` produces an **Email draft** card; `addToCalendar` produces a **Calendar event** card. Each shows the fields the model filled in plus a button to act on the draft - the email card a single **Send email** button, the calendar card an **Add to calendar** dropdown:
 
 ![An Email draft action card - To, Cc, Subject and Body fields with a blue Send email button](../../assets/images/chat/action-card-email.png){ width="546" }
 
 ![A Calendar event action card - Title, When, Location and Notes fields with a blue Add to calendar dropdown offering Google Calendar, Outlook, Yahoo, and .ics](../../assets/images/chat/action-card-calendar.png){ width="546" }
 
-These follow a **review-then-send** rule: the model only *drafts*, it never sends. **Send email** opens a prefilled `mailto:` link in your own mail app; **Add to calendar** opens a menu to add the event to Google Calendar, Outlook, or Yahoo Calendar, or to get a standard `.ics` file - in the desktop app the `.ics` opens directly in your OS calendar app, in a browser it downloads for you to import. You stay in the loop for the outward action - a sibling of the [human-in-the-loop approval](../human-in-the-loop.md) gate. (Mechanically, any tool - including one you author in [Tool Studio](../tool-studio/index.md) - whose output carries a fenced `saip-action` block is rendered as a card; if it emits the `saip-action-return-direct` variant it is also treated as the final step of the request, so the turn ends without a follow-up model reply.) The `showLocation` card is display-only - it embeds a keyless map plus an **Open in Google Maps** link and sends nothing:
+These two follow a **review-then-send** rule: the model only *drafts*, it never sends. **Send email** opens a prefilled `mailto:` link in your own mail app; **Add to calendar** opens a menu to add the event to Google Calendar, Outlook, or Yahoo Calendar, or to get a standard `.ics` file - in the desktop app the `.ics` opens directly in your OS calendar app, in a browser it downloads for you to import. You stay in the loop for the outward action - a sibling of the [human-in-the-loop approval](../human-in-the-loop.md) gate.
+
+**Charts and maps.** `renderChart` draws a chart whose `chartType` is one of `bar`, `line`, `area`, `pie`, `radar`, `scatter`, or `gauge`. For richer financial and structural views there are dedicated ECharts cards: `renderCandlestick` (OHLC candlesticks), `renderHeatmap` (a 2D matrix heatmap), `renderSankey` (a flow / Sankey diagram), `renderFunnel` (a funnel), `renderTreemap` (a treemap), `renderGraph` (a force-directed relationship graph), and `renderWindRose` (a polar wind rose). For geographic data, `plotPointsOnMap` drops several places onto one multi-point **Leaflet map** (the `pointmap` card) with a **Light / Dark** toggle, `renderChoropleth` shades the regions of a supplied GeoJSON by value, and `renderGeoHeat` paints a density heatmap of lat/lng points over a basemap. The chart and map cards carry **Copy** and **PNG** export buttons in the card header, so any figure can be lifted out as data or an image.
+
+![A renderChart bar card with Copy and PNG export buttons in the header](../../assets/images/chat/visualization-chart-bar.png){ width="620" }
+![A plotPointsOnMap multi-point Leaflet map with a Light/Dark toggle](../../assets/images/chat/visualization-pointmap.png){ width="620" }
+
+**Diagrams and images.** `renderDiagram` renders a **Mermaid** diagram (flowchart, sequence, gantt) for a process or relationship, and `showImage` embeds an image from a direct URL.
+
+**Diffs.** `renderDiff` shows a side-by-side text or file diff - deletions in red, additions in green - and surfaces a **"completely different"** banner when the two sides share almost nothing.
+
+![A renderDiff side-by-side card with red deletions and green additions](../../assets/images/chat/visualization-diff.png){ width="620" }
+
+**Structured data views.** `renderTable` builds a sortable, searchable table; `renderStatCards` lays out a row of KPI tiles for headline numbers; `renderComparison` puts two or more entities side by side; and `renderTimeline` lays out a vertical list of dated events.
+
+Mechanically, any tool - including one you author in [Tool Studio](../tool-studio/index.md) - whose output carries a fenced `saip-action` block is rendered as a card; if it emits the `saip-action-return-direct` variant it is also treated as the final step of the request, so the turn ends without a follow-up model reply.
+
+The `showLocation` card is display-only - it embeds a keyless map of a single place plus an **Open in Google Maps** link and sends nothing:
 
 ![A Location action card embedding an interactive map of a place, with an Open in Google Maps link](../../assets/images/chat/action-card-map.png){ width="546" }
 
@@ -197,6 +221,8 @@ When MCP connections are enabled, Agentic Chat can behave like an agent:
 
 When a tool requires approval, Agentic Chat **pauses and asks you to approve or decline** the call before it runs - the on-device half of [Human-in-the-Loop Approval](../human-in-the-loop.md). Declining tells the model the call was not run, so it won't silently retry.
 
+The loop itself is governed by the [agent loop](../../agent-loop-architecture.md): one message may run only a bounded number of tool rounds before the model is told to wrap up, repeated identical calls are short-circuited, and a cancelled upload or image request is not re-asked within the same turn - so a small local model cannot spin on the same dialog. The bounds are [configurable](../../getting-started/configuration.md#agent-loop).
+
 ## Workflow Integration
 
 The intended end-to-end flow is:
@@ -218,7 +244,7 @@ For Ollama-based flows:
 - use reasoning-capable models from [Ollama's Thinking Category](https://ollama.com/search?c=thinking)
 - validate tools in MCP Inspector before relying on them in Agentic Chat
 
-The default `playground.chat.models` list features `qwen3.5:2b` (default) plus `qwen3.5:9b` / `qwen3.6:35b` for stronger tool-oriented reasoning, with `gemma4:e4b`, `gpt-oss:20b`, and `deepseek-r1:8b` as alternatives. See [Picking a Model](../../tutorials/index.md#picking-a-model) in the Tutorials for the tradeoffs.
+The default `playground.chat.models` list features `qwen3.5:4b` (default, the smallest vision-capable build) plus `qwen3.5:2b` / `qwen3.5:9b`, `qwen3.6:27b` / `qwen3.6:35b` for stronger tool-oriented reasoning, the `gemma4` family (`e2b` / `e4b` / `12b` / `31b`), and `gpt-oss:20b` / `deepseek-r1:8b` as alternatives. See [Picking a Model](../../tutorials/index.md#picking-a-model) in the Tutorials for the tradeoffs.
 
 ## Agentic Chat Architecture Overview
 
@@ -245,7 +271,7 @@ By leveraging these elements, Agentic Chat goes beyond basic Q&A and becomes a p
 
 Agentic Chat is a **consumer** of three inventories curated elsewhere in the Playground. Use these references to know what's available before composing a chat session:
 
-- **[Default Tools](../default-tools/index.md)** - 88 pre-loaded built-in tools (Examples · Utilities · Filesystem · Global · Korea) callable directly from chat without any external setup. Each carries a Risk Level (L0-L5) and `${ENV_VAR}` requirements per page.
+- **[Default Tools](../default-tools/index.md)** - 108 pre-loaded built-in tools (Examples · Utilities · Filesystem · Global · Korea · Visualization) callable directly from chat without any external setup. Each carries a Risk Level (L0-L5) and `${ENV_VAR}` requirements per page.
 - **[Default MCP Servers](../default-mcp-catalog/index.md)** - 57 preset external MCP server connections (Gmail, Notion, GitHub, Linear, BigQuery, Stripe, ...). One-click activation from the MCP Server sidebar adds them as tool sources for chat.
 - **[Vector Database](../vector-database.md)** - indexed document collections that the **RAG advisor chain** retrieves from at chat time (`SpringAiPlaygroundRagAdvisor` short-circuits when no documents are selected, so retrieval is opt-in per conversation).
 

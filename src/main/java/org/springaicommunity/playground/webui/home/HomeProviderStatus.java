@@ -36,9 +36,6 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import static org.springaicommunity.playground.webui.home.HomeUi.divider;
-import static org.springaicommunity.playground.webui.home.HomeUi.mutedLabel;
-
 class HomeProviderStatus extends Div {
 
     private static final Logger logger = LoggerFactory.getLogger(HomeProviderStatus.class);
@@ -107,6 +104,7 @@ class HomeProviderStatus extends Div {
                     .set("color", "var(--lumo-primary-text-color)")
                     .set("text-decoration", "none")
                     .set("font-weight", "500");
+            HomeUi.routeToLauncherOnDesktop(configureLink, "config-card");
             pill.add(configureLink);
             this.chatReadinessDot = null;
             this.chatReadinessLabel = null;
@@ -123,11 +121,11 @@ class HomeProviderStatus extends Div {
 
         String model = safeGetChatModel(chatModel);
         if (model != null && !model.isBlank()) {
-            pill.add(divider(), mutedLabel(model));
+            pill.add(HomeUi.divider(), HomeUi.mutedLabel(model));
         }
 
-        this.chatReadinessLabel = mutedLabel("Checking…");
-        pill.add(divider(), this.chatReadinessLabel);
+        this.chatReadinessLabel = HomeUi.mutedLabel("Checking…");
+        pill.add(HomeUi.divider(), this.chatReadinessLabel);
         return pill;
     }
 
@@ -144,13 +142,13 @@ class HomeProviderStatus extends Div {
 
         String model = resolveEmbeddingModel();
         if (model != null && !model.isBlank()) {
-            pill.add(divider(), mutedLabel(model));
+            pill.add(HomeUi.divider(), HomeUi.mutedLabel(model));
         }
 
-        this.embeddingDimensionsLabel = mutedLabel(cachedEmbeddingDimensions != null
+        this.embeddingDimensionsLabel = HomeUi.mutedLabel(cachedEmbeddingDimensions != null
                 ? cachedEmbeddingDimensions + "d"
                 : "…d");
-        pill.add(divider(), this.embeddingDimensionsLabel);
+        pill.add(HomeUi.divider(), this.embeddingDimensionsLabel);
         return pill;
     }
 
@@ -266,6 +264,8 @@ class HomeProviderStatus extends Div {
         Div pill = new Div();
         pill.getStyle()
                 .set("display", "inline-flex")
+                .set("flex-wrap", "wrap")
+                .set("max-width", "100%")
                 .set("align-items", "center")
                 .set("gap", "0.55rem")
                 .set("padding", "0.4rem 0.9rem")

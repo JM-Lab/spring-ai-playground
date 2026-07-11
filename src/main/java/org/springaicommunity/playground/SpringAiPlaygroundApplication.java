@@ -15,7 +15,6 @@
  */
 package org.springaicommunity.playground;
 
-import com.vaadin.flow.component.dependency.JavaScript;
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Inline;
@@ -23,6 +22,7 @@ import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.component.page.TargetElement;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
+import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.theme.lumo.Lumo;
 import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
@@ -37,7 +37,7 @@ import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.chat.HybridToolIndex;
 import org.springaicommunity.playground.service.chat.LlmWindowChatMemory;
 import org.springaicommunity.playground.service.chat.PersistentToolIndex;
-import org.springaicommunity.playground.service.mcp.McpToolCallingManager;
+import org.springaicommunity.playground.service.agent.AgentLoopManager;
 import org.springaicommunity.playground.webui.GoogleAnalyticsNavigationListener;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
@@ -70,7 +70,6 @@ import java.util.function.Predicate;
 @StyleSheet(Lumo.UTILITY_STYLESHEET)
 @Push
 @PWA(name = "Spring AI Playground", shortName = "Playground", offlinePath = "offline.html")
-@JavaScript("./playground/pwa-installer.js")
 @SpringBootApplication
 @ConfigurationPropertiesScan
 @EnableScheduling
@@ -83,7 +82,7 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
 
     @Override
     public void configurePage(AppShellSettings settings) {
-        if (!isTelemetryEnabled()) {
+        if (!isTelemetryActive()) {
             settings.addInlineWithContents(Inline.Position.PREPEND,
                     "window['ga-disable-" + GoogleAnalyticsNavigationListener.MEASUREMENT_ID + "'] = true;",
                     Inline.Wrapping.JAVASCRIPT);
@@ -125,10 +124,16 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
         settings.addInlineWithContents(Inline.Position.PREPEND, ga4Snippet, Inline.Wrapping.JAVASCRIPT);
     }
 
-    private static boolean isTelemetryEnabled() {
-        String value = System.getenv("SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED");
-        if (value == null) value = System.getProperty("spring.ai.playground.telemetry.enabled");
-        return value == null || !"false".equalsIgnoreCase(value.trim());
+    private static boolean isTelemetryActive() {
+        return isProductionMode() && !GoogleAnalyticsNavigationListener.isTelemetryOptedOut();
+    }
+
+    private static boolean isProductionMode() {
+        try {
+            return VaadinService.getCurrent().getDeploymentConfiguration().isProductionMode();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @Bean
@@ -195,9 +200,9 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     }
 
     @Bean
-    public ToolCallingAdvisor toolCallingAdvisor(McpToolCallingManager mcpToolCallingManager) {
+    public ToolCallingAdvisor toolCallingAdvisor(AgentLoopManager agentLoopManager) {
         return ToolCallingAdvisor.builder()
-                .toolCallingManager(mcpToolCallingManager)
+                .toolCallingManager(agentLoopManager)
                 .build();
     }
 
@@ -239,10 +244,10 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
     @Bean
     @ConditionalOnProperty(prefix = "spring.ai.playground.chat.tool-search", name = "enabled",
             matchIfMissing = true)
-    public ToolSearchToolCallingAdvisor dynamicToolCallingAdvisor(McpToolCallingManager mcpToolCallingManager,
+    public ToolSearchToolCallingAdvisor dynamicToolCallingAdvisor(AgentLoopManager agentLoopManager,
             ToolIndex toolIndex, SpringAiPlaygroundOptions playgroundOptions) {
         return ToolSearchToolCallingAdvisor.builder()
-                .toolCallingManager(mcpToolCallingManager)
+                .toolCallingManager(agentLoopManager)
                 .toolIndex(toolIndex)
                 .maxResults(playgroundOptions.chat().toolSearch().maxResults())
                 .systemMessageSuffix(DYNAMIC_TOOLS_SUFFIX)

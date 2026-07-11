@@ -75,11 +75,17 @@ public class ChatHistoryPersistenceService implements PersistenceServiceInterfac
         });
     }
 
-    public void deleteAsync(ChatHistory chatHistory) {
+    public void deleteAsync(ChatHistory chatHistory, boolean deleteWorkspace) {
         this.persistenceExecutor.submit(() -> {
             delete(chatHistory);
-            this.toolWorkspace.deleteConversationDir(chatHistory.conversationId());
+            if (deleteWorkspace) {
+                this.toolWorkspace.deleteConversationDir(chatHistory.conversationId());
+            }
         });
+    }
+
+    public int conversationFileCount(ChatHistory chatHistory) {
+        return this.toolWorkspace.conversationFileCount(chatHistory.conversationId());
     }
 
     @Override

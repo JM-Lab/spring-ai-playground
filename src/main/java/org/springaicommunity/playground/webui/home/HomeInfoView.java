@@ -24,22 +24,28 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.QueryParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.playground.observability.McpRiskEventRingBuffer;
+import org.springaicommunity.playground.observability.ObservabilityTimeSeries;
+import org.springaicommunity.playground.observability.system.SystemMetricsSnapshot;
+import org.springaicommunity.playground.service.chat.ChatHistory;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
-import org.springaicommunity.playground.webui.VaadinUtils;
+import org.springaicommunity.playground.webui.chat.ChatView;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
@@ -53,12 +59,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-
-import static org.springaicommunity.playground.webui.home.HomeUi.divider;
-import static org.springaicommunity.playground.webui.home.HomeUi.relativeTime;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class HomeInfoView extends Div {
 
@@ -72,25 +79,41 @@ public class HomeInfoView extends Div {
             "https://github.com/spring-ai-community/spring-ai-playground/releases/latest";
     private static final String DOWNLOAD_GUIDE =
             "https://spring-ai-community.github.io/spring-ai-playground/#1-download-the-desktop-app";
+    private static final String CONFIGURE_URL =
+            "https://spring-ai-community.github.io/spring-ai-playground/getting-started/";
+
+    private static final Pattern PRE_RELEASE_SUFFIX = Pattern.compile("(?i)(M|RC)(\\d+)");
+    private static final int STAGE_UNKNOWN = 0;
+    private static final int STAGE_MILESTONE = 1;
+    private static final int STAGE_RC = 2;
+    private static final int STAGE_GA = 3;
 
     private static volatile LatestRelease cachedRelease;
     private static volatile Instant cachedAt;
 
     private final Div updateBannerSlot;
-    private final Div pwaSlot;
+    private final Div alertBannerSlot;
     private final HomeChecklist checklist;
+    private final boolean desktopManagedUpdates;
 
     public HomeInfoView(ToolSpecService toolSpecService,
             McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService,
+            McpCatalogService mcpCatalogService,
             VectorStoreDocumentService vectorStoreDocumentService,
             ChatHistoryService chatHistoryService,
             ToolSpecPersistenceService toolSpecPersistenceService,
+            ToolActivationCalculator toolActivationCalculator,
             ObjectProvider<ChatModel> chatModelProvider,
             ObjectProvider<EmbeddingModel> embeddingModelProvider,
             Optional<EmbeddingOptions> embeddingOptions,
+            ObservabilityTimeSeries observabilityTimeSeries,
+            SystemMetricsSnapshot systemMetricsSnapshot,
+            McpRiskEventRingBuffer mcpRiskEventRingBuffer,
             Environment environment) {
         setSizeFull();
+        this.desktopManagedUpdates = environment.getProperty(
+                "spring.ai.playground.desktop.managed-updates", Boolean.class, false);
 
         VerticalLayout content = new VerticalLayout();
         content.setWidthFull();
@@ -106,11 +129,22 @@ public class HomeInfoView extends Div {
         this.updateBannerSlot.setWidthFull();
         this.updateBannerSlot.setVisible(false);
 
-        HomeProviderStatus providerStatus = new HomeProviderStatus(
-                chatModelProvider, embeddingModelProvider, embeddingOptions, environment);
+        this.alertBannerSlot = new Div();
+        this.alertBannerSlot.setWidthFull();
+        this.alertBannerSlot.setVisible(false);
+        if (chatModelProvider.getIfAvailable() == null) {
+            renderProviderAlert();
+        }
+
+        HomeSystemPanel systemPanel = new HomeSystemPanel(
+                chatModelProvider, embeddingModelProvider, embeddingOptions, environment,
+                toolSpecService, toolSpecPersistenceService, toolActivationCalculator,
+                mcpServerInfoService, mcpClientService,
+                observabilityTimeSeries, systemMetricsSnapshot, mcpRiskEventRingBuffer);
         HomeSurfaceCards surfaceCards = new HomeSurfaceCards(
                 toolSpecService, toolSpecPersistenceService,
-                mcpServerInfoService, mcpClientService, vectorStoreDocumentService);
+                mcpServerInfoService, mcpClientService, vectorStoreDocumentService, mcpCatalogService,
+                chatHistoryService);
         this.checklist = new HomeChecklist(
                 chatModelProvider, toolSpecService, toolSpecPersistenceService,
                 vectorStoreDocumentService, chatHistoryService, environment);
@@ -118,18 +152,14 @@ public class HomeInfoView extends Div {
                 toolSpecService, toolSpecPersistenceService,
                 mcpServerInfoService, vectorStoreDocumentService, chatHistoryService);
 
-        this.pwaSlot = new Div();
-        this.pwaSlot.setWidthFull();
-        this.pwaSlot.setVisible(false);
-
         content.add(
+                this.alertBannerSlot,
                 this.updateBannerSlot,
-                createHero(),
-                providerStatus,
+                createHero(chatModelProvider, chatHistoryService),
                 surfaceCards,
+                systemPanel,
                 this.checklist,
-                recentActivity,
-                this.pwaSlot
+                recentActivity
         );
 
         Scroller scroller = new Scroller(content);
@@ -144,13 +174,11 @@ public class HomeInfoView extends Div {
         UI ui = event.getUI();
 
         ui.getPage().executeJs(
-                "const isStandalone = window.matchMedia('(display-mode: standalone)').matches;"
-                        + "const isElectron = /electron/i.test(navigator.userAgent);"
-                        + "const checklistCollapsed = localStorage.getItem('home_checklist_collapsed') === 'true';"
-                        + "$0.$server.onClientEnvironment(!isStandalone && !isElectron, checklistCollapsed);",
+                "const checklistCollapsed = localStorage.getItem('home_checklist_collapsed') === 'true';"
+                        + "$0.$server.onClientEnvironment(checklistCollapsed);",
                 getElement());
 
-        if (!DEV_VERSION.equals(CURRENT_VERSION)) {
+        if (!desktopManagedUpdates && !DEV_VERSION.equals(CURRENT_VERSION)) {
             CompletableFuture.supplyAsync(HomeInfoView::fetchLatestRelease)
                     .thenAccept(release -> {
                         if (release == null) {
@@ -174,18 +202,13 @@ public class HomeInfoView extends Div {
     }
 
     @ClientCallable
-    private void onClientEnvironment(boolean isBrowser, boolean checklistCollapsed) {
-        if (isBrowser) {
-            pwaSlot.removeAll();
-            pwaSlot.add(createPwaSection());
-            pwaSlot.setVisible(true);
-        }
+    private void onClientEnvironment(boolean checklistCollapsed) {
         checklist.applyCollapsedState(checklistCollapsed);
     }
 
-    // ---------- Hero ----------
 
-    private Component createHero() {
+    private Component createHero(ObjectProvider<ChatModel> chatModelProvider,
+            ChatHistoryService chatHistoryService) {
         Div hero = new Div();
         hero.getStyle()
                 .set("display", "flex")
@@ -253,55 +276,110 @@ public class HomeInfoView extends Div {
         principleRow.add(motto, mottoHint);
 
         hero.add(title, tagline, principleRow);
+        Component cta = createHeroCta(chatModelProvider, chatHistoryService);
+        if (cta != null) {
+            hero.add(cta);
+        }
         return hero;
     }
 
-    // ---------- PWA ----------
-
-    private Component createPwaSection() {
-        Div section = new Div();
-        section.getStyle()
+    private Component createHeroCta(ObjectProvider<ChatModel> chatModelProvider,
+            ChatHistoryService chatHistoryService) {
+        Div row = new Div();
+        row.getStyle()
                 .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "0.6rem")
-                .set("padding", "1.1rem 1.25rem")
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("background-color", "var(--lumo-contrast-5pct)");
+                .set("flex-wrap", "wrap")
+                .set("align-items", "center")
+                .set("gap", "0.75rem")
+                .set("margin-top", "0.75rem");
 
-        H3 title = new H3("Install as Progressive Web App");
-        title.getStyle()
-                .set("margin", "0")
-                .set("font-size", "var(--lumo-font-size-m)");
+        if (chatModelProvider.getIfAvailable() == null) {
+            return null;
+        }
 
-        Paragraph description = new Paragraph(
-                "Install the browser app for a standalone window. "
-                        + "For the full experience, use the native desktop installer from the Releases page.");
-        description.getStyle()
-                .set("margin", "0")
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("font-size", "var(--lumo-font-size-s)");
-
-        Button installButton = new Button("Install PWA", VaadinIcon.DOWNLOAD.create());
-        installButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        installButton.setId("installPwaBtn");
-        installButton.getStyle().set("align-self", "flex-start");
-        installButton.addClickListener(e ->
-                VaadinUtils.getUi(this).getPage().executeJs(
-                        "if (typeof window.removePwaPopup === 'function') { window.removePwaPopup(); }"
-                                + "if (window.pwaInstall && window.pwaInstall.deferredPrompt) {"
-                                + "  window.pwaInstall.deferredPrompt.prompt();"
-                                + "} else {"
-                                + "  alert('The app may already be installed or install is not currently available.');"
-                                + "}"
-                )
-        );
-
-        section.add(title, description, installButton);
-        return section;
+        Optional<ChatHistory> recent = chatHistoryService.getChatHistoryList().stream()
+                .max(Comparator.comparingLong(ChatHistory::updateTimestamp));
+        if (recent.isEmpty()) {
+            return null;
+        }
+        ChatHistory history = recent.get();
+        String label = (history.title() == null || history.title().isBlank())
+                ? "last chat" : history.title();
+        Button resume = new Button("Resume · " + label, VaadinIcon.PLAY.create());
+        resume.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        String conversationId = history.conversationId();
+        resume.addClickListener(e -> UI.getCurrent().navigate(
+                ChatView.class, QueryParameters.simple(Map.of("conv", conversationId))));
+        row.add(resume);
+        return row;
     }
 
-    // ---------- Update banner ----------
+    private static void styleCtaAnchor(Anchor anchor) {
+        anchor.getStyle()
+                .set("display", "inline-flex")
+                .set("align-items", "center")
+                .set("gap", "0.4rem")
+                .set("color", "var(--lumo-primary-contrast-color)")
+                .set("background-color", "var(--lumo-primary-color)")
+                .set("padding", "0.55rem 1rem")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("text-decoration", "none")
+                .set("font-weight", "500");
+    }
+
+
+    private void renderProviderAlert() {
+        Div banner = new Div();
+        banner.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("flex-wrap", "wrap")
+                .set("gap", "0.75rem")
+                .set("padding", "0.75rem 1rem")
+                .set("background-color", "var(--lumo-warning-color-10pct)")
+                .set("border", "1px solid var(--lumo-warning-color-50pct)")
+                .set("border-radius", "var(--lumo-border-radius-l)");
+
+        Icon icon = VaadinIcon.WARNING.create();
+        icon.getStyle()
+                .set("width", "var(--lumo-icon-size-s)")
+                .set("height", "var(--lumo-icon-size-s)")
+                .set("color", "var(--lumo-warning-text-color)");
+
+        Div textBlock = new Div();
+        textBlock.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "0.15rem")
+                .set("flex", "1 1 auto")
+                .set("min-width", "0");
+        Span headline = new Span("No model provider configured");
+        headline.getStyle()
+                .set("font-weight", "600")
+                .set("color", "var(--lumo-body-text-color)");
+        Span detail = new Span("Configure Ollama or an OpenAI key to start chatting.");
+        detail.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)");
+        textBlock.add(headline, detail);
+
+        Anchor configure = new Anchor(CONFIGURE_URL, "Configure a provider");
+        configure.setTarget("_blank");
+        configure.getElement().setAttribute("rel", "noopener");
+        styleCtaAnchor(configure);
+        HomeUi.routeToLauncherOnDesktop(configure, "config-card");
+
+        Button dismiss = new Button(VaadinIcon.CLOSE_SMALL.create(),
+                e -> alertBannerSlot.setVisible(false));
+        dismiss.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+        dismiss.setAriaLabel("Dismiss");
+
+        banner.add(icon, textBlock, configure, dismiss);
+        alertBannerSlot.removeAll();
+        alertBannerSlot.add(banner);
+        alertBannerSlot.setVisible(true);
+    }
+
 
     private void renderUpdateBanner(LatestRelease release) {
         Div banner = new Div();
@@ -350,12 +428,12 @@ public class HomeInfoView extends Div {
         }
         if (release.publishedAtEpochMs() != null) {
             if (detailLine.getElement().getChildCount() > 0) {
-                detailLine.add(divider());
+                detailLine.add(HomeUi.divider());
             }
-            detailLine.add(new Span("Released " + relativeTime(release.publishedAtEpochMs())));
+            detailLine.add(new Span("Released " + HomeUi.relativeTime(release.publishedAtEpochMs())));
         }
         if (detailLine.getElement().getChildCount() > 0) {
-            detailLine.add(divider());
+            detailLine.add(HomeUi.divider());
         }
         detailLine.add(new Span("Download the desktop installer for your platform."));
 
@@ -392,7 +470,6 @@ public class HomeInfoView extends Div {
         updateBannerSlot.setVisible(true);
     }
 
-    // ---------- Version + release fetching ----------
 
     static boolean isNewer(String latest, String current) {
         int[] l = parseVersion(latest);
@@ -404,7 +481,6 @@ public class HomeInfoView extends Div {
         return false;
     }
 
-    // milestone = MAX for a GA so a release outranks any -M milestone of the same x.y.z
     static int[] parseVersion(String version) {
         String v = normalizeVersion(version);
         if (v.isEmpty()) return null;
@@ -412,20 +488,20 @@ public class HomeInfoView extends Div {
         String core = dash < 0 ? v : v.substring(0, dash);
         String suffix = dash < 0 ? "" : v.substring(dash + 1);
         String[] parts = core.split("\\.");
-        int[] out = { 0, 0, 0, Integer.MAX_VALUE };
+        int[] out = { 0, 0, 0, STAGE_GA, 0 };
         try {
             for (int i = 0; i < 3 && i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());
+            if (!suffix.isEmpty()) {
+                Matcher preRelease = PRE_RELEASE_SUFFIX.matcher(suffix);
+                if (preRelease.matches()) {
+                    out[3] = "M".equalsIgnoreCase(preRelease.group(1)) ? STAGE_MILESTONE : STAGE_RC;
+                    out[4] = Integer.parseInt(preRelease.group(2));
+                } else {
+                    out[3] = STAGE_UNKNOWN;
+                }
+            }
         } catch (NumberFormatException e) {
             return null;
-        }
-        if (!suffix.isEmpty()) {
-            if (suffix.charAt(0) == 'M' || suffix.charAt(0) == 'm') {
-                int i = 1;
-                while (i < suffix.length() && Character.isDigit(suffix.charAt(i))) i++;
-                out[3] = i > 1 ? Integer.parseInt(suffix.substring(1, i)) : 0;
-            } else {
-                out[3] = 0;
-            }
         }
         return out;
     }

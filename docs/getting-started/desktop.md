@@ -100,6 +100,8 @@ This makes it much easier to keep multiple clean launch profiles without hand-ma
 
 Preset selection for the built-in MCP server happens **inside the configuration editor**, on the [Default MCP Tools card](#8-pick-your-default-mcp-tools) (step 8 of the walkthrough below). The first launch opens Configure Spring AI Playground; pick a preset before clicking Save and Launch and that choice is written to `<home>/spring-ai-playground/tool/save/default-tools-preference.json`. Without an explicit pick the app falls back to `Starter 5` - the cross-locale defaults that need no API keys.
 
+Do not confuse this with the chat-side default: these presets decide which built-in tools are **active on the MCP server**, while a brand-new Agentic Chat opens with the **Self-equipping agent** prompt preset ([`chat.default-preset`](configuration.md#mcp)), which uses dynamic discovery to search whatever this card has activated.
+
 The card writes `default-tools-preference.json`; the same preference can also be pinned via CLI / yaml. The app reads it at startup to decide which built-in tools are **Local-Passed (active)**. Tool Studio's **Built-in MCP Server Native Tools** drawer is a separate concern - it picks which Local-Passed tools the built-in MCP server *exposes*, not which are active.
 
 The five presets:
@@ -271,7 +273,7 @@ Each task shows a live progress bar, the downloaded / total size, and a status b
 
 The next card down the screen is **Default MCP Tools**. It chooses which preset of built-in tools the MCP server exposes the moment it boots.
 
-![Default MCP Tools card - collapsed, showing the active preset (Starter 5, 5 of 88 tools) and its tools as chips, with a preset dropdown and a folded Advanced curation section](../assets/images/launcher/launcher-default-tools-card.png)
+![Default MCP Tools card - collapsed, showing the active preset (Starter 5, 5 of the bundled tools) and its tools as chips, with a preset dropdown and a folded Advanced curation section](../assets/images/launcher/launcher-default-tools-card.png)
 
 Pick a preset - the default `Starter 5` needs no API keys. The full per-preset tool lists, the include / exclude **Advanced curation** rules, and the CLI / YAML equivalents are all covered in [Default MCP Tools Curation](#default-mcp-tools-curation) above; the tools themselves live in [Tool Studio](../features/tool-studio/index.md).
 
@@ -391,11 +393,15 @@ The desktop app can transcribe voice input for [Agentic Chat](../features/agenti
 
 Speech-to-text is **off by default, and the model is not bundled with the app** - you opt in and download a model once from the config editor's **Local Speech-to-Text** card:
 
-![The Local Speech-to-Text card - a Use voice input checkbox, a model dropdown showing large-v3-turbo-q5 (547 MB, recommended) with a Not downloaded badge, the recommended-model description and native-memory note, and Download model, Refresh, and Open folder buttons](../assets/images/launcher/launcher-stt-card.png)
+![The Local Speech-to-Text card - a one-line status showing voice input on and the active model, a Use voice input checkbox, and a Download and Manage Voice Models button](../assets/images/launcher/launcher-stt-card.png)
 
-1. Open the **Local Speech-to-Text** card in the config editor.
+1. Open the **Local Speech-to-Text** card in the config editor. Its header line summarizes the current state - whether voice input is on and which model is active.
 2. Tick **Use voice input** to load Whisper on demand.
-3. Pick a model. Larger models are more accurate but use more disk and memory:
+3. Click **Download and Manage Voice Models**. Model management opens in its own window, with status cards for voice input, the active model, and the model folder:
+
+    ![The Download and Manage Speech-to-Text Models window - status cards for voice input, active model, and model folder, above the model chooser with Download, Refresh, and Open folder buttons](../assets/images/launcher/launcher-stt-manager.png)
+
+4. Pick a model in the manager. Larger models are more accurate but use more disk and memory:
 
     | Model | Download | Notes |
     |---|---|---|
@@ -405,10 +411,10 @@ Speech-to-text is **off by default, and the model is not bundled with the app** 
     | **`large-v3-turbo-q5`** | **~547 MB** | **recommended** - multilingual, best speed/quality balance |
     | `large-v3` | ~2.9 GB | most accurate, slowest |
 
-4. Click **Download model**. A progress bar shows the transfer with a **Cancel** option; files are saved under `~/.spring-ai-playground/whisper/`.
-5. **Restart the app** to apply - the card shows a restart hint whenever a change needs one.
+5. Click **Download model**. A progress bar shows the transfer with a **Cancel** option; files are saved under `~/.spring-ai-playground/whisper/`.
+6. **Restart the app** to apply - the card and the manager both show a restart hint whenever a change needs one.
 
-The card also offers **Refresh** (re-check installed models), **Set active** (switch to an already-downloaded model), and **Open folder** (reveal the Whisper directory). A model uses extra memory only while it is transcribing, so the runtime memory cost scales with the model you choose.
+The manager window also offers **Set active** (switch to an already-downloaded model), **Refresh** (re-check installed models), and **Open folder** (reveal the Whisper directory). A model uses extra memory only while it is transcribing, so the runtime memory cost scales with the model you choose.
 
 Voice input is supported on **Apple Silicon Macs**. Intel Macs are not supported yet; there the chat mic shows a short notice, and in a browser it uses Web Speech instead. See [Agentic Chat → Voice input](../features/agentic-chat/index.md#voice-input) for how the mic behaves in a conversation.
 

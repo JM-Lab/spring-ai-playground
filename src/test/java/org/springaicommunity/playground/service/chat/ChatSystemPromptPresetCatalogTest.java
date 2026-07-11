@@ -17,8 +17,16 @@ package org.springaicommunity.playground.service.chat;
 
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.playground.service.chat.ChatSystemPromptPresetCatalog.Preset;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,13 +36,15 @@ class ChatSystemPromptPresetCatalogTest {
     void loadsShippedPresetsInOrder() throws IOException {
         ChatSystemPromptPresetCatalog catalog = new ChatSystemPromptPresetCatalog();
         assertThat(catalog.presets()).extracting(Preset::id)
-                .containsExactly("skill-agent", "domain-expert", "custom-role", "structured-output",
-                        "research-brief", "summarizer", "translator", "socratic-tutor", "decision-matrix",
-                        "general-assistant", "daily-assistant", "coding-agent", "research-agent",
-                        "self-equipping-agent",
+                .containsExactly("self-equipping-agent",
+                        "skill-agent", "domain-expert", "custom-role", "structured-output",
+                        "summarizer", "translator", "socratic-tutor", "decision-matrix",
+                        "general-assistant", "daily-assistant", "research-agent",
                         "data-wrangler", "korea-concierge", "github-repo-analyst",
-                        "release-notes-writer", "log-detective", "crypto-market-watch",
-                        "trip-planner", "tech-pulse");
+                        "release-notes-writer", "log-detective", "document-detective", "crypto-market-watch",
+                        "trip-planner", "tech-pulse", "data-visualizer",
+                        "market-charts", "data-analysis", "diff-inspector", "image-analyst",
+                        "workspace-organizer");
     }
 
     @Test
@@ -46,7 +56,7 @@ class ChatSystemPromptPresetCatalogTest {
     @Test
     void findByIdReturnsPresetOrEmpty() throws IOException {
         ChatSystemPromptPresetCatalog catalog = new ChatSystemPromptPresetCatalog();
-        assertThat(catalog.findById("coding-agent")).isPresent();
+        assertThat(catalog.findById("research-agent")).isPresent();
         assertThat(catalog.findById("nope")).isEmpty();
         assertThat(catalog.findById(null)).isEmpty();
     }
@@ -63,6 +73,63 @@ class ChatSystemPromptPresetCatalogTest {
         assertThat(catalog.findById("log-detective").orElseThrow().tools())
                 .contains("findFiles", "grepFile", "sliceFile", "stats");
         assertThat(catalog.findById("skill-agent").orElseThrow().tools()).isEmpty();
+    }
+
+    @Test
+    void everyPresetToolResolvesToAShippedBuiltinTool() throws IOException {
+        Set<String> toolNames = shippedToolNames();
+        ChatSystemPromptPresetCatalog catalog = new ChatSystemPromptPresetCatalog();
+        for (Preset preset : catalog.presets()) {
+            assertThat(toolNames)
+                    .as("preset '%s' names a tool that no shipped spec file defines", preset.id())
+                    .containsAll(preset.tools());
+        }
+    }
+
+    private static Set<String> shippedToolNames() throws IOException {
+        return shippedToolKeyGates().keySet();
+    }
+
+    // A prompt may name a key-gated tool it does not declare ("if googlePseSearch is enabled ..."), but naming an
+    // undeclared key-less tool means the model gets told to call something it cannot resolve, which kills the turn.
+    @Test
+    void promptMentionedToolsAreDeclaredUnlessKeyGated() throws IOException {
+        Map<String, Boolean> keyGates = shippedToolKeyGates();
+        ChatSystemPromptPresetCatalog catalog = new ChatSystemPromptPresetCatalog();
+        for (Preset preset : catalog.presets()) {
+            if (preset.tools().isEmpty()) continue;
+            for (Map.Entry<String, Boolean> tool : keyGates.entrySet()) {
+                String name = tool.getKey();
+                if (name.equals(name.toLowerCase()) || tool.getValue()) continue;
+                if (!Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(preset.prompt()).find()) continue;
+                assertThat(preset.tools())
+                        .as("preset '%s' tells the model to use '%s' but does not declare it", preset.id(), name)
+                        .contains(name);
+            }
+        }
+    }
+
+    private static Map<String, Boolean> shippedToolKeyGates() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Boolean> keyGateByName = new HashMap<>();
+        for (String file : List.of(
+                "/tool/default-tool-specs.json",
+                "/tool/default-tool-specs-builtin.json",
+                "/tool/default-tool-specs-builtin-helpers.json",
+                "/tool/default-tool-specs-builtin-fs.json",
+                "/tool/default-tool-specs-network.json",
+                "/tool/default-tool-specs-kr.json")) {
+            try (InputStream in = ChatSystemPromptPresetCatalogTest.class.getResourceAsStream(file)) {
+                if (in == null) continue;
+                for (JsonNode node : mapper.readTree(in)) {
+                    if (node.has("name")) {
+                        keyGateByName.put(node.get("name").asText(),
+                                node.path("staticVariables").toString().contains("${"));
+                    }
+                }
+            }
+        }
+        return keyGateByName;
     }
 
     @Test

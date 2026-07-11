@@ -1315,43 +1315,16 @@
                 <div class="ollama-actions">
                     <label class="checkbox-row" for="stt-enabled-check">
                         <input id="stt-enabled-check" type="checkbox">
-                        <span>Use voice input (load Whisper on demand). Memory cost depends on the model below.</span>
+                        <span>Use voice input (load Whisper on demand). Memory cost depends on the selected model.</span>
                     </label>
                 </div>
-                <div class="ollama-grid">
-                    <div class="ollama-card wide">
-                        <div class="meta-label">Choose model</div>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-                            <select id="stt-model-select" style="flex:1; min-width:320px; padding:6px 10px; border-radius:6px; border:1px solid var(--border, #ddd);"></select>
-                            <span id="stt-model-badge" style="font-size:0.8rem; padding:2px 8px; border-radius:10px; background:var(--lumo-contrast-10pct, #eee);">…</span>
-                        </div>
-                        <div id="stt-model-description" class="meta-value" style="margin-top:6px; font-size:0.9rem; color:var(--lumo-secondary-text-color, #555);">Pick a model to see its description.</div>
-                        <div id="stt-memory-note" class="meta-value" style="margin-top:4px; font-size:0.85rem; color:var(--lumo-secondary-text-color, #777);">…</div>
-                        <div id="stt-progress-wrap" hidden style="margin-top: var(--lumo-space-s, 0.5rem);">
-                            <progress id="stt-progress" value="0" max="100" style="width:100%; height:14px;"></progress>
-                            <div id="stt-progress-text" style="font-size:0.85rem; color:var(--lumo-secondary-text-color, #555); margin-top:4px;">0 MB / ?</div>
-                        </div>
-                        <div style="display:flex; gap:8px; margin-top: var(--lumo-space-s, 0.5rem); flex-wrap: wrap;">
-                            <button class="primary download-manage-button" id="stt-download-button" type="button" title="Download the selected model">
-                                <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span id="stt-download-label">Download model</span></span>
-                            </button>
-                            <button class="secondary" id="stt-cancel-button" type="button" hidden>
-                                <span class="button-content"><span>Cancel download</span></span>
-                            </button>
-                            <button class="secondary" id="stt-set-active-button" type="button" hidden title="Set the selected (already downloaded) model as active">
-                                <span class="button-content"><span>Set active</span></span>
-                            </button>
-                            <button class="secondary" id="stt-refresh-button" type="button" title="Re-check installed models">
-                                <span class="button-content"><span>Refresh</span></span>
-                            </button>
-                            <button class="secondary" id="stt-open-folder-button" type="button" title="Open ~/.spring-ai-playground/whisper">
-                                <span class="button-content"><span>Open folder</span></span>
-                            </button>
-                        </div>
-                        <div id="stt-restart-hint" class="meta-value" hidden style="margin-top:6px; font-size:0.85rem; color:var(--lumo-success-text-color, #2e7d32);">Setting changed — restart the app to apply.</div>
-                        <div id="stt-error" class="notice" hidden style="margin-top: var(--lumo-space-s, 0.5rem); color: var(--lumo-error-text-color, #b00020);"></div>
-                    </div>
+                <div class="ollama-actions-row">
+                    <button class="primary download-manage-button" id="open-whisper-manager-button" type="button" title="Download and manage voice models in a separate window">
+                        <span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span>Download and Manage Voice Models</span></span>
+                    </button>
                 </div>
+                <div id="stt-restart-hint" class="meta-value" hidden style="margin-top:6px; font-size:0.85rem; color:var(--lumo-success-text-color, #2e7d32);">Setting changed — restart the app to apply.</div>
+                <div id="stt-error" class="notice" hidden style="margin-top: var(--lumo-space-s, 0.5rem); color: var(--lumo-error-text-color, #b00020);"></div>
             </div>
         </div>
     </div>
@@ -1598,6 +1571,7 @@
     const ollamaCopy = document.getElementById('ollama-copy');
     const ollamaActionsRow = document.getElementById('ollama-actions-row');
     const openOllamaManagerButton = document.getElementById('open-ollama-manager-button');
+    const openWhisperManagerButton = document.getElementById('open-whisper-manager-button');
     const checkOllamaButton = document.getElementById('check-ollama-button');
     const openOllamaSiteButton = document.getElementById('open-ollama-site-button');
     const sttCard = document.getElementById('stt-card');
@@ -1606,19 +1580,6 @@
     const sttToggleLabel = document.getElementById('stt-toggle-label');
     const sttSummary = document.getElementById('stt-summary');
     const sttEnabledCheck = document.getElementById('stt-enabled-check');
-    const sttModelSelect = document.getElementById('stt-model-select');
-    const sttModelBadge = document.getElementById('stt-model-badge');
-    const sttModelDescription = document.getElementById('stt-model-description');
-    const sttMemoryNote = document.getElementById('stt-memory-note');
-    const sttDownloadButton = document.getElementById('stt-download-button');
-    const sttDownloadLabel = document.getElementById('stt-download-label');
-    const sttCancelButton = document.getElementById('stt-cancel-button');
-    const sttSetActiveButton = document.getElementById('stt-set-active-button');
-    const sttRefreshButton = document.getElementById('stt-refresh-button');
-    const sttOpenFolderButton = document.getElementById('stt-open-folder-button');
-    const sttProgressWrap = document.getElementById('stt-progress-wrap');
-    const sttProgress = document.getElementById('stt-progress');
-    const sttProgressText = document.getElementById('stt-progress-text');
     const sttRestartHint = document.getElementById('stt-restart-hint');
     const sttError = document.getElementById('stt-error');
     const secretSection = document.getElementById('secret-section');
@@ -1728,6 +1689,18 @@
       toggleLabel.textContent = isExpanded ? 'Hide' : 'Show';
       scheduleWindowFit();
     }
+
+    function openConfigSection(section) {
+      const id = String(section || '').replace(/^#/, '');
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'stt-card') setSectionExpanded(sttCard, sttContent, sttToggleButton, sttToggleLabel, true);
+      else if (id === 'jvm-card') setSectionExpanded(jvmCard, jvmContent, jvmToggleButton, jvmToggleLabel, true);
+      const scroller = document.scrollingElement || document.documentElement;
+      const top = el.getBoundingClientRect().top + scroller.scrollTop;
+      scroller.scrollTop = Math.max(0, top - 12);
+    }
+    window.__openConfigSection = openConfigSection;
 
     function syncSectionDefaults(selectedProvider) {
       const shouldOpenOllama = selectedProvider === 'ollama';
@@ -2568,8 +2541,6 @@
     jvmOptions.addEventListener('input', refreshJvmSummary);
     appArgs.addEventListener('input', refreshJvmSummary);
 
-    const STT_MODELS_ENDPOINT_FALLBACK = 'http://127.0.0.1:8282';
-    let sttCatalog = null;
     let sttCurrentStatus = null;
 
     const formatBytes = (n) => {
@@ -2580,168 +2551,37 @@
       return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
     };
 
-    const formatRamMb = (mb) => mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB RAM` : `${mb} MB RAM`;
-
-    const fetchModelCatalog = async () => {
-      try {
-        const base = window.dynamicServerUrl || STT_MODELS_ENDPOINT_FALLBACK;
-        const res = await fetch(base + '/api/stt/models', { cache: 'no-store' });
-        if (res.ok) return await res.json();
-      } catch (_) { }
-      return [
-        { id: 'tiny', filename: 'ggml-tiny.bin', sizeBytes: 77704715, runtimeRamMb: 200, multilingual: true,
-          description: 'Multilingual model, but accuracy is only acceptable for short English-only utterances. Pick something larger for any other language.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin' },
-        { id: 'base', filename: 'ggml-base.bin', sizeBytes: 147951465, runtimeRamMb: 270, multilingual: true,
-          description: 'Multilingual basic model. Noticeably better than tiny for non-English speech, still skips long words.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin' },
-        { id: 'small', filename: 'ggml-small.bin', sizeBytes: 487601967, runtimeRamMb: 700, multilingual: true,
-          description: 'Multilingual, balanced quality. Reliable for everyday speech in major languages.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin' },
-        { id: 'medium-q5', filename: 'ggml-medium-q5_0.bin', sizeBytes: 539212467, runtimeRamMb: 800, multilingual: true,
-          description: 'Multilingual, solid quality. Quantized to roughly half the size of medium.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin' },
-        { id: 'large-v3-turbo-q5', filename: 'ggml-large-v3-turbo-q5_0.bin', sizeBytes: 574041195, runtimeRamMb: 830,
-          multilingual: true, recommended: true,
-          description: 'Quantized large-v3-turbo — best speed-vs-accuracy balance with the smallest memory footprint among the high-quality options.',
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin' },
-        { id: 'large-v3-turbo', filename: 'ggml-large-v3-turbo.bin', sizeBytes: 1624555275, runtimeRamMb: 2000, multilingual: true,
-          description: 'Turbo decoder at full precision. Faster than large-v3 with similar accuracy.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin' },
-        { id: 'large-v3', filename: 'ggml-large-v3.bin', sizeBytes: 3094623691, runtimeRamMb: 3500, multilingual: true,
-          description: 'Most accurate, multilingual. Slowest and largest — only worth it if turbo is not enough.',
-          recommended: false,
-          downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin' },
-      ];
-    };
-
-    const STT_QUALITY_HINTS = {
-      'tiny':                'English mostly · low quality',
-      'base':                'multilingual · basic',
-      'small':               'multilingual · fair',
-      'medium-q5':           'multilingual · good',
-      'large-v3-turbo-q5':   'multilingual · high · recommended',
-      'large-v3-turbo':      'multilingual · high · full precision',
-      'large-v3':            'multilingual · best · slowest',
-    };
-
-    const populateModelSelect = (catalog, preferredFilename) => {
-      sttModelSelect.innerHTML = '';
-      catalog.forEach((m) => {
-        const opt = document.createElement('option');
-        opt.value = m.filename;
-        const hint = STT_QUALITY_HINTS[m.id] || (m.multilingual ? 'multilingual' : 'English-only');
-        opt.textContent = `${m.id} — ${formatBytes(m.sizeBytes)} (${hint})`;
-        opt.dataset.id = m.id;
-        opt.dataset.size = String(m.sizeBytes);
-        opt.dataset.ramMb = String(m.runtimeRamMb || 0);
-        opt.dataset.description = m.description;
-        opt.dataset.downloadUrl = m.downloadUrl;
-        opt.dataset.recommended = String(m.recommended);
-        sttModelSelect.appendChild(opt);
-      });
-      const recommended = catalog.find((m) => m.recommended);
-      sttModelSelect.value = preferredFilename
-        || (recommended ? recommended.filename : (catalog[0] && catalog[0].filename) || '');
-    };
-
-    const updateSummary = () => {
+    const updateSttSummary = () => {
       const enabled = sttEnabledCheck.checked;
       const am = (sttCurrentStatus && sttCurrentStatus.activeModel) || {};
-      const downloaded = am.downloaded;
       const errColor = 'var(--lumo-error-text-color, #b00020)';
       const okColor = 'var(--lumo-success-text-color, #2e7d32)';
       const enabledTxt = enabled
         ? `<strong>Voice input:</strong> <span style="color:${okColor};">● ON</span> on next launch`
         : `<strong>Voice input:</strong> <span style="color:${errColor};">● OFF</span> (Whisper not loaded)`;
-      const modelTxt = downloaded
+      const modelTxt = am.downloaded
         ? `<strong>Active model:</strong> <span style="color:${okColor};">✓ ${am.filename}</span> (${formatBytes(am.sizeBytes)})`
-        : `<strong>Active model:</strong> <span style="color:${errColor};">⚠ ${am.filename || '(none)'} — NOT DOWNLOADED</span>`;
+        : `<strong>Active model:</strong> <span style="color:${errColor};">⚠ ${am.filename || '(none)'} — not downloaded</span>`;
       sttSummary.innerHTML = `${enabledTxt} · ${modelTxt}`;
-    };
-
-    const renderSelectedModelInfo = () => {
-      const opt = sttModelSelect.selectedOptions[0];
-      if (!opt) return;
-      const recommended = opt.dataset.recommended === 'true';
-      sttModelDescription.innerHTML = (recommended
-        ? '<strong style="color:var(--lumo-success-text-color, #2e7d32);">★ Recommended.</strong> '
-        : '') + escapeHtml(opt.dataset.description || '');
-      const ramMb = Number(opt.dataset.ramMb || 0);
-      sttMemoryNote.textContent = ramMb
-        ? `Memory: this model loads about ${formatRamMb(ramMb)} into native memory (separate from the JVM heap) while transcribing.`
-        : '';
-      const installed = (sttCurrentStatus && sttCurrentStatus.installedModels || [])
-        .find((m) => m.filename === opt.value);
-      const isActive = sttCurrentStatus
-        && sttCurrentStatus.activeModel
-        && sttCurrentStatus.activeModel.filename === opt.value
-        && sttCurrentStatus.activeModel.downloaded;
-      if (installed) {
-        sttModelBadge.textContent = isActive ? '✓ Active' : `Downloaded (${formatBytes(installed.sizeBytes)})`;
-        sttModelBadge.style.background = isActive
-          ? 'var(--lumo-success-color-10pct, #c8e6c9)'
-          : 'var(--lumo-contrast-10pct, #eee)';
-        sttDownloadLabel.textContent = 'Re-download';
-        sttSetActiveButton.hidden = isActive;
-      } else {
-        sttModelBadge.textContent = 'Not downloaded';
-        sttModelBadge.style.background = 'var(--lumo-error-color-10pct, #ffebee)';
-        sttDownloadLabel.textContent = 'Download model';
-        sttSetActiveButton.hidden = true;
-      }
-    };
-
-    const renderSttStatus = (status) => {
-      if (!status) return;
-      sttCurrentStatus = status;
-      sttEnabledCheck.checked = status.enabled !== false;
-      const downloadingNow = Boolean(status.download);
-      sttCancelButton.hidden = !downloadingNow;
-      sttProgressWrap.hidden = !downloadingNow;
-      if (downloadingNow) {
-        const downloaded = status.download.downloadedBytes || 0;
-        const total = status.download.totalBytes;
-        sttProgress.value = total ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
-        sttProgressText.textContent = `${formatBytes(downloaded)} / ${formatBytes(total)}${total ? ' (' + Math.round((downloaded / total) * 100) + '%)' : ''}`;
-      }
-      renderSelectedModelInfo();
-      updateSummary();
     };
 
     const refreshSttStatus = async () => {
       try {
-        const filename = sttModelSelect.value || undefined;
-        const status = await window.electronAPI.invoke('stt:status', filename ? { modelFilename: filename } : {});
-        renderSttStatus(status);
+        const status = await window.electronAPI.invoke('stt:status', {});
+        if (status) {
+          sttCurrentStatus = status;
+          sttEnabledCheck.checked = status.enabled !== false;
+        }
+        updateSttSummary();
       } catch (err) {
         sttSummary.textContent = 'Status check failed: ' + (err.message || err);
-      }
-    };
-
-    const initSttSection = async () => {
-      try {
-        sttCatalog = await fetchModelCatalog();
-        const initialStatus = await window.electronAPI.invoke('stt:status', {});
-        const preferred = (initialStatus && initialStatus.preferredModelFilename)
-          || (initialStatus && initialStatus.activeModel && initialStatus.activeModel.filename);
-        populateModelSelect(sttCatalog, preferred);
-        renderSttStatus(initialStatus);
-      } catch (e) {
-        sttSummary.textContent = 'Initialisation failed: ' + (e.message || e);
       }
     };
 
     sttToggleButton.addEventListener('click', () => {
       const isExpanded = sttToggleButton.getAttribute('aria-expanded') === 'true';
       setSectionExpanded(sttCard, sttContent, sttToggleButton, sttToggleLabel, !isExpanded);
-      if (!isExpanded && !sttCatalog) initSttSection();
-      else if (!isExpanded) refreshSttStatus();
+      if (!isExpanded) refreshSttStatus();
     });
 
     sttEnabledCheck.addEventListener('change', async () => {
@@ -2749,7 +2589,7 @@
       try {
         await window.electronAPI.invoke('stt:set-enabled', { enabled });
         sttRestartHint.hidden = false;
-        await refreshSttStatus();
+        updateSttSummary();
       } catch (e) {
         sttError.textContent = e.message || String(e);
         sttError.hidden = false;
@@ -2757,85 +2597,7 @@
       }
     });
 
-    sttModelSelect.addEventListener('change', () => {
-      renderSelectedModelInfo();
-      refreshSttStatus();
-    });
-
-    sttRefreshButton.addEventListener('click', refreshSttStatus);
-
-    sttOpenFolderButton.addEventListener('click', async () => {
-      try { await window.electronAPI.invoke('stt:open-folder'); } catch (_) { }
-    });
-
-    sttSetActiveButton.addEventListener('click', async () => {
-      const filename = sttModelSelect.value;
-      if (!filename) return;
-      try {
-        await window.electronAPI.invoke('stt:set-preferred-model', { filename });
-        sttRestartHint.hidden = false;
-        await refreshSttStatus();
-      } catch (e) {
-        sttError.textContent = e.message || String(e);
-        sttError.hidden = false;
-      }
-    });
-
-    sttDownloadButton.addEventListener('click', async () => {
-      const opt = sttModelSelect.selectedOptions[0];
-      if (!opt) return;
-      const filename = opt.value;
-      const url = opt.dataset.downloadUrl;
-      sttError.hidden = true;
-      sttError.textContent = '';
-      sttRestartHint.hidden = true;
-      sttProgress.value = 0;
-      sttProgressText.textContent = 'Connecting…';
-      sttProgressWrap.hidden = false;
-      sttCancelButton.hidden = false;
-      sttDownloadButton.disabled = true;
-      try {
-        const result = await window.electronAPI.invoke('stt:download-model', { url, filename });
-        if (result && result.ok) {
-          sttProgressText.textContent = `Done — ${formatBytes(result.size)}`;
-          sttRestartHint.hidden = false;
-        } else if (result && result.error) {
-          sttError.textContent = result.error;
-          sttError.hidden = false;
-        }
-      } catch (e) {
-        sttError.textContent = e.message || String(e);
-        sttError.hidden = false;
-      } finally {
-        sttDownloadButton.disabled = false;
-        sttCancelButton.hidden = true;
-        await refreshSttStatus();
-      }
-    });
-
-    sttCancelButton.addEventListener('click', async () => {
-      try { await window.electronAPI.invoke('stt:cancel-download'); } catch (_) { }
-    });
-
-    window.electronAPI.on('stt:download-progress', ({ downloadedBytes, totalBytes }) => {
-      sttProgressWrap.hidden = false;
-      const pct = totalBytes ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
-      sttProgress.value = pct;
-      sttProgressText.textContent = `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)} (${pct}%)`;
-    });
-
-    window.electronAPI.on('stt:download-complete', () => {
-      refreshSttStatus();
-    });
-
-    window.electronAPI.on('stt:download-error', ({ message }) => {
-      sttError.textContent = message || 'Download failed.';
-      sttError.hidden = false;
-      sttProgressWrap.hidden = true;
-      refreshSttStatus();
-    });
-
-    initSttSection();
+    refreshSttStatus();
 
     openOllamaManagerButton.addEventListener('click', async () => {
       try {
@@ -2847,6 +2609,16 @@
           environmentInfo: latestOllamaInfo,
         });
         setStatus('Ollama model manager opened.');
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      }
+    });
+
+    openWhisperManagerButton.addEventListener('click', async () => {
+      try {
+        setStatus('Opening voice model manager...');
+        await window.electronAPI.invoke('whisper-manager:open');
+        setStatus('Voice model manager opened.');
       } catch (error) {
         setStatus(error.message || String(error), true);
       }
@@ -2982,6 +2754,8 @@
         setValidationStatus('Editor ready. Loading configuration...');
         await loadConfig();
         await refreshToolsPreset();
+        const initialHash = (location.hash || '').replace(/^#/, '');
+        if (initialHash) requestAnimationFrame(() => openConfigSection(initialHash));
       } catch (error) {
         const message = error.message || String(error);
         setStatus(message, true);

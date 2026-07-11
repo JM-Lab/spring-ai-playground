@@ -35,6 +35,8 @@ import java.time.format.DateTimeFormatter;
 @NpmPackage(value = "highlight.js", version = "11.11.1")
 @NpmPackage(value = "katex", version = "0.17.0")
 @NpmPackage(value = "mermaid", version = "11.15.0")
+@NpmPackage(value = "echarts", version = "5.6.0")
+@NpmPackage(value = "leaflet", version = "1.9.4")
 class ChatMessage extends Component implements HasStyle {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -70,7 +72,6 @@ class ChatMessage extends Component implements HasStyle {
         element.appendChild(this.content);
     }
 
-    // User input must appear exactly as typed (newlines kept, no markdown parsing, no enhancers).
     void usePlainText() {
         this.plainText = true;
         this.autoEnhance = false;
@@ -80,10 +81,6 @@ class ChatMessage extends Component implements HasStyle {
         this.plainView.getStyle().set("display", "block");
     }
 
-    // Hook the rendered light DOM (code-block copy buttons, links to new tabs, highlight/math/diagrams).
-    // Static messages enhance on attach; streaming replies disable this and call enhanceNow() once the
-    // stream completes, because enhancing mid-stream flickers (every markdown sync strips the injected
-    // nodes and the settle pass re-creates them); process panels (think/tools/rag) skip enhancing entirely.
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
@@ -104,8 +101,6 @@ class ChatMessage extends Component implements HasStyle {
         syncTimeProperty();
     }
 
-    // The header name/time live in the vaadin-message shadow DOM, so per-response metrics (elapsed, tokens,
-    // model) ride the time property to land right next to the timestamp - mirroring the process panel summaries.
     void setTimeDetail(String timeDetail) {
         this.timeDetail = timeDetail == null ? "" : timeDetail;
         syncTimeProperty();
@@ -156,5 +151,9 @@ class ChatMessage extends Component implements HasStyle {
 
     void addActionBar(Component bar) {
         getElement().appendChild(bar.getElement());
+    }
+
+    void addAttachments(Component attachments) {
+        this.content.insertChild(0, attachments.getElement());
     }
 }

@@ -90,10 +90,14 @@ public class ChatHistoryService {
         return Optional.ofNullable(this.chatMemory.get(conversationId)).orElseGet(ArrayList::new);
     }
 
-    public void deleteChatHistory(ChatHistory chatHistory) {
+    public void deleteChatHistory(ChatHistory chatHistory, boolean deleteWorkspace) {
         this.chatMemory.clear(chatHistory.conversationId());
         this.conversationIdHistoryMap.remove(chatHistory.conversationId());
-        this.chatHistoryPersistenceService.deleteAsync(chatHistory);
+        this.chatHistoryPersistenceService.deleteAsync(chatHistory, deleteWorkspace);
+    }
+
+    public int workspaceFileCount(ChatHistory chatHistory) {
+        return this.chatHistoryPersistenceService.conversationFileCount(chatHistory);
     }
 
     public ChatHistory createChatHistory(String systemPrompt, ChatOptions chatOptions) {

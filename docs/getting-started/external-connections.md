@@ -85,9 +85,9 @@ Spring AI Playground is provider-agnostic, but the runtime defaults are tuned fo
 
 The default profile is `ollama` - it serves both chat and embeddings locally, with **no API key**. Defaults:
 
-- chat model: `qwen3.5:2b`
+- chat model: `qwen3.5:4b`
 - embedding model: `qwen3-embedding:0.6b`
-- selectable chat models: `qwen3.5:2b`, `qwen3.5:9b`, `qwen3.6:35b`, `gemma4:e4b`, `gpt-oss:20b`, `deepseek-r1:8b`
+- selectable chat models: `qwen3.5:2b/4b/9b`, `qwen3.6:27b/35b`, `gemma4:e2b/e4b/12b/31b`, `gpt-oss:20b`, `deepseek-r1:8b`
 
 Missing models are pulled automatically when first used; the selectable list controls the in-app model picker. In Docker, point at a host Ollama with `SPRING_AI_OLLAMA_BASE_URL`.
 

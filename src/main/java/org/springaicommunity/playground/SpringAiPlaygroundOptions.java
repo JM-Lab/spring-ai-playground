@@ -81,13 +81,35 @@ public record SpringAiPlaygroundOptions(@NestedConfigurationProperty ToolStudio 
     public record Chat(String systemPrompt, List<String> models,
                        @NestedConfigurationProperty ChatOptionsConfig chatOptions, Integer toolResultMaxChars,
                        Integer memoryMaxMessages, Integer historyMaxMessages, Integer defaultMaxTokens,
-                       @NestedConfigurationProperty ToolSearch toolSearch) {
+                       @NestedConfigurationProperty ToolSearch toolSearch, String defaultPreset,
+                       @NestedConfigurationProperty AgentLoop agentLoop) {
         public Chat {
             if (toolResultMaxChars == null) toolResultMaxChars = 12_000;
             if (memoryMaxMessages == null || memoryMaxMessages <= 0) memoryMaxMessages = 10;
             if (historyMaxMessages == null || historyMaxMessages <= 0) historyMaxMessages = 2_000;
             if (defaultMaxTokens == null || defaultMaxTokens <= 0) defaultMaxTokens = 8_192;
             if (toolSearch == null) toolSearch = new ToolSearch(null, null, null, null, null, null);
+            if (agentLoop == null) agentLoop = new AgentLoop(null, null, null, null, null, null);
+        }
+    }
+
+    // Dialog timeouts are clamped below the 300s stream inter-signal timeout so a pending dialog
+    // can never outlive the stream it belongs to.
+    public record AgentLoop(Integer softMaxRounds, Integer hardMaxRounds, Integer maxIdenticalCalls,
+                            Integer interactionsPerRound, Integer approvalTimeoutSeconds,
+                            Integer dialogTimeoutSeconds) {
+        private static final int MAX_DIALOG_WAIT_SECONDS = 240;
+
+        public AgentLoop {
+            if (softMaxRounds == null || softMaxRounds <= 0) softMaxRounds = 16;
+            if (hardMaxRounds == null || hardMaxRounds <= 0) hardMaxRounds = 18;
+            if (hardMaxRounds < softMaxRounds) hardMaxRounds = softMaxRounds;
+            if (maxIdenticalCalls == null || maxIdenticalCalls <= 0) maxIdenticalCalls = 3;
+            if (interactionsPerRound == null || interactionsPerRound <= 0) interactionsPerRound = 1;
+            if (approvalTimeoutSeconds == null || approvalTimeoutSeconds <= 0) approvalTimeoutSeconds = 120;
+            if (dialogTimeoutSeconds == null || dialogTimeoutSeconds <= 0) dialogTimeoutSeconds = 180;
+            approvalTimeoutSeconds = Math.min(approvalTimeoutSeconds, MAX_DIALOG_WAIT_SECONDS);
+            dialogTimeoutSeconds = Math.min(dialogTimeoutSeconds, MAX_DIALOG_WAIT_SECONDS);
         }
     }
 

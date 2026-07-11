@@ -378,5 +378,780 @@
     "tags": [
       "util"
     ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000001",
+    "name": "plotPointsOnMap",
+    "description": "Renders an interactive world map with MULTIPLE markers directly in the chat. Use this to plot several geographic points at once (e.g. earthquakes, cities, store locations). Pass 'points' as a JSON array; each item needs numeric 'lat' and 'lng', plus an optional 'label' and an optional numeric 'weight' (or 'mag') that sizes and colors the marker. After calling, tell the user the map is shown below. Display-only, no account or key. Optional 'style' picks the basemap (light or dark); default is light and the user can also toggle it on the map.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "points",
+        "description": "JSON array of points, each {lat, lng, label?, weight?}. Example: [{\"lat\":36.47,\"lng\":70.76,\"label\":\"Afghanistan M6.1\",\"weight\":6.1}]",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"lat\":36.47,\"lng\":70.76,\"label\":\"Afghanistan M6.1\",\"weight\":6.1},{\"lat\":-8.96,\"lng\":111.15,\"label\":\"Indonesia M5.2\",\"weight\":5.2}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional short caption shown above the map.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Recent earthquakes"
+      },
+      {
+        "name": "style",
+        "description": "Optional basemap style: 'light' (default) or 'dark'.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "let pts;\ntry { pts = typeof points === 'string' ? JSON.parse(points) : points; } catch (e) { throw new Error('points must be a JSON array'); }\nif (!Array.isArray(pts) || pts.length === 0) throw new Error('points must be a non-empty JSON array');\nconst clean = pts.map(function (p) {\n  const lat = Number(p.lat), lng = Number(p.lng);\n  if (!isFinite(lat) || !isFinite(lng)) return null;\n  const o = { lat: lat, lng: lng };\n  if (p.label != null) o.label = String(p.label);\n  const w = p.weight != null ? p.weight : p.mag;\n  if (w != null && isFinite(Number(w))) o.weight = Number(w);\n  return o;\n}).filter(Boolean);\nif (clean.length === 0) throw new Error('no valid points with numeric lat/lng');\nconst action = { type: 'pointmap', points: clean };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nconst st = style == null ? '' : String(style).trim().toLowerCase();\nif (st === 'dark' || st === 'light') action.style = st;\nreturn 'Map shown below with ' + clean.length + ' point' + (clean.length === 1 ? '' : 's') + '.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000002",
+    "name": "renderChart",
+    "description": "Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. Use this to visualize numbers you have gathered. 'labels' is a JSON array of category names (x-axis categories, pie slice names, or radar axes). 'series' is EITHER a JSON array of numbers (single series) OR a JSON array of {\"name\":..., \"data\":[...]} objects (multiple series). Per type: bar/line/area use labels + numeric series; pie uses labels + one numeric series; radar uses labels as axes + one or more {name,data} series; scatter uses series of [x,y] number pairs (labels optional); gauge shows ONE number (pass series as [value], optional 'max'). After calling, tell the user the chart is shown below.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "chartType",
+        "description": "One of: bar, line, area, pie, radar, scatter, gauge.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "bar"
+      },
+      {
+        "name": "labels",
+        "description": "JSON array of category labels (axes for radar). Optional for scatter/gauge. Example: [\"Bitcoin\",\"Ethereum\",\"Solana\"]",
+        "required": false,
+        "type": "STRING",
+        "testValue": "[\"Bitcoin\",\"Ethereum\",\"Solana\"]"
+      },
+      {
+        "name": "series",
+        "description": "JSON array of numbers for one series, or array of {name,data} for several. For scatter use [[x,y],...]; for gauge use a single [value]. Example: [62000,2400,140]",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[62000,2400,140]"
+      },
+      {
+        "name": "title",
+        "description": "Optional chart title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Crypto prices (USD)"
+      },
+      {
+        "name": "max",
+        "description": "Optional maximum value for the gauge chart (defaults to a sensible round number).",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "seriesName",
+        "description": "Optional name for a single series, shown in the legend and tooltip.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "let lbls, srs;\ntry { lbls = typeof labels === 'string' && labels.trim() !== '' ? JSON.parse(labels) : labels; } catch (e) { throw new Error('labels must be a JSON array'); }\ntry { srs = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(srs) || srs.length === 0) throw new Error('series must be a non-empty JSON array');\nconst allowed = ['bar', 'line', 'area', 'pie', 'radar', 'scatter', 'gauge'];\nconst ct0 = chartType == null ? 'bar' : String(chartType).trim().toLowerCase();\nconst ct = allowed.indexOf(ct0) === -1 ? 'bar' : ct0;\nif (ct !== 'scatter' && ct !== 'gauge' && (!Array.isArray(lbls) || lbls.length === 0)) throw new Error('labels must be a non-empty JSON array for ' + ct + ' charts');\nconst action = { type: 'chart', chartType: ct, labels: Array.isArray(lbls) ? lbls.map(String) : [], series: srs };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nif (typeof max !== 'undefined' && max != null && String(max).trim() !== '' && isFinite(Number(max))) action.max = Number(max);\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nreturn 'Chart shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000003",
+    "name": "renderDiagram",
+    "description": "Renders a Mermaid diagram directly in the chat (flowchart, sequence, gantt, mindmap, pie, ER, state, timeline, and more). Use this to show a process, architecture, timeline, relationship, or org chart as a real diagram instead of plain text. Pass the Mermaid source as 'code', starting with the diagram type, e.g. 'flowchart LR', 'sequenceDiagram', 'gantt', 'mindmap', 'erDiagram', 'stateDiagram-v2', or 'timeline'. After calling, tell the user the diagram is shown below.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "code",
+        "description": "Mermaid diagram source. Start with the diagram type. Example: flowchart LR\\n  A[Start] --> B{OK?}\\n  B -->|Yes| C[Ship]\\n  B -->|No| D[Fix]",
+        "required": true,
+        "type": "STRING",
+        "testValue": "flowchart LR\n  A[Start] --> B{OK?}\n  B -->|Yes| C[Ship]\n  B -->|No| D[Fix]"
+      },
+      {
+        "name": "title",
+        "description": "Optional title shown in bold above the diagram.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Release flow"
+      }
+    ],
+    "code": "const src = code == null ? '' : String(code).trim();\nif (src === '') throw new Error('code (Mermaid source) is required');\nconst action = { type: 'diagram', code: src };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Diagram shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000004",
+    "name": "showImage",
+    "description": "Displays an image from a public URL directly in the chat (a photo, a chart image, a diagram, or a QR code you have a link to). Provide a direct https image 'url' and an optional 'caption'. Use only direct image URLs (typically ending in .png/.jpg/.jpeg/.gif/.webp/.svg). After calling, tell the user the image is shown below.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "url",
+        "description": "Direct https URL of the image to display.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "https://picsum.photos/seed/saip/480/240"
+      },
+      {
+        "name": "caption",
+        "description": "Optional caption shown as the card title and below the image.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Sample image"
+      },
+      {
+        "name": "alt",
+        "description": "Optional alternative text for accessibility.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "const u = url == null ? '' : String(url).trim();\nif (!/^https?:\\/\\//i.test(u)) throw new Error('url must be an http(s) URL');\nconst action = { type: 'image', url: u };\nconst c = caption == null ? '' : String(caption).trim();\nif (c !== '') action.caption = c;\nconst a = alt == null ? '' : String(alt).trim();\nif (a !== '') action.alt = a;\nreturn 'Image shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000005",
+    "name": "renderDiff",
+    "description": "Compares two texts (or two files you have read) line by line and shows a side-by-side diff card: lines only on the left are red, lines only on the right are green. If the two are almost entirely different it shows a 'completely different' banner. Pass the two texts as 'left' and 'right' with optional 'leftLabel'/'rightLabel' (e.g. file names). To compare files, read them first with readTextFile and pass the contents.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "left",
+        "description": "The first/old text (left side).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "alpha\nbeta\ngamma"
+      },
+      {
+        "name": "right",
+        "description": "The second/new text (right side).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "alpha\nbeta changed\ngamma\ndelta"
+      },
+      {
+        "name": "leftLabel",
+        "description": "Optional label for the left side (e.g. file name).",
+        "required": false,
+        "type": "STRING",
+        "testValue": "before.txt"
+      },
+      {
+        "name": "rightLabel",
+        "description": "Optional label for the right side.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "after.txt"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "const l = left == null ? '' : String(left);\nconst r = right == null ? '' : String(right);\nconst action = { type: 'diff', left: l, right: r };\nif (leftLabel != null && String(leftLabel).trim() !== '') action.leftLabel = String(leftLabel).trim();\nif (rightLabel != null && String(rightLabel).trim() !== '') action.rightLabel = String(rightLabel).trim();\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Diff shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000006",
+    "name": "renderTable",
+    "description": "Renders a sortable, searchable data table in the chat. Pass 'columns' as a JSON array of {key, label, align?('right'), format?('number'), heat?(true to shade the cell by value)} and 'rows' as a JSON array of objects keyed by each column key. Optional 'sortable' and 'searchable' ('true'/'false'). Good for any list of records (prices, issues, search results).",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "columns",
+        "description": "JSON array of column defs {key,label,align?,format?,heat?}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"key\":\"name\",\"label\":\"Coin\"},{\"key\":\"price\",\"label\":\"USD\",\"align\":\"right\",\"format\":\"number\",\"heat\":true}]"
+      },
+      {
+        "name": "rows",
+        "description": "JSON array of row objects keyed by column key.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"name\":\"Bitcoin\",\"price\":62000},{\"name\":\"Ethereum\",\"price\":2400},{\"name\":\"Solana\",\"price\":140}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Prices"
+      },
+      {
+        "name": "sortable",
+        "description": "Optional 'true' to enable column sorting.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "true"
+      },
+      {
+        "name": "searchable",
+        "description": "Optional 'true' to enable a filter box.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "true"
+      }
+    ],
+    "code": "let cols, rws;\ntry { cols = typeof columns === 'string' ? JSON.parse(columns) : columns; } catch (e) { throw new Error('columns must be a JSON array'); }\ntry { rws = typeof rows === 'string' ? JSON.parse(rows) : rows; } catch (e) { throw new Error('rows must be a JSON array'); }\nif (!Array.isArray(cols) || cols.length === 0) throw new Error('columns must be a non-empty JSON array');\nif (!Array.isArray(rws)) throw new Error('rows must be a JSON array');\nconst action = { type: 'table', columns: cols, rows: rws };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nif (String(sortable).toLowerCase() === 'true') action.sortable = true;\nif (String(searchable).toLowerCase() === 'true') action.searchable = true;\nreturn 'Table shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000007",
+    "name": "renderStatCards",
+    "description": "Renders a row of KPI / metric tiles in the chat. Pass 'cards' as a JSON array of {label, value, delta?, trend?('up'|'down'|'flat')}. Use for headline numbers like prices, counts, or weather readings.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "cards",
+        "description": "JSON array of {label, value, delta?, trend?}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"label\":\"BTC\",\"value\":\"$62,000\",\"delta\":\"+2.3%\",\"trend\":\"up\"},{\"label\":\"ETH\",\"value\":\"$2,400\",\"delta\":\"-1.1%\",\"trend\":\"down\"}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Market"
+      }
+    ],
+    "code": "let cs;\ntry { cs = typeof cards === 'string' ? JSON.parse(cards) : cards; } catch (e) { throw new Error('cards must be a JSON array'); }\nif (!Array.isArray(cs) || cs.length === 0) throw new Error('cards must be a non-empty JSON array');\nconst action = { type: 'stats', cards: cs };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Stats shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000008",
+    "name": "renderComparison",
+    "description": "Renders a side-by-side comparison table for two or more entities. 'entities' is a JSON array of names (the columns). 'rows' is a JSON array of {label, values:[...], best?(0-based index of the winning value, optional)}.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "entities",
+        "description": "JSON array of entity names (columns).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"React\",\"Vue\"]"
+      },
+      {
+        "name": "rows",
+        "description": "JSON array of {label, values, best?}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"label\":\"Stars\",\"values\":[\"220k\",\"207k\"],\"best\":0},{\"label\":\"Released\",\"values\":[\"2013\",\"2014\"]}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Framework comparison"
+      }
+    ],
+    "code": "let ents, rws;\ntry { ents = typeof entities === 'string' ? JSON.parse(entities) : entities; } catch (e) { throw new Error('entities must be a JSON array'); }\ntry { rws = typeof rows === 'string' ? JSON.parse(rows) : rows; } catch (e) { throw new Error('rows must be a JSON array'); }\nif (!Array.isArray(ents) || ents.length < 2) throw new Error('entities must have at least 2 names');\nif (!Array.isArray(rws)) throw new Error('rows must be a JSON array');\nconst action = { type: 'comparison', entities: ents, rows: rws };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Comparison shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000009",
+    "name": "renderTimeline",
+    "description": "Renders a vertical event timeline in the chat. 'events' is a JSON array of {date, title, detail?}. Use for histories, schedules, or sequences of dated events.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "events",
+        "description": "JSON array of {date, title, detail?}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"date\":\"2026-06-01\",\"title\":\"Kickoff\",\"detail\":\"Project start\"},{\"date\":\"2026-06-15\",\"title\":\"Beta\"}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Roadmap"
+      }
+    ],
+    "code": "let evs;\ntry { evs = typeof events === 'string' ? JSON.parse(events) : events; } catch (e) { throw new Error('events must be a JSON array'); }\nif (!Array.isArray(evs) || evs.length === 0) throw new Error('events must be a non-empty JSON array');\nconst action = { type: 'timeline', events: evs };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Timeline shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000010",
+    "name": "renderCandlestick",
+    "description": "Renders an OHLC candlestick chart in the chat. 'data' is a JSON array of {t (label or date), o, h, l, c, v?} objects (open/high/low/close, optional volume). Set 'volume' to 'true' to overlay trading volume. Pairs with crypto or stock candle tools.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "data",
+        "description": "JSON array of {t, o, h, l, c, v?} candles, open/high/low/close (t may also be given as date or time).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"t\":\"Mon\",\"o\":100,\"h\":110,\"l\":95,\"c\":108},{\"t\":\"Tue\",\"o\":108,\"h\":112,\"l\":104,\"c\":106}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "BTC/USD"
+      },
+      {
+        "name": "volume",
+        "description": "Optional 'true' to overlay volume bars.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "let rows;\ntry { rows = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { throw new Error('data must be a JSON array'); }\nif (!Array.isArray(rows) || rows.length === 0) throw new Error('data must be a non-empty JSON array');\nconst action = { type: 'candlestick', data: rows };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nif (String(volume).toLowerCase() === 'true') action.volume = true;\nreturn 'Candlestick chart shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000011",
+    "name": "renderHeatmap",
+    "description": "Renders a 2D heatmap in the chat. 'xLabels' and 'yLabels' are JSON arrays of category names. 'data' is a JSON array of [xIndex, yIndex, value] triples. Good for activity-by-day-and-hour, correlation, or any matrix of numbers.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "xLabels",
+        "description": "JSON array of x-axis category names.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"Mon\",\"Tue\",\"Wed\"]"
+      },
+      {
+        "name": "yLabels",
+        "description": "JSON array of y-axis category names.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"AM\",\"PM\"]"
+      },
+      {
+        "name": "data",
+        "description": "JSON array of [xIndex, yIndex, value] triples (objects {x, y, value} are also accepted).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[[0,0,5],[1,0,7],[2,0,3],[0,1,2],[1,1,9],[2,1,4]]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Activity"
+      }
+    ],
+    "code": "let xs, ys, cells;\ntry { xs = typeof xLabels === 'string' ? JSON.parse(xLabels) : xLabels; } catch (e) { throw new Error('xLabels must be a JSON array'); }\ntry { ys = typeof yLabels === 'string' ? JSON.parse(yLabels) : yLabels; } catch (e) { throw new Error('yLabels must be a JSON array'); }\ntry { cells = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { throw new Error('data must be a JSON array'); }\nif (!Array.isArray(xs) || !Array.isArray(ys) || !Array.isArray(cells)) throw new Error('xLabels, yLabels and data must be JSON arrays');\nconst action = { type: 'heatmap', xLabels: xs, yLabels: ys, data: cells };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Heatmap shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000012",
+    "name": "renderSankey",
+    "description": "Renders a Sankey flow diagram in the chat. 'nodes' is a JSON array of node names (or {name} objects). 'links' is a JSON array of {source, target, value} where source/target are node names.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "nodes",
+        "description": "JSON array of node names.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"Visitors\",\"Signups\",\"Paid\"]"
+      },
+      {
+        "name": "links",
+        "description": "JSON array of {source,target,value}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"source\":\"Visitors\",\"target\":\"Signups\",\"value\":300},{\"source\":\"Signups\",\"target\":\"Paid\",\"value\":80}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Conversion flow"
+      }
+    ],
+    "code": "let ns, lks;\ntry { ns = typeof nodes === 'string' ? JSON.parse(nodes) : nodes; } catch (e) { throw new Error('nodes must be a JSON array'); }\ntry { lks = typeof links === 'string' ? JSON.parse(links) : links; } catch (e) { throw new Error('links must be a JSON array'); }\nif (!Array.isArray(ns) || !Array.isArray(lks)) throw new Error('nodes and links must be JSON arrays');\nconst action = { type: 'sankey', nodes: ns, links: lks };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Sankey diagram shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000013",
+    "name": "renderFunnel",
+    "description": "Renders a funnel chart for staged, descending values in the chat. 'data' is a JSON array of {name, value} objects, usually ordered from largest to smallest stage.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "data",
+        "description": "JSON array of {name, value} stages.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"name\":\"Opened\",\"value\":120},{\"name\":\"Triaged\",\"value\":80},{\"name\":\"Fixed\",\"value\":35}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Issue funnel"
+      }
+    ],
+    "code": "let rows;\ntry { rows = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { throw new Error('data must be a JSON array'); }\nif (!Array.isArray(rows) || rows.length === 0) throw new Error('data must be a non-empty JSON array');\nconst action = { type: 'funnel', data: rows };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Funnel chart shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000014",
+    "name": "renderTreemap",
+    "description": "Renders a treemap of hierarchical part-of-whole data in the chat. 'data' is a JSON array of {name, value, children?:[...]} nodes; nested children are allowed for hierarchy.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "data",
+        "description": "JSON array of {name, value, children?}.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"name\":\"Java\",\"value\":60},{\"name\":\"JS\",\"value\":30},{\"name\":\"Other\",\"value\":10}]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Language mix"
+      }
+    ],
+    "code": "let rows;\ntry { rows = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { throw new Error('data must be a JSON array'); }\nif (!Array.isArray(rows) || rows.length === 0) throw new Error('data must be a non-empty JSON array');\nconst action = { type: 'treemap', data: rows };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Treemap shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000015",
+    "name": "renderGraph",
+    "description": "Renders a network/relationship graph in the chat using a force-directed layout. 'nodes' is a JSON array of node names (or {name, value?, category?, symbolSize?} objects; value scales node size, category groups and colors them). 'links' is a JSON array of {source, target, value?} where source/target are node names. Set 'directed' to true for arrowed edges. Good for dependencies, social graphs, knowledge maps.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "nodes",
+        "description": "JSON array of node names or {name, value?, category?, symbolSize?} objects (value scales node size, or pass symbolSize for an explicit pixel diameter).",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"API\",\"Auth\",\"DB\",\"Cache\",\"Web\"]"
+      },
+      {
+        "name": "links",
+        "description": "JSON array of {source,target,value?} edges.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"source\":\"Web\",\"target\":\"API\",\"value\":3},{\"source\":\"API\",\"target\":\"Auth\"},{\"source\":\"API\",\"target\":\"DB\",\"value\":2},{\"source\":\"API\",\"target\":\"Cache\"}]"
+      },
+      {
+        "name": "directed",
+        "description": "Set to true for directed (arrowed) edges.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "true"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Service dependencies"
+      }
+    ],
+    "code": "let ns, lks;\ntry { ns = typeof nodes === 'string' ? JSON.parse(nodes) : nodes; } catch (e) { throw new Error('nodes must be a JSON array'); }\ntry { lks = typeof links === 'string' ? JSON.parse(links) : links; } catch (e) { throw new Error('links must be a JSON array'); }\nif (!Array.isArray(ns) || !Array.isArray(lks)) throw new Error('nodes and links must be JSON arrays');\nconst action = { type: 'graph', nodes: ns, links: lks };\nif (String(directed).toLowerCase() === 'true') action.directed = true;\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Graph shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000016",
+    "name": "renderWindRose",
+    "description": "Renders a wind rose (polar bar) chart in the chat, showing magnitude by compass/category direction. 'directions' is a JSON array of direction or category labels arranged around the circle. 'series' is a JSON array of numbers, or [{name,data}] objects for stacked bands. Good for wind direction, time-of-day distributions, or any directional frequency.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "directions",
+        "description": "JSON array of direction/category labels.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[\"N\",\"NE\",\"E\",\"SE\",\"S\",\"SW\",\"W\",\"NW\"]"
+      },
+      {
+        "name": "series",
+        "description": "JSON array of numbers, or [{name,data}] for stacked bands.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[5,8,12,7,4,9,15,6]"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Wind direction"
+      },
+      {
+        "name": "seriesName",
+        "description": "Optional name for a single series, shown in the legend and tooltip.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "let dirs, sr;\ntry { dirs = typeof directions === 'string' ? JSON.parse(directions) : directions; } catch (e) { throw new Error('directions must be a JSON array'); }\ntry { sr = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(dirs) || !Array.isArray(sr)) throw new Error('directions and series must be JSON arrays');\nconst action = { type: 'windrose', directions: dirs, series: sr };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nreturn 'Wind rose shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000017",
+    "name": "renderChoropleth",
+    "description": "Renders a choropleth (region-shaded) map in the chat from a caller-supplied GeoJSON. 'geoJson' is a GeoJSON FeatureCollection whose features each carry a name property. 'values' is a JSON array of {name, value} keyed by that feature name; regions are shaded by value. Use 'nameProperty' if the feature name lives under a key other than 'name'. Good for per-region statistics.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "geoJson",
+        "description": "GeoJSON FeatureCollection with named features.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"name\":\"West\"},\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[0,0],[0,2],[2,2],[2,0],[0,0]]]}},{\"type\":\"Feature\",\"properties\":{\"name\":\"East\"},\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[2,0],[2,2],[4,2],[4,0],[2,0]]]}}]}"
+      },
+      {
+        "name": "values",
+        "description": "JSON array of {name,value} keyed by feature name.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"name\":\"West\",\"value\":80},{\"name\":\"East\",\"value\":35}]"
+      },
+      {
+        "name": "nameProperty",
+        "description": "Feature property holding the region name (default 'name').",
+        "required": false,
+        "type": "STRING",
+        "testValue": "name"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Region values"
+      }
+    ],
+    "code": "let geo, vals;\ntry { geo = typeof geoJson === 'string' ? JSON.parse(geoJson) : geoJson; } catch (e) { throw new Error('geoJson must be valid GeoJSON'); }\ntry { vals = typeof values === 'string' ? JSON.parse(values) : values; } catch (e) { throw new Error('values must be a JSON array'); }\nif (!geo || typeof geo !== 'object') throw new Error('geoJson must be a GeoJSON object');\nif (!Array.isArray(vals)) throw new Error('values must be a JSON array');\nconst action = { type: 'choropleth', geoJson: geo, values: vals };\nconst np = nameProperty == null ? '' : String(nameProperty).trim();\nif (np !== '') action.nameProperty = np;\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nreturn 'Region map shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000018",
+    "name": "renderGeoHeat",
+    "description": "Renders a geographic density heatmap in the chat over a real basemap (Light/Dark toggle). 'points' is a JSON array of {lat, lng, intensity?} objects; denser or higher-intensity areas glow warmer. 'radius' (optional pixels) controls the blur spread. Good for incident density, sightings, or any lat/lng hotspot map. Optional 'style' picks the basemap (light or dark); default is light and the user can also toggle it on the map.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "points",
+        "description": "JSON array of {lat,lng,intensity?} objects.",
+        "required": true,
+        "type": "STRING",
+        "testValue": "[{\"lat\":37.56,\"lng\":126.97,\"intensity\":9},{\"lat\":35.18,\"lng\":129.07,\"intensity\":5},{\"lat\":37.45,\"lng\":126.70,\"intensity\":7},{\"lat\":35.87,\"lng\":128.60,\"intensity\":4}]"
+      },
+      {
+        "name": "radius",
+        "description": "Optional blur radius in pixels (default 28).",
+        "required": false,
+        "type": "STRING",
+        "testValue": "30"
+      },
+      {
+        "name": "title",
+        "description": "Optional card title.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Activity density"
+      },
+      {
+        "name": "style",
+        "description": "Optional basemap style: 'light' (default) or 'dark'.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      }
+    ],
+    "code": "let pts;\ntry { pts = typeof points === 'string' ? JSON.parse(points) : points; } catch (e) { throw new Error('points must be a JSON array'); }\nif (!Array.isArray(pts) || pts.length === 0) throw new Error('points must be a non-empty JSON array');\nconst action = { type: 'geoheat', points: pts };\nconst r = Number(radius);\nif (isFinite(r) && r > 0) action.radius = r;\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nconst st = style == null ? '' : String(style).trim().toLowerCase();\nif (st === 'dark' || st === 'light') action.style = st;\nreturn 'Density map shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "visualization"
+    ]
+  },
+  {
+    "toolId": "6b03d621-8f9f-5e0a-8176-f2ba00f863ae",
+    "name": "requestFileUpload",
+    "description": "Ask the user to upload a file from their computer (CSV, Excel, image, PDF, or any document). Opens an upload dialog in the chat; the chosen file is saved into this conversation's workspace and the tool returns its path (for example uploads/sales.csv). Excel files (.xlsx/.xls) are converted to CSV automatically. After it returns, read the file with readTextFile, and for tabular data pass that text to parseCsv. Use this whenever you need data or a document the user has not already pasted into the chat.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "prompt",
+        "description": "Short message shown to the user explaining which file to upload.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "Upload the CSV or Excel file you want analyzed."
+      },
+      {
+        "name": "accept",
+        "description": "Optional accepted file types as a comma-separated list of extensions or MIME types (for example \".csv,.xlsx\" or \"image/*\"). Leave empty to accept any file.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ".csv,.tsv,.xlsx,.xls"
+      }
+    ],
+    "code": "// Interactive upload. In the chat UI the host intercepts this call, opens an\n// upload dialog, saves the chosen file into the conversation workspace, and\n// returns its path. Outside the chat there is no upload UI, so nothing is received.\nreturn 'File upload is interactive and only runs inside the Spring AI Playground chat. When called there it asks the user to upload a file, saves it to the conversation workspace (uploads/<name>), and returns that path. No upload interface is available in this context, so no file was received.';",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "util"
+    ]
+  },
+  {
+    "toolId": "d3a1c7e2-4b8f-5d6a-9e0c-1f2b3a4c5d6e",
+    "name": "describeImage",
+    "description": "Analyze or describe an image the user shared in this conversation. Call this when the user asks about an image (for example \"what is in this photo\", \"describe the image I sent\", or refers back to an earlier image). If ref is omitted and exactly one image exists it is used automatically; if several exist the user is asked which one; if none exist an upload dialog opens. The image and its metadata are attached to the conversation so a vision-capable model can see it.",
+    "staticVariables": [],
+    "params": [
+      {
+        "name": "ref",
+        "description": "Optional identifier of the image to analyze (its hash or file name shown earlier). Leave empty to use the only image or to let the user choose.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
+      },
+      {
+        "name": "question",
+        "description": "Optional specific question about the image.",
+        "required": false,
+        "type": "STRING",
+        "testValue": "What is in this image?"
+      }
+    ],
+    "code": "// Interactive image analysis. In the chat UI the host intercepts this call,\n// resolves the referenced image (asking the user when needed), and attaches it\n// with its metadata so a vision model can see it. Outside the chat there is no image UI.\nreturn 'Image analysis is interactive and only runs inside the Spring AI Playground chat. When called there it attaches the referenced image and its metadata for a vision-capable model. No image interface is available in this context.';",
+    "codeType": "Javascript",
+    "createTimestamp": 1768000000000,
+    "updateTimestamp": 1768000000000,
+    "category": "PRODUCTIVITY",
+    "tags": [
+      "util"
+    ]
   }
 ]

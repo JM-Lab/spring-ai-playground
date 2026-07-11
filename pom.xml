@@ -27,7 +27,7 @@
     </parent>
     <groupId>io.github.springaicommunity</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.2.0-M10</version>
+    <version>0.2.0-M11</version>
     <name>Spring AI Playground</name>
     <description>Incubating project from the Spring AI Community</description>
     <url>https://github.com/spring-ai-community/spring-ai-playground</url>

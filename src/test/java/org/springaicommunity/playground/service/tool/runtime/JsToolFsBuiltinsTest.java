@@ -87,6 +87,27 @@ class JsToolFsBuiltinsTest {
     }
 
     @Test
+    void freshConversationWorkspaceListsEmptyInsteadOfFailing() {
+        String conversationId = "Chat-fresh-" + System.nanoTime();
+        JsExecutionResult find = runInConversation("findFiles", Map.of("glob", "*", "dir", "."), conversationId);
+        assertThat(find.isOk()).as(find.error()).isTrue();
+        JsExecutionResult list = runInConversation("listDir", Map.of("dir", "."), conversationId);
+        assertThat(list.isOk()).as(list.error()).isTrue();
+    }
+
+    private JsExecutionResult runInConversation(String name, Map<String, Object> params, String conversationId) {
+        return executor.execute(new JsExecutionParams(coerce(params),
+                        (String) specByName(name).get("code"), paramNames(name)),
+                fsPolicy(), null, conversationId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> paramNames(String name) {
+        return ((List<Map<String, Object>>) specByName(name).getOrDefault("params", List.of())).stream()
+                .map(param -> (String) param.get("name")).toList();
+    }
+
+    @Test
     void readTextFileReturnsContent() throws IOException {
         Files.writeString(tmp.resolve("notes.md"), "alpha\nbeta\ngamma\n");
         JsExecutionResult r = run("readTextFile", Map.of("path", "notes.md"));
@@ -360,7 +381,8 @@ class JsToolFsBuiltinsTest {
 
     @Test
     void everyFsToolDeclaresFileReadAndBlockedNetwork() {
-        Set<String> writeTools = Set.of("writeTextFile");
+        Set<String> writeTools = Set.of("writeTextFile", "appendTextFile", "editTextFile",
+                "copyFile", "moveFile", "deleteFile", "deleteDir");
         for (Map<String, Object> spec : specs) {
             String name = (String) spec.get("name");
             @SuppressWarnings("unchecked")

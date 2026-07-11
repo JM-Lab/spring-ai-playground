@@ -30,7 +30,7 @@ Unlike many playgrounds that stop at prompt testing, this project connects AI co
 - build JavaScript tools directly in the app
 - earn a **Local Pass** by test-running each tool against sample arguments you define
 - **add tools live to the built-in MCP server** the moment each passes - no restart, no redeploy
-- start immediately with **88 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services - [see the spotlight section below](#what-used-to-take-an-afternoon-already-wired-in) for the categorised browse
+- start immediately with **115 pre-loaded default tools** spanning web fetch / datetime / math / security / encoding / crypto / filesystem / GitHub / Wikipedia / weather / finance / geo / Korean services - [see the spotlight section below](#what-used-to-take-an-afternoon-already-wired-in) for the categorised browse
 - connect external surfaces in one click with **57 preset MCP server connections** (Gmail · Outlook · Notion · Slack · GitHub · Linear · Atlassian · Stripe · Figma · BigQuery · Cloudflare · Tavily · MCP Everything · ...) - same spotlight section below covers the full per-category browse
 - validate retrieval pipelines against your own documents
 - run agentic chat that combines tool use and grounded context (e.g. *"Get today's weather and send it to Slack"*)
@@ -40,15 +40,17 @@ Unlike many playgrounds that stop at prompt testing, this project connects AI co
 > **Security scope.** The in-process sandbox is defense-in-depth for the local build-and-vet loop. It is not adversarial-grade isolation and not a gateway. To run tool code you do not trust, nest it in container or microVM isolation. See [Isolation tiers](safety-architecture.md#isolation-tiers).
 
 <div style="text-align: center;">
-  <b>Spring AI Playground - Demo</b><br/>
-  Connect an MCP server · compose a safe proxy · human-in-the-loop approval · full observability
+  <b>Local Model, Real Agent - Spring AI Playground in 30 Seconds</b><br/>
+  The trailer, followed by the full video series
 </div>
 
 <div style="text-align: center;">
-  <video src="assets/images/spring-ai-playground-demo.mp4" width="820" autoplay loop muted playsinline controls
-         poster="assets/images/spring-ai-playground-demo-poster.png">
-    <a href="assets/images/spring-ai-playground-demo.mp4">Watch the demo</a>
-  </video>
+  <iframe width="820" height="461" style="max-width: 100%; border: 0;"
+          src="https://www.youtube-nocookie.com/embed/dR6XRs2-nEY?list=PLfizCrbCZK9k"
+          title="Local Model, Real Agent - Spring AI Playground in 30 Seconds"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  <p><a href="https://www.youtube.com/playlist?list=PLfizCrbCZK9k" target="_blank" rel="noopener">Watch the full series on YouTube (7 videos)</a></p>
 </div>
 
 ## :material-rocket-launch: Quick Start
@@ -393,7 +395,7 @@ Then open `http://localhost:8282`.
 
 ## :material-flash: What used to take an afternoon - already wired in
 
-Installing an external MCP server normally means cloning a repo, installing the right runtime, registering an OAuth app, exporting tokens, and restarting your host. We did that 57 times so you don't have to. The 88 default tools ship in the same box. Every tool carries a visible **Risk Level (L0-L5)** - the sandbox, Local Pass, `${ENV_VAR}` substitution, and SecretMasking handle the rest.
+Installing an external MCP server normally means cloning a repo, installing the right runtime, registering an OAuth app, exporting tokens, and restarting your host. We did that 57 times so you don't have to. The 115 default tools ship in the same box. Every tool carries a visible **Risk Level (L0-L5)** - the sandbox, Local Pass, `${ENV_VAR}` substitution, and SecretMasking handle the rest.
 
 ### Built-in tools - call from chat the moment you launch
 
@@ -443,7 +445,7 @@ Installing an external MCP server normally means cloning a repo, installing the 
 
 </div>
 
-<p class="home-spotlight-cta">→ <a href="features/default-tools/index.md">Browse all 88 default tools</a> across Examples (9) · Utilities (26) · Filesystem (11) · Global (21) · Korea (21).</p>
+<p class="home-spotlight-cta">→ <a href="features/default-tools/index.md">Browse all 115 default tools</a> across Examples (29) · Utilities (26) · Filesystem (18) · Global (21) · Korea (21).</p>
 
 ### External MCP - one click in the sidebar, fill `${ENV_VAR}`, done
 
@@ -503,7 +505,7 @@ Installing an external MCP server normally means cloning a repo, installing the 
 - [:material-connection: MCP Server](features/mcp-server/index.md): inspect external MCP servers, read a live **risk score** (L0-L5) before connecting, and **proxy** their tools onto the built-in server - compose multiple servers into one surface - each gated by per-tool human-in-the-loop.
 - [:material-server-network: Default MCP Servers](features/default-mcp-catalog/index.md): 57 preset external MCP server connections (Gmail, Notion, Slack, GitHub, Tavily, ...) gated on `${ENV_VAR}` placeholders.
 - [:material-database-search: RAG](features/vector-database.md): upload content, chunk it, embed it, index it, and validate retrieval quality.
-- [:material-chat-processing: Agentic Chat](features/agentic-chat/index.md): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow - with a Prompt Library of ready-to-use [presets](features/agentic-chat/prompt-presets.md) and [`{{variable}}` templates](features/agentic-chat/prompt-templates.md), per-turn reasoning effort, review-then-act [action cards](features/agentic-chat/index.md#action-cards) (email, calendar, map) and clickable file paths, and rich code/math/diagram rendering.
+- [:material-chat-processing: Agentic Chat](features/agentic-chat/index.md): combine grounded context, built-in tools, and explicitly trusted MCP connections in one interaction flow - with a Prompt Library of ready-to-use [presets](features/agentic-chat/prompt-presets.md) and [`{{variable}}` templates](features/agentic-chat/prompt-templates.md), [dynamic tool discovery](features/agentic-chat/dynamic-tool-discovery.md), per-turn reasoning effort, [image attachments as multimodal vision input](features/agentic-chat/image-attachments.md), review-then-act [action cards](features/agentic-chat/index.md#action-cards) (email, calendar, map) and clickable file paths, on-device voice input, and rich code/math/diagram rendering.
 - [:material-chart-line: Observability](features/observability/index.md): fourteen in-app dashboards covering token economics, tool and MCP behaviour, RAG quality, host runtime, and a live trace tail.
 
 ## :material-lightbulb-on-outline: Why This Project Exists
@@ -535,6 +537,7 @@ It is intentionally opinionated and scope-limited in its current stage. The goal
 - [AI Agent Tool Safety Architecture](safety-architecture.md): defense-in-depth sandbox model, policy resolution, threat model, and Risk Level reference
 - [AI Agent Observability Architecture](observability-architecture.md): trace pipeline, storage tiers, configuration, and external export paths behind the fourteen dashboards
 - [Context Engineering Architecture](context-engineering-architecture.md): how each chat turn's context window is assembled from system prompt, retrieved documents, tools, memory, and per-request options
+- [Agent Loop](agent-loop-architecture.md): per-turn state, round bounds, and the interceptor chain that governs the Agentic Chat tool-calling loop
 - [Features](features/index.md): the main product areas and what they do
 - [Tutorials](tutorials/index.md): follow end-to-end workflows for tools, MCP, vector search, and agentic chat
 

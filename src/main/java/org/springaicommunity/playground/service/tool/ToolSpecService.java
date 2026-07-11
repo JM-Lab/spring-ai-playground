@@ -527,6 +527,7 @@ public class ToolSpecService {
                 sbo.hostsAllow() == null ? Set.of() : sbo.hostsAllow(),
                 Boolean.TRUE.equals(sbo.fileRead()),
                 Boolean.TRUE.equals(sbo.fileWrite()),
+                Boolean.TRUE.equals(sbo.destructive()),
                 baselineDeny,
                 effectiveDeny,
                 baselineAllow,

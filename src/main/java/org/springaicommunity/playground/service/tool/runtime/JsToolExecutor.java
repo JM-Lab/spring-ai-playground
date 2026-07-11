@@ -16,6 +16,8 @@
 package org.springaicommunity.playground.service.tool.runtime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
 import org.springaicommunity.playground.service.tool.ToolWorkspace;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
@@ -30,7 +32,9 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -54,6 +58,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class JsToolExecutor {
+
+    private static final Logger logger = LoggerFactory.getLogger(JsToolExecutor.class);
 
     public record JsExecutionResult(boolean isOk, Object result, String error, @JsonIgnore String debugInfo) {}
 
@@ -163,10 +169,21 @@ public class JsToolExecutor {
         if (segment != null) {
             Path writeBase = this.defaultScope.workspace().resolve(segment).normalize();
             if (writeBase.startsWith(this.defaultScope.workspace())) {
+                ensureWorkspaceDir(writeBase);
                 return new SafeFs.FsScope(writeBase, this.defaultScope.readRoots());
             }
         }
         return this.defaultScope;
+    }
+
+    // listAllowedDirectories advertises this path as the working directory, so read tools must find it existing
+    // even before the conversation's first write.
+    private static void ensureWorkspaceDir(Path dir) {
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            logger.warn("Failed to create conversation workspace {}: {}", dir, e.getMessage());
+        }
     }
 
     public JsExecutionResult execute(JsExecutionParams jsExecutionParams, EffectivePolicy policy,

@@ -44,7 +44,7 @@
   {
     "id": "file-toolkit",
     "displayName": "File Toolkit",
-    "description": "Filesystem read pipeline (discover roots, read, list, grep, slice, sort, find, cut) plus getCurrentTime and evalExpression. Reads anywhere under your home directory; call listAllowedDirectories to see the roots, or set TOOL_STUDIO_FS_BASE to relocate the working directory.",
+    "description": "Filesystem read pipeline (discover roots, read, list, grep, search, slice, sort, find, cut) plus getCurrentTime and evalExpression. Reads anywhere under your home directory; call listAllowedDirectories to see the roots, or set TOOL_STUDIO_FS_BASE to relocate the working directory.",
     "isDefault": false,
     "tools": [
       "getCurrentTime",
@@ -53,6 +53,7 @@
       "readTextFile",
       "listDir",
       "grepFile",
+      "searchInFiles",
       "findFiles",
       "sliceFile",
       "sortFile",

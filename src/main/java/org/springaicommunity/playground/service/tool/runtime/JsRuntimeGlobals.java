@@ -241,6 +241,38 @@ public final class JsRuntimeGlobals {
                             "io", "safety.fs.find: " + e.getMessage(), e);
                 }
             });
+            fs.put("searchInFiles", (ProxyExecutable) args -> {
+                if (args.length < 3)
+                    throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "safety.fs.searchInFiles",
+                            "missing-args", "safety.fs.searchInFiles: requires dir, glob, pattern");
+                String dir = args[0].isNull() ? "." : args[0].asString();
+                String glob = args[1].isNull() ? "*" : args[1].asString();
+                String pattern = args[2].asString();
+                Value opts = args.length > 3 && !args[3].isNull() ? args[3] : null;
+                boolean caseInsensitive = opts != null && opts.hasMember("caseInsensitive")
+                        && opts.getMember("caseInsensitive").asBoolean();
+                int maxDepth = opts != null && opts.hasMember("maxDepth") && !opts.getMember("maxDepth").isNull()
+                        ? opts.getMember("maxDepth").asInt() : 0;
+                int limit = opts != null && opts.hasMember("limit") && !opts.getMember("limit").isNull()
+                        ? opts.getMember("limit").asInt() : 0;
+                try {
+                    List<SafeFs.Match> matches = SafeFs.searchInFiles(scope, dir, glob, pattern,
+                            caseInsensitive, maxDepth, limit);
+                    Object[] arr = new Object[matches.size()];
+                    for (int i = 0; i < matches.size(); i++) {
+                        SafeFs.Match m = matches.get(i);
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("file", m.file());
+                        row.put("line", m.line());
+                        row.put("text", m.text());
+                        arr[i] = ProxyObject.fromMap(row);
+                    }
+                    return ProxyArray.fromArray(arr);
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.searchInFiles",
+                            "io", "safety.fs.searchInFiles: " + e.getMessage(), e);
+                }
+            });
         }
         if (policy.fileWrite()) {
             fs.put("writeText", (ProxyExecutable) args -> {
@@ -251,6 +283,73 @@ public final class JsRuntimeGlobals {
                 } catch (java.io.IOException e) {
                     throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.writeText",
                             "io", "safety.fs.writeText: " + e.getMessage(), e);
+                }
+            });
+            fs.put("appendText", (ProxyExecutable) args -> {
+                try {
+                    return SafeFs.appendText(scope,
+                            args.length > 0 ? args[0].asString() : null,
+                            args.length > 1 && !args[1].isNull() ? args[1].asString() : "").toString();
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.appendText",
+                            "io", "safety.fs.appendText: " + e.getMessage(), e);
+                }
+            });
+            fs.put("editText", (ProxyExecutable) args -> {
+                if (args.length < 3)
+                    throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "safety.fs.editText",
+                            "missing-args", "safety.fs.editText: requires path, oldString, newString");
+                String path = args[0].asString();
+                String oldString = args[1].asString();
+                String newString = args[2].isNull() ? "" : args[2].asString();
+                boolean replaceAll = args.length > 3 && !args[3].isNull() && args[3].asBoolean();
+                try {
+                    SafeFs.EditResult r = SafeFs.editText(scope, path, oldString, newString, replaceAll);
+                    Map<String, Object> out = new LinkedHashMap<>();
+                    out.put("path", r.path().toString());
+                    out.put("replacements", r.replacements());
+                    return ProxyObject.fromMap(out);
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.editText",
+                            "io", "safety.fs.editText: " + e.getMessage(), e);
+                }
+            });
+            fs.put("copy", (ProxyExecutable) args -> {
+                if (args.length < 2)
+                    throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "safety.fs.copy",
+                            "missing-args", "safety.fs.copy: requires from and to");
+                try {
+                    return SafeFs.copy(scope, args[0].asString(), args[1].asString()).toString();
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.copy",
+                            "io", "safety.fs.copy: " + e.getMessage(), e);
+                }
+            });
+            fs.put("move", (ProxyExecutable) args -> {
+                if (args.length < 2)
+                    throw new JsHelperException(JsHelperException.Kind.INVALID_INPUT, "safety.fs.move",
+                            "missing-args", "safety.fs.move: requires from and to");
+                try {
+                    return SafeFs.move(scope, args[0].asString(), args[1].asString()).toString();
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.move",
+                            "io", "safety.fs.move: " + e.getMessage(), e);
+                }
+            });
+            fs.put("delete", (ProxyExecutable) args -> {
+                try {
+                    return SafeFs.delete(scope, args.length > 0 ? args[0].asString() : null);
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.delete",
+                            "io", "safety.fs.delete: " + e.getMessage(), e);
+                }
+            });
+            fs.put("deleteDir", (ProxyExecutable) args -> {
+                try {
+                    return SafeFs.deleteDir(scope, args.length > 0 ? args[0].asString() : null);
+                } catch (java.io.IOException e) {
+                    throw new JsHelperException(JsHelperException.Kind.HELPER_RUNTIME, "safety.fs.deleteDir",
+                            "io", "safety.fs.deleteDir: " + e.getMessage(), e);
                 }
             });
         }

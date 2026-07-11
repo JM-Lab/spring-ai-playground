@@ -20,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.FsConfig;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions.ToolStudio;
+import org.springaicommunity.playground.service.tool.runtime.SafeFs;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -62,6 +63,33 @@ class ToolWorkspaceTest {
 
         assertThat(convDir).doesNotExist();
         assertThat(ws.base()).exists();
+    }
+
+    @Test
+    void scopeForConfinesToConversationDir(@TempDir Path tempDir) {
+        ToolWorkspace ws = new ToolWorkspace(buildOptions(tempDir.toString()), tempDir);
+        SafeFs.FsScope scope = ws.scopeFor("Chat-z");
+        assertThat(scope.workspace()).isEqualTo(tempDir.resolve("Chat-z").toAbsolutePath().normalize());
+    }
+
+    @Test
+    void scopeForFallsBackToBaseWhenConversationIdInvalid(@TempDir Path tempDir) {
+        ToolWorkspace ws = new ToolWorkspace(buildOptions(tempDir.toString()), tempDir);
+        assertThat(ws.scopeFor(null).workspace()).isEqualTo(ws.base());
+        assertThat(ws.scopeFor("..").workspace()).isEqualTo(ws.base());
+    }
+
+    @Test
+    void conversationFileCountCountsRegularFiles(@TempDir Path tempDir) throws IOException {
+        ToolWorkspace ws = new ToolWorkspace(buildOptions(tempDir.toString()), tempDir);
+        assertThat(ws.conversationFileCount("Chat-z")).isZero();
+
+        Path convDir = ws.conversationDir("Chat-z");
+        Files.createDirectories(convDir.resolve("sub"));
+        Files.writeString(convDir.resolve("a.txt"), "x");
+        Files.writeString(convDir.resolve("sub").resolve("b.txt"), "y");
+
+        assertThat(ws.conversationFileCount("Chat-z")).isEqualTo(2);
     }
 
     private SpringAiPlaygroundOptions buildOptions(String basePath) {

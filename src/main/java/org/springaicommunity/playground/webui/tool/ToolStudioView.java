@@ -40,6 +40,7 @@ import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalcul
 import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.webui.PersistentUiDataStorage;
 import org.springaicommunity.playground.webui.SpringAiPlaygroundAppLayout;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.VaadinUtils;
 import org.springaicommunity.playground.webui.common.ContentWorkspaceView;
 import org.springaicommunity.playground.webui.common.WorkspaceSettingsDrawer;
@@ -68,6 +69,7 @@ public class ToolStudioView extends ContentWorkspaceView {
     private final SpringAiPlaygroundOptions playgroundOptions;
     private final SandboxPostureCalculator sandboxPostureCalculator;
     private final ObjectMapper objectMapper;
+    private final UsageEventTracker usageEventTracker;
     private final PropertyChangeSupport toolChangeSupport;
     private final ToolListView toolListView;
     private final ToolMcpServerSettingView toolMcpServerSettingView;
@@ -79,12 +81,13 @@ public class ToolStudioView extends ContentWorkspaceView {
             ToolSpecService toolSpecService, ToolCategoryCatalog toolCategoryCatalog,
             ToolActivationCalculator toolActivationCalculator, SpringAiPlaygroundOptions playgroundOptions,
             SandboxPostureCalculator sandboxPostureCalculator,
-            ToolSpecPersistenceService toolSpecPersistenceService) {
+            ToolSpecPersistenceService toolSpecPersistenceService, UsageEventTracker usageEventTracker) {
         this.toolSpecService = toolSpecService;
         this.toolCategoryCatalog = toolCategoryCatalog;
         this.playgroundOptions = playgroundOptions;
         this.sandboxPostureCalculator = sandboxPostureCalculator;
         this.objectMapper = objectMapper;
+        this.usageEventTracker = usageEventTracker;
         this.toolChangeSupport = new PropertyChangeSupport(this);
 
         this.toolListView = new ToolListView(persistentUiDataStorage, toolSpecService, toolCategoryCatalog,
@@ -93,7 +96,9 @@ public class ToolStudioView extends ContentWorkspaceView {
                 event -> Optional.ofNullable(event.getNewValue()).map(value -> (ToolSpec) value)
                         .ifPresent(this::changeToolContent));
         toolChangeSupport.addPropertyChangeListener(TOOL_EMPTY_EVENT, event -> {
-            if ((boolean) event.getNewValue()) {displayNewToolDesignView();}
+            if ((boolean) event.getNewValue()) {
+                displayNewToolDesignView();
+            }
         });
 
         setSidebarSplitterPosition(20);
@@ -148,11 +153,13 @@ public class ToolStudioView extends ContentWorkspaceView {
     private void changeToolContent(ToolSpec toolSpec) {
         if (Objects.isNull(toolSpec)) {
             this.toolBuilderView = new ToolBuilderView(null, this.toolChangeSupport, toolSpecService,
-                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper);
+                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper,
+                    usageEventTracker);
             this.toolListView.clearSelectTool();
         } else {
             this.toolBuilderView = new ToolBuilderView(toolSpec, toolChangeSupport, toolSpecService,
-                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper);
+                    toolCategoryCatalog, playgroundOptions, sandboxPostureCalculator, objectMapper,
+                    usageEventTracker);
             if (Objects.isNull(toolSpec.toolId())) {
                 this.toolListView.clearSelectTool();
             }

@@ -62,6 +62,21 @@ public class McpRiskChip extends HtmlContainer {
                 .set("white-space", "nowrap");
     }
 
+    public static McpRiskChip mitigated(RiskLevel effectiveLevel, RiskLevel inherentLevel, String floorTrigger) {
+        McpRiskChip chip = new McpRiskChip(effectiveLevel, floorTrigger);
+        if (inherentLevel != null && effectiveLevel != null && inherentLevel != effectiveLevel) {
+            ChipStyle style = STYLES.get(effectiveLevel);
+            StringBuilder text = new StringBuilder();
+            text.append(inherentLevel.name()).append(" → ").append(effectiveLevel.name())
+                    .append(" — ").append(style.label);
+            if (floorTrigger != null && !floorTrigger.isBlank()) {
+                text.append(" (floor: ").append(shortTrigger(floorTrigger)).append(')');
+            }
+            chip.setText(text.toString());
+        }
+        return chip;
+    }
+
     public McpRiskChip withTooltip(String tooltipText) {
         if (tooltipText != null && !tooltipText.isBlank()) {
             Tooltip.forComponent(this).withText(tooltipText);

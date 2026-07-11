@@ -60,9 +60,9 @@ public class ToolSpec {
     public record SandboxOverrides(Set<String> addAllowClasses, Set<String> removeAllowClasses,
                                    Set<String> addDenyClasses, Set<String> removeDenyClasses,
                                    String networkMode, Set<String> hostsAllow,
-                                   Boolean fileRead, Boolean fileWrite, String fsBasePath) {
+                                   Boolean fileRead, Boolean fileWrite, String fsBasePath, Boolean destructive) {
         public static SandboxOverrides empty() {
-            return new SandboxOverrides(Set.of(), Set.of(), Set.of(), Set.of(), null, Set.of(), null, null, null);
+            return new SandboxOverrides(Set.of(), Set.of(), Set.of(), Set.of(), null, Set.of(), null, null, null, null);
         }
     }
 

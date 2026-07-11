@@ -28,15 +28,11 @@ import org.springaicommunity.playground.service.mcp.catalog.McpToolDescriptor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,16 +47,19 @@ public class McpToolHashLedger {
 
     private final Path ledgerPath;
     private final ObjectMapper objectMapper;
+    private final CanonicalHasher canonicalHasher;
     private final PersistenceExecutor persistenceExecutor;
     private final McpRiskSignalSink sink;
     private final Map<String, Fingerprint> fingerprintsByKey;
 
     public McpToolHashLedger(Path springAiPlaygroundHomeDir, ObjectMapper objectMapper,
-            PersistenceExecutor persistenceExecutor, McpRiskSignalSink sink) throws IOException {
+            CanonicalHasher canonicalHasher, PersistenceExecutor persistenceExecutor,
+            McpRiskSignalSink sink) throws IOException {
         Path baseDir = springAiPlaygroundHomeDir.resolve("mcp").resolve("risk");
         Files.createDirectories(baseDir);
         this.ledgerPath = baseDir.resolve(LEDGER_FILE);
         this.objectMapper = objectMapper.rebuild().enable(SerializationFeature.INDENT_OUTPUT).build();
+        this.canonicalHasher = canonicalHasher;
         this.persistenceExecutor = persistenceExecutor;
         this.sink = sink;
         this.fingerprintsByKey = new ConcurrentHashMap<>(loadAll());
@@ -69,18 +68,7 @@ public class McpToolHashLedger {
 
     public String computeContentHash(String name, String description, JsonNode inputSchema,
             McpToolDescriptor.Annotations annotations) {
-        Map<String, Object> canonical = new LinkedHashMap<>();
-        canonical.put("name", name == null ? "" : name);
-        canonical.put("description", description == null ? "" : description);
-        canonical.put("inputSchema", inputSchema == null ? null : inputSchema);
-        canonical.put("annotations", annotations == null ? McpToolDescriptor.Annotations.EMPTY : annotations);
-        try {
-            byte[] bytes = this.objectMapper.rebuild().disable(SerializationFeature.INDENT_OUTPUT).build()
-                    .writeValueAsBytes(canonical);
-            return sha256Hex(bytes);
-        } catch (JacksonException e) {
-            throw new IllegalStateException("Failed to canonicalize tool content for hashing", e);
-        }
+        return this.canonicalHasher.hashMcpTool(name, description, inputSchema, annotations);
     }
 
     public Optional<Fingerprint> get(String serverId, String toolName) {
@@ -213,18 +201,5 @@ public class McpToolHashLedger {
             logger.warn("Failed to load hash ledger from {} — starting empty", this.ledgerPath, e);
             return Map.of();
         }
-    }
-
-    static String sha256Hex(byte[] bytes) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(bytes == null ? new byte[0] : bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
-    }
-
-    static String sha256Hex(String input) {
-        return sha256Hex(input == null ? new byte[0] : input.getBytes(StandardCharsets.UTF_8));
     }
 }

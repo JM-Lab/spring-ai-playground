@@ -7,13 +7,14 @@ Spring AI Playground is a **tool-first Spring Boot application** with several UI
 
 This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood.
 
-This is one of six architecture documents that complement each other:
+This is one of seven architecture documents that complement each other:
 
 - **Application** (this page) - runtime layers, feature modules, data flows, extension points
 - **[Safe Tool Specification](safe-tool-specification.md)** - normative JSON spec for tool authoring (fields, JSON Schema, resolution algorithm, lifecycle)
 - **[AI Agent Tool Safety](safety-architecture.md)** - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
 - **[MCP Server Safety](mcp-server-safety.md)** - client-side risk model for external MCP servers and re-exposed tools
 - **[Human-in-the-Loop Approval](hitl-architecture.md)** - the runtime per-call approval gate (chat dialog + MCP elicitation)
+- **[Agent Loop](agent-loop-architecture.md)** - per-turn state and round governance around the tool-calling loop
 - **[AI Agent Observability](observability-architecture.md)** - the visibility layer that captures every action the agent took and surfaces it through fourteen dashboards
 
 ## Overview { #overview }
@@ -90,7 +91,8 @@ Per-feature services under `src/main/java/org/springaicommunity/playground/servi
 | `service/tool` | `ToolSpecService`, `ToolCategoryCatalog`, `ChipListBinding`, `DefaultToolPresetCatalog`, `DefaultToolsPreference{Resolver,Service}`, `ToolActivationCalculator`, `McpToolDefinition` + `ToolManifest` envelope | Tool definitions, preset/preference resolution, draft/exposure state |
 | `service/tool/runtime` | `JsToolExecutor`, `JsRuntimeGlobals`, `SafeHttpFetch`, `SafeFs`, `JsHelperException` | GraalVM sandbox, `fetch` SSRF guard, `safety.fs`, `safety.parser.*` |
 | `service/tool/policy` | `EffectivePolicyResolver`, `SandboxPostureCalculator` | Per-tool capability overrides + **sandbox** risk-level (L0-L5) calculation (distinct from the MCP connection/exposure risk in `service/mcp/risk`) |
-| `service/mcp` | `McpServerInfoService`, `McpToolCallingManager`, `LoggingToolCallAdvisor`, `McpServerHitlToolGate` | Built-in MCP server metadata, tool-call eventing, and the two human-in-the-loop approval gates (chat-side advisor + server-side elicitation) - see [Human-in-the-Loop Approval](hitl-architecture.md) |
+| `service/agent` | `AgentLoopManager`, `AgentTurn`, `AgentLoopHarness`, `AgentRoundInterceptor` (`LoopGuard` / `HitlApproval` / `FileUpload` / `ImageReference`), `AgentTurnMessages` | The **agent loop** layer that wraps Spring AI's tool-calling loop: per-turn state, round bounds, and the chat-side interceptor chain (HITL approval, interactive upload/image, loop guards) - see [Agent Loop](agent-loop-architecture.md) |
+| `service/mcp` | `McpServerInfoService`, `McpServerHitlToolGate` | Built-in MCP server metadata and the server-side human-in-the-loop elicitation gate - see [Human-in-the-Loop Approval](hitl-architecture.md) |
 | `service/oauth` | `EncryptedFileOAuth2AuthorizedClientRepository`, `OAuthTokenEncryptor`, `McpClientRegistrationRepository`, `McpOAuth2AuthorizationCodeRequestCustomizer` | OAuth 2.1 for external MCP connections - encrypted-at-rest token store, dynamic client registration, authorization-code customizer |
 | `service/mcp/catalog` | `McpCatalogService`, `McpCategoryService`, `McpTagSuggestionService` | 57-entry preset catalog (49 remote + 8 stdio per OS) - loaded from `default-mcp-specs.json` and `default-mcp-specs-stdio-{mac,linux,windows}.json`, plus the 14-row `default-mcp-categories.json` taxonomy (13 catalog-facing categories + `CUSTOM` reserved for user-added entries), plus dynamic tag suggestions for the Config form; each entry carries `trustSignals` + `docsAdequate` metadata consumed by the risk model |
 | `service/mcp/client` | `McpClientService`, `Mcp*PropertiesService` | External MCP clients across STDIO / HTTP / SSE |
@@ -107,13 +109,13 @@ Persistence is pluggable via `PersistenceServiceInterface` and coordinated by `S
 
 Thin adapter layer configured in `SpringAiPlaygroundApplication` and related Spring `@Configuration` classes.
 
-- `ChatClient` is built once from **all `Advisor` beans injected as an array** (`chatClientBuilder.defaultAdvisors(Advisor[])`), ordered by each advisor's `getOrder()`. The four are **`MessageChatMemoryAdvisor`**, **`SpringAiPlaygroundRagAdvisor`** (`LOWEST_PRECEDENCE - 1`), **`SimpleLoggerAdvisor`**, and **`LoggingToolCallAdvisor`** (`HIGHEST_PRECEDENCE + 300`) - the last extends Spring AI's `ToolCallAdvisor`, so it owns the tool-calling loop: it wraps `McpToolCallingManager`, which runs the [human-in-the-loop approval gate](hitl-architecture.md) before any tool executes.
+- `ChatClient` is built once from **all `Advisor` beans injected as an array** (`chatClientBuilder.defaultAdvisors(Advisor[])`), ordered by each advisor's `getOrder()`. They are **`MessageChatMemoryAdvisor`**, **`SpringAiPlaygroundRagAdvisor`** (`LOWEST_PRECEDENCE - 1`), **`SimpleLoggerAdvisor`**, and Spring AI's **`ToolCallingAdvisor`** (static tools) or **`ToolSearchToolCallingAdvisor`** (dynamic discovery), which own the tool-calling loop. Both are given `AgentLoopManager` as their `ToolCallingManager`, so every round runs through the [agent loop](agent-loop-architecture.md) - round bounds, the [human-in-the-loop approval gate](hitl-architecture.md), and the interactive interceptors - before any tool executes.
 - `ChatMemory` defaults to `MessageWindowChatMemory` (last 10 messages) backed by `InMemoryChatMemoryRepository`.
 - `VectorStore` defaults to `SimpleVectorStore` (in-memory). Swap via Spring profile or user configuration.
 - `EmbeddingModel` is resolved from the active model profile (Ollama by default, OpenAI optional).
 - **Built-in MCP Server** - wired through `spring-ai-starter-mcp-server` and exposes published Tool Studio tools over **Streamable HTTP at `/mcp`**. Runs in-process inside the JVM.
 - **MCP Client** - wired through `spring-ai-starter-mcp-client` to connect out to external MCP servers.
-- **McpToolCallingManager** - the project's `ToolCallingManager` implementation that drives the chat tool-calling loop. It wraps the Spring AI default manager and is where the per-tool human-in-the-loop approval check runs before a tool executes.
+- **AgentLoopManager** - the project's `ToolCallingManager` implementation that governs each round of the chat tool-calling loop. It wraps the Spring AI default manager and adds per-turn round bounds, repeat/decline guards, and an interceptor chain (HITL approval, interactive upload/image) - see [Agent Loop](agent-loop-architecture.md).
 
 ### Layer 5 - External Runtimes
 
@@ -254,7 +256,7 @@ Searches go through `VectorStoreService.search(query, filterExpression)` which b
 
 ### Flow 4 - Chat advisor chain (memory + RAG)
 
-Every chat request passes through the `ChatClient` advisor chain before it reaches the model. The chain is assembled from all `Advisor` beans injected as an array (`defaultAdvisors(Advisor[])`) and ordered by each advisor's `getOrder()` - **MessageChatMemoryAdvisor**, **SpringAiPlaygroundRagAdvisor**, **SimpleLoggerAdvisor**, and **LoggingToolCallAdvisor** (which owns the tool-calling loop and runs the [human-in-the-loop gate](hitl-architecture.md); see Flow 5).
+Every chat request passes through the `ChatClient` advisor chain before it reaches the model. The chain is assembled from all `Advisor` beans injected as an array (`defaultAdvisors(Advisor[])`) and ordered by each advisor's `getOrder()` - **MessageChatMemoryAdvisor**, **SpringAiPlaygroundRagAdvisor**, **SimpleLoggerAdvisor**, and Spring AI's **ToolCallingAdvisor** / **ToolSearchToolCallingAdvisor** (which own the tool-calling loop and delegate each round to `AgentLoopManager` - the [agent loop](agent-loop-architecture.md) and [human-in-the-loop gate](hitl-architecture.md); see Flow 5).
 
 ```mermaid
 sequenceDiagram
@@ -291,7 +293,7 @@ RAG only runs when the user selected at least one document - otherwise `SpringAi
 
 ### Flow 5 - Chat with MCP tools
 
-Tool callbacks come from MCP clients, not from code you compile in. When a user picks one or more MCP servers in Chat, `McpClientService` hands back a `ToolCallbackProvider` for each live connection (built-in or external). The model sees their tools as ordinary function tools; `McpToolCallingManager` intercepts every call so the UI can show it.
+Tool callbacks come from MCP clients, not from code you compile in. When a user picks one or more MCP servers in Chat, `McpClientService` hands back a `ToolCallbackProvider` for each live connection (built-in or external). The model sees their tools as ordinary function tools; `AgentLoopManager` intercepts every call so the UI can show it.
 
 ```mermaid
 sequenceDiagram
@@ -301,7 +303,7 @@ sequenceDiagram
     participant PROV as Sync · Async<br/>ToolCallbackProvider
     participant CCL as ChatClient
     participant MODEL as ChatModel
-    participant TCM as McpToolCallingManager
+    participant TCM as AgentLoopManager
     participant CB as Sync · Async<br/>McpToolCallback
     participant MCP as MCP Server<br/>(built-in · STDIO · HTTP · SSE)
     participant UI as UI stream
@@ -341,7 +343,7 @@ sequenceDiagram
     participant ADV as Advisor chain<br/>(Flow 4)
     participant VSS as VectorStoreService
     participant MODEL as ChatModel
-    participant TCM as McpToolCallingManager<br/>(Flow 5)
+    participant TCM as AgentLoopManager<br/>(Flow 5)
     participant MCP as MCP Server(s)
     participant UI as UI stream
 

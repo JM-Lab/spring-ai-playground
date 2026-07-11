@@ -64,10 +64,10 @@ Once Spring AI Playground is running through any of the three paths above, the *
 ![Getting started checklist on the Home screen](../assets/images/home-getting-started.png)
 
 1. **Configure a model provider** - Pick Ollama (default, local) or OpenAI. The provider pill on Home shows a green dot and "Ready" once the base URL is reachable (Ollama) or an API key is set (OpenAI). A red dot means the app cannot reach your provider - recheck the launcher config or env vars.
-2. **Start a chat** - Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 88-tool bundled catalog you can opt into through Tool Studio's **Built-in MCP Server Native Tools** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
+2. **Start a chat** - Agentic Chat is ready the moment a provider is connected. The app ships with the **Starter 5** tools exposed by default (`getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`) and a wider 115-tool bundled catalog you can opt into through Tool Studio's **Built-in MCP Server Native Tools** drawer (or the launcher's **Default MCP Tools** card), so you can test end-to-end without writing any code.
 3. **Upload a document for RAG** - Drop a PDF or text file into the Vector Database surface. The file is chunked, embedded, and indexed on the spot; retrieval becomes available inside chat immediately.
 4. **Create your first tool** - Open Tool Studio, write a small JavaScript function, and define its sample arguments. A new tool starts as a **Draft** - invisible to MCP and to chat. Run it locally: if the test passes, it earns its **Local Pass** and is added live to the built-in MCP server the same moment. No restart, no redeploy. Agentic Chat picks it up immediately.
-5. **Try an agentic workflow** - Ask the assistant: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply).
+5. **Equip an agent and ask it** - Apply a [Prompt Library preset](../features/agentic-chat/prompt-presets.md) or pick tools in the chat settings drawer, then ask something that uses them - for example: *"Use the weather tool for Seoul, then summarize what `searchWikipedia` returns about that city."* This exercises two Starter 5 tools in sequence and shows the full agentic path (plan → call tool → read result → call next tool → reply). The default agent can also find tools on its own through [dynamic tool discovery](../features/agentic-chat/dynamic-tool-discovery.md).
 
 > Verifying your provider: the Home provider pill is the fastest sanity check. If it is stuck on "Checking..." or flips to red, open the desktop launcher startup card or run `curl $OLLAMA_BASE_URL` before proceeding.
 
@@ -153,22 +153,16 @@ gh attestation verify spring-ai-playground-<VERSION>-mac-arm64.dmg \
 
 A successful verification proves the file was produced by this project's release workflow and was not modified after build.
 
-## PWA Installation
-
-If you are running the browser-based version instead of the desktop installer, Spring AI Playground can also be installed as a Progressive Web App.
-
-Complete either the Docker or local source setup first so the app is already available in the browser.
-
-1. Open the application in your browser at `http://localhost:8282`.
-2. Install it using the browser install prompt or the install option shown on the home page.
-3. Complete the installation flow to add it as an app-like experience.
-
 ## Anonymous Usage Telemetry
 
-The official build sends anonymous usage data (page views, app surface, device/browser
-info) to help prioritize features. IPs are anonymized by Google. The same opt-out switch
-applies to both the web app and every desktop launcher window (splash, server-splash,
-config editor, Ollama manager).
+The official build sends anonymous usage data (page views, feature-usage events such as
+which model, preset, or tool kind is used, device/browser info) to help prioritize
+features. It is content-free - no prompts, documents, file names, or API keys - and
+names of things you create yourself are masked; the complete event table is in the
+[Configuration reference → What is collected](configuration.md#telemetry-events).
+IPs are anonymized by Google. Development-mode runs (`mvnw spring-boot:run`, IDE) never
+send telemetry. The same opt-out switch applies to both the web app and every desktop
+launcher window (splash, server-splash, config editor, Ollama manager).
 
 To opt out, set `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` before launching:
 

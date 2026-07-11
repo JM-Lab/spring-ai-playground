@@ -10,6 +10,8 @@ const OLLAMA_MANAGER_PRELOAD_PATH = path.join(__dirname, 'ollama-manager-preload
 const SPLASH_PATH = path.join(__dirname, 'splash.html');
 const CONFIG_EDITOR_PATH = path.join(__dirname, 'config-editor.html');
 const OLLAMA_MANAGER_PATH = path.join(__dirname, 'ollama-manager.html');
+const WHISPER_MANAGER_PATH = path.join(__dirname, 'whisper-manager.html');
+const WHISPER_MANAGER_PRELOAD_PATH = path.join(__dirname, 'whisper-manager-preload.js');
 const SERVER_SPLASH_PATH = path.join(__dirname, 'server-splash.html');
 
 const CONFIG_TEMPLATES = {
@@ -26,7 +28,7 @@ const CONFIG_TEMPLATES = {
     ollama:
       chat:
         options:
-          model: qwen3.5:2b
+          model: qwen3.5:4b
       embedding:
         options:
           model: qwen3-embedding:0.6b
@@ -34,8 +36,14 @@ const CONFIG_TEMPLATES = {
       chat:
         models:
           - qwen3.5:2b
+          - qwen3.5:4b
           - qwen3.5:9b
+          - qwen3.6:27b
+          - qwen3.6:35b
+          - gemma4:e2b
           - gemma4:e4b
+          - gemma4:12b
+          - gemma4:31b
           - gpt-oss:20b
           - deepseek-r1:8b
 `,
@@ -231,6 +239,7 @@ function toMlxModel(name) {
   return (typeof name === 'string' && MLX_MODEL_MAP[name]) || name;
 }
 
+// keeps non-MLX builds alongside MLX: MLX builds skip image tensors, so image chat needs them
 const OLLAMA_APPLE_SILICON_YAML = `spring:
   ai:
     model:
@@ -255,6 +264,17 @@ const OLLAMA_APPLE_SILICON_YAML = `spring:
           - gemma4:e4b-mlx
           - gemma4:12b-mlx
           - gemma4:31b-mlx
+          - qwen3.5:2b
+          - qwen3.5:4b
+          - qwen3.5:9b
+          - qwen3.6:27b
+          - qwen3.6:35b
+          - gemma4:e2b
+          - gemma4:e4b
+          - gemma4:12b
+          - gemma4:31b
+          - gpt-oss:20b
+          - deepseek-r1:8b
 `;
 
 const http = require('http');
@@ -314,6 +334,8 @@ module.exports = {
   SPLASH_PATH,
   CONFIG_EDITOR_PATH,
   OLLAMA_MANAGER_PATH,
+  WHISPER_MANAGER_PATH,
+  WHISPER_MANAGER_PRELOAD_PATH,
   SERVER_SPLASH_PATH,
   CONFIG_TEMPLATES,
   DEFAULT_STARTER_TEMPLATE_IDS,

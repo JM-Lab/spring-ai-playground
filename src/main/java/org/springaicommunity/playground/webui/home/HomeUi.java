@@ -15,6 +15,7 @@
  */
 package org.springaicommunity.playground.webui.home;
 
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Span;
 
 import java.time.Duration;
@@ -23,6 +24,16 @@ import java.time.Instant;
 final class HomeUi {
 
     private HomeUi() {}
+
+    static void routeToLauncherOnDesktop(Anchor anchor, String section) {
+        anchor.getElement().executeJs(
+                "this.addEventListener('click', e => {"
+                        + " if (!window.electronAPI) return;"
+                        + " e.preventDefault();"
+                        + " window.electronAPI.invoke('config:open-section', $0);"
+                        + "});",
+                section);
+    }
 
     static Span divider() {
         Span span = new Span("·");

@@ -35,7 +35,7 @@ class SandboxPostureCalculatorTest {
     private final SandboxPostureCalculator calc = new SandboxPostureCalculator();
 
     private RiskLevel risk(String mode, Set<String> hosts, Set<String> userDeny, Set<String> userAllow) {
-        return calc.compute(new Inputs(mode, hosts, false, false, BASELINE_DENY, userDeny, BASELINE_ALLOW, userAllow));
+        return calc.compute(new Inputs(mode, hosts, false, false, false, BASELINE_DENY, userDeny, BASELINE_ALLOW, userAllow));
     }
 
     private RiskLevel risk(String mode, Set<String> userDeny, Set<String> userAllow) {
@@ -159,16 +159,23 @@ class SandboxPostureCalculatorTest {
 
     @Test
     void fsReadOnlyHelperIsL3() {
-        RiskLevel level = calc.compute(new Inputs("blocked", null, true, false,
+        RiskLevel level = calc.compute(new Inputs("blocked", null, true, false, false,
                 BASELINE_DENY, BASELINE_DENY, BASELINE_ALLOW, BASELINE_ALLOW));
         assertEquals(RiskLevel.L3, level);
     }
 
     @Test
     void fsReadWriteHelperIsL4() {
-        RiskLevel level = calc.compute(new Inputs("blocked", null, true, true,
+        RiskLevel level = calc.compute(new Inputs("blocked", null, true, true, false,
                 BASELINE_DENY, BASELINE_DENY, BASELINE_ALLOW, BASELINE_ALLOW));
         assertEquals(RiskLevel.L4, level);
+    }
+
+    @Test
+    void destructiveFileOpIsL5() {
+        RiskLevel level = calc.compute(new Inputs("blocked", null, true, true, true,
+                BASELINE_DENY, BASELINE_DENY, BASELINE_ALLOW, BASELINE_ALLOW));
+        assertEquals(RiskLevel.L5, level);
     }
 
     @Test
@@ -195,7 +202,7 @@ class SandboxPostureCalculatorTest {
 
     @Test
     void nullCollectionsTreatedAsEmpty() {
-        assertEquals(RiskLevel.L0, calc.compute(new Inputs("blocked", null, false, false, null, null, null, null)));
+        assertEquals(RiskLevel.L0, calc.compute(new Inputs("blocked", null, false, false, false, null, null, null, null)));
     }
 
     @Test

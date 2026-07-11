@@ -49,4 +49,59 @@ class MdcIdentityFilterTest {
         assertThat(MDC.get(MdcIdentityFilter.USER_ID)).isNull();
         assertThat(MDC.get(MdcIdentityFilter.SESSION_ID)).isNull();
     }
+
+    @Test
+    void mcpRequestCarriesConversationAndSessionHeadersIntoMdc() throws IOException, ServletException {
+        HttpServletRequest request = mcpRequest("/mcp", "Chat-1234-abc", "sess-42");
+        AtomicReference<String> conversation = new AtomicReference<>();
+        AtomicReference<String> session = new AtomicReference<>();
+        FilterChain chain = (req, res) -> {
+            conversation.set(MDC.get(MdcIdentityFilter.CONVERSATION_ID));
+            session.set(MDC.get(MdcIdentityFilter.SESSION_ID));
+        };
+
+        new MdcIdentityFilter(identity()).doFilter(request, mock(HttpServletResponse.class), chain);
+
+        assertThat(conversation.get()).isEqualTo("Chat-1234-abc");
+        assertThat(session.get()).isEqualTo("sess-42");
+        assertThat(MDC.get(MdcIdentityFilter.CONVERSATION_ID)).isNull();
+        assertThat(MDC.get(MdcIdentityFilter.SESSION_ID)).isNull();
+    }
+
+    @Test
+    void identityHeadersAreIgnoredOutsideTheMcpEndpoint() throws IOException, ServletException {
+        HttpServletRequest request = mcpRequest("/agentic-chat", "Chat-1234-abc", "sess-42");
+        AtomicReference<String> conversation = new AtomicReference<>();
+        FilterChain chain = (req, res) -> conversation.set(MDC.get(MdcIdentityFilter.CONVERSATION_ID));
+
+        new MdcIdentityFilter(identity()).doFilter(request, mock(HttpServletResponse.class), chain);
+
+        assertThat(conversation.get()).isNull();
+    }
+
+    @Test
+    void malformedConversationHeaderIsRejected() throws IOException, ServletException {
+        HttpServletRequest request = mcpRequest("/mcp", "../escape attempt", null);
+        AtomicReference<String> conversation = new AtomicReference<>();
+        FilterChain chain = (req, res) -> conversation.set(MDC.get(MdcIdentityFilter.CONVERSATION_ID));
+
+        new MdcIdentityFilter(identity()).doFilter(request, mock(HttpServletResponse.class), chain);
+
+        assertThat(conversation.get()).isNull();
+    }
+
+    private static UserIdentityService identity() {
+        UserIdentityService identity = mock(UserIdentityService.class);
+        when(identity.currentUserId()).thenReturn("device-xyz");
+        return identity;
+    }
+
+    private static HttpServletRequest mcpRequest(String uri, String conversationHeader, String sessionHeader) {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getSession(false)).thenReturn(null);
+        when(request.getRequestURI()).thenReturn(uri);
+        when(request.getHeader(MdcIdentityFilter.CONVERSATION_HEADER)).thenReturn(conversationHeader);
+        when(request.getHeader(MdcIdentityFilter.SESSION_HEADER)).thenReturn(sessionHeader);
+        return request;
+    }
 }

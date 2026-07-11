@@ -7,13 +7,14 @@ Spring AI Playground is a Spring Boot application that executes user-authored Ja
 
 This page is the system-level reference for how the sandbox is shaped. For the user-facing surface (the override fields, the Sandbox & Capabilities pane, the Risk Level badge), see [Tool Studio → Safety](features/tool-studio/index.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities).
 
-This is one of six architecture documents that complement each other:
+This is one of the architecture documents that complement each other:
 
 - [Application](architecture.md) - runtime layers, feature modules, data flows, extension points
 - [Safe Tool Specification](safe-tool-specification.md) - normative JSON spec for tool authoring (the document the sandbox enforces)
 - **AI Agent Tool Safety** (this page) - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
 - [MCP Server Safety](mcp-server-safety.md) - client-side risk model for external MCP servers and re-exposed tools
 - [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate
+- [Agent Loop](agent-loop-architecture.md) - per-turn round governance around the tool-calling loop
 - [AI Agent Observability](observability-architecture.md) - the visibility layer that makes the sandbox's prevention auditable
 
 ## Overview { #overview }
@@ -83,9 +84,9 @@ What each layer controls, in detail:
 | **1** | Helpers gateway | `fetch` (SSRF four-layer guard in `strict` by default), `safety.fs` (reads bounded to the readable roots, writes to the working directory, both symlink-resolved via `toRealPath` before the boundary check), `safety.parser.{html,xml,csv,yaml}`. These are the only network and filesystem paths from JS. |
 | **1** | Output masking | `console.log` substring-masks env-backed static-variable values before they reach the debug pane or chat tool-call trace. The mask applies to **all** env-vars surfaced by the secret store below - values exported from the OS-encrypted secret store are still treated as secrets at the log boundary. |
 | **1** | Secret store at rest | The desktop launcher persists tool-side secrets through Electron `safeStorage` - encrypted by **macOS Keychain** / **Windows DPAPI** / **libsecret** on Linux; the cipherkey never leaves the OS keychain. Secrets are exported as environment variables only to the launched JVM process, never written to YAML or chat history, and the JS-side `console.log` mask above redacts their resolved values from any tool output. See [Desktop App → Use Environment Variables for Keys and Secrets](getting-started/desktop.md#9-use-environment-variables-for-keys-and-secrets). |
-| **2** | `SandboxOverrides` | Per-tool widening: `networkMode`, `hostsAllow`, `fileRead`/`fileWrite`, `addAllow/DenyClasses`, `fsBasePath`. |
+| **2** | `SandboxOverrides` | Per-tool widening: `networkMode`, `hostsAllow`, `fileRead`/`fileWrite`, `destructive`, `addAllow/DenyClasses`, `fsBasePath`. |
 | **2** | Posture calculator | `SandboxPostureCalculator.compute()` - pure function from overrides to `RiskLevel`. |
-| **2** | Risk badge | L0 baseline · L3 narrow widening · L4 broad widening · L5 critical class re-enabled. |
+| **2** | Risk badge | L0 baseline · L3 narrow widening · L4 broad widening · L5 critical class re-enabled or destructive fs op. |
 | **3** | MCP transport auth | The app `SecurityFilterChain` is present (for Vaadin and outbound MCP-client OAuth) but `/mcp` and `/sse` are `permitAll`, so the built-in server is **unauthenticated by default**. Gate it by adding Spring AI MCP Security (OAuth2 resource server / API key) for deployed scenarios. |
 | **3** | MCP transport | Streamable HTTP at `/mcp`. Binds to **all interfaces (0.0.0.0) by default** because `server.address` is unset; set it to `127.0.0.1` to restrict to localhost. |
 
@@ -330,7 +331,7 @@ There is no separate "Safety Level" knob - the Risk Level *is* the safety indica
 | **L0** | Safest. Baseline defaults. | No I/O. Pure-compute helpers only. | Auto-publish on Local Pass. |
 | **L3** | Safe with scoped widening. | `networkMode: allowlist` to specific hosts, OR `fileRead: true`, OR 1-2 non-critical deny removals. | Default-publish - review the host list / paths. |
 | **L4** | Broader access. Review before publish. | `networkMode: allowlist` with `*`, `networkMode: open`, `fileWrite: true`, file-read class added, reflection class added, ≥3 deny removals. | **Review before publish.** Justify the breadth. |
-| **L5** | Effectively unsandboxed. | `System` / `Runtime` / `Process` / `ProcessBuilder` re-enabled, OR file-write classes added directly. | **Trusted authors only.** Process spawn or raw write means the tool has the same authority as the JVM itself. |
+| **L5** | Effectively unsandboxed, or an irreversible data operation. | `System` / `Runtime` / `Process` / `ProcessBuilder` re-enabled, OR file-write classes added directly, OR a `destructive: true` filesystem tool (move / delete / deleteDir). | **Trusted authors only.** Process spawn or raw write means the tool has the same authority as the JVM itself; a destructive tool can erase data unrecoverably. Pair with human-in-the-loop approval (`L5 → L4`). |
 
 The full bullet-by-bullet rule set (which signal pushes the badge to which level) is in [Tool Studio → Risk Level Reference](features/tool-studio/index.md#risk-level-reference).
 

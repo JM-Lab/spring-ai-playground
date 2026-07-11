@@ -15,6 +15,8 @@
  */
 package org.springaicommunity.playground.webui.home;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -47,6 +49,18 @@ public class HomeItemView extends WorkspaceSidebar {
                         "https://github.com/spring-ai-community/spring-ai-playground/issues/new?template=bug_report.yml")
         );
 
+        container.add(sectionHeader("Learn"));
+        container.add(
+                link(VaadinIcon.SHIELD, "AI Agent Tool Safety",
+                        "https://spring-ai-community.github.io/spring-ai-playground/safety-architecture/"),
+                link(VaadinIcon.ACADEMY_CAP, "Tutorials",
+                        "https://spring-ai-community.github.io/spring-ai-playground/tutorials/"),
+                link(VaadinIcon.TOOLBOX, "Default Tools Catalog",
+                        "https://spring-ai-community.github.io/spring-ai-playground/features/default-tools/"),
+                link(VaadinIcon.LINE_BAR_CHART, "Telemetry & Opt-out",
+                        "https://spring-ai-community.github.io/spring-ai-playground/getting-started/configuration/#telemetry")
+        );
+
         container.add(sectionHeader("Related"));
         container.add(
                 link(VaadinIcon.BOOK, "Spring AI Docs",
@@ -59,7 +73,55 @@ public class HomeItemView extends WorkspaceSidebar {
                         "https://github.com/punkpeye/awesome-mcp-servers")
         );
 
+        container.add(sectionHeader("Videos"));
+        container.add(link(VaadinIcon.FILM, "It Asks Before It Deletes (1 minute)",
+                "https://youtu.be/9t9DELt2bRM"));
+        container.add(link(VaadinIcon.FILM, "Trailer (30 seconds)",
+                "https://youtu.be/dR6XRs2-nEY"));
+        Div episodes = new Div(
+                episodeLink("What is Spring AI Playground?", "pOgsT-SOri4"),
+                episodeLink("Plan a Meeting: Map, Calendar, Email", "WiuBG9PxqwY"),
+                episodeLink("Map a Week of Live Earthquakes", "A7Uv8MKyar0"),
+                episodeLink("Spreadsheet In, 5 Charts Out", "J7zApmncelU"),
+                episodeLink("An Agent That Finds Its Own Tools", "FIXmWACBl6I"),
+                episodeLink("Teach a New Tool in 60 Seconds", "c1rxulSC9bw"),
+                episodeLink("It Asks Before It Deletes", "9t9DELt2bRM"),
+                episodeLink("See Everything Your Agent Did", "HVoM-tse_q8"));
+        episodes.getStyle().set("display", "flex").set("flex-direction", "column");
+        episodes.setVisible(false);
+        container.add(seriesRow(episodes), episodes);
+
         setSidebarContent(verticalScroller(container));
+    }
+
+    private static Div seriesRow(Div episodes) {
+        Anchor series = link(VaadinIcon.YOUTUBE, "Local Model, Real Agent (series)",
+                "https://www.youtube.com/playlist?list=PLfizCrbCZK9k");
+        series.getStyle().set("flex", "1 1 auto").set("min-width", "0");
+
+        Button toggle = new Button(VaadinIcon.CHEVRON_DOWN.create(), e -> {
+            boolean show = !episodes.isVisible();
+            episodes.setVisible(show);
+            e.getSource().setIcon(show
+                    ? VaadinIcon.CHEVRON_UP.create()
+                    : VaadinIcon.CHEVRON_DOWN.create());
+            e.getSource().setAriaLabel(show ? "Hide episodes" : "Show episodes");
+        });
+        toggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON,
+                ButtonVariant.LUMO_SMALL);
+        toggle.setAriaLabel("Show episodes");
+        toggle.getStyle().set("flex-shrink", "0").set("margin-right", "0.5rem");
+
+        Div row = new Div(series, toggle);
+        row.getStyle().set("display", "flex").set("align-items", "center");
+        return row;
+    }
+
+    private static Anchor episodeLink(String label, String videoId) {
+        Anchor anchor = link(VaadinIcon.PLAY_CIRCLE_O, label,
+                "https://www.youtube.com/watch?v=" + videoId + "&list=PLfizCrbCZK9k");
+        anchor.getStyle().set("padding-left", "1.9rem");
+        return anchor;
     }
 
     private static Span sectionHeader(String text) {

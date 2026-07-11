@@ -18,6 +18,7 @@ package org.springaicommunity.playground.webui.tool;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -39,6 +40,7 @@ import org.springaicommunity.playground.service.tool.ToolSpec.ToolParamSpec;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.tool.ToolCategoryCatalog;
 import org.springaicommunity.playground.service.tool.policy.SandboxPostureCalculator;
+import org.springaicommunity.playground.webui.UsageEventTracker;
 import org.springaicommunity.playground.webui.VaadinUtils;
 
 import java.beans.PropertyChangeSupport;
@@ -47,6 +49,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -65,6 +68,7 @@ public class ToolBuilderView extends VerticalLayout {
     private final PropertyChangeSupport toolChangeSupport;
     private final ToolSpecService toolSpecService;
     private final ToolCategoryCatalog categoryCatalog;
+    private final UsageEventTracker usageEventTracker;
     private final HorizontalLayout paramsContainer;
     private final List<ToolParameterForm> paramForms;
     private final TextField toolNameField;
@@ -78,11 +82,13 @@ public class ToolBuilderView extends VerticalLayout {
 
     public ToolBuilderView(ToolSpec toolSpec, PropertyChangeSupport toolChangeSupport, ToolSpecService toolSpecService,
             ToolCategoryCatalog categoryCatalog, SpringAiPlaygroundOptions options,
-            SandboxPostureCalculator postureCalculator, ObjectMapper objectMapper) {
+            SandboxPostureCalculator postureCalculator, ObjectMapper objectMapper,
+            UsageEventTracker usageEventTracker) {
         this.toolSpec = toolSpec;
         this.toolChangeSupport = toolChangeSupport;
         this.toolSpecService = toolSpecService;
         this.categoryCatalog = categoryCatalog;
+        this.usageEventTracker = usageEventTracker;
         this.paramForms = new ArrayList<>();
 
         setSizeFull();
@@ -366,6 +372,10 @@ public class ToolBuilderView extends VerticalLayout {
         ToolSpec registeredToolSpec = toolSpecService.update(formSpec);
         String stateLabel = targetDraft ? "saved as Draft" : "published";
         VaadinUtils.showInfoNotification("Tool '" + toolName + "' " + stateLabel + ".");
+        this.usageEventTracker.track(UI.getCurrent(), "tool_authored", Map.of(
+                "action", targetDraft ? "draft" : "publish",
+                "sandbox_overrides", registeredToolSpec.sandboxOverrides() != null,
+                "hitl", toolSpecService.requiresApproval(registeredToolSpec)));
         this.toolChangeSupport.firePropertyChange(TOOL_CHANGE_EVENT, null, registeredToolSpec);
     }
 

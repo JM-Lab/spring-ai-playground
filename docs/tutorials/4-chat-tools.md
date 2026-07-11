@@ -12,7 +12,7 @@ description: Tutorial 4 - trigger a built-in MCP tool from a chat turn. Watch th
 1. Open **Agentic Chat**. Click the gear icon to open **Agentic Chat Setting** and switch the model.
 
 ![Agentic Chat Setting panel with the model dropdown open showing qwen3.5:9b and gemma4:e4b](../assets/images/tutorials/tutorial-4-chat-tool-setup.png)
-*① `Model` dropdown - open it to switch from the default `qwen3.5:2b`, ② recommended models for tool use are `qwen3.5:9b` and `gemma4:e4b`. Pick one and click **Apply & New Chat**.*
+*① `Model` dropdown - open it to switch from the default `qwen3.5:4b`, ② recommended models for tool use are `qwen3.5:9b` and `gemma4:e4b`. Pick one and click **Apply & New Chat**.*
 
 2. With the chat started under the new model, tick **Manual built-in tool selection** in the tool menu above the prompt, confirm `getCurrentTime` is selected in the exposed-tools list, then type a prompt that should trigger a tool call.
 
@@ -31,4 +31,4 @@ description: Tutorial 4 - trigger a built-in MCP tool from a chat turn. Watch th
 - If the tool fails or returns garbage, the model explains it instead of fabricating an answer (assuming you picked a tool-capable model).
 
 !!! tip "Why this matters"
-    `qwen3.5:2b` (the default) sometimes skips tool calls or returns empty tool turns. `qwen3.5:9b` is much more reliable for this. If a tool turn comes back empty, that is the signal to upgrade the model - not to rewrite the prompt.
+    `qwen3.5:4b` (the default) sometimes skips tool calls or returns empty tool turns. `qwen3.5:9b` is much more reliable for this. If a tool turn comes back empty, that is the signal to upgrade the model - not to rewrite the prompt.

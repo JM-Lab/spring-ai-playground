@@ -65,8 +65,8 @@ public class McpToolRiskEvaluator {
 
     public record ServerRiskView(RiskLevel level, Map<String, Integer> axisScores, String floorTrigger) {}
 
-    public record ToolRiskView(RiskLevel finalLevel, RiskLevel publishLevel, String floorTrigger,
-            McpToolPoisoningScanner.ScanResult poisoningResult) {}
+    public record ToolRiskView(RiskLevel finalLevel, RiskLevel inherentLevel, RiskLevel publishLevel,
+            String floorTrigger, McpToolPoisoningScanner.ScanResult poisoningResult) {}
 
     public ServerRiskView evaluateServer(McpServerInfo info) {
         if (info == null || info.serverName() == null || info.serverName().isBlank()) {
@@ -86,12 +86,14 @@ public class McpToolRiskEvaluator {
             Map<String, Map<String, Object>> propertySchemas) {
         McpToolPoisoningScanner.ScanResult scan = this.poisoningScanner.scan(description);
         if (info == null || toolName == null || info.serverName() == null) {
-            return new ToolRiskView(RiskLevel.L1, RiskLevel.L1, null, scan);
+            return new ToolRiskView(RiskLevel.L1, RiskLevel.L1, RiskLevel.L1, null, scan);
         }
         emitPoisoningHit(info.serverName(), toolName, scan);
         if (isSelfBuiltin(info)) {
-            RiskLevel sandbox = this.toolSpecService.getSandboxRiskLevel(toolName);
-            return new ToolRiskView(sandbox, sandbox, null, scan);
+            RiskLevel inherent = this.toolSpecService.getSandboxRiskLevel(toolName);
+            boolean hitlMitigates = this.toolSpecService.requiresApproval(toolName) && scan.clean();
+            RiskLevel effective = McpToolRiskComposer.applyHitlMitigation(inherent, hitlMitigates);
+            return new ToolRiskView(effective, inherent, effective, null, scan);
         }
         Optional<McpCatalogEntry> entry = this.catalogService.findByServerName(info.serverName());
         McpServerRiskCalculator.Inputs serverInputs = this.inputsResolver.resolveServerInputs(info,
@@ -107,7 +109,8 @@ public class McpToolRiskEvaluator {
         McpToolPublishRiskCalculator.Result toolResult = this.publishCalc.compute(toolInputs);
 
         McpToolRiskComposer.Composed composed = this.composer.composeWrappedExternal(serverResult, toolResult);
-        return new ToolRiskView(composed.finalLevel(), composed.publishLevel(), composed.floorTrigger(), scan);
+        return new ToolRiskView(composed.finalLevel(), composed.finalLevel(), composed.publishLevel(),
+                composed.floorTrigger(), scan);
     }
 
     public boolean isSelfBuiltin(McpServerInfo info) {

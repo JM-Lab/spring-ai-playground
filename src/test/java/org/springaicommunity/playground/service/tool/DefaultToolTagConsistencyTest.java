@@ -38,7 +38,7 @@ class DefaultToolTagConsistencyTest {
 
     private static final Set<String> TAG_VOCAB = Set.of(
             "korea", "example", "util", "pipeline",
-            "github", "search", "finance", "weather", "geo");
+            "github", "search", "finance", "weather", "geo", "visualization");
 
     private static final Set<String> WEB_ONLY_TAGS = Set.of("korea", "github", "search", "finance", "weather", "geo");
 
@@ -53,7 +53,7 @@ class DefaultToolTagConsistencyTest {
             }
         }
         assertThat(violations)
-                .as("tags must come from the v4 vocab {korea, example, util, pipeline, github, search, finance, weather, geo}")
+                .as("tags must come from the v4 vocab {korea, example, util, pipeline, github, search, finance, weather, geo, visualization}")
                 .isEmpty();
     }
 

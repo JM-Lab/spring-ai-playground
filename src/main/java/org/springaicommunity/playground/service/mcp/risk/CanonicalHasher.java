@@ -16,9 +16,11 @@
 package org.springaicommunity.playground.service.mcp.risk;
 
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.mcp.catalog.McpToolDescriptor;
 import org.springaicommunity.playground.service.tool.ToolSpec;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +46,18 @@ public class CanonicalHasher {
                 .disable(SerializationFeature.INDENT_OUTPUT)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                 .build();
+    }
+
+    public String hashMcpTool(String name, String description, JsonNode inputSchema,
+            McpToolDescriptor.Annotations annotations) {
+        Map<String, Object> canonical = new LinkedHashMap<>();
+        canonical.put("name", nz(name));
+        canonical.put("description", nz(description));
+        canonical.put("inputSchema",
+                inputSchema == null ? null : this.mapper.convertValue(inputSchema, Object.class));
+        canonical.put("annotations", this.mapper.convertValue(
+                annotations == null ? McpToolDescriptor.Annotations.EMPTY : annotations, Object.class));
+        return hash(canonical);
     }
 
     public String hashTool(ToolSpec spec) {
@@ -116,6 +130,7 @@ public class CanonicalHasher {
         out.put("fileRead", s.fileRead());
         out.put("fileWrite", s.fileWrite());
         out.put("fsBasePath", nz(s.fsBasePath()));
+        out.put("destructive", s.destructive());
         return out;
     }
 

@@ -27,7 +27,6 @@
     <!-- M7 files introduced by commits already pushed to origin/main (52fbe60, ea2fa78) —
          suppressed to keep history clean. Remove a line whenever you next edit that file. -->
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]JavascriptToolPlaygroundView\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolBuilderView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolParameterForm\.java$" checks=".*"/>
 
     <!-- M6 baseline files unchanged in M7 — incremental adoption: only files touched by M7
@@ -72,14 +71,8 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]VaadinUtils\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]chat[\\/]ChatHistoryView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]common[\\/]WorkspaceContentHeader\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeChecklist\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeInfoView\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeItemView\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeProviderStatus\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeRecentActivity\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeSurfaceCards\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeUi\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]home[\\/]HomeView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]mcp[\\/]OAuth21SubForm\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]mcp[\\/]OAuthCompleteView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]mcp[\\/]inspector[\\/]ElicitationTab\.java$" checks=".*"/>
@@ -98,14 +91,12 @@
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]mcp[\\/]inspector[\\/]primitives[\\/]server[\\/]ResourceTemplatePrimitive\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]SandboxCapabilitiesView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]StaticVariableForm\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]tool[\\/]ToolStudioView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreContentItem\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreContentView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreDocumentTokenChunkInfo\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreDocumentUpload\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreDocumentView\.java$" checks=".*"/>
     <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreSearchSettingView\.java$" checks=".*"/>
-    <suppress files="src[\\/]main[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]webui[\\/]vectorstore[\\/]VectorStoreView\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]ShutdownLifecycleTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]SpringAiPlaygroundApplicationTests\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]PersistenceExecutorTest\.java$" checks=".*"/>

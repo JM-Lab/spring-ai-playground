@@ -34,7 +34,7 @@ public class SttMicButton extends Button {
     private final Mode mode;
 
     public <C extends Component & HasValueAndElement<?, String>> SttMicButton(C targetComponent) {
-        super(VaadinUtils.styledLargeIcon(VaadinIcon.MICROPHONE.create()));
+        super(VaadinUtils.styledIcon(VaadinIcon.MICROPHONE.create()));
         this.targetComponentId = targetComponent.getId().orElse("");
         this.mode = resolveMode();
         addThemeVariants(ButtonVariant.LUMO_TERTIARY);

@@ -47,7 +47,7 @@ Most of the saving comes from prompt tokens (the definitions that are no longer 
 
 Those numbers are on large hosted models. The bigger story for a **local-first** playground is what dynamic discovery does for *small* models running on your own machine.
 
-The Playground ships **88 built-in tools** (72 of them Local-Passed and callable), and you can add many more in Tool Studio or by connecting MCP servers. Inlining 70+ tool schemas every turn is exactly what a small local model handles worst: it floods a limited context window and the model loses the thread among similar tools. Dynamic discovery takes that wall away - the model searches the catalog and pulls in only what each step needs, so the size of your toolbox stops being a ceiling on what a local model can drive.
+The Playground ships **115 built-in tools** (99 of them Local-Passed and callable), and you can add many more in Tool Studio or by connecting MCP servers. Inlining 70+ tool schemas every turn is exactly what a small local model handles worst: it floods a limited context window and the model loses the thread among similar tools. Dynamic discovery takes that wall away - the model searches the catalog and pulls in only what each step needs, so the size of your toolbox stops being a ceiling on what a local model can drive.
 
 The result is a genuine local agent. Below, the default local model (`qwen3.5:4b-mlx` on Ollama) answers a three-part request - local time, live weather, and a tip calculation - by discovering and chaining the right tools out of the 72-tool catalog, using roughly **1,850 input tokens** instead of inlining every definition:
 
@@ -57,7 +57,7 @@ The **MCP TOOLS** panel tells the whole story: the model called `toolSearchTool`
 
 ## Try it
 
-The fastest way to see it is the [Prompt Library](prompt-presets.md):
+A brand-new chat already opens in this mode - the **Self-equipping agent** preset is the default for new chats - so you can just start asking. To pick it explicitly or re-apply it after switching, open the [Prompt Library](prompt-presets.md):
 
 1. Open the **Prompt Library** and apply the **Self-equipping agent** preset - it ships in dynamic mode.
 2. Ask for something that spans a few capabilities (for example, *"I'm in Tokyo - what's the time, the weather, and a 15% tip on an 8000 yen dinner?"*).

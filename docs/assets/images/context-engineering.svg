@@ -85,7 +85,7 @@
   <!-- agentic tool loop: model -> tool call -> results re-enter the context -->
   <path class="arr" d="M800,260 L800,414 L694,414" marker-end="url(#ah)"/>
   <rect class="box" x="318" y="392" width="372" height="44" rx="8" fill="#fdf6ec"/>
-  <text class="mlab" x="504" y="410">Tool call - McpToolCallingManager</text>
+  <text class="mlab" x="504" y="410">Tool call - AgentLoopManager</text>
   <text class="msub" x="504" y="424">human-in-the-loop gate before each call</text>
   <path class="arr" d="M330,392 L330,356" marker-end="url(#ah)"/>
   <text class="flow" x="342" y="382">tool results re-enter the context</text>

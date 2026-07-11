@@ -20,9 +20,14 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
+import org.springaicommunity.playground.observability.McpRiskEventRingBuffer;
+import org.springaicommunity.playground.observability.ObservabilityTimeSeries;
+import org.springaicommunity.playground.observability.system.SystemMetricsSnapshot;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.tool.ToolActivationCalculator;
 import org.springaicommunity.playground.service.tool.ToolSpecPersistenceService;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
@@ -46,17 +51,23 @@ public class HomeView extends ContentWorkspaceView {
     public HomeView(ToolSpecService toolSpecService,
             McpServerInfoService mcpServerInfoService,
             McpClientService mcpClientService,
+            McpCatalogService mcpCatalogService,
             VectorStoreDocumentService vectorStoreDocumentService,
             ChatHistoryService chatHistoryService,
             ToolSpecPersistenceService toolSpecPersistenceService,
+            ToolActivationCalculator toolActivationCalculator,
             ObjectProvider<ChatModel> chatModelProvider,
             ObjectProvider<EmbeddingModel> embeddingModelProvider,
             Optional<EmbeddingOptions> embeddingOptions,
+            ObservabilityTimeSeries observabilityTimeSeries,
+            SystemMetricsSnapshot systemMetricsSnapshot,
+            McpRiskEventRingBuffer mcpRiskEventRingBuffer,
             Environment environment) {
         configureSidebar(new HomeItemView(), "Links");
         setHeaderLabel("Welcome");
-        setContent(new HomeInfoView(toolSpecService, mcpServerInfoService, mcpClientService,
-                vectorStoreDocumentService, chatHistoryService, toolSpecPersistenceService, chatModelProvider,
-                embeddingModelProvider, embeddingOptions, environment));
+        setContent(new HomeInfoView(toolSpecService, mcpServerInfoService, mcpClientService, mcpCatalogService,
+                vectorStoreDocumentService, chatHistoryService, toolSpecPersistenceService, toolActivationCalculator,
+                chatModelProvider, embeddingModelProvider, embeddingOptions,
+                observabilityTimeSeries, systemMetricsSnapshot, mcpRiskEventRingBuffer, environment));
     }
 }

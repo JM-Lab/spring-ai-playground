@@ -5,13 +5,14 @@ description: How Spring AI Playground vets external MCP servers and re-exposed t
 
 [AI Agent Tool Safety](safety-architecture.md) covers the *inward* problem - keeping a locally-authored JavaScript tool from harming the host. **This page covers the *outward* problem** - how the playground vets the **external MCP servers it connects to** and the **upstream tools it re-exposes** on its own built-in server, before an agent can reach any of them.
 
-This is one of six architecture documents that complement each other:
+This is one of the architecture documents that complement each other:
 
 - [Application](architecture.md) - runtime layers, feature modules, data flows
 - [Safe Tool Specification](safe-tool-specification.md) - normative spec for *authoring* local tools
 - [AI Agent Tool Safety](safety-architecture.md) - the **sandbox** that contains locally-authored JS tools
 - **MCP Server Safety** (this page) - the **client-side risk model** for external servers and re-exposed tools
 - [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate that honors the per-tool HITL flag
+- [Agent Loop](agent-loop-architecture.md) - per-turn round governance around the tool-calling loop
 - [AI Agent Observability](observability-architecture.md) - the visibility layer that makes prevention auditable
 
 The engine lives in [`service/mcp/risk`](https://github.com/spring-ai-community/spring-ai-playground/tree/main/src/main/java/org/springaicommunity/playground/service/mcp/risk); its decisions surface as a colored **risk chip** wherever an external server or tool appears, and as structured events for the audit trail.
@@ -136,6 +137,8 @@ Three tool **floor overrides**: an irreversible verb in the tool name (`delete_`
 
 When an upstream tool is re-exposed on the built-in server, [`McpToolRiskComposer`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolRiskComposer.java) combines the two scores: if either side tripped a floor, the composed level is the **higher** of the two; otherwise the axis totals add and re-bucket. Marking the exposed tool **HITL** (require human approval) then lowers the effective level by **one band** (`applyHitlMitigation`, floored at L1) - a risk-accounting reflection that a human gates each call. The flag is persisted on the exposed member; the runtime approval gate itself is the MCP-elicitation checkpoint described in [Human-in-the-Loop Approval](hitl-architecture.md), which honors the same flag.
 
+The same mitigation applies to the built-in server's own tools: when a built-in tool's spec requires approval, `McpToolRiskEvaluator` reports an effective level one band below the inherent sandbox posture, and the Inspector chip shows both (`L5 → L4`). Two guards keep that credit honest - a description that trips the poisoning scanner forfeits it (a deceptive description would mislead the very human the credit assumes), and the runtime gate fails closed (a client that cannot answer the elicitation gets the call denied), so a credited mitigation can never silently no-op.
+
 This is why exposing `read_wiki_structure` with HITL shows `L1 - Safe` with a `HITL -1` annotation while its un-gated siblings stay `L2 - Low`:
 
 ![DeepWiki expanded in the Composed Tools drawer - read_wiki_structure shows L1 - Safe with a HITL -1 mitigation badge and a ticked HITL box; read_wiki_contents and ask_question stay L2 - Low](assets/images/mcp-server/expose-tools-expanded.png){ loading=lazy }
@@ -157,7 +160,7 @@ This is what makes *"any-language MCP server → wrap → safe"* concrete: a too
 
 ## Tool-description poisoning scan { #poisoning-scan }
 
-A tool description is attacker-controlled text that the model reads as instructions. [`McpToolPoisoningScanner`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPoisoningScanner.java) scans every name and description for nine injection signatures. A hit surfaces a **poisoning warning chip** on the tool in the MCP Inspector and the Composed Tools drawer, so a tampered description is visible before you re-expose it. (The scanner exposes a `shouldBlockPublish()` helper, but the current runtime treats the scan as advisory - it warns rather than hard-blocking, and emits no separate risk-signal event for a hit.)
+A tool description is attacker-controlled text that the model reads as instructions. [`McpToolPoisoningScanner`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolPoisoningScanner.java) scans every description for eight injection signatures (hidden-instruction, system-prompt override, role hijack, zero-width / RTL-override / homoglyph unicode, ANSI escapes, exfiltration directive); the ninth defined signature, a cross-server imperative, is enforced on the exposure path by the [shadowing rules](#shadowing-rules) instead. A hit surfaces a **poisoning warning chip** on the tool in the MCP Inspector and the Composed Tools drawer, emits a `PoisoningHit` risk-signal event to the audit sink, and forfeits the tool's [HITL mitigation credit](#composed-risk), so a tampered description is visible - and scored at full inherent level - before you re-expose it. (The scanner exposes a `shouldBlockPublish()` helper, but the current runtime treats the scan as advisory for publish - it warns rather than hard-blocking.)
 
 | Pattern | Catches |
 |---|---|
@@ -173,7 +176,7 @@ A tool description is attacker-controlled text that the model reads as instructi
 
 ## Tool fingerprint ledger - change detection { #fingerprint-ledger }
 
-[`McpToolHashLedger`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolHashLedger.java) stores a SHA-256 of each tool's canonical content (name + description + input schema; the live composition path does not include upstream annotations, so an annotation-only redefinition is a known blind spot). A re-check returns `NEW` (first sight), `UNCHANGED` (hash matches), or `MISMATCH` - a silently redefined upstream tool flips the fingerprint status to `AWAITING_REREVIEW` and emits `HashLedgerMismatch`, so a "rug-pull" redefinition cannot ride in on a prior approval. Fingerprint lifecycle states are `ACTIVE` / `AWAITING_REREVIEW` / `REVOKED` (the last reserved - the live path sets only the first two).
+[`McpToolHashLedger`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/McpToolHashLedger.java) stores a SHA-256 of each tool's canonical content (name + description + input schema; the live composition path does not include upstream annotations, so an annotation-only redefinition is a known blind spot). The content is serialized through one declared canonicalization - the same sorted-key, compact-JSON profile that [`CanonicalHasher`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/mcp/risk/CanonicalHasher.java) uses for the authored-artifact integrity ledger - so the fingerprint no longer depends on JSON key order: a semantically identical tool whose input-schema keys arrive reordered stays `UNCHANGED` instead of tripping a false `MISMATCH`. That profile is declared and reproducible in process, but it is not yet a published cross-implementation scheme, so an independent reviewer would need the profile named next to the digest to recompute it byte for byte. A re-check returns `NEW` (first sight), `UNCHANGED` (hash matches), or `MISMATCH` - a silently redefined upstream tool flips the fingerprint status to `AWAITING_REREVIEW` and emits `HashLedgerMismatch`, so a "rug-pull" redefinition cannot ride in on a prior approval. Fingerprint lifecycle states are `ACTIVE` / `AWAITING_REREVIEW` / `REVOKED` (the last reserved - the live path sets only the first two).
 
 ## Composition shadowing rules { #shadowing-rules }
 

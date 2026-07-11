@@ -79,6 +79,10 @@ window.STTModule = {
     }
 };
 
+function trackVoiceInput(mode) {
+    if (window.gtag) window.gtag('event', 'voice_input_used', { mode });
+}
+
 async function startWebSpeech(textArea, button, timeoutSec) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -105,6 +109,7 @@ async function startWebSpeech(textArea, button, timeoutSec) {
         resetWebSpeechSilenceTimer(timeoutSec);
     };
     speechRecognition.onstart = () => {
+        trackVoiceInput('webspeech');
         setButtonState(button, 'recording');
         lastWebSpeechResultAt = Date.now();
         resetWebSpeechSilenceTimer(timeoutSec);
@@ -217,6 +222,7 @@ async function startLocal(textArea, button, timeoutSec) {
         }
     };
     captureSource.connect(captureWorklet);
+    trackVoiceInput('local-whisper');
     setButtonState(button, 'recording');
 
     const silenceTimeoutMs = Math.max(1000, timeoutSec * 1000);

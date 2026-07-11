@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -79,6 +80,19 @@ class SafeFsTest {
     void writeTextCreatesParentDirs() throws IOException {
         SafeFs.writeText(scope, "a/b/c/note.txt", "nested write");
         assertTrue(Files.exists(base.resolve("a/b/c/note.txt")));
+    }
+
+    @Test
+    void writeBytesCreatesFileInUploadsDir() throws IOException {
+        byte[] data = {0, 1, 2, 3, 65, 66, 67};
+        SafeFs.writeBytes(scope, "uploads/blob.bin", data);
+        assertArrayEquals(data, Files.readAllBytes(base.resolve("uploads/blob.bin")));
+    }
+
+    @Test
+    void writeBytesRejectsEscapeOutsideWorkspace() {
+        assertThrows(FsPolicyException.class,
+                () -> SafeFs.writeBytes(scope, "../escape.bin", new byte[]{1}));
     }
 
     @Test
@@ -454,5 +468,154 @@ class SafeFsTest {
         symlinkOrSkip(base.resolve("linkdir"), outsideDir);
         var found = SafeFs.find(scope, ".", "*.json", 0, "file");
         assertFalse(found.stream().anyMatch(p -> p.contains("leak")));
+    }
+
+    @Test
+    void appendTextCreatesThenAppends() throws IOException {
+        SafeFs.appendText(scope, "log.txt", "line1\n");
+        SafeFs.appendText(scope, "log.txt", "line2\n");
+        assertEquals("line1\nline2\n", Files.readString(base.resolve("log.txt")));
+    }
+
+    @Test
+    void appendTextRejectsEscape() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.appendText(scope, "../evil.txt", "x"));
+    }
+
+    @Test
+    void editTextReplacesUniqueMatch() throws IOException {
+        Files.writeString(base.resolve("e.txt"), "alpha beta gamma");
+        SafeFs.EditResult result = SafeFs.editText(scope, "e.txt", "beta", "BETA", false);
+        assertEquals(1, result.replacements());
+        assertEquals("alpha BETA gamma", Files.readString(base.resolve("e.txt")));
+    }
+
+    @Test
+    void editTextRejectsAmbiguousMatch() throws IOException {
+        Files.writeString(base.resolve("e.txt"), "x x x");
+        assertThrows(FsPolicyException.class, () -> SafeFs.editText(scope, "e.txt", "x", "y", false));
+    }
+
+    @Test
+    void editTextReplaceAllReplacesEvery() throws IOException {
+        Files.writeString(base.resolve("e.txt"), "x x x");
+        SafeFs.EditResult result = SafeFs.editText(scope, "e.txt", "x", "y", true);
+        assertEquals(3, result.replacements());
+        assertEquals("y y y", Files.readString(base.resolve("e.txt")));
+    }
+
+    @Test
+    void editTextRejectsNoMatch() throws IOException {
+        Files.writeString(base.resolve("e.txt"), "hello");
+        assertThrows(FsPolicyException.class, () -> SafeFs.editText(scope, "e.txt", "absent", "x", false));
+    }
+
+    @Test
+    void editTextRejectsMissingFile() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.editText(scope, "nope.txt", "a", "b", false));
+    }
+
+    @Test
+    void copyDuplicatesFileLeavingSourceIntact() throws IOException {
+        SafeFs.copy(scope, "hello.txt", "copy.txt");
+        assertEquals("world", Files.readString(base.resolve("copy.txt")));
+        assertTrue(Files.exists(base.resolve("hello.txt")));
+    }
+
+    @Test
+    void copyFromReadRootIntoWorkspace() throws IOException {
+        Path workspace = base.resolve("ws");
+        Files.createDirectories(workspace);
+        Files.writeString(base.resolve("outside.txt"), "from-home");
+        SafeFs.FsScope split = new SafeFs.FsScope(workspace, List.of(base));
+        SafeFs.copy(split, base.resolve("outside.txt").toString(), "in.txt");
+        assertEquals("from-home", Files.readString(workspace.resolve("in.txt")));
+    }
+
+    @Test
+    void copyRejectsDestinationEscape() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.copy(scope, "hello.txt", "../evil.txt"));
+    }
+
+    @Test
+    void moveRelocatesAndRemovesSource() throws IOException {
+        SafeFs.move(scope, "hello.txt", "moved.txt");
+        assertEquals("world", Files.readString(base.resolve("moved.txt")));
+        assertFalse(Files.exists(base.resolve("hello.txt")));
+    }
+
+    @Test
+    void moveRejectsEscape() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.move(scope, "hello.txt", "../evil.txt"));
+    }
+
+    @Test
+    void deleteRemovesFile() throws IOException {
+        assertTrue(SafeFs.delete(scope, "hello.txt"));
+        assertFalse(Files.exists(base.resolve("hello.txt")));
+    }
+
+    @Test
+    void deleteRejectsDirectory() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.delete(scope, "sub"));
+    }
+
+    @Test
+    void deleteMissingReturnsFalse() throws IOException {
+        assertFalse(SafeFs.delete(scope, "nope.txt"));
+    }
+
+    @Test
+    void deleteDirRemovesTreeRecursively() throws IOException {
+        long removed = SafeFs.deleteDir(scope, "sub");
+        assertFalse(Files.exists(base.resolve("sub")));
+        assertTrue(removed >= 2);
+    }
+
+    @Test
+    void deleteDirRejectsPlainFile() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.deleteDir(scope, "hello.txt"));
+    }
+
+    @Test
+    void deleteDirRejectsWorkspaceRoot() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.deleteDir(scope, "."));
+    }
+
+    @Test
+    void searchInFilesFindsAcrossTree() throws IOException {
+        Files.writeString(base.resolve("a.txt"), "needle here\nnope\n");
+        Files.writeString(base.resolve("sub").resolve("b.txt"), "another needle\n");
+        List<SafeFs.Match> hits = SafeFs.searchInFiles(scope, ".", "*.txt", "needle", false, 0, 0);
+        assertEquals(2, hits.size());
+    }
+
+    @Test
+    void searchInFilesRespectsGlob() throws IOException {
+        Files.writeString(base.resolve("a.md"), "target\n");
+        Files.writeString(base.resolve("b.txt"), "target\n");
+        List<SafeFs.Match> hits = SafeFs.searchInFiles(scope, ".", "*.md", "target", false, 0, 0);
+        assertEquals(1, hits.size());
+        assertTrue(hits.get(0).file().endsWith("a.md"));
+    }
+
+    @Test
+    void searchInFilesRespectsLimit() throws IOException {
+        Files.writeString(base.resolve("a.txt"), "m\nm\nm\nm\n");
+        List<SafeFs.Match> hits = SafeFs.searchInFiles(scope, ".", "*.txt", "m", false, 0, 2);
+        assertEquals(2, hits.size());
+    }
+
+    @Test
+    void searchInFilesReportsLineNumbers() throws IOException {
+        Files.writeString(base.resolve("a.txt"), "one\ntwo\nthree\n");
+        List<SafeFs.Match> hits = SafeFs.searchInFiles(scope, ".", "*.txt", "two", false, 0, 0);
+        assertEquals(1, hits.size());
+        assertEquals(2, hits.get(0).line());
+    }
+
+    @Test
+    void searchInFilesRejectsEmptyPattern() {
+        assertThrows(FsPolicyException.class, () -> SafeFs.searchInFiles(scope, ".", "*", "", false, 0, 0));
     }
 }

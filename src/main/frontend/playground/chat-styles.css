@@ -130,14 +130,249 @@ vaadin-details-summary::part(content) {
 .saip-action-head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--lumo-space-xs);
     margin-bottom: var(--lumo-space-s);
     font-weight: 600;
     color: var(--lumo-body-text-color);
 }
 
+.saip-action-head-main {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-xs);
+    min-width: 0;
+}
+
+.saip-action-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.saip-action-export {
+    padding: 2px 8px;
+    font-size: var(--lumo-font-size-xs);
+    font-weight: 600;
+    line-height: 1.6;
+    cursor: pointer;
+    color: var(--lumo-secondary-text-color);
+    background: var(--lumo-contrast-5pct);
+    border: 1px solid var(--lumo-contrast-20pct);
+    border-radius: var(--lumo-border-radius-s);
+}
+
+.saip-action-export:hover {
+    color: var(--lumo-body-text-color);
+    background: var(--lumo-contrast-10pct);
+}
+
 .saip-action-icon {
     font-size: var(--lumo-font-size-l);
+}
+
+.saip-action-image {
+    display: block;
+    max-width: 100%;
+    margin-top: var(--lumo-space-xs);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+}
+
+.saip-visualization-failed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: var(--lumo-space-s);
+    font-size: var(--lumo-font-size-s);
+    color: var(--lumo-secondary-text-color);
+    text-align: center;
+}
+
+.saip-action-diagram {
+    margin-top: var(--lumo-space-xs);
+    text-align: center;
+    overflow-x: auto;
+}
+
+.saip-action-diagram svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.saip-diff-summary {
+    margin: var(--lumo-space-xs) 0;
+    font-size: var(--lumo-font-size-s);
+    color: var(--lumo-secondary-text-color);
+}
+
+.saip-diff-summary.saip-diff-verydifferent {
+    padding: var(--lumo-space-xs) var(--lumo-space-s);
+    font-weight: 600;
+    color: var(--lumo-error-text-color);
+    background: var(--lumo-error-color-10pct);
+    border-radius: var(--lumo-border-radius-m);
+}
+
+.saip-diff-wrap,
+.saip-table-wrap {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+}
+
+.saip-diff,
+.saip-table,
+.saip-compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--lumo-font-size-s);
+}
+
+.saip-diff th,
+.saip-table th,
+.saip-compare th {
+    position: sticky;
+    top: 0;
+    padding: 4px 8px;
+    text-align: left;
+    background: var(--lumo-contrast-5pct);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+}
+
+.saip-diff td {
+    padding: 1px 6px;
+    vertical-align: top;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--lumo-font-family-monospace, monospace);
+}
+
+.saip-diff-num {
+    width: 2.2rem;
+    text-align: right;
+    color: var(--lumo-tertiary-text-color);
+    user-select: none;
+}
+
+.saip-diff-add td {
+    background: rgba(74, 178, 110, 0.14);
+}
+
+.saip-diff-del td {
+    background: rgba(215, 38, 61, 0.12);
+}
+
+.saip-table-search {
+    width: 100%;
+    margin-bottom: var(--lumo-space-xs);
+    padding: 4px 8px;
+    font-size: var(--lumo-font-size-s);
+    border: 1px solid var(--lumo-contrast-20pct);
+    border-radius: var(--lumo-border-radius-m);
+}
+
+.saip-table td,
+.saip-compare td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--lumo-contrast-5pct);
+}
+
+.saip-table-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.saip-compare-label {
+    font-weight: 600;
+    color: var(--lumo-secondary-text-color);
+}
+
+.saip-compare-best {
+    font-weight: 700;
+    color: var(--lumo-success-text-color);
+    background: var(--lumo-success-color-10pct);
+}
+
+.saip-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: var(--lumo-space-s);
+    margin-top: var(--lumo-space-xs);
+}
+
+.saip-stat-tile {
+    padding: var(--lumo-space-s);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+    background: var(--lumo-base-color);
+}
+
+.saip-stat-label {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+}
+
+.saip-stat-value {
+    font-size: var(--lumo-font-size-l);
+    font-weight: 700;
+    color: var(--lumo-body-text-color);
+}
+
+.saip-stat-delta {
+    font-size: var(--lumo-font-size-xs);
+    font-weight: 600;
+}
+
+.saip-stat-up {
+    color: var(--lumo-success-text-color);
+}
+
+.saip-stat-down {
+    color: var(--lumo-error-text-color);
+}
+
+.saip-stat-flat {
+    color: var(--lumo-secondary-text-color);
+}
+
+.saip-timeline {
+    margin-top: var(--lumo-space-xs);
+    border-left: 2px solid var(--lumo-contrast-20pct);
+    padding-left: var(--lumo-space-m);
+}
+
+.saip-timeline-item {
+    position: relative;
+    padding-bottom: var(--lumo-space-m);
+}
+
+.saip-timeline-dot {
+    position: absolute;
+    left: calc(-1 * var(--lumo-space-m) - 5px);
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lumo-primary-color);
+}
+
+.saip-timeline-when {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+}
+
+.saip-timeline-title {
+    font-weight: 600;
+    color: var(--lumo-body-text-color);
+}
+
+.saip-timeline-detail {
+    font-size: var(--lumo-font-size-s);
+    color: var(--lumo-secondary-text-color);
 }
 
 .saip-action-field {
@@ -187,6 +422,64 @@ vaadin-details-summary::part(content) {
     border-radius: var(--lumo-border-radius-m);
 }
 
+.saip-action-chart {
+    width: 100%;
+    height: 300px;
+    margin-top: var(--lumo-space-xs);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+    overflow: hidden;
+}
+
+.saip-action-pointmap {
+    width: 100%;
+    height: 360px;
+    margin-top: var(--lumo-space-xs);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+    overflow: hidden;
+    background: #eaeef2;
+}
+
+.saip-action-pointmap[data-style="dark"] {
+    background: #0b1322;
+}
+
+.saip-heat-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 450;
+    pointer-events: none;
+}
+
+.saip-map-style {
+    display: flex;
+    overflow: hidden;
+    background: #fff;
+}
+
+.saip-map-style button {
+    border: none;
+    border-left: 1px solid var(--lumo-contrast-10pct);
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    background: #fff;
+    color: #444;
+}
+
+.saip-map-style button:first-child {
+    border-left: none;
+}
+
+.saip-map-style button.active {
+    background: var(--lumo-primary-color);
+    color: var(--lumo-primary-contrast-color);
+}
+
 .saip-action-menu-wrap {
     position: relative;
     display: inline-block;
@@ -222,3 +515,69 @@ vaadin-details-summary::part(content) {
     background: var(--lumo-contrast-5pct);
 }
 
+
+chat-file-upload {
+    display: block;
+    width: 360px;
+    max-width: 70vw;
+}
+
+chat-file-upload .cfu-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    padding: 1.4em 1em;
+    border: 1px dashed var(--lumo-contrast-30pct);
+    border-radius: var(--lumo-border-radius-m);
+    background: var(--lumo-contrast-5pct);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 120ms, background 120ms;
+}
+
+chat-file-upload .cfu-drop.cfu-over {
+    border-color: var(--lumo-primary-color);
+    background: var(--lumo-primary-color-10pct);
+}
+
+chat-file-upload .cfu-drop.cfu-busy {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+chat-file-upload .cfu-drop input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+chat-file-upload .cfu-hint {
+    font-size: var(--lumo-font-size-s);
+    color: var(--lumo-secondary-text-color);
+}
+
+chat-file-upload .cfu-status {
+    margin-top: 0.5em;
+    min-height: 1.2em;
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+}
+
+@keyframes saip-attach-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+.saip-attach-skeleton {
+    animation: saip-attach-pulse 1.1s ease-in-out infinite;
+}
+
+/* Buttons pad the slotted icon 4px, so with a border-box host the glyph shrinks to 16px; drop it so the suffix icons fill their box and match the medium icons above the input. */
+.chat-input-suffix vaadin-icon {
+    padding: 0;
+}

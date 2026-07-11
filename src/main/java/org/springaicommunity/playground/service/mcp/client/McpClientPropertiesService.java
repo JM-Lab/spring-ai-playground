@@ -47,11 +47,17 @@ public interface McpClientPropertiesService<P> {
     Map<String, P> getDefaultConnections();
 
     default McpClientTransport buildClientTransport(ObjectMapper objectMapper, String parametersAsJson) {
-        return buildClientTransport(objectMapper, parametersAsJson, null, null);
+        return buildClientTransport(objectMapper, parametersAsJson, null, null, null);
     }
 
     default McpClientTransport buildClientTransport(ObjectMapper objectMapper, String parametersAsJson,
             String oauthRegistrationId, OAuth2AuthorizedClientManager oauth2ClientManager) {
+        return buildClientTransport(objectMapper, parametersAsJson, oauthRegistrationId, oauth2ClientManager, null);
+    }
+
+    default McpClientTransport buildClientTransport(ObjectMapper objectMapper, String parametersAsJson,
+            String oauthRegistrationId, OAuth2AuthorizedClientManager oauth2ClientManager,
+            McpSyncHttpClientRequestCustomizer extraCustomizer) {
         try {
             return switch (getTransportType()) {
                 case SSE -> {
@@ -66,7 +72,8 @@ public interface McpClientPropertiesService<P> {
                             HttpClientSseClientTransport.builder(resolvedUrl);
                     if (StringUtils.hasText(resolvedEndpoint)) builder.sseEndpoint(resolvedEndpoint);
                     McpSyncHttpClientRequestCustomizer sseCustomizer = combineCustomizers(resolvedHeaders,
-                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager));
+                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager),
+                            extraCustomizer);
                     if (sseCustomizer != null) builder.httpRequestCustomizer(sseCustomizer);
                     yield builder.build();
                 }
@@ -82,7 +89,8 @@ public interface McpClientPropertiesService<P> {
                             HttpClientStreamableHttpTransport.builder(resolvedUrl);
                     if (StringUtils.hasText(resolvedEndpoint)) builder.endpoint(resolvedEndpoint);
                     McpSyncHttpClientRequestCustomizer httpCustomizer = combineCustomizers(resolvedHeaders,
-                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager));
+                            oauthCustomizer(params.oauth(), oauthRegistrationId, oauth2ClientManager),
+                            extraCustomizer);
                     if (httpCustomizer != null) builder.httpRequestCustomizer(httpCustomizer);
                     yield builder.build();
                 }
@@ -100,12 +108,13 @@ public interface McpClientPropertiesService<P> {
     }
 
     private static McpSyncHttpClientRequestCustomizer combineCustomizers(Map<String, String> headers,
-            McpSyncHttpClientRequestCustomizer oauth) {
+            McpSyncHttpClientRequestCustomizer oauth, McpSyncHttpClientRequestCustomizer extra) {
         boolean hasHeaders = headers != null && !headers.isEmpty();
-        if (!hasHeaders && oauth == null) return null;
+        if (!hasHeaders && oauth == null && extra == null) return null;
         return (request, method, uri, body, context) -> {
             if (hasHeaders) headers.forEach(request::header);
             if (oauth != null) oauth.customize(request, method, uri, body, context);
+            if (extra != null) extra.customize(request, method, uri, body, context);
         };
     }
 

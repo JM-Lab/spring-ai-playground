@@ -178,6 +178,7 @@ public class McpClientService {
         String serverKey = namedClientMcpTransport.name();
         McpClient.SyncSpec syncSpec = McpClient.sync(namedClientMcpTransport.transport())
                 .clientInfo(info)
+                .transportContextProvider(McpLoopbackIdentity::snapshotMdc)
                 .requestTimeout(mcpClientCommonProperties.getRequestTimeout())
                 .loggingConsumer(n -> notificationStore.record(serverKey,
                         McpNotificationStore.Event.of(McpNotificationStore.Kind.LOGGING,
@@ -759,7 +760,16 @@ public class McpClientService {
         return new NamedClientMcpTransport(mcpServerInfo.serverName(),
                 this.typeMcpClientPropertiesServiceMap.get(mcpServerInfo.mcpTransportType())
                         .buildClientTransport(this.objectMapper, mcpServerInfo.connectionAsJson(),
-                                registrationId, this.oauth2ClientManager));
+                                registrationId, this.oauth2ClientManager,
+                                isBuiltInServer(mcpServerInfo) ? McpLoopbackIdentity.headerCustomizer() : null));
+    }
+
+    private boolean isBuiltInServer(McpServerInfo mcpServerInfo) {
+        McpServerInfoService infoService = this.mcpServerInfoServiceProvider.getIfAvailable();
+        if (infoService == null) return false;
+        McpServerInfo builtIn = infoService.getDefaultMcpServerInfo();
+        return builtIn != null && builtIn.serverName().equals(mcpServerInfo.serverName())
+                && builtIn.mcpTransportType() == mcpServerInfo.mcpTransportType();
     }
 
     @EventListener
