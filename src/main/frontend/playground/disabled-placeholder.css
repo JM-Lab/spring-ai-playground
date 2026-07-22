@@ -1,0 +1,7 @@
+:host([disabled]:not([has-value])) ::slotted(input) {
+    flex: 1 0 var(--_input-min-width, 4rem);
+}
+
+:host([disabled]:not([has-value])) ::slotted(input:placeholder-shown) {
+    opacity: 1;
+}

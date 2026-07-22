@@ -83,7 +83,7 @@ That endpoint is central to Tool Studio, MCP Inspector, and Agentic Chat with to
 
 ## External MCP Catalog
 
-Beyond the built-in server, the app ships a **preset catalog of 57 MCP server connections** that appear in the MCP Server sidebar's **Inactive MCP** section - clicking an entry pre-fills the configuration form with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders, so the easiest first external connection is a one-click activation. The catalog spans mail / calendar / chat / project trackers / code hosting / search / cloud / databases / payments / CRM / design plus two reference test servers (`MCP Everything`, `DeepWiki`). See the [MCP Catalog directory](../features/default-mcp-catalog/index.md) for the per-category browse and [MCP Server → Catalog & Sidebar Filtering](../features/mcp-server/index.md#catalog-sidebar-filtering) for the sidebar mechanics.
+Beyond the built-in server, the app ships a **preset catalog of 58 MCP server connections** that appear in the MCP Server sidebar's **Inactive MCP** section - clicking an entry pre-fills the configuration form with the right transport, URL or stdio command, OAuth defaults, and `${ENV_VAR}` placeholders, so the easiest first external connection is a one-click activation. The catalog spans mail / calendar / chat / project trackers / code hosting / search / cloud / databases / payments / CRM / design plus two reference test servers (`MCP Everything`, `DeepWiki`). See the [MCP Catalog directory](../features/default-mcp-catalog/index.md) for the per-category browse and [MCP Server → Catalog & Sidebar Filtering](../features/mcp-server/index.md#catalog-sidebar-filtering) for the sidebar mechanics.
 
 ## Backend prerequisites
 
@@ -123,7 +123,7 @@ Spring AI Playground is provider-agnostic with a local-first **Ollama** default 
 
 Each release ships with two integrity guarantees. Verifying is optional, but recommended for production use.
 
-Replace `<VERSION>` in the commands below with the version printed in the installer filename you downloaded (for example `0.2.0-M7`). On this page, JavaScript substitutes the latest release version automatically when GitHub is reachable.
+Replace `<VERSION>` in the commands below with the version printed in the installer filename you downloaded (for example `0.2.0-M12`). On this page, JavaScript substitutes the latest release version automatically when GitHub is reachable.
 
 ### 1. SHA-256 checksum
 

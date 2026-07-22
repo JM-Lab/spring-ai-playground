@@ -1528,7 +1528,7 @@ MOIS (Ministry of the Interior & Safety) emergency disaster-alert SMS history (K
 Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. Use this to visualize numbers you have gathered.
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `chartType` · `labels` · `series` · `title` · `max`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `chartType` · `labels` · `series` · `title` · `max` · `seriesName` · `sort`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-page">→ Visualization</div>
@@ -1744,16 +1744,16 @@ Renders a force-directed relationship graph in the chat from nodes and links. Go
 <div class="tcg-page">→ Visualization</div>
 </div>
 
-<div class="tcg-card tcg-card--directory" data-name="renderwindrose" data-desc="renders a wind rose (polar bar) chart showing magnitude by compass or category direction. good for wind direction or any directional frequency." data-category="productivity" data-tags="visualization" data-preset="everything" data-env="" markdown>
+<div class="tcg-card tcg-card--directory" data-name="renderwindrose" data-desc="renders a rose (polar bar) chart in the chat, showing magnitude by category around a circle. good for wind direction, time-of-day distributions, or ranked category comparisons." data-category="productivity" data-tags="visualization" data-preset="everything" data-env="" markdown>
 <a class="tcg-stretched-link" href="visualization/#renderWindRose" aria-label="Open renderWindRose in Visualization">renderWindRose</a>
 <div class="tcg-name"><span class="tcg-name__text">renderWindRose</span> <span class="cost">🆓</span></div>
 <div class="tcg-art" markdown>:material-compass-rose:</div>
 <div class="tcg-type">productivity · visualization <span class="risk risk-l0">L0</span></div>
 <div class="tcg-body" markdown>
-Renders a wind rose (polar bar) chart showing magnitude by compass or category direction. Good for wind direction or any directional frequency.
+Renders a rose (polar bar) chart in the chat, showing magnitude by category around a circle. Good for wind direction, time-of-day distributions, or ranked category comparisons.
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `directions` · `series` · `title`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `directions` · `series` · `title` · `seriesName` · `sort`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-page">→ Visualization</div>
@@ -1884,7 +1884,7 @@ Some default tools depend on environment-backed secrets and stay inert until tho
 | `OPENAI_API_KEY` | `openaiResponseGenerator` | OpenAI Responses API |
 | `GOOGLE_API_KEY` + `GOOGLE_PSE_ID` | `googlePseSearch` | Google Programmable Search Engine |
 | `SLACK_WEBHOOK_URL` | `sendSlackMessage` | Incoming Webhook |
-| `TOOL_STUDIO_FS_BASE` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}/spring-ai-playground/workspace`) |
+| `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH` | All [Filesystem](filesystem.md) tools | Per-app `safety.fs` root (defaults to `${user.home}/spring-ai-playground/workspace`) |
 | Various Korean provider keys | KR network tools - Naver, Kakao, KMA, data.go.kr | Provider-specific (per-page) |
 
 Secrets are masked from `console.log` output by substring replacement when the full resolved value appears, and they are not committed to the tool spec - they resolve at runtime from the JVM environment.

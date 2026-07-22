@@ -19,6 +19,7 @@ import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Span;
@@ -26,6 +27,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import org.springaicommunity.playground.service.tool.HumanQuestion;
 import org.springaicommunity.playground.service.tool.HumanQuestionHandler;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
+import org.springaicommunity.playground.webui.mcp.McpRiskChip;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,15 +97,38 @@ public final class ChatHumanQuestionHandler implements HumanQuestionHandler {
             CompletableFuture<Map<String, String>> decision) {
         ConfirmDialog dialog = new ConfirmDialog();
         dialog.setHeader(question.header() == null ? "Approve action" : question.header());
-        dialog.add(body(question.question()));
+        VerticalLayout body = body(question);
+        dialog.add(body);
         List<HumanQuestion.Option> options = question.options();
-        dialog.setConfirmText(options.get(0).label());
         dialog.setCancelable(true);
         dialog.setCancelText(options.get(1).label());
-        dialog.addConfirmListener(e -> decision.complete(singleAnswer(question, options.get(0).label())));
         dialog.addCancelListener(e -> decision.complete(singleAnswer(question, options.get(1).label())));
+        if (question.riskLevel() == RiskLevel.L5) {
+            dialog.setConfirmButton(acknowledgedApprove(question, options.get(0).label(), body, decision, dialog));
+        } else {
+            dialog.setConfirmText(options.get(0).label());
+            if (question.riskLevel() == RiskLevel.L4) {
+                dialog.setConfirmButtonTheme("error primary");
+            }
+            dialog.addConfirmListener(e -> decision.complete(singleAnswer(question, options.get(0).label())));
+        }
         dialog.open();
         return dialog;
+    }
+
+    private Button acknowledgedApprove(HumanQuestion question, String approveLabel, VerticalLayout body,
+            CompletableFuture<Map<String, String>> decision, ConfirmDialog dialog) {
+        Button approve = new Button(approveLabel, e -> {
+            decision.complete(singleAnswer(question, approveLabel));
+            dialog.close();
+        });
+        approve.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+        approve.setEnabled(false);
+        Checkbox acknowledge = new Checkbox("I reviewed the arguments and accept the risk");
+        acknowledge.getStyle().set("margin-top", "var(--lumo-space-xs)");
+        acknowledge.addValueChangeListener(e -> approve.setEnabled(Boolean.TRUE.equals(e.getValue())));
+        body.add(acknowledge);
+        return approve;
     }
 
     private Dialog openBatch(List<HumanQuestion> questions, CompletableFuture<Map<String, String>> decision) {
@@ -115,8 +141,9 @@ public final class ChatHumanQuestionHandler implements HumanQuestionHandler {
         VerticalLayout body = new VerticalLayout();
         body.setPadding(false);
         Map<String, Supplier<String>> selections = new LinkedHashMap<>();
+        AtomicReference<Runnable> revalidate = new AtomicReference<>(() -> { });
         for (HumanQuestion question : questions) {
-            body.add(questionRow(question, selections));
+            body.add(questionRow(question, selections, revalidate));
         }
         dialog.add(body);
         Button confirm = new Button("Confirm", e -> {
@@ -126,6 +153,20 @@ public final class ChatHumanQuestionHandler implements HumanQuestionHandler {
             dialog.close();
         });
         confirm.getElement().getThemeList().add(ButtonVariant.LUMO_PRIMARY.getVariantName());
+        if (questions.stream().map(HumanQuestion::riskLevel)
+                .anyMatch(level -> level == RiskLevel.L4 || level == RiskLevel.L5)) {
+            confirm.getElement().getThemeList().add(ButtonVariant.LUMO_ERROR.getVariantName());
+        }
+        if (questions.stream().anyMatch(question -> question.riskLevel() == RiskLevel.L5)) {
+            Checkbox acknowledge = new Checkbox("I reviewed the arguments and accept the risk");
+            acknowledge.getStyle().set("margin-top", "var(--lumo-space-xs)");
+            body.add(acknowledge);
+            Runnable gate = () -> confirm.setEnabled(!criticalApproved(questions, selections)
+                    || Boolean.TRUE.equals(acknowledge.getValue()));
+            acknowledge.addValueChangeListener(e -> gate.run());
+            revalidate.set(gate);
+            gate.run();
+        }
         dialog.getFooter().add(confirm);
         dialog.addOpenedChangeListener(e -> {
             if (!e.isOpened() && !decision.isDone()) decision.complete(defaultAnswers(questions));
@@ -134,25 +175,65 @@ public final class ChatHumanQuestionHandler implements HumanQuestionHandler {
         return dialog;
     }
 
-    private VerticalLayout questionRow(HumanQuestion question, Map<String, Supplier<String>> selections) {
-        VerticalLayout row = body(question.question());
+    private VerticalLayout questionRow(HumanQuestion question, Map<String, Supplier<String>> selections,
+            AtomicReference<Runnable> revalidate) {
+        VerticalLayout row = body(question);
         List<HumanQuestion.Option> options = question.options() == null ? List.of() : question.options();
         RadioButtonGroup<String> choice = new RadioButtonGroup<>();
         choice.setItems(options.stream().map(HumanQuestion.Option::label).toList());
         choice.setValue(defaultAnswer(question));
+        choice.addValueChangeListener(e -> revalidate.get().run());
         row.add(choice);
         selections.put(question.id(),
                 () -> choice.getValue() == null ? defaultAnswer(question) : choice.getValue());
         return row;
     }
 
-    private VerticalLayout body(String question) {
-        Span text = new Span(question);
-        text.getStyle().set("font-size", "var(--lumo-font-size-s)");
-        VerticalLayout body = new VerticalLayout(text);
+    private static boolean criticalApproved(List<HumanQuestion> questions, Map<String, Supplier<String>> selections) {
+        return questions.stream()
+                .filter(question -> question.riskLevel() == RiskLevel.L5)
+                .anyMatch(question -> {
+                    List<HumanQuestion.Option> options = question.options();
+                    return options != null && !options.isEmpty()
+                            && options.get(0).label().equals(selections.get(question.id()).get());
+                });
+    }
+
+    private VerticalLayout body(HumanQuestion question) {
+        VerticalLayout body = new VerticalLayout();
         body.setPadding(false);
         body.setSpacing(false);
+        RiskLevel level = question.riskLevel();
+        if (level != null) {
+            McpRiskChip chip = new McpRiskChip(level).withTooltip(McpRiskChip.levelRationale(level));
+            chip.getStyle().set("margin-bottom", "var(--lumo-space-xs)");
+            body.add(chip);
+        }
+        Span text = new Span(question.question());
+        text.getStyle().set("font-size", "var(--lumo-font-size-s)");
+        body.add(text);
+        String caution = cautionFor(level);
+        if (caution != null) {
+            Span cautionText = new Span(caution);
+            cautionText.getStyle()
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("font-weight", "600")
+                    .set("margin-top", "var(--lumo-space-xs)")
+                    .set("color", level == RiskLevel.L5
+                            ? "var(--lumo-error-text-color)" : "var(--lumo-secondary-text-color)");
+            body.add(cautionText);
+        }
         return body;
+    }
+
+    private static String cautionFor(RiskLevel level) {
+        if (level == RiskLevel.L5) {
+            return "Critical risk: may be irreversible or destroy data. Review the arguments.";
+        }
+        if (level == RiskLevel.L4) {
+            return "High risk: can modify files, spend money, or change external state.";
+        }
+        return null;
     }
 
     private static Map<String, String> singleAnswer(HumanQuestion question, String label) {

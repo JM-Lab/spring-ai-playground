@@ -16,8 +16,8 @@
 package org.springaicommunity.playground.service.vectorstore;
 
 
+import org.springaicommunity.playground.config.OllamaEmbeddingDefaultsPostProcessor.OllamaTypedOptionsEmbeddingModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.AbstractEmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -61,7 +61,7 @@ public class VectorStoreService {
     private final ApplicationContext applicationContext;
     private final ObjectProvider<VectorStoreDocumentPersistenceService> vectorStoreDocumentPersistenceServiceProvider;
 
-    private final AbstractEmbeddingModel embeddingModel;
+    private final EmbeddingModel embeddingModel;
     private final VectorStore vectorStore;
     private SearchRequestOption searchRequestOption;
     private EmbeddingOptions embeddingOptions;
@@ -69,7 +69,7 @@ public class VectorStoreService {
     public VectorStoreService(EmbeddingModel embeddingModel, VectorStore vectorStore,
             ApplicationContext applicationContext,
             ObjectProvider<VectorStoreDocumentPersistenceService> vectorStoreDocumentPersistenceServiceProvider) {
-        this.embeddingModel = (AbstractEmbeddingModel) embeddingModel;
+        this.embeddingModel = embeddingModel;
         this.vectorStore = vectorStore;
         this.searchRequestOption = new SearchRequestOption(0.6, DEFAULT_TOP_K);
         this.applicationContext = applicationContext;
@@ -132,7 +132,9 @@ public class VectorStoreService {
     }
 
     public String getEmbeddingModelServiceName() {
-        return this.embeddingModel.getClass().getSimpleName().replace("EmbeddingModel", "");
+        EmbeddingModel model = this.embeddingModel instanceof OllamaTypedOptionsEmbeddingModel wrapped
+                ? wrapped.delegate() : this.embeddingModel;
+        return model.getClass().getSimpleName().replace("EmbeddingModel", "");
     }
 
     public String getVectorStoreName() {

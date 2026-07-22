@@ -47,7 +47,7 @@ Ollama reads the [Observability global refresh interval](../index.md#global-sett
 | Reachability over time | Rolling line (%) | % of samples where the Ollama server answered `/api/version` while it was the active provider; dips mark outages or restarts |
 | VRAM in use over time | Rolling area line (MB) | Ramps as a model loads, drops on idle-unload; flat-high = a model pinned in memory |
 | Models loaded over time | Multi-line (loaded vs installed) | Loaded rises on first use and falls on idle-unload; installed is the on-disk ceiling |
-| GPU / CPU offload (now) | Horizontal stacked bar per loaded model | `size_vram` on GPU vs `size − size_vram` on CPU/RAM - any CPU portion means the model did not fully fit in VRAM |
+| GPU / CPU offload (now) | Horizontal stacked bar per loaded model | `size_vram` on GPU vs `size - size_vram` on CPU/RAM - any CPU portion means the model did not fully fit in VRAM |
 | Installed models by size | Horizontal bar (top 10, MB) | Largest disk consumers first |
 | Installed by quantization | Donut | Q4_K_M / Q8_0 / F16 / MLX nvfp4 / mxfp8 mix; MLX builds report MLX quant levels |
 | Installed by family | Donut | qwen / llama / bert / ... ; MLX builds may not report a family ("(unknown)") |

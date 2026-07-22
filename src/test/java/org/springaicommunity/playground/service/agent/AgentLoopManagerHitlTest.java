@@ -370,6 +370,23 @@ class AgentLoopManagerHitlTest {
         return ToolExecutionResult.builder().conversationHistory(history).build();
     }
 
+    @Test
+    void approvalQuestionCarriesGatingRiskLevel() {
+        ChatResponse response = responseWith(toolCall("1", "deleteFile"));
+        AtomicReference<List<HumanQuestion>> seen = new AtomicReference<>();
+        Prompt prompt = promptWith(questions -> {
+            seen.set(questions);
+            return answerAll(questions, "Decline");
+        });
+        when(toolSpecService.requiresApproval("deleteFile")).thenReturn(true);
+        when(toolSpecService.gatingRiskLevel("deleteFile"))
+                .thenReturn(ToolManifest.Sandbox.RiskLevel.L5);
+
+        manager().executeToolCalls(prompt, response);
+
+        assertEquals(ToolManifest.Sandbox.RiskLevel.L5, seen.get().get(0).riskLevel());
+    }
+
     private static Map<String, String> answerAll(List<HumanQuestion> questions, String label) {
         return questions.stream().collect(Collectors.toMap(HumanQuestion::id, q -> label));
     }

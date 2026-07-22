@@ -65,7 +65,7 @@
         "testValue": "README.md"
       }
     ],
-    "code": "/**\n * Reads a UTF-8 text file inside the playground's FS base directory.\n *\n * Path is resolved RELATIVE to the base path (which is set via\n * `spring.ai.playground.tool-studio.fs.base-path` / TOOL_STUDIO_FS_BASE\n * env, defaulting to the user's home directory). Anything attempting\n * to escape the base (e.g. `../`) is rejected by safety.fs.\n *\n * Uses host helper: safety.fs.readText.\n */\n\nif (path == null || path === '') throw new Error('path required');\nreturn safety.fs.readText(path);\n",
+    "code": "/**\n * Reads a UTF-8 text file inside the playground's FS base directory.\n *\n * Path is resolved RELATIVE to the base path (which is set via\n * `spring.ai.playground.tool-studio.fs.base-path`,\n * defaulting to the user's home directory). Anything attempting\n * to escape the base (e.g. `../`) is rejected by safety.fs.\n *\n * Uses host helper: safety.fs.readText.\n */\n\nif (path == null || path === '') throw new Error('path required');\nreturn safety.fs.readText(path);\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
     "updateTimestamp": 1768000000000,

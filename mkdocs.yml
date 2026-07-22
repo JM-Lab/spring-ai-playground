@@ -77,14 +77,16 @@ nav:
       - "Configuration": getting-started/configuration.md
   - "Architecture":
       - "Application": architecture.md
-      - "Safe Tool Specification": safe-tool-specification.md
-      - "AI Agent Tool Safety": safety-architecture.md
-      - "MCP Server Safety": mcp-server-safety.md
-      - "Human-in-the-Loop Approval": hitl-architecture.md
-      - "Agent Loop": agent-loop-architecture.md
-      - "AI Agent Observability": observability-architecture.md
-      - "Context Engineering": context-engineering-architecture.md
-      - "OWASP MCP Top 10": mcp-owasp-top-10.md
+      - "Safety":
+          - "AI Agent Tool Safety": safety-architecture.md
+          - "Safe Tool Specification": safe-tool-specification.md
+          - "MCP Server Safety": mcp-server-safety.md
+          - "Human-in-the-Loop Approval": hitl-architecture.md
+          - "OWASP MCP Top 10": mcp-owasp-top-10.md
+      - "Agent Runtime":
+          - "Agent Loop": agent-loop-architecture.md
+          - "Context Engineering": context-engineering-architecture.md
+          - "AI Agent Observability": observability-architecture.md
   - "Features":
       - features/index.md
       - "Tool Studio":

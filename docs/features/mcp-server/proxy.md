@@ -102,4 +102,4 @@ Each list entry wraps one upstream tool, exactly like a drawer row - same risk c
 - [MCP Server Safety](../../mcp-server-safety.md) - how composed risk, the poisoning scan, the fingerprint ledger, and shadowing rules are computed
 - [MCP Server](index.md) - connections, transports, OAuth, the sidebar catalog
 - [MCP Inspector](inspector.md) - exercise a connection's tools (with per-tool risk chips) before proxying them
-- [Default MCP Servers](../default-mcp-catalog/index.md) - the 57 preset connections you can proxy from
+- [Default MCP Servers](../default-mcp-catalog/index.md) - the 58 preset connections you can proxy from

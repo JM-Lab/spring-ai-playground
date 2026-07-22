@@ -16,6 +16,7 @@
 package org.springaicommunity.playground.webui;
 
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinService;
@@ -23,7 +24,11 @@ import com.vaadin.flow.server.VaadinServiceInitListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.analytics.UsageAnalyticsService;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Component
 public class GoogleAnalyticsNavigationListener implements VaadinServiceInitListener {
@@ -62,19 +67,36 @@ public class GoogleAnalyticsNavigationListener implements VaadinServiceInitListe
             UI ui = uiInitEvent.getUI();
             if (active) initUsageTracking(ui);
             ui.addAfterNavigationListener(navigationEvent -> {
-                String path = "/" + navigationEvent.getLocation().getPathWithQueryParameters();
+                String path = "/" + navigationEvent.getLocation().getPath();
+                Class<?> routeTarget = navigationEvent.getActiveChain().stream().findFirst()
+                        .map(Object::getClass).orElse(null);
                 ui.getPage().executeJs(
-                        "if(window.gtag){window.gtag('event','page_view',"
-                                + "{page_path:$0,page_location:document.location.href,page_title:document.title});}",
-                        path);
+                        "if(window.gtag){window.gtag('set',{page_path:$0,"
+                                + "page_location:document.location.origin+$0,page_title:$1});"
+                                + "window.gtag('event','page_view');}",
+                        path, routeLabel(routeTarget, path));
             });
         });
     }
 
+    static String routeLabel(Class<?> routeTarget, String path) {
+        PageTitle pageTitle = routeTarget == null ? null
+                : AnnotationUtils.findAnnotation(routeTarget, PageTitle.class);
+        if (pageTitle != null && !pageTitle.value().isBlank()) return pageTitle.value();
+        String slug = path.startsWith("/") ? path.substring(1) : path;
+        if (slug.isBlank()) return "Home";
+        return Arrays.stream(slug.split("[/-]")).filter(part -> !part.isBlank())
+                .map(part -> Character.toUpperCase(part.charAt(0)) + part.substring(1))
+                .collect(Collectors.joining(" "));
+    }
+
     private void initUsageTracking(UI ui) {
         this.usageEventTracker.setUserProperties(ui, this.usageAnalyticsService.userProperties(isDesktopSurface()));
-        this.usageAnalyticsService.dailyUsageSnapshot()
-                .ifPresent(params -> this.usageEventTracker.track(ui, "usage_snapshot", params));
+        this.usageAnalyticsService.dailyUsage().ifPresent(daily -> {
+            this.usageEventTracker.track(ui, "usage_snapshot", daily.snapshot());
+            daily.mcpServers().forEach(params -> this.usageEventTracker.track(ui, "mcp_server_active", params));
+            daily.models().forEach(params -> this.usageEventTracker.track(ui, "model_usage", params));
+        });
     }
 
     private static boolean isDesktopSurface() {

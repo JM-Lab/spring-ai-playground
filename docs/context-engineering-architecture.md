@@ -6,6 +6,13 @@ Prompt engineering is about wording one instruction well. **Context engineering*
 
 [Agentic Chat](features/agentic-chat/index.md) is where that context is assembled. This page is the architecture behind it: the sources a turn draws on, and the components that build each one. It is the design-side companion to the [Prompt Templates](features/agentic-chat/prompt-templates.md) and [Prompt Presets](features/agentic-chat/prompt-presets.md) feature pages.
 
+Pages this one connects to:
+
+- [Agent Loop](agent-loop-architecture.md) - the round governance around the tool calls this context exposes
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the gate a tool call passes before its result re-enters the context
+- [AI Agent Observability](observability-architecture.md) - where per-turn token counts and cost are attributed
+- [Application](architecture.md) - where the chat services that assemble this context sit
+
 ## The context a turn carries
 
 Every chat turn sends the model a context window composed from five sources, each configured in a different place. The diagram shows how they converge into the single input the model receives, and how tool results and memory feed back into the next turn:

@@ -7,15 +7,14 @@ Spring AI Playground is a Spring Boot application that executes user-authored Ja
 
 This page is the system-level reference for how the sandbox is shaped. For the user-facing surface (the override fields, the Sandbox & Capabilities pane, the Risk Level badge), see [Tool Studio → Safety](features/tool-studio/index.md#safety) and [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities).
 
-This is one of the architecture documents that complement each other:
+Pages this one is most closely tied to:
 
-- [Application](architecture.md) - runtime layers, feature modules, data flows, extension points
-- [Safe Tool Specification](safe-tool-specification.md) - normative JSON spec for tool authoring (the document the sandbox enforces)
-- **AI Agent Tool Safety** (this page) - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
-- [MCP Server Safety](mcp-server-safety.md) - client-side risk model for external MCP servers and re-exposed tools
-- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate
-- [Agent Loop](agent-loop-architecture.md) - per-turn round governance around the tool-calling loop
-- [AI Agent Observability](observability-architecture.md) - the visibility layer that makes the sandbox's prevention auditable
+- [Safe Tool Specification](safe-tool-specification.md) - the document format whose `sandboxOverrides` and `toolSafety` blocks this layer enforces
+- [MCP Server Safety](mcp-server-safety.md) - the outward counterpart: risk for servers you did not write
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the per-call gate that runs after the sandbox has settled what a tool may touch
+- [OWASP MCP Top 10](mcp-owasp-top-10.md) - reads the isolation tiers below as its threat-model baseline
+- [AI Agent Observability](observability-architecture.md) - the visibility arm that makes this prevention auditable
+- [Application](architecture.md) - where the execution layer sits in the runtime
 
 ## Overview { #overview }
 

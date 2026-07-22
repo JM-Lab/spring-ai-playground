@@ -10,6 +10,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Modular RAG pipeline studio** in Vector Database — composable ETL pipeline editor for reader / chunker / pre-retrieval / retrieval / post-retrieval stages, reworked chunk-confirmation dialog UX, Name + Description fields on documents, and an internal rename of `VectorStoreDocumentService` → `OfflineEtlPipelineService`.
 
+## [0.2.0-M12]
+
+### Added
+
+- **Desktop app stays resident in the tray** - closing the main window now hides it instead of stopping the server, with a one-time "Still running in the tray" notification that reopens the window when clicked. A **Recent Activity** tray menu lists the pages you last had open (seven in the menu, twenty kept in `<userData>/configs/recent-activity.json`) and reopens the app directly on one of them, keeping the `?conv=` query so a chat entry lands back on that conversation. Agentic Chat now writes the active conversation into the browser URL and the page title, so a reopened or restored window returns to the same conversation instead of a blank chat (`feat(electron)`).
+- **Risk level shown in HITL approval dialogs, with friction that scales by level** - every human approval prompt now carries the tool's risk chip and the rationale for that level, plus a level-specific caution line. L4 renders the approve button in the error theme; L5 keeps approval disabled behind an "I reviewed the arguments and accept the risk" checkbox. Applies to both gates, the chat approval dialog and the MCP elicitation path used by external clients (`feat(hitl)`).
+- **Daily MCP inventory and per-model usage telemetry** - two aggregate events join the anonymous usage set: `mcp_server_active` (at most once a day per configured server: transport, catalog id, oauth, connected) and `model_usage` (at most once a day per model used in the last 24 hours: calls, tokens, errors, p95 latency). `tool_called` gains `catalog_id`, `usage_snapshot` gains `ram_gb`, and the Google Tag Manager `js_error` event is now documented in the telemetry table. Still content-free, still covered by the single `SPRING_AI_PLAYGROUND_TELEMETRY_ENABLED=false` switch (`feat(analytics)`).
+- **KOSIS National Statistics in the MCP catalog** - a vendor-official pilot entry for Korea's national statistics service, operated by the National Data Office, pre-filled with the `https://kosismcp2026.vercel.app` endpoint and its separate `/api/mcp` path, marked PREVIEW, and shipped with per-tool risk levels and annotations for its ten read-only tools (`feat(mcp)`).
+- **Chart sorting and chart visual polish** - `renderChart` and `renderWindRose` take an optional `sort` (`asc` / `desc`, plus `none` on the rose) so nominal categories can be ordered by value while time and ordinal categories keep their given order. A single-series rose now defaults to one color per slice sorted ascending (nightingale style), and labels with an inherent order such as compass points, hours, months and weekdays keep theirs. Every chart type picks up a shared eight-color palette, rounded bar caps, gradient area fills, surface-colored item borders, and themed axes, legends and tooltips (`feat(chat,mcp)`).
+- **Ollama models stay loaded for thirty minutes** - `spring.ai.ollama.chat.keep-alive` and `spring.ai.ollama.embedding.keep-alive` default to `30m` and ride on every request, so returning to a conversation after a pause no longer waits out a model reload. The request value wins over the Ollama server's own `OLLAMA_KEEP_ALIVE` default, a single conversation can override it through the settings drawer's provider-options JSON (`{"keep_alive": "5m"}`), and a `BeanPostProcessor` retypes the plain embedding options built by the vector store and the tool index so the configured defaults reach embedding calls too - a workaround to delete once Spring AI merges defaults into plain-typed requests (`feat(chat)`).
+
+### Changed
+
+- **Chat transcript layout** - user messages are right-aligned and message avatars and name labels are removed, so the transcript reads as a conversation rather than a labelled log (`feat(chat)`).
+- **Home environment status** - the environment-variable readiness chip becomes a status pill beside the provider chips, expanding into a per-variable detail list that names the tools each variable unblocks, and the "Open all 14 dashboards" link is a real router link instead of a click-handler anchor (`fix(home)`).
+
+### Removed
+
+- **Custom environment-variable aliases** - the sixteen ad-hoc env names the yaml used to declare (`OBS_RING_CAPACITY`, `OBS_RETAIN_DAYS`, `OBS_PERSIST`, `OBS_MAX_SPANS`, `TOOL_STUDIO_FS_BASE`, `SPRING_AI_PLAYGROUND_MCP_NAME` / `_MCP_DESCRIPTION` / `_MCP_EXPOSURE_MODE`, `SPRING_AI_PLAYGROUND_ACTUATOR_INCLUDE`, `SPRING_AI_PLAYGROUND_TRACE_SAMPLE`, and the six `SPRING_AI_*_OBSERVE_*` logging toggles) are gone. **Breaking**: every knob now binds only through Spring Boot's standard relaxed binding - `spring.ai.playground.observability.persist` becomes `SPRING_AI_PLAYGROUND_OBSERVABILITY_PERSIST`, `...tool-studio.fs.base-path` becomes `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH`, and so on. `SERVER_PORT` keeps working because it is the relaxed-binding name itself, and `OPENAI_API_KEY` stays because it is the ecosystem-standard name the desktop launcher and the OpenAI tools read. A guard test fails the build if a new alias reaches the shipped yaml, and the docs list only the derived names (`refactor(config)`).
+
+### Fixed
+
+- **Composer stays locked while a response streams, and relocks on reentry** - the send controls no longer accept a second message mid-stream, and returning to a conversation that is still streaming restores the locked state instead of showing an idle composer. A new `ChatStreamRegistry` owns the per-conversation stream and its finish listeners so the lock is released exactly once, and the history commit in `ChatService` moves into a `finally` block so a failing listener can no longer leave a conversation locked for the rest of the session (`fix(chat)`).
+- **Exposed built-in tool lists refresh when the popover opens** - opening the tool popover re-reads what the built-in MCP server currently exposes instead of showing the set captured at attach time, and a combo with nothing to offer stays disabled rather than looking empty but clickable (`fix(chat)`).
+- **Chat no longer scrolls horizontally** - the message scroller is vertical only, and the RAG and MCP selectors are disabled with an accurate placeholder when there is nothing to select instead of opening an empty list (`fix(chat)`).
+- **Wide tables stay inside the process panels** - a wide table in a THINK, MCP TOOLS, or RAG panel scrolls inside the panel instead of stretching the conversation (`fix(chat)`).
+- **`page_view` no longer carries the conversation id or title** - the analytics page view now overrides the browser-supplied page location and title with the bare route path and a route-derived label, so neither the `?conv=` id in the URL nor a conversation title derived from user text can reach the wire (`fix(analytics)`).
+- **Launcher shutdown and launch arguments** - the actuator shutdown call validates the response instead of treating any reply, including an HTML error page, as success; a stop you asked for is reported as a clean stop rather than an unexpected exit; App Args that name a setting the launcher already owns are dropped before spawn, because Spring merges repeated keys into one comma-joined value and the JVM then fails to boot; and the spawned JVM no longer opens a console window on Windows (`fix(electron)`).
+
+### Documentation
+
+- **Tray, Recent Activity, and Updates** - `docs/getting-started/desktop.md` gains a Tray and Menubar section covering close-to-tray behavior, reopening the window, quitting for real, Recent Activity, the Updates submenu, and the System switches (`docs`).
+- **Per-level HITL approval dialogs** - the human-in-the-loop feature page, the HITL architecture page, and tutorial 11 gain L3 / L4 / L5 approval dialog captures and describe the escalating friction; the chat-side gate's decision outcomes are corrected across the safety docs and the Safety dashboard labels (`docs`).
+- **Refreshed captures** - chat, preset, tutorial and visualization screenshots recaptured against the current UI, and the integration diagram redrawn (`docs`).
+
+### Security
+
+- **`beans` dropped from the default actuator exposure** - the shipped default is now `health,info,metrics,prometheus`, so a default install no longer serves a full bean inventory. The value stays overridable through standard relaxed binding (`MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`), and a test pins the shipped default.
+- **Analytics page views send a route path only** - no conversation id and no conversation title leave the browser, on either the web app or the desktop surface.
+
+### Build / Tooling
+
+- **Test suite runs without Docker, Ollama, or a local MCP venv** - the external-dependency integration tests are replaced by loopback MCP coverage (streamable HTTP and SSE), an in-process stdio test server, and browserless render tests across the chat, home, MCP, observability, tool studio and vector store views; the render tests assert on-screen content and flows - per-entry dashboard identity, the model-download dialog's failure paths, the exact `page_view` payload - instead of bare component mounting (`test`).
+- **CI runs the full suite on every push** - `skip-tests` is dropped from the shared workflow, workflow permissions are scoped to `contents: read`, the concurrency group keys on the branch name so the push and pull_request events share one group, and the integrity guard job gains a timeout (`ci`).
+- **Version bump to 0.2.0-M12** (`build(pom)`).
+
 ## [0.2.0-M11]
 
 ### Added

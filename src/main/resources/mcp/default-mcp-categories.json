@@ -8,6 +8,7 @@
   { "id": "SEARCH",        "displayName": "Search",             "order": 60,  "icon": "search",         "description": "Web search and content retrieval" },
   { "id": "CLOUD",         "displayName": "Cloud",              "order": 70,  "icon": "cloud",          "description": "Hosting platforms and infra" },
   { "id": "DATABASE",      "displayName": "Database",           "order": 80,  "icon": "database",       "description": "Managed databases" },
+  { "id": "PUBLIC_DATA",   "displayName": "Public Data",        "order": 85,  "icon": "institution",    "description": "Government open data and national statistics" },
   { "id": "FINANCE",       "displayName": "Finance",            "order": 90,  "icon": "dollar",         "description": "Payments and billing" },
   { "id": "CRM",           "displayName": "CRM",                "order": 100, "icon": "users",          "description": "Customer relationship and analytics" },
   { "id": "DESIGN",        "displayName": "Design",             "order": 110, "icon": "palette",        "description": "Creative and design tools" },

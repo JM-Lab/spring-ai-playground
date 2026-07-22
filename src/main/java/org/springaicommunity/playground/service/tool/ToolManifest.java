@@ -55,7 +55,19 @@ public record ToolManifest(
                           List<String> helpers) {}
 
     public record Sandbox(RiskLevel level, String profile, Overrides overrides) {
-        public enum RiskLevel {L0, L1, L2, L3, L4, L5}
+        public enum RiskLevel {
+            L0("Verified"), L1("Safe"), L2("Low"), L3("Moderate"), L4("High"), L5("Critical");
+
+            private final String label;
+
+            RiskLevel(String label) {
+                this.label = label;
+            }
+
+            public String label() {
+                return this.label;
+            }
+        }
 
         public record Overrides(Set<String> denyClasses, NetworkPolicy network) {}
     }

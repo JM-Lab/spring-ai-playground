@@ -5,7 +5,7 @@ description: Default Tools - Filesystem reference. 18 safety.fs-wrapped tools (l
 The 18 tools in `default-tool-specs-builtin-fs.json` are the `safety.fs` surface as ready-to-call tools - a shell-style filesystem pipeline covering list-roots, read, list, stat, grep, recursive content search, count, slice, sort, cut, find, write, append, targeted edit, copy, move, and delete (file and directory). They operate within two boundaries:
 
 - **Readable roots** - directories the tools may **read** from, recursively. The user's home directory is a readable root by default.
-- A **working directory** (`TOOL_STUDIO_FS_BASE`, default `${user.home}/spring-ai-playground/workspace`) - the only **writable** location, and where relative paths resolve. When a tool runs inside a chat, writes are confined to a **per-conversation subdirectory** of it (`<workspace>/<conversationId>/`), created on first write and removed when you delete the conversation; `listAllowedDirectories` reports that exact path at runtime. This holds however the chat reaches the tool - a fixed selection travels through the built-in MCP server's loopback connection, which carries the conversation identity along with the call. A caller with **no** conversation - an external MCP client invoking the same exposed tools - writes to the working directory root instead.
+- A **working directory** (`spring.ai.playground.tool-studio.fs.base-path`, default `${user.home}/spring-ai-playground/workspace`) - the only **writable** location, and where relative paths resolve. When a tool runs inside a chat, writes are confined to a **per-conversation subdirectory** of it (`<workspace>/<conversationId>/`), created on first write and removed when you delete the conversation; `listAllowedDirectories` reports that exact path at runtime. This holds however the chat reaches the tool - a fixed selection travels through the built-in MCP server's loopback connection, which carries the conversation identity along with the call. A caller with **no** conversation - an external MCP client invoking the same exposed tools - writes to the working directory root instead.
 
 So a relative path resolves under the working directory; an absolute path may be **read** anywhere under a readable root, but **writes** are confined to the working directory. Call **`listAllowedDirectories`** first to learn the exact absolute paths before reading or writing.
 
@@ -100,8 +100,8 @@ A relative path resolves under the working directory; an absolute path is allowe
  * Reads a UTF-8 text file inside the playground's FS base directory.
  *
  * Path is resolved RELATIVE to the base path (which is set via
- * `spring.ai.playground.tool-studio.fs.base-path` / TOOL_STUDIO_FS_BASE
- * env, defaulting to the user's home directory). Anything attempting
+ * `spring.ai.playground.tool-studio.fs.base-path`,
+ * defaulting to the user's home directory). Anything attempting
  * to escape the base (e.g. `../`) is rejected by safety.fs.
  *
  * Uses host helper: safety.fs.readText.
@@ -541,7 +541,7 @@ Writes a UTF-8 text file inside the working directory (creating parent directori
 | `path` | `STRING` | ✓ | Path to write, inside the working directory |
 | `content` | `STRING` | ✓ | Full text content to write (UTF-8) |
 
-**Sandbox** - Sandbox needs **`fileWrite`** (L4). `TOOL_STUDIO_FS_BASE` (default `${user.home}/spring-ai-playground/workspace`) is the workspace root; writes from a chat are confined to a per-conversation subdirectory under it, and the returned `path` is the absolute location actually written. The helper auto-creates parent directories.
+**Sandbox** - Sandbox needs **`fileWrite`** (L4). `spring.ai.playground.tool-studio.fs.base-path` (default `${user.home}/spring-ai-playground/workspace`) is the workspace root; writes from a chat are confined to a per-conversation subdirectory under it, and the returned `path` is the absolute location actually written. The helper auto-creates parent directories.
 
 <details class="tcg-sysprompt" markdown>
 <summary>JS source</summary>
@@ -874,7 +874,7 @@ One configuration value, no real secrets.
 
 | Variable | What it does | Default | Where to set |
 |---|---|---|---|
-| `TOOL_STUDIO_FS_BASE` | The `safety.fs` **working directory** - the only writable location, and where relative paths resolve. Reads also reach the readable roots (the home directory by default). | `${user.home}/spring-ai-playground/workspace` | Launcher **Environment Variables** card, or `export TOOL_STUDIO_FS_BASE=/path` before launch |
+| `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH` | The `safety.fs` **working directory** - the only writable location, and where relative paths resolve. Reads also reach the readable roots (the home directory by default). | `${user.home}/spring-ai-playground/workspace` | Launcher **Environment Variables** card, or `export SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH=/path` before launch |
 
 The `File Toolkit` preset opts every read tool (now including `searchInFiles`) into `fileRead` automatically. The write tools (`writeTextFile`, `appendTextFile`, `editTextFile`, `copyFile`) require `fileWrite` (L4), and the destructive tools (`moveFile`, `deleteFile`, `deleteDir`) additionally carry the `destructive` flag (L5); you enable these per-tool in the **Sandbox & Capabilities** pane - see [Tool Studio: Filesystem mode](../tool-studio/index.md#filesystem-mode). In Agentic Chat, the **[Workspace organizer](../agentic-chat/prompt-presets.md#workspace-organizer)** preset wires the full set - survey, restructure, clean up - with every mutating call gated by [human-in-the-loop](../human-in-the-loop.md) approval.
 

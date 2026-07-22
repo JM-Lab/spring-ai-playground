@@ -26,6 +26,8 @@ import org.springframework.test.context.TestPropertySource;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -77,15 +79,15 @@ class VectorStoreDocumentPersistenceServiceTest {
             vectorStoreDocumentPersistenceService.save(vectorStoreDocumentInfo);
         }
 
-        List<VectorStoreDocumentInfo> loadedDocuments = vectorStoreDocumentPersistenceService.loads();
+        Map<String, VectorStoreDocumentInfo> loadedById = vectorStoreDocumentPersistenceService.loads().stream()
+                .collect(Collectors.toMap(VectorStoreDocumentInfo::docInfoId, Function.identity()));
 
-        assertThat(loadedDocuments).hasSize(sampleData.size());
+        assertThat(loadedById).hasSize(sampleData.size());
 
-        for (int i = 0; i < sampleData.size(); i++) {
-            VectorStoreDocumentInfo expected = sampleData.get(i);
-            VectorStoreDocumentInfo actual = loadedDocuments.get(i);
+        for (VectorStoreDocumentInfo expected : sampleData) {
+            VectorStoreDocumentInfo actual = loadedById.get(expected.docInfoId());
 
-            assertThat(actual.docInfoId()).isEqualTo(expected.docInfoId());
+            assertThat(actual).as("document %s", expected.docInfoId()).isNotNull();
             assertThat(actual.title()).isEqualTo(expected.title());
             assertThat(actual.documentPath()).isEqualTo(expected.documentPath());
 

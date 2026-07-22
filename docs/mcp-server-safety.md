@@ -5,15 +5,14 @@ description: How Spring AI Playground vets external MCP servers and re-exposed t
 
 [AI Agent Tool Safety](safety-architecture.md) covers the *inward* problem - keeping a locally-authored JavaScript tool from harming the host. **This page covers the *outward* problem** - how the playground vets the **external MCP servers it connects to** and the **upstream tools it re-exposes** on its own built-in server, before an agent can reach any of them.
 
-This is one of the architecture documents that complement each other:
+Pages this one is most closely tied to:
 
-- [Application](architecture.md) - runtime layers, feature modules, data flows
-- [Safe Tool Specification](safe-tool-specification.md) - normative spec for *authoring* local tools
-- [AI Agent Tool Safety](safety-architecture.md) - the **sandbox** that contains locally-authored JS tools
-- **MCP Server Safety** (this page) - the **client-side risk model** for external servers and re-exposed tools
-- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate that honors the per-tool HITL flag
-- [Agent Loop](agent-loop-architecture.md) - per-turn round governance around the tool-calling loop
-- [AI Agent Observability](observability-architecture.md) - the visibility layer that makes prevention auditable
+- [AI Agent Tool Safety](safety-architecture.md) - the inward counterpart: the sandbox around tools you wrote yourself
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the per-call gate the wrapper attaches to a re-exposed tool
+- [Safe Tool Specification](safe-tool-specification.md) - the `ToolSpec` shape an upstream tool is wrapped into
+- [OWASP MCP Top 10](mcp-owasp-top-10.md) - the catalog these controls are scored against
+- [AI Agent Observability](observability-architecture.md) - where a wrapped call's spans and risk events land
+- [Application](architecture.md) - where the risk engine sits in the runtime
 
 The engine lives in [`service/mcp/risk`](https://github.com/spring-ai-community/spring-ai-playground/tree/main/src/main/java/org/springaicommunity/playground/service/mcp/risk); its decisions surface as a colored **risk chip** wherever an external server or tool appears, and as structured events for the audit trail.
 

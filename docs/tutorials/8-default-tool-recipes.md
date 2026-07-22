@@ -277,7 +277,7 @@ safety.fs.writeText(outPath, tail.join('\n'));
 return { ok: true, source: latest, matches: hits.length, written: outPath };
 ```
 
-**Test value** - `dir`: `/tmp/logs` (set `TOOL_STUDIO_FS_BASE=/tmp` first), `pattern`: `ERROR`.
+**Test value** - `dir`: `/tmp/logs` (set `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH=/tmp` first), `pattern`: `ERROR`.
 
 **Chat prompt** - *"Summarise the recent errors in /tmp/logs."*
 

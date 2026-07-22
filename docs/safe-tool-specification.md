@@ -11,10 +11,11 @@ The Safe Tool Specification (this document) defines the on-disk JSON document fo
 
 This document complements but does not replace:
 
-- [Application](architecture.md) - where the spec fits in the system
-- [AI Agent Tool Safety](safety-architecture.md) - defense-in-depth model, threat-to-layer mapping, known limitations
-- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate that honors this spec's `humanInTheLoop` block
+- [AI Agent Tool Safety](safety-architecture.md) - the runtime that enforces the posture declared here, and its known limitations
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the per-call approval gate that honors this spec's `humanInTheLoop` block
 - [Tool Studio → Sandbox & Capabilities](features/tool-studio/index.md#sandbox-capabilities) - the UI surface that edits one of these documents
+- [OWASP MCP Top 10](mcp-owasp-top-10.md) - where the L0-L5 posture defined here is credited as a control
+- [Application](architecture.md) - where the spec fits in the system
 
 ## 1. Introduction
 

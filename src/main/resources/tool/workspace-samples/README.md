@@ -16,6 +16,6 @@ automatically recreated unless the workspace is empty.
 ## Notes
 The base directory is controlled by
 `spring.ai.playground.tool-studio.fs.base-path` (or the
-`TOOL_STUDIO_FS_BASE` environment variable). File tools sandbox-resolve
+`SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH` environment variable). File tools sandbox-resolve
 relative paths against this directory only — `..` traversal and absolute
 paths outside the base are rejected.

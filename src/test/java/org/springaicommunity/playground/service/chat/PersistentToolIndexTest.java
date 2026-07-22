@@ -69,6 +69,17 @@ class PersistentToolIndexTest {
     }
 
     @Test
+    void indexToolAddsSingleToolOnceAndSkipsUnchangedHash() {
+        PersistentToolIndex index = index(SIGNATURE, true);
+
+        index.indexTool("chat-1", ref("soloTool"));
+        index.indexTool("chat-1", ref("soloTool"));
+
+        assertThat(this.embeddingModel.documentEmbeds.get()).isEqualTo(1);
+        assertThat(toolNames(index.search(query("soloTool")))).containsExactly("soloTool");
+    }
+
+    @Test
     void reembedsOnlyChangedToolsAndDropsRemovedOnes() {
         PersistentToolIndex index = index(SIGNATURE, true);
         index.indexTools("chat-1", List.of(ref("getWeather"), ref("getTime")));

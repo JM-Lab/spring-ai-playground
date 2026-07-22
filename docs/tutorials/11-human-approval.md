@@ -37,6 +37,7 @@ Ask the agent to do the thing your tool does - for example, *"Use the tool to ge
 When the model decides to call the gated tool, chat **stops** and a dialog appears:
 
 - Title: **Tool approval required**
+- A colored **risk-level chip** (L0-L5) for the tool being called - hover it for the rationale
 - Body: your approval prompt, with the real tool name and arguments
 - Buttons: **Approve** and **Decline**
 
@@ -44,6 +45,10 @@ Click **Approve**. The tool runs, its result returns to the model, and the answe
 
 !!! tip "Inspect the arguments before you approve"
     The dialog shows the exact arguments the model chose. This is your chance to catch a wrong path, a bad amount, or an unintended recipient *before* the call fires.
+
+The dialog escalates with the tool's risk level: at **L4 (High)** a warning line appears and **Approve** turns red; at **L5 (Critical)** - the filesystem delete and move tools, for example - **Approve** stays disabled until you tick *"I reviewed the arguments and accept the risk"*. Try it with `deleteFile` from the [filesystem tools](../features/default-tools/filesystem.md) to see the full escalation:
+
+![The L5 Critical approval dialog for deleteFile - a red L5 - Critical chip, the prompt naming the file to delete, a red Critical risk warning line, and an I reviewed the arguments and accept the risk checkbox above a disabled red Approve button](../assets/images/chat/hitl-approval-l5.png){ width="420" }
 
 ## 4. Try declining { #decline }
 

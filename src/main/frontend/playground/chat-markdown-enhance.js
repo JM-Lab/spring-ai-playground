@@ -102,6 +102,16 @@ function enhanceCodeBlocks(root) {
     });
 }
 
+function wrapTables(root) {
+    root.querySelectorAll('table').forEach((table) => {
+        if (table.closest('.saip-table-scroll, .saip-table-wrap, .saip-diff-wrap, .saip-action-card')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'saip-table-scroll';
+        table.replaceWith(wrap);
+        wrap.appendChild(table);
+    });
+}
+
 function highlightCode(root) {
     root.querySelectorAll('pre code').forEach((code) => {
         if (code.classList.contains('language-mermaid')) return;
@@ -467,7 +477,118 @@ registerActionCard('map', (data) => {
     return card;
 });
 
-const ECHARTS_PALETTE = ['#4ab26e', '#3b82f6', '#f4a236', '#d7263d', '#a855f7', '#14b8a6'];
+const ECHARTS_PALETTE = ['#1baf7a', '#2a78d6', '#eda100', '#e34948', '#4a3aa7', '#eb6834', '#e87ba4', '#008300'];
+const CHART_SEQUENTIAL = ['#e7f6f0', '#a9e3cc', '#5cc9a0', '#1baf7a', '#0e8259', '#075c3f'];
+const CHART_SURFACE = '#ffffff';
+const CHART_INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e7e6e1', axis: '#c3c2b7' };
+
+function hexToRgba(hex, alpha) {
+    const h = String(hex).replace('#', '');
+    const n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+}
+
+function chartSeriesColor(option, index) {
+    const palette = Array.isArray(option.color) && option.color.length ? option.color : ECHARTS_PALETTE;
+    return palette[index % palette.length];
+}
+
+function polishChartAxes(axis, fallbackType) {
+    (Array.isArray(axis) ? axis : [axis]).forEach((a) => {
+        if (!a || typeof a !== 'object') return;
+        a.axisLabel = Object.assign({ color: CHART_INK.muted, fontSize: 11 }, a.axisLabel);
+        if ((a.type || fallbackType) === 'value') {
+            a.splitLine = Object.assign({ lineStyle: { color: CHART_INK.grid } }, a.splitLine);
+            a.axisLine = Object.assign({ show: false }, a.axisLine);
+        } else {
+            a.axisLine = Object.assign({ lineStyle: { color: CHART_INK.axis } }, a.axisLine);
+            a.axisTick = Object.assign({ show: false }, a.axisTick);
+        }
+    });
+}
+
+function polishChartOption(option) {
+    if (!option || typeof option !== 'object') return option;
+    option.textStyle = Object.assign({ fontFamily: 'inherit', color: CHART_INK.secondary }, option.textStyle);
+    option.tooltip = Object.assign({
+        backgroundColor: 'rgba(255,255,255,0.96)',
+        borderWidth: 0,
+        padding: [8, 12],
+        textStyle: { color: CHART_INK.primary, fontSize: 12 },
+        extraCssText: 'border-radius:10px;box-shadow:0 6px 20px rgba(15,23,42,0.14);',
+    }, option.tooltip);
+    if (option.legend) {
+        option.legend = Object.assign({ icon: 'circle', itemWidth: 9, itemHeight: 9, itemGap: 14,
+            textStyle: { color: CHART_INK.secondary, fontSize: 11 } }, option.legend);
+    }
+    polishChartAxes(option.xAxis, 'category');
+    polishChartAxes(option.yAxis, 'value');
+    polishChartAxes(option.angleAxis, 'category');
+    polishChartAxes(option.radiusAxis, 'value');
+    if (option.radar) {
+        option.radar.axisName = Object.assign({ color: CHART_INK.secondary, fontSize: 11 }, option.radar.axisName);
+        option.radar.axisLine = Object.assign({ lineStyle: { color: CHART_INK.grid } }, option.radar.axisLine);
+        option.radar.splitLine = Object.assign({ lineStyle: { color: CHART_INK.grid } }, option.radar.splitLine);
+    }
+    if (option.animationDuration == null) option.animationDuration = 700;
+    if (option.animationEasing == null) option.animationEasing = 'cubicOut';
+    const seriesList = Array.isArray(option.series) ? option.series : (option.series ? [option.series] : []);
+    const lastInStack = {};
+    seriesList.forEach((s) => { if (s && s.type === 'bar' && s.stack) lastInStack[s.stack] = s; });
+    seriesList.forEach((s, i) => {
+        if (!s || typeof s !== 'object') return;
+        const color = chartSeriesColor(option, i);
+        if (s.type === 'bar' && s.coordinateSystem === 'polar') {
+            if (s.roundCap == null) s.roundCap = true;
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2 }, s.itemStyle);
+            if (s.animationDelay == null) s.animationDelay = (idx) => Math.min(idx * 60, 600);
+        } else if (s.type === 'bar') {
+            s.itemStyle = Object.assign(
+                { borderRadius: !s.stack || lastInStack[s.stack] === s ? [4, 4, 0, 0] : 0 },
+                s.stack ? { borderColor: CHART_SURFACE, borderWidth: 1 } : null,
+                s.itemStyle);
+            if (s.animationDelay == null) s.animationDelay = (idx) => Math.min(idx * 40, 400);
+        } else if (s.type === 'line') {
+            s.lineStyle = Object.assign({ width: 2, cap: 'round', join: 'round' }, s.lineStyle);
+            if (s.symbol == null) s.symbol = 'circle';
+            if (s.symbolSize == null) s.symbolSize = 8;
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2 }, s.itemStyle);
+            if (s.showSymbol == null) s.showSymbol = (Array.isArray(s.data) ? s.data.length : 0) <= 24;
+            if (s.areaStyle && s.areaStyle.color == null) {
+                const peak = Math.min((s.areaStyle.opacity == null ? 0.25 : s.areaStyle.opacity) + 0.04, 0.32);
+                s.areaStyle = { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: hexToRgba(color, peak) },
+                    { offset: 1, color: hexToRgba(color, 0.02) },
+                ]) };
+            }
+            s.emphasis = Object.assign({ focus: 'series' }, s.emphasis);
+        } else if (s.type === 'pie') {
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2, borderRadius: 4 }, s.itemStyle);
+            s.label = Object.assign({ color: CHART_INK.secondary }, s.label);
+            s.emphasis = Object.assign({ scaleSize: 4, itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.16)' } }, s.emphasis);
+        } else if (s.type === 'scatter') {
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 1.5, opacity: 0.92 }, s.itemStyle);
+        } else if (s.type === 'radar') {
+            s.lineStyle = Object.assign({ width: 2 }, s.lineStyle);
+            if (s.symbolSize == null) s.symbolSize = 5;
+            if (s.areaStyle == null) s.areaStyle = { opacity: 0.12 };
+        } else if (s.type === 'heatmap') {
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2, borderRadius: 3 }, s.itemStyle);
+        } else if (s.type === 'funnel') {
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2 }, s.itemStyle);
+            if (s.gap == null) s.gap = 2;
+        } else if (s.type === 'graph') {
+            s.itemStyle = Object.assign({ borderColor: CHART_SURFACE, borderWidth: 2 }, s.itemStyle);
+            s.label = Object.assign({ color: CHART_INK.secondary }, s.label);
+        } else if (s.type === 'sankey') {
+            s.label = Object.assign({ color: CHART_INK.secondary, fontSize: 11 }, s.label);
+            s.itemStyle = Object.assign({ borderRadius: 3 }, s.itemStyle);
+        } else if (s.type === 'treemap') {
+            s.label = Object.assign({ fontSize: 11 }, s.label);
+        }
+    });
+    return option;
+}
 
 function echartsCard(icon, title, option) {
     const card = actionCardShell(icon, title || 'Chart');
@@ -476,7 +597,7 @@ function echartsCard(icon, title, option) {
     card.appendChild(box);
     try {
         const chart = echarts.init(box, null, { renderer: 'canvas' });
-        chart.setOption(option);
+        chart.setOption(polishChartOption(option));
         if (window.ResizeObserver) new ResizeObserver(() => chart.resize()).observe(box);
         setTimeout(() => chart.resize(), 80);
         addImageExport(card, () => chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' }),
@@ -498,12 +619,41 @@ function normalizeChartSeries(rawSeries, seriesName) {
     return Array.isArray(series) ? series : [];
 }
 
+function normalizeSortOrder(value) {
+    const s = value == null ? '' : String(value).trim().toLowerCase();
+    return s === 'asc' || s === 'desc' || s === 'none' ? s : '';
+}
+
+function labelsHaveInherentOrder(labels) {
+    return labels.length > 0 && labels.every((l) => {
+        const s = String(l).trim();
+        return /\d/.test(s) || /^[NSEW]{1,3}$/i.test(s) || /^[북남동서]{1,3}$/.test(s)
+            || /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?$/i.test(s)
+            || /^[월화수목금토일](?:요일)?$/.test(s);
+    });
+}
+
+function sortCategoriesByValue(labels, values, order) {
+    const indexes = labels.map((_, i) => i);
+    indexes.sort((a, b) => {
+        const diff = (Number(values[a]) || 0) - (Number(values[b]) || 0);
+        return order === 'desc' ? -diff : diff;
+    });
+    return { labels: indexes.map((i) => labels[i]), values: indexes.map((i) => values[i]) };
+}
+
 function buildChartOption(data) {
     if (data.echartsOption && typeof data.echartsOption === 'object') return data.echartsOption;
     let type = String(data.chartType || 'bar').toLowerCase();
     if (CHART_TYPES.indexOf(type) === -1) type = 'bar';
-    const labels = Array.isArray(data.labels) ? data.labels : [];
-    const series = normalizeChartSeries(data.series, data.seriesName);
+    let labels = Array.isArray(data.labels) ? data.labels : [];
+    let series = normalizeChartSeries(data.series, data.seriesName);
+    const sortOrder = normalizeSortOrder(data.sort);
+    if ((type === 'bar' || type === 'pie') && (sortOrder === 'asc' || sortOrder === 'desc') && series.length === 1 && Array.isArray(series[0].data)) {
+        const sorted = sortCategoriesByValue(labels, series[0].data, sortOrder);
+        labels = sorted.labels;
+        series = [{ name: series[0].name, data: sorted.values }];
+    }
     const itemTrigger = type === 'pie' || type === 'radar' || type === 'gauge';
     const option = {
         color: ECHARTS_PALETTE,
@@ -525,8 +675,13 @@ function buildChartOption(data) {
         const value = Number(raw != null ? raw : (Array.isArray(data.series) ? data.series[0] : 0)) || 0;
         const max = Number(data.max) > 0 ? Number(data.max) : Math.max(100, Math.ceil(value / 10) * 10);
         option.series = [{
-            type: 'gauge', min: 0, max, progress: { show: true }, axisLine: { lineStyle: { width: 12 } },
-            detail: { valueAnimation: true, fontSize: 22, formatter: '{value}' },
+            type: 'gauge', min: 0, max, startAngle: 210, endAngle: -30,
+            progress: { show: true, roundCap: true, width: 14 },
+            axisLine: { roundCap: true, lineStyle: { width: 14, color: [[1, '#edece7']] } },
+            pointer: { show: false }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false },
+            title: { color: CHART_INK.secondary, fontSize: 12, offsetCenter: [0, '30%'] },
+            detail: { valueAnimation: true, fontSize: 30, fontWeight: 600, color: CHART_INK.primary,
+                formatter: '{value}', offsetCenter: [0, '-6%'] },
             data: [{ value, name: (labels[0] != null ? String(labels[0]) : (data.seriesName || '')) }],
         }];
         return option;
@@ -536,7 +691,8 @@ function buildChartOption(data) {
         series.forEach((s) => (Array.isArray(s.data) ? s.data : []).forEach((v) => {
             const n = Number(v); if (isFinite(n) && n > max) max = n;
         }));
-        option.radar = { indicator: labels.map((l) => ({ name: String(l), max: max > 0 ? max : 1 })) };
+        option.radar = { indicator: labels.map((l) => ({ name: String(l), max: max > 0 ? max : 1 })),
+            center: ['50%', series.length > 1 ? '56%' : '50%'], radius: series.length > 1 ? '58%' : '68%' };
         option.series = [{ type: 'radar', data: series.map((s) => ({ name: s.name, value: s.data })) }];
         return option;
     }
@@ -563,7 +719,10 @@ function buildChartOption(data) {
         data: s.data,
         smooth: lineish,
         areaStyle: type === 'area' ? { opacity: 0.25 } : (type === 'line' && series.length === 1 ? { opacity: 0.12 } : undefined),
-        barMaxWidth: 46,
+        barMaxWidth: 24,
+        label: type === 'bar' && series.length === 1 && labels.length > 0 && labels.length <= 8
+            ? { show: true, position: 'top', color: CHART_INK.muted, fontSize: 11, fontWeight: 600,
+                formatter: (p) => (isFinite(Number(p.value)) ? Number(p.value).toLocaleString() : p.value) } : undefined,
     }));
     return option;
 }
@@ -582,11 +741,11 @@ function buildCandlestickOption(data) {
         yAxis: { type: 'value', scale: true },
         series: [{
             type: 'candlestick', data: ohlc,
-            itemStyle: { color: '#4ab26e', color0: '#d7263d', borderColor: '#4ab26e', borderColor0: '#d7263d' },
+            itemStyle: { color: '#0ca30c', color0: '#d03b3b', borderColor: '#0ca30c', borderColor0: '#d03b3b' },
         }],
     };
     if (data.volume) {
-        opt.series.push({ type: 'bar', data: rows.map((r) => Number(r.v) || 0), itemStyle: { color: 'rgba(59,130,246,0.35)' } });
+        opt.series.push({ type: 'bar', data: rows.map((r) => Number(r.v) || 0), itemStyle: { color: 'rgba(42,120,214,0.28)' } });
     }
     return opt;
 }
@@ -607,7 +766,7 @@ function buildHeatmapOption(data) {
         xAxis: { type: 'category', data: xLabels, splitArea: { show: true } },
         yAxis: { type: 'category', data: yLabels, splitArea: { show: true } },
         visualMap: { min: 0, max: max || 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 0,
-            inRange: { color: ['#e9f5ee', '#4ab26e', '#1f7a44'] } },
+            inRange: { color: CHART_SEQUENTIAL } },
         series: [{ type: 'heatmap', data: cells, label: { show: cells.length <= 80 }, emphasis: { itemStyle: { shadowBlur: 6 } } }],
     };
 }
@@ -701,9 +860,16 @@ function buildGraphOption(data) {
 registerActionCard('graph', (data) => echartsCard('🔗', data.title || 'Graph', buildGraphOption(data)));
 
 function buildWindRoseOption(data) {
-    const dirs = Array.isArray(data.directions) ? data.directions.map(String) : [];
-    const series = normalizeChartSeries(data.series, data.seriesName);
+    let dirs = Array.isArray(data.directions) ? data.directions.map(String) : [];
+    let series = normalizeChartSeries(data.series, data.seriesName);
     const stacked = series.length > 1;
+    const explicitOrder = normalizeSortOrder(data.sort);
+    const order = explicitOrder || (!stacked && !labelsHaveInherentOrder(dirs) ? 'asc' : 'none');
+    if ((order === 'asc' || order === 'desc') && series.length === 1 && Array.isArray(series[0].data)) {
+        const sorted = sortCategoriesByValue(dirs, series[0].data, order);
+        dirs = sorted.labels;
+        series = [{ name: series[0].name, data: sorted.values }];
+    }
     const option = {
         color: ECHARTS_PALETTE,
         tooltip: { trigger: 'item' },
@@ -714,6 +880,7 @@ function buildWindRoseOption(data) {
         series: series.map((s) => ({
             type: 'bar', name: s.name, data: s.data, coordinateSystem: 'polar',
             stack: stacked ? 'total' : undefined,
+            colorBy: stacked ? 'series' : 'data',
         })),
     };
     if (stacked) option.legend = { top: 0, type: 'scroll' };
@@ -738,10 +905,11 @@ function buildChoroplethOption(data, mapName) {
         visualMap: {
             min, max: max > min ? max : min + 1, calculable: true,
             left: 'left', bottom: 0, orient: 'horizontal',
-            inRange: { color: ['#e9f5ee', '#4ab26e', '#1f7a44'] },
+            inRange: { color: CHART_SEQUENTIAL },
         },
         series: [{
             type: 'map', map: mapName, roam: true,
+            layoutCenter: ['50%', '54%'], layoutSize: '92%',
             nameProperty: data.nameProperty || 'name',
             label: { show: values.length <= 20 },
             emphasis: { label: { show: true }, itemStyle: { areaColor: '#f4a236' } },
@@ -1311,6 +1479,7 @@ registerEnhancer(enhanceActionCards);
 registerEnhancer(highlightCode);
 registerEnhancer(renderMath);
 registerEnhancer(enhanceCodeBlocks);
+registerEnhancer(wrapTables);
 
 function enhance(markdownEl) {
     if (!markdownEl) return;

@@ -18,7 +18,9 @@ package org.springaicommunity.playground.service.analytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
+import org.springaicommunity.playground.observability.ObservabilityRingBuffer;
 import org.springaicommunity.playground.observability.ObservabilityTimeSeries;
+import org.springaicommunity.playground.observability.TraceRecord;
 import org.springaicommunity.playground.observability.Window;
 import org.springaicommunity.playground.observability.system.SystemMetricsSnapshot;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
@@ -27,8 +29,11 @@ import org.springaicommunity.playground.service.chat.ChatSystemPromptPresetCatal
 import org.springaicommunity.playground.service.chat.ChatSystemPromptPresetCatalog.Preset;
 import org.springaicommunity.playground.service.chat.OllamaMonitorService;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.mcp.McpServerInfoService;
 import org.springaicommunity.playground.service.mcp.catalog.McpCatalogEntry;
 import org.springaicommunity.playground.service.mcp.catalog.McpCatalogService;
+import org.springaicommunity.playground.service.mcp.client.McpClientService;
+import org.springaicommunity.playground.service.mcp.client.McpClientService.ServerStatus;
 import org.springaicommunity.playground.service.mcp.risk.DefaultIntegrityVerifier;
 import org.springaicommunity.playground.service.tool.ToolSpecService;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreService;
@@ -38,10 +43,12 @@ import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -52,16 +59,22 @@ public class UsageAnalyticsService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsageAnalyticsService.class);
     private static final long GIB = 1024L * 1024 * 1024;
+    private static final long DAY_MS = 24L * 60 * 60 * 1000;
+    private static final int MAX_DAILY_MCP_SERVERS = 20;
+    private static final int MAX_DAILY_MODELS = 10;
 
     private final ObjectProvider<ToolSpecService> toolSpecServiceProvider;
     private final DefaultIntegrityVerifier integrityVerifier;
     private final ChatSystemPromptPresetCatalog presetCatalog;
     private final McpCatalogService mcpCatalogService;
+    private final ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider;
+    private final ObjectProvider<McpClientService> mcpClientServiceProvider;
     private final ObjectProvider<OllamaMonitorService> ollamaMonitorServiceProvider;
     private final ObjectProvider<VectorStoreService> vectorStoreServiceProvider;
     private final ObjectProvider<ChatModel> chatModelProvider;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
     private final ObjectProvider<ObservabilityTimeSeries> timeSeriesProvider;
+    private final ObjectProvider<ObservabilityRingBuffer> ringBufferProvider;
     private final ObjectProvider<SystemMetricsSnapshot> systemMetricsSnapshotProvider;
     private final ObjectProvider<ChatHistoryService> chatHistoryServiceProvider;
     private final SpringAiPlaygroundOptions options;
@@ -69,21 +82,27 @@ public class UsageAnalyticsService {
 
     public UsageAnalyticsService(ObjectProvider<ToolSpecService> toolSpecServiceProvider,
             DefaultIntegrityVerifier integrityVerifier, ChatSystemPromptPresetCatalog presetCatalog,
-            McpCatalogService mcpCatalogService, ObjectProvider<OllamaMonitorService> ollamaMonitorServiceProvider,
+            McpCatalogService mcpCatalogService, ObjectProvider<McpServerInfoService> mcpServerInfoServiceProvider,
+            ObjectProvider<McpClientService> mcpClientServiceProvider,
+            ObjectProvider<OllamaMonitorService> ollamaMonitorServiceProvider,
             ObjectProvider<VectorStoreService> vectorStoreServiceProvider, ObjectProvider<ChatModel> chatModelProvider,
             ObjectProvider<BuildProperties> buildPropertiesProvider,
             ObjectProvider<ObservabilityTimeSeries> timeSeriesProvider,
+            ObjectProvider<ObservabilityRingBuffer> ringBufferProvider,
             ObjectProvider<SystemMetricsSnapshot> systemMetricsSnapshotProvider,
             ObjectProvider<ChatHistoryService> chatHistoryServiceProvider, SpringAiPlaygroundOptions options) {
         this.toolSpecServiceProvider = toolSpecServiceProvider;
         this.integrityVerifier = integrityVerifier;
         this.presetCatalog = presetCatalog;
         this.mcpCatalogService = mcpCatalogService;
+        this.mcpServerInfoServiceProvider = mcpServerInfoServiceProvider;
+        this.mcpClientServiceProvider = mcpClientServiceProvider;
         this.ollamaMonitorServiceProvider = ollamaMonitorServiceProvider;
         this.vectorStoreServiceProvider = vectorStoreServiceProvider;
         this.chatModelProvider = chatModelProvider;
         this.buildPropertiesProvider = buildPropertiesProvider;
         this.timeSeriesProvider = timeSeriesProvider;
+        this.ringBufferProvider = ringBufferProvider;
         this.systemMetricsSnapshotProvider = systemMetricsSnapshotProvider;
         this.chatHistoryServiceProvider = chatHistoryServiceProvider;
         this.options = options;
@@ -115,6 +134,8 @@ public class UsageAnalyticsService {
                     .ifPresent(spec -> params.put("risk_level", toolSpecService.riskLevelOf(spec)));
             params.put("hitl", toolSpecService.requiresApproval(toolName));
         }
+        safely("catalog_id", () -> mcpClientServiceProvider.getObject().lookupToolSource(toolName)
+                .map(origin -> catalogIdOf(origin.serverName())).orElse(null), params);
         return params;
     }
 
@@ -126,11 +147,14 @@ public class UsageAnalyticsService {
     public Map<String, Object> mcpServerAddedParams(McpServerInfo serverInfo) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("transport", serverInfo.mcpTransportType().name());
-        params.put("catalog_id", mcpCatalogService.findByServerName(serverInfo.serverName())
-                .map(McpCatalogEntry::id).orElse("custom"));
+        params.put("catalog_id", catalogIdOf(serverInfo.serverName()));
         String connectionJson = serverInfo.connectionAsJson();
         params.put("oauth", connectionJson != null && connectionJson.contains("\"oauth\""));
         return params;
+    }
+
+    private String catalogIdOf(String serverName) {
+        return mcpCatalogService.findByServerName(serverName).map(McpCatalogEntry::id).orElse("custom");
     }
 
     public Map<String, Object> documentIndexedParams(String documentFileName, int chunkCount) {
@@ -140,9 +164,13 @@ public class UsageAnalyticsService {
         return params;
     }
 
-    public Optional<Map<String, Object>> dailyUsageSnapshot() {
+    public Optional<DailyUsage> dailyUsage() {
         LocalDate today = LocalDate.now();
         if (today.equals(lastSnapshotDate.getAndSet(today))) return Optional.empty();
+        return Optional.of(new DailyUsage(snapshotParams(), activeMcpServerParams(), modelUsageParams()));
+    }
+
+    private Map<String, Object> snapshotParams() {
         Map<String, Object> params = new LinkedHashMap<>();
         safely("recent_calls", () -> recentSeries().totalCalls(), params);
         safely("recent_tokens", () -> recentSeries().totalTokens(), params);
@@ -154,13 +182,76 @@ public class UsageAnalyticsService {
         safely("top_quantization", this::topQuantization, params);
         SystemMetricsSnapshot.Snapshot snapshot = captureSystemSnapshot();
         if (snapshot != null) {
+            params.put("ram_gb", snapshot.systemPhysicalMemoryTotalBytes / GIB);
             params.put("hitl_approved", snapshot.mcpHitlByOutcome.getOrDefault("approved", 0L));
             params.put("hitl_declined", snapshot.mcpHitlByOutcome.getOrDefault("declined", 0L)
                     + snapshot.mcpHitlByOutcome.getOrDefault("denied", 0L));
             params.put("risk_signals", sum(snapshot.mcpRiskSignalByType));
             params.put("sandbox_blocked", sum(snapshot.sandboxGuardBlockedByCategory));
         }
-        return Optional.of(params);
+        return params;
+    }
+
+    private List<Map<String, Object>> activeMcpServerParams() {
+        try {
+            McpServerInfoService serverInfoService = mcpServerInfoServiceProvider.getObject();
+            McpClientService clientService = mcpClientServiceProvider.getObject();
+            McpServerInfo defaultServer = serverInfoService.getDefaultMcpServerInfo();
+            String defaultServerName = defaultServer == null ? null : defaultServer.serverName();
+            return serverInfoService.read().stream()
+                    .filter(serverInfo -> !Objects.equals(serverInfo.serverName(), defaultServerName))
+                    .limit(MAX_DAILY_MCP_SERVERS)
+                    .map(serverInfo -> {
+                        Map<String, Object> params = mcpServerAddedParams(serverInfo);
+                        params.put("connected", clientService.getStatus(serverInfo).status() == ServerStatus.OK);
+                        return params;
+                    })
+                    .toList();
+        } catch (RuntimeException e) {
+            logger.debug("usage analytics: skipping mcp inventory: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private List<Map<String, Object>> modelUsageParams() {
+        try {
+            long since = System.currentTimeMillis() - DAY_MS;
+            return ringBufferProvider.getObject().snapshot().stream()
+                    .filter(trace -> trace.startEpochMs() >= since)
+                    .filter(trace -> trace.model() != null && !trace.model().isBlank())
+                    .collect(Collectors.groupingBy(TraceRecord::model)).entrySet().stream()
+                    .sorted(Comparator.comparingInt(
+                            (Map.Entry<String, List<TraceRecord>> entry) -> -entry.getValue().size()))
+                    .limit(MAX_DAILY_MODELS)
+                    .map(entry -> modelUsageEntry(entry.getKey(), entry.getValue()))
+                    .toList();
+        } catch (RuntimeException e) {
+            logger.debug("usage analytics: skipping model usage: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private static Map<String, Object> modelUsageEntry(String model, List<TraceRecord> traces) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("model", model);
+        params.put("provider", traces.stream().map(TraceRecord::provider)
+                .filter(provider -> provider != null && !provider.isBlank()).findFirst().orElse("(unknown)"));
+        params.put("calls", (long) traces.size());
+        params.put("tokens", traces.stream()
+                .mapToLong(trace -> trace.totalTokens() == null ? 0 : trace.totalTokens()).sum());
+        params.put("errors", traces.stream()
+                .filter(trace -> TraceRecord.STATUS_ERROR.equals(trace.status())).count());
+        params.put("p95_ms", p95Of(traces));
+        return params;
+    }
+
+    private static long p95Of(List<TraceRecord> traces) {
+        long[] sorted = traces.stream().mapToLong(TraceRecord::durationMs).sorted().toArray();
+        double rank = 0.95 * (sorted.length - 1);
+        int lo = (int) Math.floor(rank);
+        int hi = (int) Math.ceil(rank);
+        double weight = rank - lo;
+        return Math.round(sorted[lo] * (1 - weight) + sorted[hi] * weight);
     }
 
     private ObservabilityTimeSeries.Series recentSeries() {
@@ -232,4 +323,7 @@ public class UsageAnalyticsService {
     private interface ValueSupplier {
         Object get();
     }
+
+    public record DailyUsage(Map<String, Object> snapshot, List<Map<String, Object>> mcpServers,
+                             List<Map<String, Object>> models) {}
 }

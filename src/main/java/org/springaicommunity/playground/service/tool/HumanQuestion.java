@@ -15,17 +15,23 @@
  */
 package org.springaicommunity.playground.service.tool;
 
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
+
 import java.util.List;
 
 public record HumanQuestion(String id, String header, String question, List<Option> options,
-                            boolean multiSelect) {
+                            boolean multiSelect, RiskLevel riskLevel) {
 
     public record Option(String label, String description) {}
 
     public static HumanQuestion approval(String id, String header, String question) {
+        return approval(id, header, question, null);
+    }
+
+    public static HumanQuestion approval(String id, String header, String question, RiskLevel riskLevel) {
         return new HumanQuestion(id, header, question,
                 List.of(new Option("Approve", "Run the tool with these arguments"),
                         new Option("Decline", "Cancel; do not run the tool")),
-                false);
+                false, riskLevel);
     }
 }

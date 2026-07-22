@@ -20,7 +20,6 @@ import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsEx
 import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionResult;
 import org.springaicommunity.playground.service.tool.policy.EffectivePolicyResolver.EffectivePolicy;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
@@ -31,11 +30,11 @@ import java.util.Set;
 
 import static org.springaicommunity.playground.SpringAiPlaygroundOptions.JsSandbox;
 import static org.springaicommunity.playground.SpringAiPlaygroundOptions.NetworkPolicy;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JsToolExecutorTest {
 
@@ -396,50 +395,6 @@ public class JsToolExecutorTest {
         }
     }
 
-    @Disabled
-    @Test
-    void testGooglePseViaJavaInteropOnly() {
-
-        String jsCode = """
-                    const URI = Java.type('java.net.URI');
-                    const HttpClient = Java.type('java.net.http.HttpClient');
-                    const HttpRequest = Java.type('java.net.http.HttpRequest');
-                    const HttpResponse = Java.type('java.net.http.HttpResponse');
-                    const StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
-                
-                    const url = "https://www.googleapis.com/customsearch/v1"
-                        + "?key=" + apiKey
-                        + "&cx=" + cx
-                        + "&q=" + encodeURIComponent(query);
-                
-                    const client = HttpClient.newHttpClient();
-                    const request = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .GET()
-                        .build();
-                    const response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-                    const body = response.body();
-                
-                    const json = JSON.parse(body);
-                    if (!json.items) return "no results";
-                    return json;
-                """;
-
-        JsExecutionParams params = new JsExecutionParams(Map.of(
-                "apiKey", "${GOOGLE_API_KEY}",
-                "cx", "${GOOGLE_CX}",
-                "query", "Spring AI"), jsCode);
-
-        JsExecutionResult result = executor.execute(params);
-
-        System.out.println("isOk = " + result.isOk());
-        System.out.println("result = " + result.result());
-        System.out.println("error = " + result.error());
-
-        assertTrue(result.isOk());
-        assertNotNull(result.result());
-    }
-
     @Test
     void testFetchUndefinedWhenNoNetworkIo() {
         JsToolExecutor exec = new JsToolExecutor(30L, new JsSandbox(false, false, false, false, 50_000L,
@@ -514,7 +469,7 @@ public class JsToolExecutorTest {
         JsExecutionResult result = executor.execute(new JsExecutionParams(Map.of(), code));
         assertTrue(result.isOk());
         String message = (String) result.result();
-        assertTrue("expected denied marker in: " + message, message.contains("denied"));
+        assertTrue(message.contains("denied"), "expected denied marker in: " + message);
     }
 
     @Test
@@ -539,7 +494,7 @@ public class JsToolExecutorTest {
                              contentType: r.contentType, header: r.headers.get('Content-Type') };
                     """).formatted(baseUrl);
             JsExecutionResult result = executor.execute(new JsExecutionParams(Map.of(), code), policy);
-            assertTrue(result.error(), result.isOk());
+            assertTrue(result.isOk(), result.error());
             @SuppressWarnings("unchecked")
             Map<String, Object> m = (Map<String, Object>) result.result();
             assertEquals(200, ((Number) m.get("status")).intValue());
@@ -573,7 +528,7 @@ public class JsToolExecutorTest {
                     return { text: await r.text(), truncated: r.truncated, next: r.nextStartIndex };
                     """).formatted(baseUrl);
             JsExecutionResult result = executor.execute(new JsExecutionParams(Map.of(), code), policy);
-            assertTrue(result.error(), result.isOk());
+            assertTrue(result.isOk(), result.error());
             @SuppressWarnings("unchecked")
             Map<String, Object> m = (Map<String, Object>) result.result();
             assertEquals("0123", m.get("text"));

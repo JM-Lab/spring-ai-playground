@@ -60,7 +60,7 @@ The discriminator that powers the Tool Studio / MCP Servers split is `McpToolObs
 
     ---
 
-    `saip.risk.signal` / `saip.tool.risk` counters + sandbox, HITL, and tamper signals. MCP risk model (L0–L5) distribution, poisoning hits, integrity tamper rejects, human-approval rate.
+    `saip.risk.signal` / `saip.tool.risk` counters + sandbox, HITL, and tamper signals. MCP risk model (L0-L5) distribution, poisoning hits, integrity tamper rejects, human-approval rate.
 
 </div>
 

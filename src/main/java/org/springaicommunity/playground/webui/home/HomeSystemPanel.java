@@ -24,6 +24,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.router.RouterLink;
 import org.springaicommunity.playground.observability.ObservabilityTimeSeries;
 import org.springaicommunity.playground.observability.McpRiskEventRingBuffer;
 import org.springaicommunity.playground.observability.McpRiskEventRingBuffer.RiskEvent;
@@ -46,6 +47,7 @@ import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -54,6 +56,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 class HomeSystemPanel extends Div {
 
@@ -78,6 +81,8 @@ class HomeSystemPanel extends Div {
 
     private final Div body = new Div();
     private final Div envDetail = new Div();
+    private final Div envPill = new Div();
+    private Icon envChevron;
     private boolean envExpanded;
 
     HomeSystemPanel(ObjectProvider<ChatModel> chatModelProvider,
@@ -114,7 +119,19 @@ class HomeSystemPanel extends Div {
                 .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("background-color", "var(--lumo-base-color)");
 
-        add(buildHeader(), this.providerStatus, this.body);
+        this.envPill.addClickListener(e -> toggleEnvDetail());
+        add(buildHeader(), buildStatusRow(), this.envDetail, this.body);
+    }
+
+    private Component buildStatusRow() {
+        Div row = new Div();
+        row.getStyle()
+                .set("display", "flex")
+                .set("flex-wrap", "wrap")
+                .set("align-items", "center")
+                .set("gap", "0.6rem");
+        row.add(this.envPill, this.providerStatus);
+        return row;
     }
 
     @Override
@@ -142,15 +159,11 @@ class HomeSystemPanel extends Div {
         title.getStyle().set("margin", "0").set("font-size", "var(--lumo-font-size-m)");
         left.add(title, buildServerPill(), buildBindPosture());
 
-        Anchor dashboards = new Anchor("", "Open all 14 dashboards");
-        dashboards.getElement().setAttribute("router-link", true);
+        RouterLink dashboards = new RouterLink("Open all 14 dashboards", ObservabilityView.class);
         dashboards.getStyle()
                 .set("color", "var(--lumo-primary-text-color)")
                 .set("text-decoration", "none")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("cursor", "pointer");
-        dashboards.getElement().addEventListener("click",
-                e -> UI.getCurrent().navigate(ObservabilityView.class));
+                .set("font-size", "var(--lumo-font-size-s)");
 
         header.add(left, dashboards);
         return header;
@@ -196,29 +209,37 @@ class HomeSystemPanel extends Div {
     }
 
     private void render() {
+        EnvSnapshot env = envSnapshot();
+        renderEnvPill(env);
+        buildEnvDetail(env);
         body.removeAll();
         body.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
                 .set("gap", "0.85rem");
-        body.add(buildReadinessChips(), buildEnvDetail(), buildKpis(), buildRisk());
+        body.add(buildReadinessChips(env), buildKpis(), buildRisk());
     }
 
-
-    private Component buildReadinessChips() {
+    private EnvSnapshot envSnapshot() {
         List<ToolSpec> defaults = toolSpecPersistenceService.getDefaultToolSpecs();
-        int total = defaults.size();
-        long needKeys = defaults.stream().filter(toolActivationCalculator::hasMissingEnvVars).count();
-        long localPassed = total - needKeys;
-
-        Set<String> declared = new LinkedHashSet<>();
-        Set<String> missing = new LinkedHashSet<>();
+        Map<String, List<String>> toolsByVar = new TreeMap<>();
+        Set<String> missingVars = new LinkedHashSet<>();
+        long blockedTools = 0;
         for (ToolSpec spec : defaults) {
-            declared.addAll(toolActivationCalculator.declaredEnvVars(spec));
-            missing.addAll(toolActivationCalculator.missingEnvVars(spec));
+            List<String> missing = toolActivationCalculator.missingEnvVars(spec);
+            if (!missing.isEmpty()) blockedTools++;
+            missingVars.addAll(missing);
+            for (String envVar : toolActivationCalculator.declaredEnvVars(spec)) {
+                toolsByVar.computeIfAbsent(envVar, k -> new ArrayList<>()).add(spec.name());
+            }
         }
-        int totalVars = declared.size();
-        int setVars = totalVars - missing.size();
+        return new EnvSnapshot(defaults.size(), blockedTools, toolsByVar, missingVars);
+    }
+
+    private Component buildReadinessChips(EnvSnapshot env) {
+        int total = env.totalTools();
+        long needKeys = env.blockedTools();
+        long localPassed = total - needKeys;
 
         McpServerInfo defaultInfo = mcpServerInfoService.getDefaultMcpServerInfo();
         List<McpServerInfo> external = mcpServerInfoService.getMcpServerInfos().values().stream()
@@ -244,9 +265,6 @@ class HomeSystemPanel extends Div {
         grid.add(chip(VaadinIcon.CHECK_CIRCLE_O, "Built-in tools",
                 localPassed + " Local-Passed · " + needKeys + " need keys", needKeys > 0,
                 () -> UI.getCurrent().navigate(ToolStudioView.class)));
-        grid.add(chip(VaadinIcon.KEY, "Environment variables",
-                setVars + " of " + totalVars + " set · " + needKeys + " tools blocked", false,
-                this::toggleEnvDetail));
         grid.add(chip(VaadinIcon.CONNECT, "External MCP",
                 awaiting > 0
                         ? connected + " connected · " + awaiting + " awaiting auth"
@@ -297,73 +315,209 @@ class HomeSystemPanel extends Div {
     private void toggleEnvDetail() {
         envExpanded = !envExpanded;
         envDetail.setVisible(envExpanded);
+        if (envChevron != null)
+            envChevron.getStyle().set("transform", envExpanded ? "rotate(180deg)" : "none");
     }
 
-    private Component buildEnvDetail() {
+    private void renderEnvPill(EnvSnapshot env) {
+        envPill.removeAll();
+        boolean missing = !env.missingVars().isEmpty();
+        envPill.getStyle()
+                .set("display", "inline-flex")
+                .set("flex-wrap", "wrap")
+                .set("max-width", "100%")
+                .set("align-items", "center")
+                .set("gap", "0.45rem")
+                .set("padding", "0.3rem 0.7rem")
+                .set("border-radius", "999px")
+                .set("border", "1px solid " + (missing
+                        ? "var(--lumo-warning-color-50pct)" : "var(--lumo-contrast-10pct)"))
+                .set("background-color", missing
+                        ? "var(--lumo-warning-color-10pct)" : "var(--lumo-base-color)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("cursor", "pointer");
+        envPill.getElement().setAttribute("title",
+                "Environment variables for built-in tools: click to expand details below");
+
+        Div dot = new Div();
+        dot.getStyle().set("width", "7px").set("height", "7px").set("border-radius", "50%")
+                .set("background-color", missing
+                        ? "var(--lumo-warning-color)" : "var(--lumo-success-color)")
+                .set("flex-shrink", "0");
+
+        Span name = new Span("Environment");
+        name.getStyle().set("font-weight", "600").set("color", "var(--lumo-body-text-color)");
+
+        String statusText;
+        if (env.totalVars() == 0) statusText = "none required";
+        else if (missing) statusText = env.missingVars().size() + " of " + env.totalVars()
+                + " not set · " + env.blockedTools() + " tools blocked";
+        else statusText = "all " + env.totalVars() + " set";
+        Span status = new Span(statusText);
+        status.getStyle().set("color", missing
+                ? "var(--lumo-warning-text-color)" : "var(--lumo-secondary-text-color)");
+
+        envChevron = VaadinIcon.ANGLE_DOWN.create();
+        envChevron.getStyle()
+                .set("width", "var(--lumo-icon-size-s)")
+                .set("height", "var(--lumo-icon-size-s)")
+                .set("color", "var(--lumo-tertiary-text-color)")
+                .set("flex-shrink", "0")
+                .set("transition", "transform 0.15s")
+                .set("transform", envExpanded ? "rotate(180deg)" : "none");
+
+        envPill.add(dot, name, HomeUi.divider(), status, envChevron);
+    }
+
+    private void buildEnvDetail(EnvSnapshot env) {
         envDetail.removeAll();
         envDetail.setVisible(envExpanded);
         envDetail.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "0.5rem")
+                .set("gap", "0.6rem")
                 .set("padding", "0.75rem 0.85rem")
                 .set("border", "1px solid var(--lumo-primary-color-50pct)")
                 .set("border-radius", "var(--lumo-border-radius-m)");
 
-        Div note = new Div(new Span(
-                "Built-in tools that declare a key (${ENV_VAR}) are held as drafts and never earn a "
-                        + "Local Pass while the variable is unset, so they are not exposed on the built-in MCP "
-                        + "server and can't be called from chat. Set the variable in the launcher "
-                        + "(re-launch, then Config, then Environment Variables) or export it before starting "
-                        + "the app. Keys are not entered here."));
-        note.getStyle()
-                .set("font-size", "var(--lumo-font-size-xs)")
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("line-height", "1.5")
-                .set("padding", "0.5rem 0.6rem")
-                .set("border-radius", "var(--lumo-border-radius-s)")
-                .set("background-color", "var(--lumo-primary-color-10pct)");
-        envDetail.add(note);
-
-        List<ToolSpec> blocked = toolSpecPersistenceService.getDefaultToolSpecs().stream()
-                .filter(toolActivationCalculator::hasMissingEnvVars)
-                .toList();
-        for (ToolSpec spec : blocked) {
-            envDetail.add(buildBlockedRow(spec));
+        envDetail.add(buildEnvNote());
+        if (!env.missingVars().isEmpty()) {
+            envDetail.add(envGroupLabel("Not set · " + env.missingVars().size(), true),
+                    envVarGrid(env, true));
         }
-        Anchor docs = new Anchor(
-                "https://spring-ai-community.github.io/spring-ai-playground/getting-started/",
-                "How to set environment variables ›");
-        docs.setTarget("_blank");
-        docs.getElement().setAttribute("rel", "noopener");
-        docs.getStyle()
-                .set("color", "var(--lumo-primary-text-color)")
-                .set("text-decoration", "none")
-                .set("font-size", "var(--lumo-font-size-xs)");
-        HomeUi.routeToLauncherOnDesktop(docs, "env-card");
-        envDetail.add(docs);
-        return envDetail;
+        if (env.setVars() > 0) {
+            envDetail.add(envGroupLabel("Set · " + env.setVars(), false),
+                    envVarGrid(env, false));
+        }
+        if (env.totalVars() == 0) {
+            envDetail.add(HomeUi.mutedLabel("No built-in tool declares an environment variable."));
+        }
     }
 
-    private Component buildBlockedRow(ToolSpec spec) {
+    private Component buildEnvNote() {
         Div row = new Div();
         row.getStyle()
                 .set("display", "flex")
+                .set("flex-wrap", "wrap")
+                .set("align-items", "center")
+                .set("gap", "0.6rem")
+                .set("padding", "0.5rem 0.6rem")
+                .set("border-radius", "var(--lumo-border-radius-s)")
+                .set("background-color", "var(--lumo-primary-color-10pct)");
+
+        Span text = new Span(
+                "Built-in tools that declare a key (${ENV_VAR}) are held as drafts and never earn a "
+                        + "Local Pass while the variable is unset, so they are not exposed on the built-in "
+                        + "MCP server and can't be called from chat. Set the variable in the launcher or "
+                        + "export it before starting the app. Keys are not entered here.");
+        text.getStyle()
+                .set("flex", "1 1 260px")
+                .set("min-width", "0")
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("line-height", "1.5");
+
+        Anchor action = new Anchor(
+                "https://spring-ai-community.github.io/spring-ai-playground/getting-started/",
+                "Environment variables guide ›");
+        action.setTarget("_blank");
+        action.getElement().setAttribute("rel", "noopener");
+        action.getStyle()
+                .set("flex", "0 0 auto")
+                .set("white-space", "nowrap")
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-weight", "600")
+                .set("color", "var(--lumo-primary-text-color)")
+                .set("text-decoration", "none")
+                .set("padding", "0.3rem 0.6rem")
+                .set("border", "1px solid var(--lumo-primary-color-50pct)")
+                .set("border-radius", "var(--lumo-border-radius-s)")
+                .set("background-color", "var(--lumo-base-color)");
+        HomeUi.launcherActionOrDocs(action, "env-card", "Open Environment Variables ›");
+
+        row.add(text, action);
+        return row;
+    }
+
+    private static Component envGroupLabel(String text, boolean warn) {
+        Span label = new Span(text);
+        label.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-weight", "600")
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.03em")
+                .set("color", warn
+                        ? "var(--lumo-warning-text-color)" : "var(--lumo-secondary-text-color)");
+        return label;
+    }
+
+    private Component envVarGrid(EnvSnapshot env, boolean missingGroup) {
+        Div grid = new Div();
+        grid.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fill, minmax(230px, 1fr))")
+                .set("gap", "0.45rem");
+        env.toolsByVar().forEach((envVar, tools) -> {
+            if (env.missingVars().contains(envVar) == missingGroup)
+                grid.add(envVarCard(envVar, tools, missingGroup));
+        });
+        return grid;
+    }
+
+    private static Component envVarCard(String envVar, List<String> tools, boolean missing) {
+        Div card = new Div();
+        card.getStyle()
+                .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "0.1rem")
+                .set("gap", "0.15rem")
                 .set("padding", "0.45rem 0.6rem")
                 .set("border-radius", "var(--lumo-border-radius-s)")
-                .set("background-color", "var(--lumo-contrast-5pct)");
-        Span name = new Span(spec.name());
-        name.getStyle().set("font-weight", "500").set("font-size", "var(--lumo-font-size-s)");
-        String vars = String.join(", ", toolActivationCalculator.missingEnvVars(spec));
-        Span needs = new Span("needs " + vars);
-        needs.getStyle()
+                .set("border", "1px solid " + (missing
+                        ? "var(--lumo-warning-color-50pct)" : "var(--lumo-contrast-10pct)"))
+                .set("background-color", missing
+                        ? "var(--lumo-warning-color-10pct)" : "var(--lumo-contrast-5pct)")
+                .set("min-width", "0");
+
+        Div head = new Div();
+        head.getStyle().set("display", "flex").set("align-items", "center").set("gap", "0.35rem")
+                .set("min-width", "0");
+        Div dot = new Div();
+        dot.getStyle().set("width", "7px").set("height", "7px").set("border-radius", "50%")
+                .set("background-color", missing
+                        ? "var(--lumo-warning-color)" : "var(--lumo-success-color)")
+                .set("flex-shrink", "0");
+        Span name = new Span(envVar);
+        name.getStyle()
+                .set("font-family", "var(--lumo-font-family-monospace, monospace)")
                 .set("font-size", "var(--lumo-font-size-xs)")
-                .set("color", "var(--lumo-warning-text-color)")
-                .set("font-family", "var(--lumo-font-family-monospace, monospace)");
-        row.add(name, needs);
-        return row;
+                .set("font-weight", "600")
+                .set("overflow", "hidden")
+                .set("text-overflow", "ellipsis")
+                .set("white-space", "nowrap");
+        name.getElement().setAttribute("title", envVar);
+        Span state = new Span(missing ? "not set" : "set");
+        state.getStyle()
+                .set("margin-left", "auto")
+                .set("flex-shrink", "0")
+                .set("font-size", "var(--lumo-font-size-xxs)")
+                .set("font-weight", "600")
+                .set("color", missing
+                        ? "var(--lumo-warning-text-color)" : "var(--lumo-success-text-color)");
+        head.add(dot, name, state);
+
+        String toolNames = String.join(", ", tools);
+        Span uses = new Span((missing ? "blocks " : "used by ") + toolNames);
+        uses.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("overflow", "hidden")
+                .set("text-overflow", "ellipsis")
+                .set("white-space", "nowrap");
+        uses.getElement().setAttribute("title", toolNames);
+
+        card.add(head, uses);
+        return card;
     }
 
 
@@ -533,4 +687,16 @@ class HomeSystemPanel extends Div {
     }
 
     private record RiskLevel(String key, String label, String color) {}
+
+    private record EnvSnapshot(int totalTools, long blockedTools,
+            Map<String, List<String>> toolsByVar, Set<String> missingVars) {
+
+        int totalVars() {
+            return toolsByVar.size();
+        }
+
+        int setVars() {
+            return totalVars() - missingVars.size();
+        }
+    }
 }

@@ -70,8 +70,8 @@ spring:
   ai:
     playground:
       built-in-mcp-server:
-        name: my-team-tools                 # SPRING_AI_PLAYGROUND_MCP_NAME
-        description: Curated tools for my team   # SPRING_AI_PLAYGROUND_MCP_DESCRIPTION
+        name: my-team-tools                 # SPRING_AI_PLAYGROUND_BUILT_IN_MCP_SERVER_NAME
+        description: Curated tools for my team   # SPRING_AI_PLAYGROUND_BUILT_IN_MCP_SERVER_DESCRIPTION
         exposure-mode: both                  # builtin-only | composed-only | both
 ```
 

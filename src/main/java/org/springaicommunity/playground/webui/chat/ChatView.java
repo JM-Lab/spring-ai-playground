@@ -27,7 +27,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.annotation.SpringComponent;
@@ -39,6 +39,7 @@ import org.springaicommunity.playground.service.chat.ChatExtraOptions;
 import org.springaicommunity.playground.service.chat.ChatHistory;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.chat.ChatService;
+import org.springaicommunity.playground.service.chat.ChatStreamRegistry;
 import org.springaicommunity.playground.service.chat.ChatSystemPromptPresetCatalog.Preset;
 import org.springaicommunity.playground.service.chat.ChatSystemPromptPresetService;
 import org.springaicommunity.playground.service.chat.ChatSystemPromptTemplateRenderer;
@@ -65,6 +66,8 @@ import org.springaicommunity.playground.webui.tool.ExposedToolsSelector;
 import org.springframework.ai.chat.prompt.ChatOptions;
 
 import java.beans.PropertyChangeSupport;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -83,13 +86,14 @@ import static org.springaicommunity.playground.webui.VaadinUtils.styledButton;
 @UIScope
 @AnonymousAllowed
 @CssImport("./playground/chat-styles.css")
-@PageTitle("Agentic Chat")
 @Route(value = "agentic-chat", layout = SpringAiPlaygroundAppLayout.class)
-public class ChatView extends ContentWorkspaceView implements BeforeEnterObserver {
+public class ChatView extends ContentWorkspaceView implements BeforeEnterObserver, HasDynamicTitle {
 
     public static final String CHAT_HISTORY_CHANGE_EVENT = "CHAT_HISTORY_CHANGE_EVENT";
     public static final String CHAT_HISTORY_SELECT_EVENT = "CHAT_HISTORY_SELECT_EVENT";
     public static final String CHAT_HISTORY_EMPTY_EVENT = "CHAT_HISTORY_EMPTY_EVENT";
+
+    private static final String DEFAULT_PAGE_TITLE = "Agentic Chat";
 
     private final PersistentUiDataStorage persistentUiDataStorage;
     private final ChatService chatService;
@@ -112,10 +116,12 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     private final OllamaModelDownloadService ollamaModelDownloadService;
     private final UsageAnalyticsService usageAnalyticsService;
     private final UsageEventTracker usageEventTracker;
+    private final ChatStreamRegistry chatStreamRegistry;
     private final ChatHistoryView chatHistoryView;
     private final WorkspaceSettingsDrawer settingsDrawer;
     private ChatModelSettingView chatModelSettingView;
     private ChatContentView chatContentView;
+    private String pageTitle = DEFAULT_PAGE_TITLE;
 
     public ChatView(PersistentUiDataStorage persistentUiDataStorage, ChatService chatService,
             ChatHistoryService chatHistoryService, McpClientService mcpClientService,
@@ -129,7 +135,7 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
             ChatClientActionRegistry clientActionRegistry, ConversationFileUploadStore fileUploadStore,
             ChatImageStore imageStore,
             VisionCapabilityService visionCapabilityService, UsageAnalyticsService usageAnalyticsService,
-            UsageEventTracker usageEventTracker) {
+            UsageEventTracker usageEventTracker, ChatStreamRegistry chatStreamRegistry) {
         this.persistentUiDataStorage = persistentUiDataStorage;
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
@@ -150,6 +156,7 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
         this.visionCapabilityService = visionCapabilityService;
         this.usageAnalyticsService = usageAnalyticsService;
         this.usageEventTracker = usageEventTracker;
+        this.chatStreamRegistry = chatStreamRegistry;
 
         PropertyChangeSupport chatHistoryChangeSupport = new PropertyChangeSupport(this);
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_SELECT_EVENT,
@@ -166,6 +173,8 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
                 new ChatHistoryView(persistentUiDataStorage, chatHistoryService, chatHistoryChangeSupport);
         chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_CHANGE_EVENT,
                 event -> this.chatHistoryView.changeChatHistoryContent((ChatHistory) event.getNewValue()));
+        chatHistoryChangeSupport.addPropertyChangeListener(CHAT_HISTORY_CHANGE_EVENT,
+                event -> refreshPageTitle((ChatHistory) event.getNewValue()));
 
         configureSidebar(this.chatHistoryView, "History");
 
@@ -439,19 +448,27 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
                 this.toolSpecService, this.toolSpecPersistenceService, this.toolActivationCalculator,
                 this.mcpServerInfoService, this.chatExportService,
                 this.compositionProvider, this.playgroundOptions, this.clientActionRegistry, this.fileUploadStore,
-                this.imageStore, this.visionCapabilityService, this.usageAnalyticsService, this.usageEventTracker);
+                this.imageStore, this.visionCapabilityService, this.usageAnalyticsService, this.usageEventTracker,
+                this.chatStreamRegistry);
         ChatOptions chatOptions = chatHistory.chatOptions();
         String label = String.format("%s: %s", this.chatService.getChatModelProvider(), chatOptions.getModel());
-        VaadinUtils.getUi(this).access(() -> {
+        this.pageTitle = pageTitleOf(chatHistory);
+        UI ui = VaadinUtils.getUi(this);
+        ui.access(() -> {
             setHeaderLabel(label);
             setContent(this.chatContentView);
+            ui.getPage().getHistory().replaceState(null, conversationLocation(chatHistory.conversationId()));
+            ui.getPage().setTitle(this.pageTitle);
         });
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         List<String> convParam = event.getLocation().getQueryParameters().getParameters().get("conv");
-        if (convParam == null || convParam.isEmpty()) return;
+        if (convParam == null || convParam.isEmpty()) {
+            syncLocationToCurrentConversation();
+            return;
+        }
         String convId = convParam.getFirst();
         if (convId == null || convId.isBlank()) return;
         ChatHistory existing = this.chatHistoryService.getChatHistory(convId);
@@ -468,5 +485,41 @@ public class ChatView extends ContentWorkspaceView implements BeforeEnterObserve
     private static String shortenId(String s) {
         if (s == null) return "";
         return s.length() <= 14 ? s : s.substring(0, 14);
+    }
+
+    @Override
+    public String getPageTitle() {
+        return this.pageTitle;
+    }
+
+    private void refreshPageTitle(ChatHistory chatHistory) {
+        if (Objects.isNull(this.chatContentView)
+                || !chatHistory.conversationId().equals(this.chatContentView.getConversationId()))
+            return;
+        String updatedTitle = pageTitleOf(chatHistory);
+        if (updatedTitle.equals(this.pageTitle))
+            return;
+        UI ui = VaadinUtils.getUi(this);
+        ui.access(() -> {
+            this.pageTitle = updatedTitle;
+            ui.getPage().setTitle(updatedTitle);
+        });
+    }
+
+    private void syncLocationToCurrentConversation() {
+        if (Objects.isNull(this.chatContentView))
+            return;
+        String location = conversationLocation(this.chatContentView.getConversationId());
+        UI ui = VaadinUtils.getUi(this);
+        ui.access(() -> ui.getPage().getHistory().replaceState(null, location));
+    }
+
+    private static String conversationLocation(String conversationId) {
+        return "agentic-chat?conv=" + URLEncoder.encode(conversationId, StandardCharsets.UTF_8);
+    }
+
+    private static String pageTitleOf(ChatHistory chatHistory) {
+        String title = chatHistory.title();
+        return Objects.isNull(title) || title.isBlank() ? DEFAULT_PAGE_TITLE : title;
     }
 }

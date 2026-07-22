@@ -25,6 +25,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.observation.ChatModelObservationContext;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.testfake.FakeChatClientObservationContext;
 import org.springframework.ai.testfake.FakeSpringAiObservationContext;
 import org.springframework.beans.factory.ObjectProvider;
@@ -399,6 +406,75 @@ class ObservabilityCollectorTest {
                 System.currentTimeMillis(), 10L, TraceRecord.STATUS_OK,
                 null, null, null, null, false, 0, false,
                 null, null, null, null, List.of(), Map.of());
+    }
+
+    @Test
+    void chatModelSpanCapturesPromptAndCompletionContent() {
+        Tracer tracer = mockTracer("cmcontent", List.of("rootspan", "modelspan"));
+        ObservabilityCollector collector = new ObservabilityCollector(buffer,
+                absent(), present(tracer), absent(), props);
+
+        ChatModelObservationContext child = ChatModelObservationContext.builder()
+                .prompt(new Prompt(List.of(new SystemMessage("be brief"), new UserMessage("hello"))))
+                .provider("ollama")
+                .build();
+        child.setName("gen_ai.client.operation");
+        AssistantMessage output = AssistantMessage.builder()
+                .content("hi there")
+                .toolCalls(List.of(
+                        new AssistantMessage.ToolCall("call_1", "function", "getWeather", "{\"city\":\"Seoul\"}")))
+                .build();
+        child.setResponse(new ChatResponse(List.of(new Generation(output))));
+
+        Observation.Context root = ctx("spring.ai.chat.client");
+        collector.onStart(root);
+        collector.onStart(child);
+        collector.onStop(child);
+        collector.onStop(root);
+
+        Map<String, String> attrs = buffer.snapshot().get(0).spans().stream()
+                .map(SpanRecord::attributes)
+                .filter(spanAttrs -> spanAttrs.containsKey("gen_ai.prompt.count"))
+                .findFirst().orElseThrow();
+        assertThat(attrs)
+                .containsEntry("gen_ai.prompt.count", "2")
+                .containsEntry("gen_ai.prompt.0.role", "system")
+                .containsEntry("gen_ai.prompt.0.content", "be brief")
+                .containsEntry("gen_ai.prompt.1.role", "user")
+                .containsEntry("gen_ai.prompt.1.content", "hello")
+                .containsEntry("gen_ai.completion.0.role", "assistant")
+                .containsEntry("gen_ai.completion.0.content", "hi there");
+        assertThat(attrs.get("gen_ai.completion.0.tool_calls")).contains("getWeather");
+    }
+
+    @Test
+    void chatModelPromptCaptureHonorsMessageCapAndMarksTruncation() {
+        props.setMaxCapturedMessagesPerSpan(1);
+        Tracer tracer = mockTracer("cmcap", List.of("rootspan", "modelspan"));
+        ObservabilityCollector collector = new ObservabilityCollector(buffer,
+                absent(), present(tracer), absent(), props);
+
+        ChatModelObservationContext child = ChatModelObservationContext.builder()
+                .prompt(new Prompt(List.of(new UserMessage("first"), new UserMessage("second"))))
+                .provider("ollama")
+                .build();
+        child.setName("gen_ai.client.operation");
+
+        Observation.Context root = ctx("spring.ai.chat.client");
+        collector.onStart(root);
+        collector.onStart(child);
+        collector.onStop(child);
+        collector.onStop(root);
+
+        Map<String, String> attrs = buffer.snapshot().get(0).spans().stream()
+                .map(SpanRecord::attributes)
+                .filter(spanAttrs -> spanAttrs.containsKey("gen_ai.prompt.count"))
+                .findFirst().orElseThrow();
+        assertThat(attrs)
+                .containsEntry("gen_ai.prompt.count", "2")
+                .containsEntry("gen_ai.prompt.truncated_messages", "1")
+                .containsEntry("gen_ai.prompt.0.content", "first")
+                .doesNotContainKey("gen_ai.prompt.1.content");
     }
 
     private Observation.Context ctx(String name) {

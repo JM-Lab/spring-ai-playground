@@ -55,18 +55,38 @@ You can toggle approval per tool, or for all selected tools at once. The same se
 
 ## Approve a call in Agentic Chat { #chat }
 
-When the agent calls a gated tool, a dialog appears titled **Tool approval required** with the rendered prompt and two buttons:
+When the agent calls a gated tool, a dialog appears titled **Tool approval required** with the tool's [risk-level chip](../mcp-server-safety.md) (hover it for the rationale), the rendered prompt, and two buttons:
 
 - **Approve** → the tool runs, and the conversation continues with its result.
 - **Decline** → the tool does **not** run. The model is told you declined so it won't silently retry; it either finds another way or tells you the action couldn't be completed.
 
-If you don't answer within two minutes (configurable), or close the dialog, the call is **declined** automatically - approval fails safe. If the agent requested several gated tools in the same step, they appear together in **one dialog** with a row per call, so you answer them all at once; ungated calls run without interruption.
+The dialog escalates with the level, so the ask is proportional to what the tool can do:
+
+| Level | What you see |
+|-------|--------------|
+| L0-L3 | Chip + prompt; standard **Approve** |
+| L4 (High) | Warning line ("can modify files, spend money, or change external state"); **Approve** turns red |
+| L5 (Critical) | Critical warning line; **Approve** is red and stays disabled until you tick *"I reviewed the arguments and accept the risk"* |
+
+<div class="grid" markdown>
+
+![L3 Moderate approval dialog - a yellow L3 - Moderate chip above the prompt, with a plain blue Approve button and no extra warning](../assets/images/chat/hitl-approval-l3.png){ width="360" }
+
+![L4 High approval dialog - an orange L4 - High chip, a High risk warning line, and a red Approve button](../assets/images/chat/hitl-approval-l4.png){ width="360" }
+
+![L5 Critical approval dialog - a red L5 - Critical chip, a red Critical risk warning line, an I reviewed the arguments and accept the risk checkbox, and a red Approve button that is disabled until the checkbox is ticked](../assets/images/chat/hitl-approval-l5.png){ width="360" }
+
+</div>
+
+The level shown is the tool's **inherent** level (before the `HITL -1` display credit) - the dialog itself is the mitigation, so it never discounts the risk it is asking you to accept.
+
+If you don't answer within two minutes (configurable), or close the dialog, the call is **declined** automatically - approval fails safe. If the agent requested several gated tools in the same step, they appear together in **one dialog** with a chip-labeled row per call, so you answer them all at once; ungated calls run without interruption.
 
 Walk through it end to end in [Tutorial 11 - Approve a Tool in Chat](../tutorials/11-human-approval.md).
 
 ## What an external client sees { #external }
 
-For an external MCP client (e.g. Claude Desktop) calling a `Required` tool on the built-in `/mcp` server, the built-in server issues an MCP **elicitation** request - a confirmation card the client renders before the call proceeds. If the client does not support elicitation, the call is **denied** (it cannot be approved). The playground's own [MCP Inspector → Elicitation](mcp-server/inspector.md#elicitation) shows elicitation requests the playground receives while acting as an MCP client; external clients render the built-in server's approval prompt in their own UI.
+For an external MCP client (e.g. Claude Desktop) calling a `Required` tool on the built-in `/mcp` server, the built-in server issues an MCP **elicitation** request - a confirmation card the client renders before the call proceeds. The elicitation message is prefixed with the tool's risk level (for example `[risk L5 Critical]`), because the elicitation protocol has no severity field of its own. If the client does not support elicitation, the call is **denied** (it cannot be approved). The playground's own [MCP Inspector → Elicitation](mcp-server/inspector.md#elicitation) shows elicitation requests the playground receives while acting as an MCP client; external clients render the built-in server's approval prompt in their own UI.
 
 ## Good defaults { #defaults }
 

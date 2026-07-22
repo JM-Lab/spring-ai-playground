@@ -26,16 +26,24 @@ class ChatAttach extends HTMLElement {
   bindTo(target) {
     if (!target || target.__chatAttachBound) return;
     target.__chatAttachBound = true;
+    const locked = () => target.readonly || target.disabled;
     target.addEventListener('dragover', (e) => {
-      if (Array.from(e.dataTransfer?.types || []).includes('Files')) e.preventDefault();
+      if (!Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+      e.preventDefault();
+      if (locked() && e.dataTransfer) e.dataTransfer.dropEffect = 'none';
     });
     target.addEventListener('drop', (e) => {
+      if (locked()) {
+        e.preventDefault();
+        return;
+      }
       const files = Array.from(e.dataTransfer?.files || []);
       if (!files.length) return;
       e.preventDefault();
       files.forEach((file) => this.process(file));
     });
     target.addEventListener('paste', (e) => {
+      if (locked()) return;
       const files = Array.from(e.clipboardData?.items || [])
         .filter((item) => item.kind === 'file')
         .map((item) => item.getAsFile())

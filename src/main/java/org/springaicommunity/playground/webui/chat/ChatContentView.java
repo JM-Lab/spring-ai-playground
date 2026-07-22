@@ -56,6 +56,7 @@ import org.springaicommunity.playground.service.analytics.UsageAnalyticsService;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.chat.ChatProvider;
 import org.springaicommunity.playground.service.chat.ChatService;
+import org.springaicommunity.playground.service.chat.ChatStreamRegistry;
 import org.springaicommunity.playground.service.chat.ChatToolPreferences;
 import org.springaicommunity.playground.service.chat.ReasoningEffort;
 import org.springaicommunity.playground.service.chat.VisionCapabilityService;
@@ -89,6 +90,7 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.util.MimeType;
 import reactor.core.Disposable;
+import reactor.core.publisher.SignalType;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -170,7 +172,8 @@ public class ChatContentView extends VerticalLayout {
     private final ChatClientActionRegistry clientActionRegistry;
     private final SpringAiPlaygroundOptions.ToolSearch toolSearch;
     private final SpringAiPlaygroundOptions.AgentLoop agentLoop;
-    private Disposable currentStream;
+    private final ChatStreamRegistry streamRegistry;
+    private final CompletableFuture<ZoneId> zoneIdFuture;
 
     public ChatContentView(ChatService chatService,
             ChatHistoryService chatHistoryService, ChatHistory chatHistory,
@@ -183,7 +186,7 @@ public class ChatContentView extends VerticalLayout {
             ChatClientActionRegistry clientActionRegistry, ConversationFileUploadStore fileUploadStore,
             ChatImageStore imageStore,
             VisionCapabilityService visionCapabilityService, UsageAnalyticsService usageAnalyticsService,
-            UsageEventTracker usageEventTracker) {
+            UsageEventTracker usageEventTracker, ChatStreamRegistry streamRegistry) {
         this.chatHistory = chatHistory;
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
@@ -201,6 +204,7 @@ public class ChatContentView extends VerticalLayout {
         this.visionCapabilityService = visionCapabilityService;
         this.usageAnalyticsService = usageAnalyticsService;
         this.usageEventTracker = usageEventTracker;
+        this.streamRegistry = streamRegistry;
         this.toolSearch = playgroundOptions.chat().toolSearch();
         this.agentLoop = playgroundOptions.chat().agentLoop();
         this.customToolsComboBox = ExposedToolsSelector.newCustomSelector(
@@ -215,6 +219,11 @@ public class ChatContentView extends VerticalLayout {
         this.customToolsComboBox.setSelectedItemsOnTop(true);
         this.builtinToolsComboBox.setSelectedItemsOnTop(true);
         this.composedToolsComboBox.setSelectedItemsOnTop(true);
+        this.customToolsComboBox.setItems(List.of());
+        this.builtinToolsComboBox.setItems(List.of());
+        this.composedToolsComboBox.setItems(List.of());
+        this.builtinToolsComboBox.setHelperText(
+                "Built-in tools the MCP server currently exposes — tick which this chat may use.");
 
         this.exposedToolsDisplayBox = new MultiSelectComboBox<>();
         this.exposedToolsDisplayBox.setPlaceholder("Built-in MCP off — click to enable");
@@ -254,6 +263,8 @@ public class ChatContentView extends VerticalLayout {
 
         this.messageScroller = new Scroller(this.messageListLayout);
         this.messageScroller.setSizeFull();
+        this.messageScroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
+        this.messageScroller.addClassName("chat-message-scroller");
         this.messageScroller.getStyle().set("overflow-anchor", "none");
 
         this.mcpToolProviderComboBox = new MultiSelectComboBox<>();
@@ -262,22 +273,22 @@ public class ChatContentView extends VerticalLayout {
         this.mcpToolProviderComboBox.setSelectedItemsOnTop(true);
         this.mcpToolProviderComboBox.setItemLabelGenerator(
                 mcpServerInfo -> mcpServerInfo.serverName() + "(" + mcpServerInfo.mcpTransportType() + ")");
-        List<McpServerInfo> externalServers = externalMcpServerInfos();
-        this.mcpToolProviderComboBox.setItems(externalServers);
-        this.mcpToolProviderComboBox.setPlaceholder(
-                externalServers.isEmpty() ? "No MCP servers connected" : "Select MCP servers for tools");
+        this.mcpToolProviderComboBox.setItems(externalMcpServerInfos());
         this.mcpToolProviderComboBox.addClassName("active-on-select");
         this.mcpToolProviderComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) persistToolPreferences();
         });
 
         this.documentsComboBox = new MultiSelectComboBox<>();
-        this.documentsComboBox.setPlaceholder("No documents for RAG");
         this.documentsComboBox.setWidth("300px");
         this.documentsComboBox.setTooltipText("RAG with documents stored in VectorDB.");
         this.documentsComboBox.setSelectedItemsOnTop(true);
         this.documentsComboBox.setItemLabelGenerator(VectorStoreDocumentInfo::title);
-        this.documentsComboBox.setItems(this.chatService.getExistDocumentInfoList());
+        List<VectorStoreDocumentInfo> ragDocuments = this.chatService.getExistDocumentInfoList();
+        this.documentsComboBox.setItems(ragDocuments);
+        this.documentsComboBox.setEnabled(!ragDocuments.isEmpty());
+        this.documentsComboBox.setPlaceholder(
+                ragDocuments.isEmpty() ? "No documents for RAG" : "Select documents for RAG");
         this.documentsComboBox.addClassName("active-on-select");
         this.documentsComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) persistToolPreferences();
@@ -292,7 +303,7 @@ public class ChatContentView extends VerticalLayout {
         this.userPromptTextArea.setMaxRows(5);
         this.userPromptTextArea.setValueChangeMode(ValueChangeMode.EAGER);
         this.userPromptTextArea.setClearButtonVisible(true);
-        CompletableFuture<ZoneId> zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
+        this.zoneIdFuture = VaadinUtils.buildClientZoneIdFuture(new CompletableFuture<>());
         this.userPromptTextArea.setId("sttTextArea");
 
         String savedProvider = this.chatHistory.provider();
@@ -308,12 +319,9 @@ public class ChatContentView extends VerticalLayout {
 
         submitButton.addClickListener(e -> {
             if (providerMismatch) return;
-            if (this.currentStream != null && !this.currentStream.isDisposed()) {
-                this.currentStream.dispose();
-                this.currentStream = null;
-                submitButton.setIcon(submitIcon);
-                this.userPromptTextArea.setReadOnly(false);
-                micButton.setEnabled(true);
+            if (this.streamRegistry.isStreaming(this.chatHistory.conversationId())) {
+                this.streamRegistry.stop(this.chatHistory.conversationId());
+                applyStreamingState(false);
                 return;
             }
             this.userPromptTextArea.getElement().executeJs("return this.value;").then(String.class, userPrompt -> {
@@ -321,12 +329,9 @@ public class ChatContentView extends VerticalLayout {
                     return;
                 this.userPromptTextArea.getElement().executeJs("this.value='';");
                 this.userPromptTextArea.clear();
-                this.userPromptTextArea.setReadOnly(true);
-                micButton.setEnabled(false);
-                Icon stopIcon = VaadinUtils.styledIcon(VaadinIcon.STOP.create());
-                submitButton.setIcon(stopIcon);
-                submitButton.setTooltipText("Stop");
-                this.currentStream = inputEvent(zoneIdFuture, userPrompt);
+                this.streamRegistry.begin(this.chatHistory.conversationId());
+                applyStreamingState(true);
+                this.streamRegistry.attach(this.chatHistory.conversationId(), inputEvent(userPrompt));
             });
         });
 
@@ -357,12 +362,16 @@ public class ChatContentView extends VerticalLayout {
 
         Icon ragIcon = VaadinUtils.styledIcon(VaadinIcon.SEARCH_PLUS.create());
         ragIcon.setTooltipText("Select documents in VectorDB");
-        ragIcon.addSingleClickListener(event -> this.documentsComboBox.setOpened(true));
+        ragIcon.addSingleClickListener(event -> {
+            if (this.documentsComboBox.isEnabled()) this.documentsComboBox.setOpened(true);
+        });
         ragIcon.getStyle().set("margin-right", "0px");
         Icon toolIcon = VaadinUtils.styledIcon(VaadinIcon.TOOLBOX.create());
         toolIcon.setTooltipText("Access Tools via external MCP connections");
         toolIcon.getStyle().set("margin-right", "0px");
-        toolIcon.addSingleClickListener(event -> this.mcpToolProviderComboBox.setOpened(true));
+        toolIcon.addSingleClickListener(event -> {
+            if (this.mcpToolProviderComboBox.isEnabled()) this.mcpToolProviderComboBox.setOpened(true);
+        });
 
         HorizontalLayout toolLayout = new HorizontalLayout(toolIcon, this.mcpToolProviderComboBox);
         toolLayout.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -437,6 +446,12 @@ public class ChatContentView extends VerticalLayout {
         exposedToolsPopover.setPosition(PopoverPosition.TOP);
         exposedToolsPopover.setOpenOnClick(true);
         exposedToolsPopover.add(exposedToolsPopoverBody);
+        exposedToolsPopover.addOpenedChangeListener(event -> {
+            if (event.isOpened()) {
+                populateExposedToolsCombos(false);
+                applyDynamicToolsUi();
+            }
+        });
 
         toolStudioIcon.addSingleClickListener(event -> exposedToolsPopover.setOpened(true));
 
@@ -486,6 +501,7 @@ public class ChatContentView extends VerticalLayout {
             this.userPromptTextArea.setEnabled(false);
             submitButton.setEnabled(false);
             micButton.setEnabled(false);
+            this.attachButton.setEnabled(false);
             Span providerLockBanner = new Span("This conversation was created with " + savedProvider
                     + " but the app is now running " + currentProvider
                     + ". It is read-only - start a new chat to continue.");
@@ -498,24 +514,22 @@ public class ChatContentView extends VerticalLayout {
                     .set("font-size", "var(--lumo-font-size-s)");
             userInputLayout.addComponentAsFirst(providerLockBanner);
         }
+        if (this.streamRegistry.isStreaming(this.chatHistory.conversationId())) {
+            applyStreamingState(true);
+            UI streamUi = VaadinUtils.getUi(this);
+            this.streamRegistry.onFinish(this.chatHistory.conversationId(),
+                    () -> streamUi.access(this::refreshAfterBackgroundStream));
+            if (!this.streamRegistry.isStreaming(this.chatHistory.conversationId())) refreshAfterBackgroundStream();
+        }
         setSizeFull();
         setMargin(false);
         setSpacing(false);
         getStyle().set("overflow", "hidden").set("display", "flex")
                 .set("flex-direction", "column").set("align-items", "stretch");
 
-        List<Message> messages = this.chatHistory.messagesSupplier().get();
-        if (messages.isEmpty())
+        if (this.chatHistory.messagesSupplier().get().isEmpty())
             return;
-        ChatContentManager chatContentManager = new ChatContentManager(null, null, zoneIdFuture,
-                this.chatHistory);
-        this.messageListLayout.remove(this.scrollSpacer);
-        messages.forEach(message -> chatContentManager.initMarkdownMessage(this.messageListLayout, message,
-                message.getMessageType()));
-        this.messageListLayout.add(this.scrollSpacer);
-
-        this.messageListLayout.getChildren().filter(c -> c != this.scrollSpacer).reduce((a, b) -> b)
-                .ifPresent(last -> last.scrollIntoView(DefaultScrollOptions));
+        renderPersistedMessages();
         ChatToolPreferences preferences = this.chatHistory.toolPreferences();
         List<String> ragDocInfoIds = preferences.ragDocInfoIds();
         if (!ragDocInfoIds.isEmpty()) {
@@ -543,6 +557,10 @@ public class ChatContentView extends VerticalLayout {
     }
 
     private void populateExposedToolsCombos() {
+        populateExposedToolsCombos(true);
+    }
+
+    private void populateExposedToolsCombos(boolean selectAllWhenNothingSelected) {
         Set<String> defaultIds = this.toolSpecPersistenceService.getDefaultToolIds();
         List<ToolSpec> all = this.toolSpecService.getToolSpecList();
         Set<String> exposedIds = this.toolSpecService.getToolMcpServerSetting().exposedToolIds();
@@ -569,8 +587,10 @@ public class ChatContentView extends VerticalLayout {
                 "No external tools re-exposed", "Composed external tools for this chat");
 
         if (previouslySelected.isEmpty()) {
-            exposedCustoms.forEach(this.customToolsComboBox::select);
-            exposedBuiltins.forEach(this.builtinToolsComboBox::select);
+            if (selectAllWhenNothingSelected) {
+                exposedCustoms.forEach(this.customToolsComboBox::select);
+                exposedBuiltins.forEach(this.builtinToolsComboBox::select);
+            }
         } else {
             selectByToolIds(this.customToolsComboBox, previouslySelected);
             selectByToolIds(this.builtinToolsComboBox, previouslySelected);
@@ -702,10 +722,17 @@ public class ChatContentView extends VerticalLayout {
                 gateOk ? "var(--lumo-secondary-text-color)" : "var(--lumo-error-text-color)");
         boolean dynamic = this.dynamicToolsCheckbox.getValue();
         boolean manual = this.useBuiltinMcpCheckbox.getValue();
-        this.customToolsComboBox.setEnabled(manual);
-        this.builtinToolsComboBox.setEnabled(manual);
-        this.composedToolsComboBox.setEnabled(manual);
-        this.mcpToolProviderComboBox.setEnabled(!dynamic);
+        this.customToolsComboBox.setEnabled(manual && hasItems(this.customToolsComboBox));
+        this.builtinToolsComboBox.setEnabled(manual && hasItems(this.builtinToolsComboBox));
+        this.composedToolsComboBox.setEnabled(manual && hasItems(this.composedToolsComboBox));
+        boolean hasServers = this.mcpToolProviderComboBox.getListDataView().getItems().findAny().isPresent();
+        this.mcpToolProviderComboBox.setEnabled(!dynamic && hasServers);
+        this.mcpToolProviderComboBox.setPlaceholder(!hasServers ? "No MCP servers connected"
+                : dynamic ? "Disabled in Dynamic mode" : "Select MCP servers for tools");
+    }
+
+    private static boolean hasItems(MultiSelectComboBox<ToolSpec> combo) {
+        return combo.getListDataView().getItems().findAny().isPresent();
     }
 
     private long searchablePoolSize() {
@@ -721,7 +748,36 @@ public class ChatContentView extends VerticalLayout {
         return callbacks;
     }
 
-    private Disposable inputEvent(CompletableFuture<ZoneId> zoneIdFuture, String userPrompt) {
+    private void applyStreamingState(boolean streaming) {
+        this.userPromptTextArea.setReadOnly(streaming);
+        this.micButton.setEnabled(!streaming);
+        this.submitButton.setIcon(VaadinUtils.styledIcon(
+                (streaming ? VaadinIcon.STOP : VaadinIcon.ARROW_CIRCLE_UP).create()));
+        this.submitButton.setTooltipText(streaming ? "Stop" : "Submit");
+        refreshPendingImagesBar();
+    }
+
+    private void renderPersistedMessages() {
+        this.messageListLayout.removeAll();
+        ChatContentManager renderer = new ChatContentManager(null, null, this.zoneIdFuture, this.chatHistory);
+        this.chatHistory.messagesSupplier().get().forEach(message ->
+                renderer.initMarkdownMessage(this.messageListLayout, message, message.getMessageType()));
+        this.messageListLayout.add(this.scrollSpacer);
+        this.messageListLayout.getChildren().filter(c -> c != this.scrollSpacer).reduce((a, b) -> b)
+                .ifPresent(last -> last.scrollIntoView(DefaultScrollOptions));
+    }
+
+    private void refreshAfterBackgroundStream() {
+        if (!isAttached()) return;
+        ChatHistory latest = this.chatHistoryService.getChatHistory(this.chatHistory.conversationId());
+        if (latest != null) {
+            this.chatHistory = latest;
+            renderPersistedMessages();
+        }
+        applyStreamingState(false);
+    }
+
+    private Disposable inputEvent(String userPrompt) {
         this.chatHistory = this.chatHistory.withToolPreferences(currentToolPreferences());
         this.chatHistoryService.updateChatHistory(this.chatHistory);
         ChatContentManager chatContentManager = new ChatContentManager(this.messageListLayout, userPrompt, zoneIdFuture,
@@ -778,11 +834,16 @@ public class ChatContentView extends VerticalLayout {
                             ui.access(() -> chatContentManager.appendBotThinkProcessMessage(o));
                         },
                         round -> ui.access(() -> chatContentManager.applyRoundUsage(round)),
-                        signalType -> ui.access(() -> {
-                            if (reactor.core.publisher.SignalType.CANCEL.equals(signalType))
-                                chatContentManager.markStopped();
-                            doFinally(chatContentManager);
-                        }), new ChatHumanQuestionHandler(ui, this.agentLoop.approvalTimeoutSeconds()),
+                        signalType -> {
+                            try {
+                                ui.access(() -> {
+                                    if (SignalType.CANCEL.equals(signalType)) chatContentManager.markStopped();
+                                    doFinally(chatContentManager);
+                                });
+                            } finally {
+                                releaseStream();
+                            }
+                        }, new ChatHumanQuestionHandler(ui, this.agentLoop.approvalTimeoutSeconds()),
                         new ChatFileUploadHandler(ui, this.fileUploadStore, this.chatHistory.conversationId(),
                                 this.agentLoop.dialogTimeoutSeconds()),
                         new ChatImageReferenceHandler(ui, this.imageStore, this.chatHistory.conversationId(),
@@ -791,11 +852,17 @@ public class ChatContentView extends VerticalLayout {
                                 .map(image -> Media.builder().id(image.hash()).name(image.fileName())
                                         .mimeType(MimeType.valueOf(image.mimeType())).data(image.bytes()).build())
                                 .toList())
-                .doOnError(throwable -> ui.access(() -> {
-                    chatContentManager.markError(throwable);
-                    VaadinUtils.showErrorNotification(ChatErrorMessages.friendly(throwable));
-                    doFinally(chatContentManager);
-                }))
+                .doOnError(throwable -> {
+                    try {
+                        ui.access(() -> {
+                            chatContentManager.markError(throwable);
+                            VaadinUtils.showErrorNotification(ChatErrorMessages.friendly(throwable));
+                            doFinally(chatContentManager);
+                        });
+                    } finally {
+                        releaseStream();
+                    }
+                })
                 .subscribe(content -> {
                     saveOnFirstActivity.run();
                     ui.access(() -> chatContentManager.append(content));
@@ -872,7 +939,8 @@ public class ChatContentView extends VerticalLayout {
             this.pendingImagesBar.add(count);
         }
         this.pendingImagesBar.setVisible(used > 0);
-        if (this.attachButton != null) this.attachButton.setEnabled(used < MAX_IMAGES);
+        if (this.attachButton != null) this.attachButton.setEnabled(used < MAX_IMAGES
+                && !this.streamRegistry.isStreaming(this.chatHistory.conversationId()));
     }
 
     private Div pendingImageChip(PendingImage image) {
@@ -958,17 +1026,15 @@ public class ChatContentView extends VerticalLayout {
                 });
     }
 
+    private void releaseStream() {
+        this.streamRegistry.finish(this.chatHistory.conversationId());
+    }
+
     private void doFinally(ChatContentManager chatContentManager) {
         chatContentManager.doFinally();
-        this.userPromptTextArea.setReadOnly(false);
+        releaseStream();
+        applyStreamingState(false);
         this.userPromptTextArea.setEnabled(true);
-        this.submitButton.setIcon(VaadinUtils.styledIcon(VaadinIcon.ARROW_CIRCLE_UP.create()));
-        this.submitButton.setTooltipText("Submit");
-        this.micButton.setEnabled(true);
-        if (this.currentStream != null) {
-            this.currentStream.dispose();
-            this.currentStream = null;
-        }
         pinAfterStream(chatContentManager.userMessage);
         this.userPromptTextArea.focus();
     }
@@ -1592,7 +1658,12 @@ public class ChatContentView extends VerticalLayout {
         private ChatMessage buildMessage(String message, MessageType messageType, long epochMillis) {
             ChatMessage chatMessage = buildMessage(message, messageType.getValue().toUpperCase(),
                     messageType.ordinal(), epochMillis);
-            if (MessageType.USER.equals(messageType)) chatMessage.usePlainText();
+            if (MessageType.USER.equals(messageType)) {
+                chatMessage.usePlainText();
+                chatMessage.addClassName("user-message");
+            } else {
+                chatMessage.addClassName("assistant-message");
+            }
             chatMessage.addActionBar(buildMessageActionBar(chatMessage, messageType));
             return chatMessage;
         }

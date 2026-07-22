@@ -115,7 +115,6 @@
   {# Docs-only Google tag (routes only to the G-QGJEJ4NXQ8 stream). Use the GT- tag id, NOT the G- measurement id - gtag/js?id=G-QGJEJ4NXQ8 has no installable loader (404). #}
   {% set ga_tag_id = "GT-MJKRMQZH" %}
   {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
-  {% set ga_page_title = "Doc - " ~ page.title if page and page.title else "Doc - " ~ config.site_name %}
   {% set page_description = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = config.site_url ~ page.url if page and page.url else config.site_url %}
   <script>
@@ -133,8 +132,7 @@
       gtag('set', 'user_properties', { app_surface: 'docs' });
       gtag('config', '{{ ga_tag_id }}', {
         app_name: 'spring-ai-playground-docs',
-        app_surface: 'docs',
-        page_title: '{{ ga_page_title | e }}'
+        app_surface: 'docs'
       });
 
       // navigation.instant has no reload, so re-fire page_view per in-site nav (skip first; the config above counts the entry page).

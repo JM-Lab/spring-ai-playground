@@ -16,14 +16,20 @@
 package org.springaicommunity.playground.service.chat;
 
 import tools.jackson.databind.ObjectMapper;
+import com.openai.core.JsonValue;
+import com.openai.models.chat.completions.ChatCompletionChunk;
 import org.springaicommunity.playground.SpringAiPlaygroundOptions;
 import org.springaicommunity.playground.service.SpringAiPlaygroundRagAdvisor;
+import org.springaicommunity.playground.service.tool.FileUploadHandler;
+import org.springaicommunity.playground.service.tool.HumanQuestionHandler;
+import org.springaicommunity.playground.service.tool.ImageReferenceHandler;
 import org.springaicommunity.playground.service.vectorstore.VectorStoreDocumentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.DefaultUsage;
@@ -35,15 +41,21 @@ import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,6 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
@@ -64,12 +77,19 @@ class ChatServiceTest {
     @Autowired
     VectorStoreDocumentService vectorStoreDocumentService;
 
+    @Autowired
+    ChatMemory chatMemory;
+
     @MockitoBean
     ChatModel chatModel;
+
+    @MockitoBean
+    VectorStore vectorStore;
 
     @BeforeEach
     void stubModelOptions() {
         lenient().when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+        lenient().when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     }
 
     @Test
@@ -122,6 +142,97 @@ class ChatServiceTest {
         assertEquals(331, round.totalTokens());
         assertFalse(round.toolCallRound());
         assertFalse(round.thinkRound());
+    }
+
+    @Test
+    void testStreamSurfacesThinkingFromReasoningContentMetadata() {
+        long timestamp = System.currentTimeMillis();
+        ChatHistory chatHistory = new ChatHistory("think-chat", "Think Chat", timestamp, timestamp, "System prompt",
+                (DefaultChatOptions) ChatOptions.builder().build(), () -> List.of(new UserMessage("Think Chat")));
+        AssistantMessage reasoned = AssistantMessage.builder().content("answer")
+                .properties(Map.of("reasoningContent", "chain of thought")).build();
+        ChatResponse response = new ChatResponse(List.of(new Generation(reasoned)),
+                ChatResponseMetadata.builder().usage(new DefaultUsage(7, 3)).build());
+        when(chatModel.stream(any(Prompt.class))).thenReturn(Flux.just(response));
+
+        List<Object> thinking = new ArrayList<>();
+        List<ChatService.RoundUsage> rounds = new ArrayList<>();
+        String joined = chatService.stream(chatHistory, "Think Chat", null, null, null, null, null,
+                thinking::add, rounds::add, null, null, null, null, null, List.of())
+                .toStream().collect(Collectors.joining());
+
+        assertEquals("answer", joined);
+        assertEquals(List.of("chain of thought"), thinking);
+        assertEquals(1, rounds.size());
+        assertTrue(rounds.get(0).thinkRound());
+    }
+
+    @Test
+    void testStreamExtractsThinkingFromOpenAiChunkChoice() {
+        long timestamp = System.currentTimeMillis();
+        ChatHistory chatHistory = new ChatHistory("chunk-chat", "Chunk Chat", timestamp, timestamp, "System prompt",
+                (DefaultChatOptions) ChatOptions.builder().build(), () -> List.of(new UserMessage("Chunk Chat")));
+        ChatCompletionChunk.Choice.Delta delta = ChatCompletionChunk.Choice.Delta.builder()
+                .putAdditionalProperty("reasoning",
+                        JsonValue.from(List.of("step one", Map.of("reasoning_content", "step two"))))
+                .build();
+        ChatCompletionChunk.Choice choice = ChatCompletionChunk.Choice.builder()
+                .index(0L).delta(delta).finishReason(Optional.empty()).build();
+        AssistantMessage viaChunk = AssistantMessage.builder().content("answer")
+                .properties(Map.of("chunkChoice", choice)).build();
+        when(chatModel.stream(any(Prompt.class))).thenReturn(
+                Flux.just(new ChatResponse(List.of(new Generation(viaChunk)))));
+
+        List<Object> thinking = new ArrayList<>();
+        chatService.stream(chatHistory, "Chunk Chat", null, null, null, null, null,
+                thinking::add, null, null, null, null, null, null, List.of())
+                .toStream().collect(Collectors.joining());
+
+        assertEquals(List.of("step one\nstep two"), thinking);
+    }
+
+    @Test
+    void testCancelledStreamCommitsPartialAndCancelsPendingInteractions() {
+        long timestamp = System.currentTimeMillis();
+        ChatHistory chatHistory = new ChatHistory("cancel-chat", "Cancel Chat", timestamp, timestamp, "System prompt",
+                (DefaultChatOptions) ChatOptions.builder().build(), () -> List.of(new UserMessage("Cancel Chat")));
+        when(chatModel.stream(any(Prompt.class))).thenReturn(Flux.concat(
+                Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage("partial"))))),
+                Flux.never()));
+        HumanQuestionHandler humanQuestionHandler = mock(HumanQuestionHandler.class);
+        FileUploadHandler fileUploadHandler = mock(FileUploadHandler.class);
+        ImageReferenceHandler imageReferenceHandler = mock(ImageReferenceHandler.class);
+
+        String first = chatService.stream(chatHistory, "Cancel Chat", null, null, null, null, null, null, null,
+                null, humanQuestionHandler, fileUploadHandler, imageReferenceHandler, null, List.of())
+                .blockFirst(Duration.ofSeconds(10));
+
+        assertEquals("partial", first);
+        verify(humanQuestionHandler).cancelPending();
+        verify(fileUploadHandler).cancelPending();
+        verify(imageReferenceHandler).cancelPending();
+        assertTrue(chatMemory.get("cancel-chat").stream()
+                .anyMatch(message -> MessageType.ASSISTANT.equals(message.getMessageType())
+                        && "partial".equals(message.getText())));
+    }
+
+    @Test
+    void testStreamCommitsHistoryWhenBeforeHistoryCommitThrows() throws InterruptedException {
+        long timestamp = System.currentTimeMillis();
+        ChatHistory chatHistory = new ChatHistory("detached-chat", "Detached Chat", timestamp, timestamp,
+                "System prompt", (DefaultChatOptions) ChatOptions.builder().build(),
+                () -> List.of(new UserMessage("Detached Chat")));
+        when(chatModel.stream(any(Prompt.class))).thenReturn(
+                Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage("answer"))))));
+        CountDownLatch committed = new CountDownLatch(1);
+
+        Flux<String> stream = chatService.stream(chatHistory, "Detached Chat", null, history -> committed.countDown(),
+                null, null, null, null, null, signalType -> {
+                    throw new IllegalStateException("UI detached");
+                }, null, null, null, null, List.of());
+
+        assertEquals("answer", stream.collect(Collectors.joining()).block(Duration.ofSeconds(10)));
+        assertTrue(committed.await(5, TimeUnit.SECONDS));
     }
 
     @Test

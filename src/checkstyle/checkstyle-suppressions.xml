@@ -100,18 +100,11 @@
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]ShutdownLifecycleTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]SpringAiPlaygroundApplicationTests\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]PersistenceExecutorTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]SpringAiPlaygroundIT\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryPersistenceServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatHistoryServiceTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatServiceWithCompatibleOpenAiIT\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]chat[\\/]ChatServiceWithOllamaIT\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]McpServerInfoServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]HttpConnectionParametersWithExtrasTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]McpClientPropertiesServiceEnvTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]McpClientServiceTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]McpSseClientServiceTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]StdioMcpClientServiceTest\.java$" checks=".*"/>
-    <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]mcp[\\/]client[\\/]StreamableMcpClientServiceTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]oauth[\\/]EncryptedFileOAuth2AuthorizedClientRepositoryTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]oauth[\\/]McpClientRegistrationRepositoryTest\.java$" checks=".*"/>
     <suppress files="src[\\/]test[\\/]java[\\/]org[\\/]springaicommunity[\\/]playground[\\/]service[\\/]oauth[\\/]McpOAuth2AuthorizationCodeRequestCustomizerTest\.java$" checks=".*"/>

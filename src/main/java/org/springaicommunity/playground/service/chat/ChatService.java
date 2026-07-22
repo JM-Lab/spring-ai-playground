@@ -162,10 +162,13 @@ public class ChatService {
                 .doFinally(signalType -> {
                     boolean finished = SignalType.ON_COMPLETE.equals(signalType)
                             || SignalType.CANCEL.equals(signalType);
-                    if (finished && Objects.nonNull(beforeHistoryCommit)) beforeHistoryCommit.accept(signalType);
-                    if ((finished || SignalType.ON_ERROR.equals(signalType))
-                            && Objects.nonNull(completeChatHistoryConsumer))
-                        completeChatHistoryConsumer.accept(chatHistory);
+                    try {
+                        if (finished && Objects.nonNull(beforeHistoryCommit)) beforeHistoryCommit.accept(signalType);
+                    } finally {
+                        if ((finished || SignalType.ON_ERROR.equals(signalType))
+                                && Objects.nonNull(completeChatHistoryConsumer))
+                            completeChatHistoryConsumer.accept(chatHistory);
+                    }
                 });
     }
 

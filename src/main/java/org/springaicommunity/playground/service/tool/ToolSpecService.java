@@ -301,12 +301,15 @@ public class ToolSpecService {
             return;
         }
         logger.info("Adding MCP tool to server: name={}", toolSpec.name());
+        RiskLevel riskLevel = RiskLevel.valueOf(riskLevelOf(toolSpec));
         if (Objects.nonNull(this.mcpSyncServer)) {
             this.mcpSyncServer.addTool(this.hitlGate.decorate(
-                    McpToolUtils.toSyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop()));
+                    McpToolUtils.toSyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop(),
+                    riskLevel));
         } else {
             this.mcpAsyncServer.addTool(this.hitlGate.decorate(
-                    McpToolUtils.toAsyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop()));
+                    McpToolUtils.toAsyncToolSpecification(toolSpec.toolCallback()), toolSpec.humanInTheLoop(),
+                    riskLevel));
         }
         this.mcpServerInfoService.updateDefaultMcpTool();
     }
@@ -336,17 +339,19 @@ public class ToolSpecService {
         logger.info("Adding external MCP tool to built-in server: name={}, hitl={}", name, hitl);
         ToolSpec externalSpec = new ToolSpec(name, name, null, null, null, null, null, callback)
                 .withHumanInTheLoop(hitl ? REQUIRED_HITL : null);
+        RiskLevel externalLevel = callback instanceof WrappedExternalToolCallback wrapped
+                ? wrapped.riskLevel() : null;
         try {
             if (Objects.nonNull(this.mcpSyncServer)) {
                 SyncToolSpecification spec = McpToolUtils.toSyncToolSpecification(callback);
-                this.mcpSyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL) : spec);
+                this.mcpSyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL, externalLevel) : spec);
             } else if (Objects.nonNull(this.mcpAsyncServer)) {
                 AsyncToolSpecification spec = McpToolUtils.toAsyncToolSpecification(callback);
-                this.mcpAsyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL) : spec);
+                this.mcpAsyncServer.addTool(hitl ? this.hitlGate.decorate(spec, REQUIRED_HITL, externalLevel) : spec);
             }
             this.externalToolSpecs.put(name, externalSpec);
-            if (callback instanceof WrappedExternalToolCallback wrapped) {
-                this.externalToolRiskLevels.put(name, wrapped.riskLevel().name());
+            if (externalLevel != null) {
+                this.externalToolRiskLevels.put(name, externalLevel.name());
             }
         } catch (RuntimeException e) {
             logger.warn("Failed to add external MCP tool: name={}, error={}", name, e.getMessage());
@@ -504,6 +509,11 @@ public class ToolSpecService {
     public ToolManifest.HumanInTheLoop humanInTheLoopFor(String toolName) {
         ToolSpec spec = specForGating(toolName);
         return spec == null ? null : spec.humanInTheLoop();
+    }
+
+    public RiskLevel gatingRiskLevel(String toolName) {
+        ToolSpec spec = specForGating(toolName);
+        return spec == null ? null : RiskLevel.valueOf(riskLevelOf(spec));
     }
 
     private ToolSpec specForGating(String toolName) {

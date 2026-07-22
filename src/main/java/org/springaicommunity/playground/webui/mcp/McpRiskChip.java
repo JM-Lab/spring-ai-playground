@@ -43,7 +43,7 @@ public class McpRiskChip extends HtmlContainer {
         if (prefix != null && !prefix.isBlank()) {
             text.append(prefix).append(": ");
         }
-        text.append(level.name()).append(" — ").append(style.label);
+        text.append(level.name()).append(" — ").append(level.label());
         if (floorTrigger != null && !floorTrigger.isBlank()) {
             text.append(" (floor: ").append(shortTrigger(floorTrigger)).append(')');
         }
@@ -65,10 +65,9 @@ public class McpRiskChip extends HtmlContainer {
     public static McpRiskChip mitigated(RiskLevel effectiveLevel, RiskLevel inherentLevel, String floorTrigger) {
         McpRiskChip chip = new McpRiskChip(effectiveLevel, floorTrigger);
         if (inherentLevel != null && effectiveLevel != null && inherentLevel != effectiveLevel) {
-            ChipStyle style = STYLES.get(effectiveLevel);
             StringBuilder text = new StringBuilder();
             text.append(inherentLevel.name()).append(" → ").append(effectiveLevel.name())
-                    .append(" — ").append(style.label);
+                    .append(" — ").append(effectiveLevel.label());
             if (floorTrigger != null && !floorTrigger.isBlank()) {
                 text.append(" (floor: ").append(shortTrigger(floorTrigger)).append(')');
             }
@@ -94,8 +93,7 @@ public class McpRiskChip extends HtmlContainer {
     }
 
     static String labelFor(RiskLevel level) {
-        if (level == null) return STYLES.get(RiskLevel.L1).label;
-        return STYLES.get(level).label;
+        return level == null ? RiskLevel.L1.label() : level.label();
     }
 
     public static String levelRationale(RiskLevel level) {
@@ -110,16 +108,16 @@ public class McpRiskChip extends HtmlContainer {
         };
     }
 
-    private record ChipStyle(String background, String foreground, String label) {}
+    private record ChipStyle(String background, String foreground) {}
 
     private static Map<RiskLevel, ChipStyle> buildStyles() {
         Map<RiskLevel, ChipStyle> styles = new LinkedHashMap<>();
-        styles.put(RiskLevel.L0, new ChipStyle("#1b5e20", "#ffffff", "Verified"));
-        styles.put(RiskLevel.L1, new ChipStyle("#2e7d32", "#ffffff", "Safe"));
-        styles.put(RiskLevel.L2, new ChipStyle("#9ccc65", "#1b1b1b", "Low"));
-        styles.put(RiskLevel.L3, new ChipStyle("#fdd835", "#1b1b1b", "Moderate"));
-        styles.put(RiskLevel.L4, new ChipStyle("#fb8c00", "#ffffff", "High"));
-        styles.put(RiskLevel.L5, new ChipStyle("#e53935", "#ffffff", "Critical"));
+        styles.put(RiskLevel.L0, new ChipStyle("#1b5e20", "#ffffff"));
+        styles.put(RiskLevel.L1, new ChipStyle("#2e7d32", "#ffffff"));
+        styles.put(RiskLevel.L2, new ChipStyle("#9ccc65", "#1b1b1b"));
+        styles.put(RiskLevel.L3, new ChipStyle("#fdd835", "#1b1b1b"));
+        styles.put(RiskLevel.L4, new ChipStyle("#fb8c00", "#ffffff"));
+        styles.put(RiskLevel.L5, new ChipStyle("#e53935", "#ffffff"));
         return styles;
     }
 }

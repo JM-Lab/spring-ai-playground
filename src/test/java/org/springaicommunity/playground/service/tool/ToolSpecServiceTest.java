@@ -24,6 +24,7 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springaicommunity.playground.service.tool.ToolSpec.SandboxOverrides;
 import org.springaicommunity.playground.service.tool.runtime.JsToolExecutor.JsExecutionResult;
 import org.springaicommunity.playground.service.tool.ToolSpec.CodeType;
@@ -559,5 +560,17 @@ class ToolSpecServiceTest {
         assertThat(toolSpecService.getToolMcpServerSetting().exposedToolIds())
                 .as("user-authored tools keep the auto-expose behavior")
                 .contains("custom-auto-1");
+    }
+
+    @Test
+    void gatingRiskLevelDerivesFromSandboxPosture() {
+        ToolSpec tool = toolSpecService.update("risk-gate-1", "riskyDeleteTool", "deletes things",
+                List.of(), List.of(), "return 1;", CodeType.Javascript);
+        tool.withSandboxOverrides(new SandboxOverrides(
+                Set.of(), Set.of(), Set.of(), Set.of(),
+                null, Set.of(), null, null, null, true));
+
+        assertThat(toolSpecService.gatingRiskLevel("riskyDeleteTool")).isEqualTo(RiskLevel.L5);
+        assertThat(toolSpecService.gatingRiskLevel("noSuchTool")).isNull();
     }
 }

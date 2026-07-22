@@ -63,11 +63,12 @@ class HomeProviderStatus extends Div {
         this.embeddingOptions = embeddingOptions;
         this.environment = environment;
 
-        setWidthFull();
         getStyle()
                 .set("display", "flex")
                 .set("flex-wrap", "wrap")
-                .set("gap", "0.6rem");
+                .set("gap", "0.6rem")
+                .set("flex", "1 1 auto")
+                .set("min-width", "0");
     }
 
     @Override

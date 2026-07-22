@@ -60,6 +60,46 @@ class ToolSpecPersistenceServiceBootTest {
     }
 
     @Test
+    void legacyOverridesFileIsArchivedOnStart() throws IOException {
+        Path saveDir = home.resolve("tool").resolve("save");
+        Files.createDirectories(saveDir);
+        Files.writeString(saveDir.resolve("defaultToolOverrides.json"), "{}");
+
+        ToolSpecService toolSpecService = mock(ToolSpecService.class);
+        ResourceLoader resourceLoader = mock(ResourceLoader.class);
+        DefaultToolsPreferenceService preferenceService = mock(DefaultToolsPreferenceService.class);
+        DefaultToolsPreferenceResolver resolver = mock(DefaultToolsPreferenceResolver.class);
+
+        ToolSpecPersistenceService service = new ToolSpecPersistenceService(home, toolSpecService, "",
+                new ObjectMapper(), resourceLoader, this.persistenceExecutor, preferenceService, resolver,
+                new ToolActivationCalculator());
+
+        service.onStart();
+
+        assertThat(saveDir.resolve("defaultToolOverrides.json")).doesNotExist();
+        assertThat(saveDir.resolve("defaultToolOverrides.json.deprecated")).exists();
+    }
+
+    @Test
+    void exposeBuiltinToolsAsPreferenceRewritesPreferenceAndSetting() throws IOException {
+        ToolSpecService toolSpecService = mock(ToolSpecService.class);
+        when(toolSpecService.getToolMcpServerSetting()).thenReturn(new ToolMcpServerSetting(true, Set.of()));
+        ResourceLoader resourceLoader = mock(ResourceLoader.class);
+        DefaultToolsPreferenceService preferenceService = mock(DefaultToolsPreferenceService.class);
+        DefaultToolsPreferenceResolver resolver = mock(DefaultToolsPreferenceResolver.class);
+        when(resolver.resolveActiveNames(any(), any())).thenReturn(Set.of("getCurrentTime"));
+
+        ToolSpecPersistenceService service = new ToolSpecPersistenceService(home, toolSpecService, "",
+                new ObjectMapper(), resourceLoader, this.persistenceExecutor, preferenceService, resolver,
+                new ToolActivationCalculator());
+
+        service.exposeBuiltinToolsAsPreference(Set.of("getCurrentTime"));
+
+        verify(preferenceService).update(any());
+        verify(toolSpecService).updateToolMcpServerSetting(any(ToolMcpServerSetting.class));
+    }
+
+    @Test
     void foreignFileInSaveDirDoesNotClobberToolMcpServerSetting() throws IOException {
         Path saveDir = home.resolve("tool").resolve("save");
         Files.createDirectories(saveDir);

@@ -1,5 +1,5 @@
 title: Safety
-description: MCP risk-model and sandbox safety signals - L0–L5 risk distribution, tool-poisoning hits, content-hash tamper rejects, HITL approval rate, and sandbox guard blocks, all from lifetime counters.
+description: MCP risk-model and sandbox safety signals - L0-L5 risk distribution, tool-poisoning hits, content-hash tamper rejects, HITL approval rate, and sandbox guard blocks, all from lifetime counters.
 
 # Safety
 
@@ -9,7 +9,7 @@ description: MCP risk-model and sandbox safety signals - L0–L5 risk distributi
 
 ## When to look here
 
-- *"How risky is the tool surface the agent can reach?"* - Risk level distribution (L0–L5).
+- *"How risky is the tool surface the agent can reach?"* - Risk level distribution (L0-L5).
 - *"Did an upstream tool quietly change its definition?"* - Tamper rejects KPI (content-hash ledger, TOFU).
 - *"Is any tool description trying to inject instructions?"* - Poisoning hits KPI + the risk-event timeline.
 - *"Are humans actually approving the gated calls?"* - HITL approval rate.
@@ -19,7 +19,7 @@ description: MCP risk-model and sandbox safety signals - L0–L5 risk distributi
 
 Two streams, both lifetime (not windowed):
 
-- **Counters** via `SystemMetricsSnapshot` - `saip.risk.signal` (grouped by signal type), `saip.tool.risk` (grouped by composed level `L0`–`L5`), `mcp.hitl.decision` (grouped by outcome), and `sandbox.guard.blocked` (grouped by reason). The `saip.*` counters are emitted by `McpRiskSignalLogger` (the risk-signal sink) and `McpToolObservationFilter`.
+- **Counters** via `SystemMetricsSnapshot` - `saip.risk.signal` (grouped by signal type), `saip.tool.risk` (grouped by composed level `L0`-`L5`), `mcp.hitl.decision` (grouped by outcome), and `sandbox.guard.blocked` (grouped by reason). The `saip.*` counters are emitted by `McpRiskSignalLogger` (the risk-signal sink) and `McpToolObservationFilter`.
 - **Event timeline** via `McpRiskEventRingBuffer` - the most recent risk events (server/tool risk computed, floor override, hash mismatch, composition lifecycle, poisoning hit) with their type and summary.
 
 See [MCP Server Safety](../../../mcp-server-safety.md) for the risk model these signals come from.
@@ -45,8 +45,8 @@ Shares the [Observability global settings](../index.md#global-settings), but the
 |---|---|---|
 | Risk signals by type | Horizontal bar | `saip.risk.signal` grouped by type - server-risk-computed, tool-publish-risk-computed, floor-override-triggered, hash-ledger-mismatch, composition-lifecycle, poisoning-hit |
 | Risk level distribution | Horizontal bar, L0→L5 in order | Final composed risk level of each executed MCP tool call (`saip.tool.risk`). L0 verified · L1 safe · L2 low · L3 moderate · L4 high · L5 critical |
-| HITL decisions | Horizontal bar | `mcp.hitl.decision` outcomes (chat-side + MCP-server-side): approved / declined / denied / elicit-failed |
-| Sandbox guard blocks | Horizontal bar | `sandbox.guard.blocked` by reason: host-not-in-allowlist, private-ip, too-many-redirects, body-too-large, … |
+| HITL decisions | Horizontal bar | `mcp.hitl.decision` outcomes from both gates: approved / declined from either, plus ask-failed (`side=chat`) and denied / elicit-failed (`side=server`) |
+| Sandbox guard blocks | Horizontal bar | `sandbox.guard.blocked` by reason: host-not-in-allowlist, private-ip, too-many-redirects, body-too-large, ... |
 
 ## Tables
 
@@ -54,7 +54,7 @@ Shares the [Observability global settings](../index.md#global-settings), but the
 
 ## Cross-references
 
-- [MCP Server Safety](../../../mcp-server-safety.md) - the L0–L5 risk model, content-hash ledger, and poisoning scanner this dashboard surfaces
+- [MCP Server Safety](../../../mcp-server-safety.md) - the L0-L5 risk model, content-hash ledger, and poisoning scanner this dashboard surfaces
 - [Safety Architecture](../../../safety-architecture.md) - the JS sandbox layers behind the `Sandbox guard blocks` counter
 - [Human-in-the-Loop](../../../hitl-architecture.md) - the approval gate behind the `mcp.hitl.decision` counter
 - [Tool Studio](tool-studio.md) - sibling AI Stack tab for in-process tool execution

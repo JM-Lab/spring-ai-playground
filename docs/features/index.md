@@ -17,7 +17,7 @@ Spring AI Playground is organized around five product surfaces, designed to be u
 
     ---
 
-    Built-in MCP server over Streamable HTTP, external connections via HTTP / SSE / STDIO / OAuth 2.1, a multi-tab Inspector for tools, resources, prompts, and client primitives, and a preset catalog of 57 preset MCP servers (49 vendor-official remote + 8 community stdio) activatable from the sidebar - see the [MCP Catalog directory](default-mcp-catalog/index.md).
+    Built-in MCP server over Streamable HTTP, external connections via HTTP / SSE / STDIO / OAuth 2.1, a multi-tab Inspector for tools, resources, prompts, and client primitives, and a preset catalog of 58 preset MCP servers (50 vendor-official remote + 8 community stdio) activatable from the sidebar - see the [MCP Catalog directory](default-mcp-catalog/index.md).
 
 -   :material-database-search:{ .lg .middle } **[Vector Database](vector-database.md)**
 

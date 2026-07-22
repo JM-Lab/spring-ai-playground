@@ -56,7 +56,8 @@ final class HitlApprovalInterceptor implements AgentRoundInterceptor {
         for (ToolCall call : calls) {
             if (toolSpecService.requiresApproval(call.name())) {
                 questions.add(HumanQuestion.approval(call.id(), "Tool approval required",
-                        approvalQuestion(toolSpecService.humanInTheLoopFor(call.name()), call)));
+                        approvalQuestion(toolSpecService.humanInTheLoopFor(call.name()), call),
+                        toolSpecService.gatingRiskLevel(call.name())));
                 gatedById.put(call.id(), call);
             }
         }

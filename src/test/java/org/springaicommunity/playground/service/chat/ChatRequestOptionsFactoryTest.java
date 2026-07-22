@@ -33,10 +33,17 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ChatRequestOptionsFactoryTest {
 
     private final ChatRequestOptionsFactory factory = new ChatRequestOptionsFactory(new ObjectMapper(), null);
+
+    private OllamaChatModel ollamaModel(String keepAlive) {
+        OllamaChatModel chatModel = mock(OllamaChatModel.class);
+        when(chatModel.getOptions()).thenReturn(OllamaChatOptions.builder().keepAlive(keepAlive).build());
+        return chatModel;
+    }
 
     private DefaultChatOptions baseOptions() {
         return (DefaultChatOptions) ChatOptions.builder()
@@ -63,7 +70,7 @@ class ChatRequestOptionsFactoryTest {
     @Test
     void ollamaMapsThinkLevelAndMaxTokensToNumPredict() {
         ToolCallingChatOptions options =
-                this.factory.build(mock(OllamaChatModel.class), baseOptions(), ChatExtraOptions.defaults(),
+                this.factory.build(ollamaModel(null), baseOptions(), ChatExtraOptions.defaults(),
                         ReasoningEffort.HIGH);
 
         assertInstanceOf(OllamaChatOptions.class, options);
@@ -78,7 +85,7 @@ class ChatRequestOptionsFactoryTest {
                 baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.OFF);
         assertNull(openAi.getReasoningEffort());
 
-        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(mock(OllamaChatModel.class),
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(ollamaModel(null),
                 baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.OFF);
         assertNotNull(ollama.getThinkOption());
     }
@@ -89,7 +96,7 @@ class ChatRequestOptionsFactoryTest {
                 baseOptions(), ChatExtraOptions.defaults(), null);
         assertNull(openAi.getReasoningEffort());
 
-        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(mock(OllamaChatModel.class),
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(ollamaModel(null),
                 baseOptions(), ChatExtraOptions.defaults(), null);
         assertNull(ollama.getThinkOption());
     }
@@ -100,7 +107,7 @@ class ChatRequestOptionsFactoryTest {
                 baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.DEFAULT);
         assertNull(openAi.getReasoningEffort());
 
-        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(mock(OllamaChatModel.class),
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(ollamaModel(null),
                 baseOptions(), ChatExtraOptions.defaults(), ReasoningEffort.DEFAULT);
         assertNull(ollama.getThinkOption());
     }
@@ -121,11 +128,37 @@ class ChatRequestOptionsFactoryTest {
     void ollamaJsonOverrideBindsSnakeCaseKeys() {
         ChatExtraOptions extra = new ChatExtraOptions(null, null, "{\"num_ctx\": 8192, \"top_k\": 40}", null);
 
-        ToolCallingChatOptions options = this.factory.build(mock(OllamaChatModel.class), baseOptions(), extra, null);
+        ToolCallingChatOptions options = this.factory.build(ollamaModel(null), baseOptions(), extra, null);
 
         assertInstanceOf(OllamaChatOptions.class, options);
         assertEquals(8192, ((OllamaChatOptions) options).getNumCtx());
         assertEquals(40, ((OllamaChatOptions) options).getTopK());
+    }
+
+    @Test
+    void ollamaRequestsCarryTheModelsConfiguredKeepAlive() {
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(ollamaModel("30m"),
+                baseOptions(), ChatExtraOptions.defaults(), null);
+
+        assertEquals("30m", ollama.getKeepAlive());
+    }
+
+    @Test
+    void ollamaRequestsOmitKeepAliveWhenTheModelHasNoneConfigured() {
+        OllamaChatOptions ollama = (OllamaChatOptions) this.factory.build(ollamaModel(null),
+                baseOptions(), ChatExtraOptions.defaults(), null);
+
+        assertNull(ollama.getKeepAlive());
+    }
+
+    @Test
+    void ollamaJsonOverrideCanShortenKeepAlive() {
+        ChatExtraOptions extra = new ChatExtraOptions(null, null, "{\"keep_alive\": \"0\"}", null);
+
+        OllamaChatOptions ollama =
+                (OllamaChatOptions) this.factory.build(ollamaModel(null), baseOptions(), extra, null);
+
+        assertEquals("0", ollama.getKeepAlive());
     }
 
     @Test
@@ -142,7 +175,7 @@ class ChatRequestOptionsFactoryTest {
         ChatExtraOptions extra = new ChatExtraOptions(null, null, "{\"num_gpu\": 2, \"use_mmap\": false}", null);
 
         OllamaChatOptions ollama =
-                (OllamaChatOptions) this.factory.build(mock(OllamaChatModel.class), baseOptions(), extra, null);
+                (OllamaChatOptions) this.factory.build(ollamaModel(null), baseOptions(), extra, null);
 
         assertEquals(Integer.valueOf(2), ollama.getNumGPU());
         assertEquals(Boolean.FALSE, ollama.getUseMMap());

@@ -5,12 +5,12 @@ description: How Spring AI Playground governs the agentic tool-calling loop - a 
 
 An **agent** is a model calling tools in a loop until it can answer. In Spring AI Playground that loop is owned by **Spring AI** - the playground does not reimplement it. What the playground adds is the *governance* around each round: how many rounds may run, what to do when the model repeats itself or a call is cancelled, and how a tool call can pause for a human or for a file. This page describes that layer.
 
-This is one of the architecture documents that complement each other:
+Pages this layer connects to:
 
-- [Application](architecture.md) - runtime layers, feature modules, data flows
 - [Human-in-the-Loop Approval](hitl-architecture.md) - the per-call approval gate that lives inside this loop
 - [Context Engineering](context-engineering-architecture.md) - what enters the model's context each round
-- **Agent Loop** (this page) - per-turn state and round governance around the tool-calling loop
+- [AI Agent Observability](observability-architecture.md) - the per-turn traces every round emits
+- [Application](architecture.md) - where `service/agent` sits in the runtime
 
 ## Where it sits { #seam }
 

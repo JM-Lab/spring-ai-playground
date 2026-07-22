@@ -68,7 +68,7 @@ The catalog template ships per-OS STDIO commands that fetch and spawn `@modelcon
 
 ## 1. Activate from the catalog
 
-1. Open **MCP Server**. The left sidebar shows three layers - **Built-in MCP** (pinned), **Active MCP**, and **Inactive MCP** (the 57-entry catalog).
+1. Open **MCP Server**. The left sidebar shows three layers - **Built-in MCP** (pinned), **Active MCP**, and **Inactive MCP** (the 58-entry catalog).
 2. Scroll the **Inactive MCP** layer to the `Example` category group, or type `everything` into the filter bar at the top - both surface the **MCP Everything** entry.
 3. Click the row. **You do not pick the OS variant manually** - the playground reads the host OS at startup and the configuration form opens already pre-filled with the matching command + args. The table below shows what gets selected for each platform:
 
@@ -270,6 +270,6 @@ The persisted JSON for this connection lives under `~/spring-ai-playground/mcp/s
 - [MCP Inspector reference](../features/mcp-server/inspector.md) - every primitive explained against the MCP spec, with the Spring AI MCP SDK entry points.
 - [Default MCP Servers → Examples](../features/default-mcp-catalog/examples.md) - full catalog spec, including DeepWiki (the other Examples-category entry).
 - [Tutorial 2 - Connect an External MCP Server](2-external-mcp.md) - the manual path for anything *not* in the catalog (custom URL, custom STDIO command, custom OAuth issuer).
-- [Default MCP Servers directory](../features/default-mcp-catalog/index.md) - browse all 57 preset connections across the six category cohorts.
+- [Default MCP Servers directory](../features/default-mcp-catalog/index.md) - browse all 58 preset connections across the six category cohorts.
 - [Tool Studio](../features/tool-studio/index.md) - once you trust the playground's MCP client wiring against MCP Everything, build your own server-side tools that other clients will consume the same way.
 

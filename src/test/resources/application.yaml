@@ -84,27 +84,11 @@ spring:
       client:
         enabled: true
         type: SYNC
-        stdio:
-          connections:
-            weather-mcp-server:
-              command: python3
-              args:
-                - -m
-                - mcp_weather_server
-      #            local-mcp-server:
-      #              command: /usr/bin/java
-      #              args:
-      #                - -jar
-      #                - /Users/jm/git/spring-ai-fast-campus-course/fast-campus-course-mcp-server/target/fast-campus-course-mcp-server-0.0.1-SNAPSHOT.jar
-      #                - --spring.main.banner-mode=off
-      #                - --logging.pattern.console=
-      #                - --spring.ai.mcp.server.stdio=true
-      #                - --spring.main.web-application-type=none
       server:
         name: ${spring.ai.playground.built-in-mcp-server.name}
         protocol: STREAMABLE
         type: SYNC
-        request-timeout: 30
+        request-timeout: 30s
 ---
 spring:
   config:
@@ -113,7 +97,7 @@ spring:
   ai:
     ollama:
       init:
-        pull-model-strategy: when_missing
+        pull-model-strategy: never
       chat:
         options:
           model: qwen3
@@ -137,7 +121,7 @@ spring:
   ai:
     model:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:test-key}
       base-url: https://models.github.ai/inference
       chat:
         options:

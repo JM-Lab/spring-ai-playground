@@ -21,15 +21,18 @@ import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ClientCapabilities;
+import io.modelcontextprotocol.spec.McpSchema.ElicitRequest;
 import io.modelcontextprotocol.spec.McpSchema.ElicitResult;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.tool.ToolManifest.HumanInTheLoop;
 import org.springaicommunity.playground.service.tool.ToolManifest.HumanInTheLoop.Mode;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Map;
@@ -75,7 +78,11 @@ class McpServerHitlToolGateTest {
     }
 
     private SyncToolSpecification decorated(HumanInTheLoop humanInTheLoop) {
-        return gate.decorate(baseSpec(), humanInTheLoop);
+        return decorated(humanInTheLoop, null);
+    }
+
+    private SyncToolSpecification decorated(HumanInTheLoop humanInTheLoop, RiskLevel riskLevel) {
+        return gate.decorate(baseSpec(), humanInTheLoop, riskLevel);
     }
 
     private McpSyncServerExchange exchange(String clientName, boolean supportsElicitation) {
@@ -192,8 +199,32 @@ class McpServerHitlToolGateTest {
     @Test
     void disabledModeReturnsSpecificationUnchanged() {
         SyncToolSpecification base = baseSpec();
-        assertSame(base, gate.decorate(base, new HumanInTheLoop(Mode.DISABLED, null)));
-        assertSame(base, gate.decorate(base, null));
+        assertSame(base, gate.decorate(base, new HumanInTheLoop(Mode.DISABLED, null), RiskLevel.L4));
+        assertSame(base, gate.decorate(base, null, null));
+    }
+
+    @Test
+    void elicitationMessageCarriesRiskPrefix() {
+        McpSyncServerExchange exchange = exchange("cursor", true);
+        when(exchange.createElicitation(any())).thenReturn(new ElicitResult(ElicitResult.Action.ACCEPT, Map.of()));
+
+        invoke(decorated(required(), RiskLevel.L5), exchange);
+
+        ArgumentCaptor<ElicitRequest> captor = ArgumentCaptor.forClass(ElicitRequest.class);
+        verify(exchange).createElicitation(captor.capture());
+        assertTrue(captor.getValue().message().startsWith("[risk L5 Critical] "));
+    }
+
+    @Test
+    void elicitationMessageWithoutLevelHasNoPrefix() {
+        McpSyncServerExchange exchange = exchange("cursor", true);
+        when(exchange.createElicitation(any())).thenReturn(new ElicitResult(ElicitResult.Action.ACCEPT, Map.of()));
+
+        invoke(decorated(required()), exchange);
+
+        ArgumentCaptor<ElicitRequest> captor = ArgumentCaptor.forClass(ElicitRequest.class);
+        verify(exchange).createElicitation(captor.capture());
+        assertTrue(captor.getValue().message().startsWith("Approve running tool"));
     }
 
     @Test

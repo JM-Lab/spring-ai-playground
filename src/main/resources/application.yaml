@@ -1,13 +1,13 @@
 vaadin:
   pushmode: automatic
 server:
-  port: ${SERVER_PORT:8282}
+  port: 8282
   shutdown: graceful
 management:
   endpoints:
     web:
       exposure:
-        include: ${SPRING_AI_PLAYGROUND_ACTUATOR_INCLUDE:health,info,metrics,prometheus,beans}
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when_authorized
@@ -36,7 +36,7 @@ management:
       enabled: true
   tracing:
     sampling:
-      probability: ${SPRING_AI_PLAYGROUND_TRACE_SAMPLE:1.0}
+      probability: 1.0
 
 spring:
   lifecycle:
@@ -66,30 +66,30 @@ spring:
         transcription: none
     chat:
       observations:
-        log-prompt: ${SPRING_AI_OBSERVE_LOG_PROMPT:false}
-        log-completion: ${SPRING_AI_OBSERVE_LOG_COMPLETION:false}
+        log-prompt: false
+        log-completion: false
         include-error-logging: true
       client:
         observations:
-          log-prompt: ${SPRING_AI_CLIENT_OBSERVE_LOG_PROMPT:false}
-          log-completion: ${SPRING_AI_CLIENT_OBSERVE_LOG_COMPLETION:false}
+          log-prompt: false
+          log-completion: false
     tools:
       observations:
-        include-content: ${SPRING_AI_TOOLS_OBSERVE_INCLUDE_CONTENT:false}
+        include-content: false
     vectorstore:
       observations:
-        log-query-response: ${SPRING_AI_VECTORSTORE_OBSERVE_LOG:false}
+        log-query-response: false
     playground:
       observability:
-        ring-buffer-capacity: ${OBS_RING_CAPACITY:2000}
-        retain-days: ${OBS_RETAIN_DAYS:30}
-        persist: ${OBS_PERSIST:true}
-        max-spans-per-trace: ${OBS_MAX_SPANS:200}
+        ring-buffer-capacity: 2000
+        retain-days: 30
+        persist: true
+        max-spans-per-trace: 200
       tool-studio:
         timeout-seconds: 30
         spec-location: "classpath*:tool/default-tool-specs*.json"
         fs:
-          base-path: ${TOOL_STUDIO_FS_BASE:}
+          base-path: ""
         js-sandbox:
           allow-network-io: false
           allow-file-io: false
@@ -129,9 +129,9 @@ spring:
         history-max-messages: 2000
         default-max-tokens: 8192
       built-in-mcp-server:
-        name: ${SPRING_AI_PLAYGROUND_MCP_NAME:spring-ai-playground-built-in-mcp}
-        description: "${SPRING_AI_PLAYGROUND_MCP_DESCRIPTION:Spring AI Playground's built-in MCP server, served over Streamable HTTP at /mcp. Publishes your native Tool Studio tools (default catalog + custom) plus composed tools from connected external MCP servers, per the configured exposure mode.}"
-        exposure-mode: ${SPRING_AI_PLAYGROUND_MCP_EXPOSURE_MODE:both}
+        name: spring-ai-playground-built-in-mcp
+        description: "Spring AI Playground's built-in MCP server, served over Streamable HTTP at /mcp. Publishes your native Tool Studio tools (default catalog + custom) plus composed tools from connected external MCP servers, per the configured exposure mode."
+        exposure-mode: both
       mcp-server:
         composed-tools-max-risk: L5
         composed-tools: []
@@ -158,9 +158,11 @@ spring:
       init:
         pull-model-strategy: when_missing
       chat:
+        keep-alive: 30m
         options:
           model: qwen3.5:4b
       embedding:
+        keep-alive: 30m
         options:
           model: qwen3-embedding:0.6b
     playground:

@@ -419,7 +419,7 @@
   {
     "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000002",
     "name": "renderChart",
-    "description": "Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. Use this to visualize numbers you have gathered. 'labels' is a JSON array of category names (x-axis categories, pie slice names, or radar axes). 'series' is EITHER a JSON array of numbers (single series) OR a JSON array of {\"name\":..., \"data\":[...]} objects (multiple series). Per type: bar/line/area use labels + numeric series; pie uses labels + one numeric series; radar uses labels as axes + one or more {name,data} series; scatter uses series of [x,y] number pairs (labels optional); gauge shows ONE number (pass series as [value], optional 'max'). After calling, tell the user the chart is shown below.",
+    "description": "Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. Use this to visualize numbers you have gathered. 'labels' is a JSON array of category names (x-axis categories, pie slice names, or radar axes). 'series' is EITHER a JSON array of numbers (single series) OR a JSON array of {\"name\":..., \"data\":[...]} objects (multiple series). Per type: bar/line/area use labels + numeric series; pie uses labels + one numeric series; radar uses labels as axes + one or more {name,data} series; scatter uses series of [x,y] number pairs (labels optional); gauge shows ONE number (pass series as [value], optional 'max'). Optional 'sort' ('asc' or 'desc'; single-series bar or pie only) reorders categories by value: use 'asc' for categories with no inherent order (countries, products) so bars grow small to large, and omit it for time or ordinal categories (years, months, stages). After calling, tell the user the chart is shown below.",
     "staticVariables": [],
     "params": [
       {
@@ -463,12 +463,19 @@
         "required": false,
         "type": "STRING",
         "testValue": ""
+      },
+      {
+        "name": "sort",
+        "description": "Optional category order for single-series bar/pie: 'asc' or 'desc'. Omit for time or ordinal categories.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
       }
     ],
-    "code": "let lbls, srs;\ntry { lbls = typeof labels === 'string' && labels.trim() !== '' ? JSON.parse(labels) : labels; } catch (e) { throw new Error('labels must be a JSON array'); }\ntry { srs = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(srs) || srs.length === 0) throw new Error('series must be a non-empty JSON array');\nconst allowed = ['bar', 'line', 'area', 'pie', 'radar', 'scatter', 'gauge'];\nconst ct0 = chartType == null ? 'bar' : String(chartType).trim().toLowerCase();\nconst ct = allowed.indexOf(ct0) === -1 ? 'bar' : ct0;\nif (ct !== 'scatter' && ct !== 'gauge' && (!Array.isArray(lbls) || lbls.length === 0)) throw new Error('labels must be a non-empty JSON array for ' + ct + ' charts');\nconst action = { type: 'chart', chartType: ct, labels: Array.isArray(lbls) ? lbls.map(String) : [], series: srs };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nif (typeof max !== 'undefined' && max != null && String(max).trim() !== '' && isFinite(Number(max))) action.max = Number(max);\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nreturn 'Chart shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "code": "let lbls, srs;\ntry { lbls = typeof labels === 'string' && labels.trim() !== '' ? JSON.parse(labels) : labels; } catch (e) { throw new Error('labels must be a JSON array'); }\ntry { srs = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(srs) || srs.length === 0) throw new Error('series must be a non-empty JSON array');\nconst allowed = ['bar', 'line', 'area', 'pie', 'radar', 'scatter', 'gauge'];\nconst ct0 = chartType == null ? 'bar' : String(chartType).trim().toLowerCase();\nconst ct = allowed.indexOf(ct0) === -1 ? 'bar' : ct0;\nif (ct !== 'scatter' && ct !== 'gauge' && (!Array.isArray(lbls) || lbls.length === 0)) throw new Error('labels must be a non-empty JSON array for ' + ct + ' charts');\nconst action = { type: 'chart', chartType: ct, labels: Array.isArray(lbls) ? lbls.map(String) : [], series: srs };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nif (typeof max !== 'undefined' && max != null && String(max).trim() !== '' && isFinite(Number(max))) action.max = Number(max);\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nconst so = typeof sort === 'undefined' || sort == null ? '' : String(sort).trim().toLowerCase();\nif (so === 'asc' || so === 'desc') action.sort = so;\nreturn 'Chart shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
-    "updateTimestamp": 1768000000000,
+    "updateTimestamp": 1784332800000,
     "category": "PRODUCTIVITY",
     "tags": [
       "visualization"
@@ -965,7 +972,7 @@
   {
     "toolId": "a1b2c3d4-e5f6-4a7b-8c9d-000000000016",
     "name": "renderWindRose",
-    "description": "Renders a wind rose (polar bar) chart in the chat, showing magnitude by compass/category direction. 'directions' is a JSON array of direction or category labels arranged around the circle. 'series' is a JSON array of numbers, or [{name,data}] objects for stacked bands. Good for wind direction, time-of-day distributions, or any directional frequency.",
+    "description": "Renders a rose (polar bar) chart in the chat, showing magnitude by category around a circle. 'directions' is a JSON array of direction or category labels arranged around the circle. 'series' is a JSON array of numbers, or [{name,data}] objects for stacked bands. A single series is drawn with one color per slice and sorted ascending by default (nightingale style) so slices grow around the circle; labels with an inherent order (compass points, hours, months, weekdays) keep their given order instead. Optional 'sort' overrides this: 'asc', 'desc', or 'none' to keep the given order. Good for wind direction, time-of-day distributions, or ranked category comparisons.",
     "staticVariables": [],
     "params": [
       {
@@ -995,12 +1002,19 @@
         "required": false,
         "type": "STRING",
         "testValue": ""
+      },
+      {
+        "name": "sort",
+        "description": "Optional slice order: 'asc' (default for a single series with nominal labels), 'desc', or 'none' to keep the given order.",
+        "required": false,
+        "type": "STRING",
+        "testValue": ""
       }
     ],
-    "code": "let dirs, sr;\ntry { dirs = typeof directions === 'string' ? JSON.parse(directions) : directions; } catch (e) { throw new Error('directions must be a JSON array'); }\ntry { sr = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(dirs) || !Array.isArray(sr)) throw new Error('directions and series must be JSON arrays');\nconst action = { type: 'windrose', directions: dirs, series: sr };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nreturn 'Wind rose shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
+    "code": "let dirs, sr;\ntry { dirs = typeof directions === 'string' ? JSON.parse(directions) : directions; } catch (e) { throw new Error('directions must be a JSON array'); }\ntry { sr = typeof series === 'string' ? JSON.parse(series) : series; } catch (e) { throw new Error('series must be a JSON array'); }\nif (!Array.isArray(dirs) || !Array.isArray(sr)) throw new Error('directions and series must be JSON arrays');\nconst action = { type: 'windrose', directions: dirs, series: sr };\nconst t = title == null ? '' : String(title).trim();\nif (t !== '') action.title = t;\nconst sn = seriesName == null ? '' : String(seriesName).trim();\nif (sn !== '') action.seriesName = sn;\nconst so = typeof sort === 'undefined' || sort == null ? '' : String(sort).trim().toLowerCase();\nif (so === 'asc' || so === 'desc' || so === 'none') action.sort = so;\nreturn 'Wind rose shown below.\\n\\n```saip-action\\n' + JSON.stringify(action) + '\\n```';\n",
     "codeType": "Javascript",
     "createTimestamp": 1768000000000,
-    "updateTimestamp": 1768000000000,
+    "updateTimestamp": 1784332800000,
     "category": "PRODUCTIVITY",
     "tags": [
       "visualization"

@@ -81,6 +81,8 @@ The desktop launcher includes a built-in configuration editor. In practical term
 - automatic [MLX model selection](#apple-silicon-and-mlx-models) on Apple Silicon for faster local inference
 - on-device [speech-to-text model download](#local-speech-to-text-whisper) for local voice input in Agentic Chat
 
+After launch the app also stays resident in the [tray or menu bar](#tray), so closing the window does not stop the server.
+
 ## How the Desktop Config Works
 
 The launcher does not expose the entire built-in config directly. Instead, the editor shows only the override YAML for the selected setting, and at launch that override is merged on top of the bundled default configuration.
@@ -109,7 +111,7 @@ The five presets:
 - `Starter 5` (default, no API keys) - `getCurrentTime`, `getWeather`, `searchWikipedia`, `extractPageContent`, `evalExpression`.
 - `Dev Essentials` - local dev utilities (`uuid`, `hash`, `base64`, `jwtDecode`, `regexExtract`) plus `getCurrentTime` and `evalExpression`.
 - `Korea Toolkit (free)` - free Korean services (Upbit, Bithumb, iTunes K-pop, K-beauty search) plus `getCurrentTime` and `evalExpression`.
-- `File Toolkit` - filesystem pipeline (`readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields`) plus `getCurrentTime` and `evalExpression`. Set `TOOL_STUDIO_FS_BASE` to pin a custom workspace root.
+- `File Toolkit` - filesystem pipeline (`readTextFile`, `listDir`, `grepFile`, `findFiles`, `sliceFile`, `sortFile`, `cutFileFields`) plus `getCurrentTime` and `evalExpression`. Set `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH` to pin a custom workspace root.
 - `Everything` - exposes every default tool. Heavy MCP catalog.
 
 The non-Starter presets each carry only `getCurrentTime` and `evalExpression` from Starter 5 by design - they do not stack on top of it.
@@ -369,6 +371,62 @@ The numbered markers on the screenshot point to the controls along the action ro
 5. **close (x)** - the control in the top-right corner; does the same as `Quit`
 
 If startup takes longer than expected, the launcher stays open and keeps streaming logs instead of failing immediately. This is especially helpful when local models are still warming up or downloads are still completing.
+
+## Tray and Menubar { #tray }
+
+The desktop app also lives in the system tray: the menu bar on macOS, the notification area on Windows, the tray or indicator area on Linux. The icon appears as soon as the app starts, before you even reach `Save and Launch`, and it stays there until you quit.
+
+The menu is the app's out-of-window control panel. Top to bottom it holds the running version, `Open Spring AI Playground`, [Recent Activity](#recent-activity), a `Settings` submenu that jumps straight to a card in the configuration editor (config type and saved settings, the YAML editor, Default MCP Tools, Environment Variables, JVM and App Args), the [Ollama model manager](#7-download-and-manage-ollama-models) and the [voice model manager](#local-speech-to-text-whisper), an [Updates](#updates) submenu, `Open App Home Folder`, a `System` submenu, and `Quit`.
+
+### Closing the window does not quit the app { #close-to-tray }
+
+While the Spring server is running, the main window's close button hides the window instead of closing it. The server, your conversations, and any in-flight work keep running in the background. If the window is full screen it leaves full screen first and then hides.
+
+The first time this happens you get a one-time desktop notification titled **Still running in the tray**, so the app never disappears silently. Clicking that notification brings the window straight back. The notice is shown once and never again; after that the window just hides.
+
+This only applies while there is a running server to come back to. If the server is already stopped, or the app is quitting, or you asked to return to the configuration screen, the close button closes the window normally.
+
+### Bringing the window back { #reopen }
+
+Any of these reopens the app:
+
+- click the tray icon and choose `Open Spring AI Playground` (on Windows and Linux a single click pops the menu open)
+- click the one-time **Still running in the tray** notification
+- start the app again - a second launch does not start a second copy, it raises the window you already have
+- on macOS, click the app icon in the Dock
+
+If the window itself is gone while the server is still running, reopening recreates it and loads your most recent page instead of Home. If the server stopped while the window was hidden, the launcher releases that hidden window, and reopening from the tray takes you back to the configuration screen instead.
+
+### Quitting for real { #quit }
+
+`Quit` at the bottom of the tray menu is the way out. It stops the Spring server, waits for the shutdown to complete, and only then exits, so the port and the model memory are released cleanly. The platform quit action (for example Cmd+Q on macOS) runs the same shutdown path. Closing the window alone does not stop the JVM.
+
+### Recent Activity { #recent-activity }
+
+`Recent Activity` lists the pages you last had open in the app - up to seven of them in the menu, most recent first - and clicking one reopens the app directly on that page instead of on Home.
+
+- entries are recorded from main-window navigation, including in-page route changes, and are labelled with the page title when there is one and with the route name otherwise (`Agentic Chat`, `MCP Server`, `Vector Database`, `Tool Studio`, `Observability`, `Home`)
+- an Agentic Chat entry keeps its `?conv=` query, so it reopens on that conversation
+- OAuth completion pages are skipped, and only pages served by the running app are recorded
+- the list is stored in `<userData>/configs/recent-activity.json` and survives restarts; it keeps the last 20 entries
+- entries are greyed out while no server is running, and `Clear Recent Activity` empties the list
+
+### Updates and Launch at startup { #updates }
+
+The `Updates` submenu owns update checking for the whole app (the in-app home view deliberately leaves it to the tray). One check runs quietly at startup, and `Check for Updates` runs it on demand and reports the outcome in a dialog.
+
+When a newer release exists, the tray icon switches to its update variant, its tooltip gains an `update <version> available` suffix, and a download entry appears in the submenu:
+
+- on packaged **Windows** and **Linux** builds, `Download and Install ...` fetches the update in the background (the tray tooltip shows the percentage) and then offers **Restart and Install** or **Install on Quit**; if that background download fails it falls back to opening the download page in your browser
+- on **macOS**, the entry is `Download ...` and it opens the release asset in your browser, because an unsigned build cannot be swapped in place; you then install it the same way you installed the app in the first place
+
+The submenu also links back to this page: `Install Help (this OS)` opens the install notes for the platform you are on ([macOS](#macos), [Windows](#windows), [Linux](#linux)), and `Documentation` opens the documentation home.
+
+The `System` submenu holds three machine-level switches:
+
+- **Launch at startup** - a checkbox that registers or unregisters the app as an OS login item, so it comes back with the tray icon after a reboot
+- **Start Ollama with app** - on by default; the launcher starts a local Ollama for you when it is not already running, and tells you so with a notification
+- **Factory Reset** - the same destructive reset as the [action bar button](#4-save-clone-delete-or-reset-settings), behind a confirmation dialog: it deletes every saved setting, secret, and workspace file, then restarts the app
 
 ## Apple Silicon and MLX models
 

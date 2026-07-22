@@ -16,42 +16,71 @@
 package org.springaicommunity.playground.service.mcp.client;
 
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.playground.service.mcp.McpServerInfo;
 import org.springframework.ai.mcp.client.common.autoconfigure.properties.McpStdioClientProperties;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-class StdioMcpClientServiceTest implements McpClientServiceTest {
+class StdioMcpClientServiceTest {
 
-    private static final String SERVER_NAME = "mcp-mock";
-    private static final String CONTAINER_NAME = SERVER_NAME + "-stdio-" + UUID.randomUUID().toString().substring(0, 8);
+    private static final String SERVER_NAME = "stdio-loopback";
 
     @Autowired
     private McpClientService mcpClientService;
 
+    private McpServerInfo mcpServerInfo;
+
     @AfterEach
-    void tearDown() throws Exception {
-        // Force-stop the Docker container if it's still running
-        new ProcessBuilder("docker", "stop", "-t", "0", CONTAINER_NAME)
-                .inheritIO()       // For logging; remove if not needed
-                .start()
-                .waitFor();        // Waits for the command to finish; ignores errors if container already stopped
+    void tearDown() {
+        if (this.mcpServerInfo != null) {
+            this.mcpClientService.stopMcpClient(this.mcpServerInfo);
+        }
     }
 
     @Test
     void fullCycleWithStdioTransport() throws JacksonException {
-        McpStdioClientProperties.Parameters parameters = new McpStdioClientProperties.Parameters("docker", List.of(
-                "run", "-i",
-                "--name", CONTAINER_NAME,
-                "tzolov/mcp-everything-server:v2",
-                "node", "dist/index.js", "stdio"
-        ), Map.of());
-        testMcpClient(mcpClientService, SERVER_NAME, McpTransportType.STDIO, parameters);
+        String javaBin = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        McpStdioClientProperties.Parameters parameters = new McpStdioClientProperties.Parameters(javaBin,
+                List.of("-cp", System.getProperty("java.class.path"), TestStdioMcpServer.class.getName()),
+                Map.of());
+        long now = System.currentTimeMillis();
+        this.mcpServerInfo = new McpServerInfo(McpTransportType.STDIO, SERVER_NAME, "", now, now,
+                new ObjectMapper().writeValueAsString(parameters));
+
+        this.mcpClientService.startMcpClient(this.mcpServerInfo);
+
+        List<McpSchema.Tool> tools = this.mcpClientService.getToolListAsOpt(this.mcpServerInfo).orElseThrow();
+        assertThat(tools).extracting(McpSchema.Tool::name).containsExactly("echo");
+
+        McpSchema.CallToolResult result = this.mcpClientService
+                .callTool(this.mcpServerInfo, "echo", Map.of("message", "Hello World!"), Map.of())
+                .orElseThrow();
+        assertThat(((McpSchema.TextContent) result.content().getFirst()).text()).isEqualTo("Echo: Hello World!");
+
+        List<ToolCallback> toolCallbacks = this.mcpClientService.buildToolCallbackProviders(this.mcpServerInfo)
+                .stream().map(ToolCallbackProvider::getToolCallbacks).flatMap(Arrays::stream).toList();
+        assertThat(toolCallbacks).hasSize(1);
+
+        assertThat(this.mcpClientService.pingMcpClient(this.mcpServerInfo)).isNotNull();
+        assertThat(this.mcpClientService.getServerCapabilitiesAsOpt(this.mcpServerInfo)).isPresent();
+
+        this.mcpClientService.stopMcpClient(this.mcpServerInfo);
+        assertThat(this.mcpClientService.getServerCapabilitiesAsOpt(this.mcpServerInfo)).isEmpty();
+        this.mcpServerInfo = null;
     }
+
 }

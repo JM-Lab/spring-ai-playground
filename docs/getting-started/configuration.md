@@ -16,7 +16,7 @@ This page is the single reference for those knobs. The task pages - [Desktop App
 4. JVM **system properties** (`-Dkey=value`).
 5. Command-line arguments (`--key=value`).
 
-**Property ↔ environment-variable mapping.** Any property binds from an env var via Spring's relaxed binding - uppercase, dots and dashes to underscores. So `spring.ai.playground.tool-studio.timeout-seconds` is set by `SPRING_AI_PLAYGROUND_TOOL_STUDIO_TIMEOUT_SECONDS`. A handful of knobs also carry a **short env-var alias** (e.g. `SERVER_PORT`, `OBS_PERSIST`); those are noted in the tables.
+**Property ↔ environment-variable mapping.** Any property binds from an env var via Spring's relaxed binding - uppercase, dots and dashes to underscores. So `spring.ai.playground.tool-studio.timeout-seconds` is set by `SPRING_AI_PLAYGROUND_TOOL_STUDIO_TIMEOUT_SECONDS`.
 
 **Per launch mode:**
 
@@ -50,7 +50,7 @@ On an **Apple Silicon Mac** the `mlx` profile is layered onto `ollama` automatic
 | `spring.lifecycle.timeout-per-shutdown-phase` | relaxed-binding env | `30s` | Drain time per phase. |
 | `vaadin.pushmode` | relaxed-binding env | `automatic` | Vaadin server push. |
 | `spring.servlet.multipart.max-file-size` / `max-request-size` | relaxed-binding env | `20MB` / `20MB` | Upload limits (Vector Database ingest). |
-| `management.endpoints.web.exposure.include` | `SPRING_AI_PLAYGROUND_ACTUATOR_INCLUDE` | `health,info,metrics,prometheus,beans` | Actuator endpoints exposed at `/actuator/*`. |
+| `management.endpoints.web.exposure.include` | relaxed-binding env | `health,info,metrics,prometheus` | Actuator endpoints exposed at `/actuator/*`. |
 
 ## AI providers & models { #ai }
 
@@ -70,6 +70,7 @@ Provider selection (which Spring AI model backs each capability):
 | `spring.ai.ollama.init.pull-model-strategy` | `when_missing` | Auto-pull models on startup. |
 | `spring.ai.ollama.chat.options.model` | `qwen3.5:4b` | Default chat model. |
 | `spring.ai.ollama.embedding.options.model` | `qwen3-embedding:0.6b` | Default embedding model. |
+| `spring.ai.ollama.chat.keep-alive` / `spring.ai.ollama.embedding.keep-alive` | `30m` | How long Ollama keeps each model loaded in memory after a call, as a [Go duration](https://pkg.go.dev/time#ParseDuration) (`0` unloads it at once, `-1` keeps it forever). The default trades VRAM for no reload stall when you come back to a chat. Sent per request, so it wins over the Ollama server's own `OLLAMA_KEEP_ALIVE` default; that server env var is still the right knob when you want one duration for every client of a self-managed Ollama. Override a single conversation from the chat settings drawer's provider-options JSON with `{"keep_alive": "5m"}`. |
 | `spring.ai.playground.chat.models` | `qwen3.5:2b/4b/9b, qwen3.6:27b/35b, gemma4:e2b/e4b/12b/31b, gpt-oss:20b, deepseek-r1:8b` | The model menu shown in the chat UI. |
 | `spring.ai.playground.ollama.mlx-auto-select` | `true` | On Apple Silicon, auto-activate the [`mlx` profile](#profiles) (MLX model defaults). Set `false` to keep the generic model names. |
 
@@ -96,8 +97,10 @@ Telemetry is anonymous and content-free: no prompts, no responses, no file names
 URLs, no API keys, no server addresses. Names of things you create yourself (tools,
 presets, custom MCP servers) are masked to `authored` / `custom` / `external` - only
 names that ship in the built-in catalogs are ever sent as-is. Every sender goes through
-one class, so the complete list is auditable in code: search the repository for
-`UsageEventTracker`.
+one of two classes, so the complete list is auditable in code: `UsageEventTracker` for
+the events below, and `GoogleAnalyticsNavigationListener` for `page_view`, which
+overrides the browser's default page location and title with the bare route path so that
+neither the conversation id in the URL nor the conversation title can reach the wire.
 
 | Event | Parameters | Fired when |
 |---|---|---|
@@ -105,7 +108,7 @@ one class, so the complete list is auditable in code: search the repository for
 | `chat_message_sent` | provider, model, reasoning, dynamic_tools, tool_count, image_count, rag_enabled | Sending a chat message |
 | `model_selected` | provider, model | Applying chat settings |
 | `model_downloaded` | model, via | An Ollama model download completes |
-| `tool_called` | tool_name (catalog names only), source, risk_level, hitl | A tool call finishes in chat |
+| `tool_called` | tool_name (catalog names only), source, risk_level, hitl, catalog_id (catalog ids only) | A tool call finishes in chat |
 | `preset_applied` / `preset_blocked` | preset_id (catalog ids only), dynamic_tools, tool_count | Applying a preset / the key gate blocks Apply |
 | `mcp_server_added` | transport, catalog_id (catalog ids only), oauth | Saving and connecting an MCP server |
 | `mcp_tools_exposed` | mode, builtin_count, composed_count, max_risk | Applying the Expose Tools drawer |
@@ -113,7 +116,10 @@ one class, so the complete list is auditable in code: search the repository for
 | `tool_authored` | action, sandbox_overrides, hitl | Saving a tool in Tool Studio |
 | `action_card_rendered` | card_type | A visualization action card renders in chat |
 | `voice_input_used` | mode | Starting voice input |
-| `usage_snapshot` (at most once per day) | aggregate counters only: recent call/token/error/latency totals, conversation count, installed model count, VRAM, top quantization, HITL and risk-signal totals | First page load of the day |
+| `usage_snapshot` (at most once per day, per app run) | aggregate counters only: recent call/token/error/latency totals, conversation count, installed model count, VRAM, RAM, top quantization, HITL and risk-signal totals | First page load of the day |
+| `mcp_server_active` (at most once per day and app run, per configured server) | transport, catalog_id (catalog ids only), oauth, connected | First page load of the day |
+| `model_usage` (at most once per day and app run, per model used in the last 24h) | model, provider, calls, tokens, errors, p95_ms | First page load of the day |
+| `js_error` (via Google Tag Manager) | error_message, error_url, error_line | An uncaught JavaScript error occurs in the UI |
 
 Session-level user properties: `app_version`, `app_surface` (web/desktop), `platform`,
 `chat_provider`, `embedding_provider`, `embedding_model`, `tool_search_index`.
@@ -124,9 +130,9 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 
 | Property | Env | Default | Notes |
 |---|---|---|---|
-| `spring.ai.playground.built-in-mcp-server.name` | `SPRING_AI_PLAYGROUND_MCP_NAME` | `spring-ai-playground-built-in-mcp` | Advertised server name. |
-| `spring.ai.playground.built-in-mcp-server.description` | `SPRING_AI_PLAYGROUND_MCP_DESCRIPTION` | *(see yaml)* | Advertised description. |
-| `spring.ai.playground.built-in-mcp-server.exposure-mode` | `SPRING_AI_PLAYGROUND_MCP_EXPOSURE_MODE` | `both` | `builtin-only` · `composed-only` · `both` - whether `/mcp` serves your Tool Studio tools, the composed external tools, or both. |
+| `spring.ai.playground.built-in-mcp-server.name` | relaxed-binding env | `spring-ai-playground-built-in-mcp` | Advertised server name. |
+| `spring.ai.playground.built-in-mcp-server.description` | relaxed-binding env | *(see yaml)* | Advertised description. |
+| `spring.ai.playground.built-in-mcp-server.exposure-mode` | relaxed-binding env | `both` | `builtin-only` · `composed-only` · `both` - whether `/mcp` serves your Tool Studio tools, the composed external tools, or both. |
 | `spring.ai.playground.mcp-server.composed-tools-max-risk` | relaxed-binding env | `L5` | Caps which composed tools are published (`L1`-`L5`). |
 | `spring.ai.playground.mcp-server.composed-tools` | relaxed-binding env | `[]` | Declarative list of composed (proxied) external tools - see [Configure exposure via YAML](../features/mcp-server/proxy.md#yaml-exposure). |
 | `spring.ai.mcp.server.protocol` | relaxed-binding env | `STREAMABLE` | `SSE` · `STREAMABLE` · `STATELESS`. |
@@ -159,20 +165,20 @@ The playground publishes its own MCP server at `/mcp` (Streamable HTTP). These c
 
 `spring.ai.playground.observability.*` ([architecture](../observability-architecture.md)):
 
-| Property | Short env | Default | Notes |
+| Property | Env | Default | Notes |
 |---|---|---|---|
-| `...observability.ring-buffer-capacity` | `OBS_RING_CAPACITY` | `2000` | Trace events held in memory. |
-| `...observability.persist` | `OBS_PERSIST` | `true` | Write traces to disk (one JSON file per trace). |
-| `...observability.retain-days` | `OBS_RETAIN_DAYS` | `30` | Days of persisted traces to keep. |
-| `...observability.max-spans-per-trace` | `OBS_MAX_SPANS` | `200` | Span cap per trace. |
+| `...observability.ring-buffer-capacity` | relaxed-binding env | `2000` | Trace events held in memory. |
+| `...observability.persist` | relaxed-binding env | `true` | Write traces to disk (one JSON file per trace). |
+| `...observability.retain-days` | relaxed-binding env | `30` | Days of persisted traces to keep. |
+| `...observability.max-spans-per-trace` | relaxed-binding env | `200` | Span cap per trace. |
 | `...observability.capture-prompt-content` | relaxed-binding env | `true` | Capture prompt/response text in spans. |
 | `...observability.max-prompt-content-bytes` | relaxed-binding env | `4096` | Truncation limit per captured message. |
 | `...observability.max-captured-messages-per-span` | relaxed-binding env | `16` | Message cap per span. |
 | `...observability.active-trace-ttl-seconds` | relaxed-binding env | `300` | Idle-trace finalize timeout. |
-| `management.tracing.sampling.probability` | `SPRING_AI_PLAYGROUND_TRACE_SAMPLE` | `1.0` | Trace sampling (0.0-1.0). |
+| `management.tracing.sampling.probability` | relaxed-binding env | `1.0` | Trace sampling (0.0-1.0). |
 | OTLP export endpoint | `MANAGEMENT_OTLP_TRACING_ENDPOINT` | *(unset)* | Opt-in: set to a collector URL to export spans. |
 
-Spring AI's own prompt/completion logging is **off** by default and toggled with `SPRING_AI_OBSERVE_LOG_PROMPT` / `SPRING_AI_OBSERVE_LOG_COMPLETION`, `SPRING_AI_CLIENT_OBSERVE_LOG_PROMPT` / `_COMPLETION`, `SPRING_AI_TOOLS_OBSERVE_INCLUDE_CONTENT`, `SPRING_AI_VECTORSTORE_OBSERVE_LOG` (all `false`).
+Spring AI's own prompt/completion logging is **off** by default and toggled with `spring.ai.chat.observations.log-prompt` / `log-completion`, `spring.ai.chat.client.observations.log-prompt` / `log-completion`, `spring.ai.tools.observations.include-content`, `spring.ai.vectorstore.observations.log-query-response` (all `false`).
 
 ## Tool Studio & JS sandbox { #tool-studio }
 
@@ -181,7 +187,7 @@ Spring AI's own prompt/completion logging is **off** by default and toggled with
 | Property | Env | Default | Notes |
 |---|---|---|---|
 | `...tool-studio.timeout-seconds` | relaxed-binding env | `30` | Per-tool JS execution timeout. |
-| `...tool-studio.fs.base-path` | `TOOL_STUDIO_FS_BASE` | `${user.home}/spring-ai-playground/workspace` | Root the filesystem tools are confined to. |
+| `...tool-studio.fs.base-path` | relaxed-binding env | `${user.home}/spring-ai-playground/workspace` | Root the filesystem tools are confined to. |
 | `...tool-studio.js-sandbox.allow-network-io` | relaxed-binding env | `false` | Raw Java network access in tool JS (the built-in `fetch` is preferred). |
 | `...tool-studio.js-sandbox.allow-file-io` | relaxed-binding env | `false` | Raw Java file access (use `safety.fs`). |
 | `...tool-studio.js-sandbox.allow-native-access` / `allow-create-thread` | relaxed-binding env | `false` | Native / thread capabilities. |
@@ -199,7 +205,7 @@ Spring AI's own prompt/completion logging is **off** by default and toggled with
 | Logs | (derived) | `<app-home>/logs` (rolling file; the `mcp-stdio` profile detaches the console appender) |
 | Tool specs | (derived) | `<app-home>/tool/save` |
 | Vector store | (derived) | `<app-home>/vectorstore/save` |
-| Filesystem-tool workspace | `TOOL_STUDIO_FS_BASE` | `<app-home>/workspace` |
+| Filesystem-tool workspace | `SPRING_AI_PLAYGROUND_TOOL_STUDIO_FS_BASE_PATH` | `<app-home>/workspace` |
 
 The desktop app stores this tree under the OS app-data location (macOS `~/Library/Application Support/spring-ai-playground`, Windows `%APPDATA%/spring-ai-playground`, Linux `~/.config/spring-ai-playground`).
 

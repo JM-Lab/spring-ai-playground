@@ -16,9 +16,14 @@
 package org.springaicommunity.playground.service.mcp.client;
 
 import tools.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.client.transport.ServerParameters;
+import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -136,6 +141,54 @@ class McpClientPropertiesServiceEnvTest {
         var svc = new McpStreamableHttpClientPropertiesService(null);
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> svc.buildClientTransport(objectMapper, "{not-json"));
-        assertEquals(true, ex.getMessage().contains("Failed to parse MCP client connection parameters"));
+        assertTrue(ex.getMessage().contains("Failed to parse MCP client connection parameters"));
+    }
+
+    @Test
+    void stdioMissingEnvVarInCommandThrowsWithName() {
+        var svc = new McpStdioClientPropertiesService(null);
+        String json = """
+                {"command":"${%s}/bin/server","args":[],"env":{}}""".formatted(VAR);
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> svc.buildClientTransport(objectMapper, json));
+        assertTrue(ex.getMessage().contains(VAR));
+    }
+
+    @Test
+    void stdioNpxCommandIsWrappedWithCmdOnWindows() throws Exception {
+        String originalOs = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 11");
+        try {
+            var svc = new McpStdioClientPropertiesService(null);
+            String json = """
+                    {"command":"npx","args":["-y","@modelcontextprotocol/server-everything"],"env":{}}""";
+            ServerParameters params = serverParametersOf(svc.buildClientTransport(objectMapper, json));
+            assertEquals("cmd", params.getCommand());
+            assertEquals(List.of("/c", "npx", "-y", "@modelcontextprotocol/server-everything"), params.getArgs());
+        } finally {
+            System.setProperty("os.name", originalOs);
+        }
+    }
+
+    @Test
+    void stdioExplicitPathCommandIsNotWrappedOnWindows() throws Exception {
+        String originalOs = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 11");
+        try {
+            var svc = new McpStdioClientPropertiesService(null);
+            String json = """
+                    {"command":"C:/tools/server.exe","args":["--stdio"],"env":{}}""";
+            ServerParameters params = serverParametersOf(svc.buildClientTransport(objectMapper, json));
+            assertEquals("C:/tools/server.exe", params.getCommand());
+            assertEquals(List.of("--stdio"), params.getArgs());
+        } finally {
+            System.setProperty("os.name", originalOs);
+        }
+    }
+
+    private static ServerParameters serverParametersOf(McpClientTransport transport) throws Exception {
+        Field paramsField = StdioClientTransport.class.getDeclaredField("params");
+        paramsField.setAccessible(true);
+        return (ServerParameters) paramsField.get(transport);
     }
 }

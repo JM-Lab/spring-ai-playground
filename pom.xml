@@ -27,7 +27,7 @@
     </parent>
     <groupId>io.github.springaicommunity</groupId>
     <artifactId>spring-ai-playground</artifactId>
-    <version>0.2.0-M11</version>
+    <version>0.2.0-M12</version>
     <name>Spring AI Playground</name>
     <description>Incubating project from the Spring AI Community</description>
     <url>https://github.com/spring-ai-community/spring-ai-playground</url>
@@ -197,17 +197,11 @@
         </dependency>
 
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <groupId>com.vaadin</groupId>
+            <artifactId>browserless-test-junit6</artifactId>
+            <version>1.0.0</version>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.commons</groupId>
-                    <artifactId>commons-compress</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
-
 
     </dependencies>
 
@@ -224,13 +218,6 @@
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>1.21.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

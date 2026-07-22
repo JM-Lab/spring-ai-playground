@@ -32,7 +32,7 @@ class McpCategoryServiceTest {
         List<CategoryDef> defs = service.getBuiltInCategories();
         assertThat(defs).extracting(CategoryDef::id)
                 .startsWith("EXAMPLE", "PRODUCTIVITY", "STORAGE", "COMMUNICATION", "PROJECT_MGMT",
-                        "DEV", "SEARCH", "CLOUD", "DATABASE", "FINANCE", "CRM", "DESIGN", "UTIL")
+                        "DEV", "SEARCH", "CLOUD", "DATABASE", "PUBLIC_DATA", "FINANCE", "CRM", "DESIGN", "UTIL")
                 .endsWith("CUSTOM");
         assertThat(defs).allMatch(CategoryDef::builtIn);
     }

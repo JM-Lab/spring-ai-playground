@@ -19,9 +19,11 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -110,6 +112,7 @@ class McpCatalogOAuthInstantiateTest {
 
     @Test
     void allOAuthCapableEntriesGetClientIdTemplateOnInstantiate() throws Exception {
+        int checked = 0;
         for (McpCatalogEntry entry : catalogService.getCatalog()) {
             McpCatalogEntry.TransportSpec transport = entry.transports().getFirst();
             String auth = transport.auth();
@@ -121,6 +124,49 @@ class McpCatalogOAuthInstantiateTest {
             assertThat(oauth.get("client-id").asText())
                     .as("entry %s OAuth client-id auto-wired", entry.id())
                     .isEqualTo(expectedClientId);
+            checked++;
         }
+        assertThat(checked).as("oauth-capable catalog entries actually checked").isPositive();
+    }
+
+    @Test
+    void manualStreamableEntryBuildsHeadersOauthAndPlaceholderUrl() throws Exception {
+        McpCatalogEntry entry = new McpCatalogEntry("Test-Streamable", "Test", "productivity", Set.of(), 1,
+                "vendor", true, "desc", "stable", null, false,
+                List.of(new McpCatalogEntry.TransportSpec(McpTransportType.STREAMABLE_HTTP,
+                        "https://api.example.com/{TENANT}", "/mcp", "OAUTH",
+                        List.of(new McpCatalogEntry.HeaderSpec("X-Api-Version", "2024-01-01")),
+                        List.of("TEST_STREAMABLE_OAUTH_CLIENT_ID", "TEST_STREAMABLE_OAUTH_CLIENT_SECRET"),
+                        List.of("TENANT"),
+                        new McpCatalogEntry.OAuthDefaults("https://auth.example.com/{TENANT}", List.of("read")),
+                        null, null)),
+                "https://docs.example.com", true, Set.of(), List.of(), "curator");
+
+        McpServerInfo info = catalogService.instantiate(entry, null, Map.of("TENANT", "acme"));
+
+        JsonNode connection = connectionNode(info);
+        assertThat(info.mcpTransportType()).isEqualTo(McpTransportType.STREAMABLE_HTTP);
+        assertThat(connection.get("url").asText()).isEqualTo("https://api.example.com/acme");
+        assertThat(connection.get("headers").get("X-Api-Version").asText()).isEqualTo("2024-01-01");
+        assertThat(oauthNode(info).get("client-id").asText()).isEqualTo("${TEST_STREAMABLE_OAUTH_CLIENT_ID}");
+        assertThat(info.connectionAsJson()).contains("https://auth.example.com/acme");
+    }
+
+    @Test
+    void manualSseEntryBuildsHeadersWithoutOauthBlock() throws Exception {
+        McpCatalogEntry entry = new McpCatalogEntry("Test-Sse", "Test", "productivity", Set.of(), 1,
+                "vendor", true, "desc", "stable", null, false,
+                List.of(new McpCatalogEntry.TransportSpec(McpTransportType.SSE,
+                        "https://sse.example.com", "/sse", "TOKEN",
+                        List.of(new McpCatalogEntry.HeaderSpec("Authorization", "Bearer ${TEST_SSE_TOKEN}")),
+                        List.of("TEST_SSE_TOKEN"), null, null, null, null)),
+                "https://docs.example.com", true, Set.of(), List.of(), "curator");
+
+        McpServerInfo info = catalogService.instantiate(entry, null, Map.of());
+
+        JsonNode connection = connectionNode(info);
+        assertThat(info.mcpTransportType()).isEqualTo(McpTransportType.SSE);
+        assertThat(connection.get("headers").get("Authorization").asText()).isEqualTo("Bearer ${TEST_SSE_TOKEN}");
+        assertThat(hasNoOauthBlock(connection)).isTrue();
     }
 }

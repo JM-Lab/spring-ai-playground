@@ -14,6 +14,23 @@
     animation: blink 1.5s infinite;
 }
 
+.chat-message-scroller {
+    scrollbar-gutter: stable;
+}
+
+.chat-message-scroller vaadin-message {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+vaadin-message::part(content) {
+    min-width: 0;
+}
+
+vaadin-markdown {
+    overflow-wrap: break-word;
+}
+
 .chat-message-actions {
     opacity: 0;
     transition: opacity 0.15s ease-in-out;
@@ -24,8 +41,35 @@ vaadin-message:focus-within .chat-message-actions {
     opacity: 1;
 }
 
+.chat-message-scroller vaadin-message.user-message vaadin-avatar[slot="avatar"],
+.chat-message-scroller vaadin-message.assistant-message vaadin-avatar[slot="avatar"] {
+    display: none;
+}
+
+.chat-message-scroller vaadin-message.user-message::part(name),
+.chat-message-scroller vaadin-message.assistant-message::part(name) {
+    display: none;
+}
+
+.chat-message-scroller vaadin-message.user-message {
+    align-self: flex-end;
+    max-width: 82%;
+}
+
+.chat-message-scroller vaadin-message.user-message::part(content) {
+    flex: 0 1 auto;
+    align-items: flex-end;
+}
+
+.chat-message-scroller vaadin-message.user-message::part(message) {
+    background: var(--lumo-primary-color-10pct);
+    border-radius: 14px;
+    padding: 7px 14px;
+}
+
 vaadin-markdown pre {
     position: relative;
+    overflow: hidden;
     background: var(--lumo-contrast-5pct);
     border: 1px solid var(--lumo-contrast-10pct);
     border-radius: var(--lumo-border-radius-m);
@@ -34,7 +78,19 @@ vaadin-markdown pre {
 
 vaadin-markdown pre code,
 vaadin-markdown pre code.hljs {
+    display: block;
+    overflow-x: auto;
     background: transparent;
+}
+
+.saip-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .saip-code-copy {
@@ -106,6 +162,17 @@ vaadin-markdown pre:hover .saip-code-lang {
 vaadin-details-summary::part(content) {
     min-width: 0;
     overflow: hidden;
+}
+
+.chat-message-scroller vaadin-details {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Process-panel messages skip the markdown enhancer, so tables never get the
+   .saip-table-scroll wrapper; contain any over-wide block inside the panel. */
+.chat-message-scroller vaadin-details vaadin-message::part(message) {
+    overflow-x: auto;
 }
 
 .saip-path {
@@ -429,6 +496,7 @@ vaadin-details-summary::part(content) {
     border: 1px solid var(--lumo-contrast-10pct);
     border-radius: var(--lumo-border-radius-m);
     overflow: hidden;
+    background: var(--lumo-base-color);
 }
 
 .saip-action-pointmap {

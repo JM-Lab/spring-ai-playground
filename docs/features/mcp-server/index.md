@@ -15,7 +15,7 @@ The sidebar splits into three layers from top to bottom under a sticky filter ba
 
 - **Built-in MCP** - the always-on local server that publishes the tools authored in Tool Studio. Pinned flat at the top, no category group. A coloured status dot beside the name reflects the last health check: **green** for OK, **red** for a transport-init or ping error, **gray** for not yet connected.
 - **Active MCP (N)** - user-activated remote and stdio servers, grouped per category. Each row shows the matching **category pill**, any **tag pills** (e.g. `COMMUNITY`), and a stability pill (`preview` / `beta`) where applicable. Empty by default with the inline hint *"No active MCP yet - activate one from the Inactive MCP list below."*
-- **Inactive MCP (N)** - the **57-entry preset catalog** (49 vendor-official remote + 8 community stdio per OS), grouped per category. Rows render as **ghost-style** to stay visually distinct from active connections: italic name, neutral dot, dashed top border, 5 % shade background. Categories that carry a coloured tile - `PREVIEW`, `FREE-TIER`, `KOREA`, `LEGAL` - surface stability and cohort signals on the group header itself. Hint text under the section: *"Catalog entries - click an item to activate."*
+- **Inactive MCP (N)** - the **58-entry preset catalog** (50 vendor-official remote + 8 community stdio per OS), grouped per category. Rows render as **ghost-style** to stay visually distinct from active connections: italic name, neutral dot, dashed top border, 5 % shade background. Categories that carry a coloured tile - `PREVIEW`, `FREE-TIER`, `KOREA`, `LEGAL` - surface stability and cohort signals on the group header itself. Hint text under the section: *"Catalog entries - click an item to activate."*
 
 The sidebar header counter swaps between `(N)` and `(N filtered of M)` depending on whether a filter is active. When no entry matches and the search box has text, an empty-state panel offers a **Clear filters** button.
 
@@ -45,7 +45,7 @@ For example, clicking **MCP-Everything** under `Example` lands an STDIO row pre-
 
 The row stays in the Inactive layer until you click **Save & Connect**; on save the row moves into the Active layer under the same category group and the playground spawns the child process. For OAuth entries this records the registration without yet connecting - see [OAuth 2.1 Authorization Code](#oauth-21-authorization-code) below for the **Authorize** click.
 
-For the full per-category browse of the 57 catalog entries, see the [Default MCP Servers directory](../default-mcp-catalog/index.md).
+For the full per-category browse of the 58 catalog entries, see the [Default MCP Servers directory](../default-mcp-catalog/index.md).
 
 ### Add Custom Server
 
@@ -61,7 +61,7 @@ The **Headers** section's **Insert auth header preset...** dropdown drops a temp
 
 ### Browse the Default MCP Servers
 
-The 57 catalog entries are documented in their own directory under Features. Use the [Default MCP Servers index](../default-mcp-catalog/index.md) for a full searchable card grid (Category / Tag / Transport chips), or jump directly to a category-cohort sub-page:
+The 58 catalog entries are documented in their own directory under Features. Use the [Default MCP Servers index](../default-mcp-catalog/index.md) for a full searchable card grid (Category / Tag / Transport chips), or jump directly to a category-cohort sub-page:
 
 | Sub-page | Categories merged | Entries | What lives there |
 |---|---|---|---|
@@ -78,12 +78,12 @@ Each sub-page carries the per-entry card grid plus **Workflow combinations**, **
 
 A connection is created in one of two ways:
 
-1. **From the catalog** - click any **Inactive MCP** entry; the form pre-fills with the catalog template and **Save & Connect** finishes the activation. This is the path for the 57 catalogued vendor surfaces.
+1. **From the catalog** - click any **Inactive MCP** entry; the form pre-fills with the catalog template and **Save & Connect** finishes the activation. This is the path for the 58 catalogued vendor surfaces.
 2. **From scratch** - click **Add Custom Server**; the form opens with the defaults above. Use this for anything not in the catalog.
 
 The MCP runtime supports multiple transport styles:
 
-- **Streamable HTTP** - the modern single-endpoint transport formalised in the MCP v2025-03-26 specification. Clients POST JSON-RPC requests to `/mcp`, responses stream when supported, session-oriented behavior layers on top. This is the form used by the built-in MCP server and by **49 of the 57** catalog entries.
+- **Streamable HTTP** - the modern single-endpoint transport formalised in the MCP v2025-03-26 specification. Clients POST JSON-RPC requests to `/mcp`, responses stream when supported, session-oriented behavior layers on top. This is the form used by the built-in MCP server and by **50 of the 58** catalog entries.
 - **STDIO** - JSON-RPC over the spawned process's stdin/stdout. The form exposes **Command** + **Args** + **Env** fields; the catalog ships **8 stdio entries** in OS-specific variants (macOS / Linux use `npx` or `uvx`; Windows uses `npx.cmd`) and the sidebar picks the variant matching the host OS so the pre-filled command saves without editing.
 - **Legacy HTTP plus SSE** - kept for compatibility with older external MCP integrations; the form exposes a separate **SSE Endpoint** field.
 
@@ -155,9 +155,7 @@ See the [MCP Inspector sub-page](inspector.md) for the full per-tab walkthrough,
 
 The **gear icon** on the MCP Server Info header opens the **Composed Tools** drawer, which **re-publishes selected tools from your external connections through the built-in server** (`spring-ai-playground-built-in-mcp`) - so they're callable from Agentic Chat *and* external `/mcp` clients, each wrapped with a risk level, optional HITL approval, logging, and secret masking.
 
-This is the **MCP Server Proxy**. Its dedicated page covers the full walkthrough - the per-composition risk cap, per-tool HITL and alias/description overrides, the safe-wrapping contract, the poisoning/shadowing guards, and how external clients reach the proxied tools:
-
-[:material-arrow-right: MCP Server Proxy](proxy.md){ .md-button }
+This is the **MCP Server Proxy**. Its [dedicated page](proxy.md) covers the full walkthrough - the per-composition risk cap, per-tool HITL and alias/description overrides, the safe-wrapping contract, the poisoning/shadowing guards, and how external clients reach the proxied tools.
 
 ## Getting Started With MCP
 

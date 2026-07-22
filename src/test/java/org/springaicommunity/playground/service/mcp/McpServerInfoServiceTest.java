@@ -36,6 +36,11 @@ class McpServerInfoServiceTest {
 
     @Test
     public void testMcpServerInfoService() {
+        long seedTimestamp = System.currentTimeMillis() - 1_000L;
+        McpServerInfo stdioSeed = new McpServerInfo(McpTransportType.STDIO, "stdio-sample-server",
+                "Seeded stdio server.", seedTimestamp, seedTimestamp, null);
+        mcpServerInfoService.updateMcpServerInfo(stdioSeed.mcpTransportType(), stdioSeed.serverName(), stdioSeed);
+
         Map<McpTransportType, List<McpServerInfo>> serverInfos = mcpServerInfoService.getMcpServerInfos();
         assertTrue(serverInfos.containsKey(McpTransportType.STDIO));
         assertTrue(serverInfos.containsKey(McpTransportType.SSE));

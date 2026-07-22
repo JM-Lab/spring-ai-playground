@@ -26,6 +26,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.model.tool.DefaultToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
@@ -61,15 +62,15 @@ public class ChatRequestOptionsFactory {
     public ToolCallingChatOptions build(ChatModel chatModel, DefaultChatOptions base, ChatExtraOptions extra,
             ReasoningEffort reasoning) {
         ChatExtraOptions effective = extra == null ? ChatExtraOptions.defaults() : extra;
-        ToolCallingChatOptions options = buildForProvider(ChatProvider.from(chatModel), base, effective, reasoning);
+        ToolCallingChatOptions options = buildForProvider(chatModel, base, effective, reasoning);
         return applyJsonOverride(options, effective.providerOptionsJson());
     }
 
-    private ToolCallingChatOptions buildForProvider(ChatProvider provider, DefaultChatOptions base,
+    private ToolCallingChatOptions buildForProvider(ChatModel chatModel, DefaultChatOptions base,
             ChatExtraOptions extra, ReasoningEffort reasoning) {
-        return switch (provider) {
+        return switch (ChatProvider.from(chatModel)) {
             case OPENAI -> buildOpenAi(base, extra, reasoning);
-            case OLLAMA -> buildOllama(base, extra, reasoning);
+            case OLLAMA -> buildOllama((OllamaChatModel) chatModel, base, extra, reasoning);
             case GENERIC -> buildGeneric(base);
         };
     }
@@ -91,8 +92,8 @@ public class ChatRequestOptionsFactory {
         return builder.build();
     }
 
-    private ToolCallingChatOptions buildOllama(DefaultChatOptions base, ChatExtraOptions extra,
-            ReasoningEffort reasoning) {
+    private ToolCallingChatOptions buildOllama(OllamaChatModel chatModel, DefaultChatOptions base,
+            ChatExtraOptions extra, ReasoningEffort reasoning) {
         OllamaChatOptions.Builder builder = OllamaChatOptions.builder()
                 .model(base.getModel())
                 .temperature(base.getTemperature())
@@ -101,10 +102,16 @@ public class ChatRequestOptionsFactory {
                 .presencePenalty(base.getPresencePenalty());
         if (base.getTopK() != null) builder.topK(base.getTopK());
         if (base.getMaxTokens() != null) builder.numPredict(base.getMaxTokens());
+        builder.keepAlive(configuredKeepAlive(chatModel));
         if (extra.seed() != null) builder.seed(extra.seed());
         if (!CollectionUtils.isEmpty(extra.stop())) builder.stop(extra.stop());
         applyOllamaThinking(builder, reasoning);
         return builder.build();
+    }
+
+    private static String configuredKeepAlive(OllamaChatModel chatModel) {
+        OllamaChatOptions defaults = chatModel.getOptions();
+        return defaults == null ? null : defaults.getKeepAlive();
     }
 
     private ToolCallingChatOptions buildGeneric(DefaultChatOptions base) {

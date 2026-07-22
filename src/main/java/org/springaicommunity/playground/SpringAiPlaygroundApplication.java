@@ -116,7 +116,11 @@ public class SpringAiPlaygroundApplication implements AppShellConfigurator {
                 window.dataLayer = window.dataLayer || [];
                 window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
                 gtag('js', new Date());
-                gtag('config', '%1$s', { send_page_view: false });
+                gtag('config', '%1$s', {
+                  send_page_view: false,
+                  page_location: location.origin + location.pathname,
+                  page_title: location.pathname
+                });
                 (function(d){var s=d.createElement('script');s.async=true;\
                 s.src='https://www.googletagmanager.com/gtag/js?id=%1$s';\
                 d.head.appendChild(s);})(document);

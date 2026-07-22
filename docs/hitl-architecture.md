@@ -7,13 +7,14 @@ A risk level tells you *how dangerous* a tool is. A sandbox limits *what* it can
 
 This is the runtime checkpoint that the [AI Agent Tool Safety](safety-architecture.md) and [MCP Server Safety](mcp-server-safety.md) pages refer to. It is the last gate before a call fires, and it sits *between* the sandbox (which judges what a tool **can** do) and the agent (which judges **when** to call it).
 
-This is one of the architecture documents that complement each other:
+Pages this gate connects to:
 
-- [Application](architecture.md) - runtime layers, feature modules, data flows
-- [AI Agent Tool Safety](safety-architecture.md) - the **sandbox** that contains locally-authored JS tools
-- [MCP Server Safety](mcp-server-safety.md) - the **risk model** for external servers and re-exposed tools
-- [Agent Loop](agent-loop-architecture.md) - the **round governance** this gate is one interceptor of
-- **Human-in-the-Loop Approval** (this page) - the **runtime per-call approval gate**
+- [Agent Loop](agent-loop-architecture.md) - the round governance this gate runs as one interceptor of
+- [MCP Server Safety](mcp-server-safety.md) - how a tool from an external server is wrapped so it can carry the flag
+- [AI Agent Tool Safety](safety-architecture.md) - the sandbox that bounds what an approved call may touch
+- [Safe Tool Specification](safe-tool-specification.md) - the `humanInTheLoop` block that declares the flag
+- [AI Agent Observability](observability-architecture.md) - where approvals, declines, and timeouts are recorded
+- [Application](architecture.md) - where the gate sits in the runtime
 
 ## Overview { #overview }
 
@@ -117,6 +118,8 @@ flowchart TB
 
 When the on-device agent loop is about to execute tool calls, the [`HitlApprovalInterceptor`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/agent/HitlApprovalInterceptor.java) inspects the round. For every call whose tool `requiresApproval`, it raises a `HumanQuestion` **keyed by the tool call id** and asks the [`HumanQuestionHandler`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/service/tool/HumanQuestionHandler.java) carried in the tool context. In Agentic Chat that handler is [`ChatHumanQuestionHandler`](https://github.com/spring-ai-community/spring-ai-playground/blob/main/src/main/java/org/springaicommunity/playground/webui/chat/ChatHumanQuestionHandler.java), which renders **all of the round's approval questions in a single Vaadin dialog** - a `ConfirmDialog` (*Approve* / *Decline*) when there is one, or one row per call when there are several - on the chat UI. This path uses a dialog, **not** MCP elicitation; chat is in-process, so there is no protocol round-trip to make.
 
+Each `HumanQuestion` also carries the tool's **inherent risk level** (`ToolSpecService.gatingRiskLevel`: sandbox posture for authored tools, composed level for proxied external tools - never the `HITL -1` display credit, since this dialog *is* that mitigation). The dialog renders it as the standard risk chip and escalates with it: L4 adds a warning line and a red *Approve*; L5 disables *Approve* until an explicit acknowledgment checkbox is ticked, so a destructive call can never be approved by a reflex Enter press.
+
 - **Approve** → the call executes normally.
 - **Decline** → the call is removed from the batch and a `ToolResponse` is synthesized telling the model the user declined, it was **not** executed, and not to call it again for this request. The tool is also remembered as declined for the rest of the turn, so a re-request is auto-declined without a second dialog. The model continues with the remaining (approved) calls, if any.
 - **Timeout** (the `approval-timeout-seconds` setting, default 2 minutes), dialog closed, or UI error → **decline** (fail-safe).
@@ -132,7 +135,7 @@ When a tool is published on the built-in MCP server, [`ToolSpecService`](https:/
 3. **Ask.** Issue `exchange.createElicitation(prompt, schema)`. On `ACCEPT` run the tool; on `DECLINE` / `CANCEL` return a denied `CallToolResult` (`isError = true`).
 4. **Any error** (transport drop, SDK timeout, exception) → **deny** (fail-safe).
 
-The prompt schema is an empty object - this is a confirmation, not a data form - so a compliant client renders a plain *approve / decline* card. (In the playground's own [MCP Inspector](features/mcp-server/inspector.md#elicitation), that arrives as an `ElicitationRequestPrimitive` card.)
+The prompt schema is an empty object - this is a confirmation, not a data form - so a compliant client renders a plain *approve / decline* card. Because MCP elicitation has no severity field, the gate prefixes the message text with the tool's risk level (e.g. `[risk L5 Critical] Approve running tool 'deleteFile' ...`), so external clients see the same signal the chat dialog shows as a chip. (In the playground's own [MCP Inspector](features/mcp-server/inspector.md#elicitation), that arrives as an `ElicitationRequestPrimitive` card.)
 
 ## Proxied external tools - the full runtime path { #proxied }
 

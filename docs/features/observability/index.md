@@ -9,7 +9,7 @@ The observability layer is the **visibility arm** of Spring AI Playground's safe
 
 The pages under this section document the user surface. For the trace pipeline, storage tiers, configuration, and external export paths, see [AI Agent Observability Architecture](../../observability-architecture.md).
 
-The **Home** screen carries a compact **System & Observability** panel - built-in MCP server status and bind posture, provider readiness chips, last-30-minute call / token / latency KPIs, and the tool-call risk distribution - with a link that opens all fourteen dashboards. It reads the same collector as the dashboards, so the numbers always agree.
+The **Home** screen carries a compact **System & Observability** panel - built-in MCP server status and bind posture, an **Environment** pill ahead of the provider status that counts unset tool keys and expands into a per-variable breakdown, tool and MCP readiness chips, last-30-minute call / token / latency KPIs, and the tool-call risk distribution - with a link that opens all fourteen dashboards. It reads the same collector as the dashboards, so the numbers always agree.
 
 ## Who uses these dashboards
 

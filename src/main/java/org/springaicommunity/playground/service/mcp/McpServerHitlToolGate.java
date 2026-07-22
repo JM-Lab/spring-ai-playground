@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.playground.service.mcp.client.McpClientService;
 import org.springaicommunity.playground.service.tool.ToolManifest.HumanInTheLoop;
+import org.springaicommunity.playground.service.tool.ToolManifest.Sandbox.RiskLevel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -55,7 +56,8 @@ public class McpServerHitlToolGate {
         this.meterRegistry = meterRegistry;
     }
 
-    public SyncToolSpecification decorate(SyncToolSpecification specification, HumanInTheLoop humanInTheLoop) {
+    public SyncToolSpecification decorate(SyncToolSpecification specification, HumanInTheLoop humanInTheLoop,
+            RiskLevel riskLevel) {
         if (!requiresApproval(humanInTheLoop)) {
             return specification;
         }
@@ -63,11 +65,12 @@ public class McpServerHitlToolGate {
         BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> delegate = specification.callHandler();
         return SyncToolSpecification.builder()
                 .tool(specification.tool())
-                .callHandler((exchange, request) -> gate(exchange, request, promptTemplate, delegate))
+                .callHandler((exchange, request) -> gate(exchange, request, promptTemplate, riskLevel, delegate))
                 .build();
     }
 
-    public AsyncToolSpecification decorate(AsyncToolSpecification specification, HumanInTheLoop humanInTheLoop) {
+    public AsyncToolSpecification decorate(AsyncToolSpecification specification, HumanInTheLoop humanInTheLoop,
+            RiskLevel riskLevel) {
         if (!requiresApproval(humanInTheLoop)) {
             return specification;
         }
@@ -75,12 +78,12 @@ public class McpServerHitlToolGate {
         BiFunction<McpAsyncServerExchange, CallToolRequest, Mono<CallToolResult>> delegate = specification.callHandler();
         return AsyncToolSpecification.builder()
                 .tool(specification.tool())
-                .callHandler((exchange, request) -> gateAsync(exchange, request, promptTemplate, delegate))
+                .callHandler((exchange, request) -> gateAsync(exchange, request, promptTemplate, riskLevel, delegate))
                 .build();
     }
 
     private CallToolResult gate(McpSyncServerExchange exchange, CallToolRequest request, String promptTemplate,
-            BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> delegate) {
+            RiskLevel riskLevel, BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> delegate) {
         if (isChatLoopback(exchange.getClientInfo()) && !isInteractiveCall(request)) {
             return delegate.apply(exchange, request);
         }
@@ -91,7 +94,7 @@ public class McpServerHitlToolGate {
         }
         ElicitResult result;
         try {
-            result = exchange.createElicitation(elicitRequest(promptTemplate, request));
+            result = exchange.createElicitation(elicitRequest(promptTemplate, riskLevel, request));
         } catch (RuntimeException e) {
             logger.warn("hitl.server.elicit-failed tool={} error={}", request.name(), e.getMessage());
             countDecision("elicit-failed");
@@ -108,7 +111,8 @@ public class McpServerHitlToolGate {
     }
 
     private Mono<CallToolResult> gateAsync(McpAsyncServerExchange exchange, CallToolRequest request,
-            String promptTemplate, BiFunction<McpAsyncServerExchange, CallToolRequest, Mono<CallToolResult>> delegate) {
+            String promptTemplate, RiskLevel riskLevel,
+            BiFunction<McpAsyncServerExchange, CallToolRequest, Mono<CallToolResult>> delegate) {
         if (isChatLoopback(exchange.getClientInfo()) && !isInteractiveCall(request)) {
             return delegate.apply(exchange, request);
         }
@@ -117,7 +121,7 @@ public class McpServerHitlToolGate {
             countDecision("denied");
             return Mono.just(denied(request.name()));
         }
-        return exchange.createElicitation(elicitRequest(promptTemplate, request))
+        return exchange.createElicitation(elicitRequest(promptTemplate, riskLevel, request))
                 .flatMap(result -> {
                     if (!isApproved(result)) {
                         logger.info("hitl.server.declined tool={} action={}", request.name(), action(result));
@@ -166,9 +170,14 @@ public class McpServerHitlToolGate {
         return result == null ? "none" : String.valueOf(result.action());
     }
 
-    private static ElicitRequest elicitRequest(String promptTemplate, CallToolRequest request) {
-        return ElicitRequest.builder(renderPrompt(promptTemplate, request.name(), request.arguments()),
+    private static ElicitRequest elicitRequest(String promptTemplate, RiskLevel riskLevel, CallToolRequest request) {
+        return ElicitRequest.builder(
+                riskPrefix(riskLevel) + renderPrompt(promptTemplate, request.name(), request.arguments()),
                 CONFIRMATION_SCHEMA).build();
+    }
+
+    static String riskPrefix(RiskLevel riskLevel) {
+        return riskLevel == null ? "" : "[risk " + riskLevel.name() + " " + riskLevel.label() + "] ";
     }
 
     static String renderPrompt(String promptTemplate, String toolName, Map<String, Object> arguments) {

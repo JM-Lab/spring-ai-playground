@@ -28,7 +28,7 @@ ECharts-backed cards. All eight render from JSON data you provide and expose **P
 Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. Use this to visualize numbers you have gathered.
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `chartType` · `labels` · `series` · `title` · `max` · `seriesName`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `chartType` · `labels` · `series` · `title` · `max` · `seriesName` · `sort`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · card behavior</div>
@@ -36,7 +36,7 @@ Renders a chart directly in the chat from data you provide: bar, line, area, pie
 
 **More detail**
 
-Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. `labels` is a JSON array of category names (x-axis categories, pie slice names, or radar axes). `series` is EITHER a JSON array of numbers (single series) OR a JSON array of `{"name":..., "data":[...]}` objects (multiple series). Per type: bar/line/area use labels + numeric series; pie uses labels + one numeric series; radar uses labels as axes + one or more `{name,data}` series; scatter uses series of `[x,y]` number pairs (labels optional); gauge shows ONE number (pass series as `[value]`, optional `max`). The card has PNG + Copy export buttons.
+Renders a chart directly in the chat from data you provide: bar, line, area, pie, radar, scatter, or gauge. `labels` is a JSON array of category names (x-axis categories, pie slice names, or radar axes). `series` is EITHER a JSON array of numbers (single series) OR a JSON array of `{"name":..., "data":[...]}` objects (multiple series). Per type: bar/line/area use labels + numeric series; pie uses labels + one numeric series; radar uses labels as axes + one or more `{name,data}` series; scatter uses series of `[x,y]` number pairs (labels optional); gauge shows ONE number (pass series as `[value]`, optional `max`). `sort` reorders a single-series bar or pie chart by value - use `asc` for categories with no inherent order (countries, products) and omit it for time or ordinal categories (years, months, stages). The card has PNG + Copy export buttons.
 
 **Parameters**
 
@@ -48,6 +48,7 @@ Renders a chart directly in the chat from data you provide: bar, line, area, pie
 | `title` | `STRING` |  | Optional chart title. |
 | `max` | `STRING` |  | Gauge maximum (gauge type only). |
 | `seriesName` | `STRING` |  | Optional name for a single series (legend/tooltip label). |
+| `sort` | `STRING` |  | Category order for a single-series bar or pie chart: `asc` or `desc`. Omit for time or ordinal categories. |
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 
@@ -259,10 +260,10 @@ Renders a network/relationship graph using a force-directed layout. `nodes` is a
 <div class="tcg-art" markdown>:material-compass-rose:</div>
 <div class="tcg-type">productivity · visualization <span class="risk risk-l0">L0</span></div>
 <div class="tcg-body" markdown>
-Renders a wind rose (polar bar) chart showing magnitude by compass or category direction. Good for wind direction or any directional frequency.
+Renders a rose (polar bar) chart in the chat, showing magnitude by category around a circle. Good for wind direction, time-of-day distributions, or ranked category comparisons.
 </div>
 <div class="tcg-stats" markdown>
-<div class="tcg-stats__line" markdown>**Params** &nbsp; `directions` · `series` · `title` · `seriesName`</div>
+<div class="tcg-stats__line" markdown>**Params** &nbsp; `directions` · `series` · `title` · `seriesName` · `sort`</div>
 <div class="tcg-stats__line" markdown>**Env** &nbsp; &nbsp; &nbsp; -</div>
 </div>
 <div class="tcg-cta">Click for full reference · params · card behavior</div>
@@ -270,7 +271,7 @@ Renders a wind rose (polar bar) chart showing magnitude by compass or category d
 
 **More detail**
 
-Renders a wind rose (polar bar) chart, plotting magnitude by direction around a circle. `directions` is a JSON array of direction or category labels (e.g. N, NE, E, ...). `series` is EITHER a JSON array of numbers (single band) OR a JSON array of `{name, data}` objects (stacked bands). Good for wind direction, time-of-day distributions, or any directional frequency. The card has PNG + Copy export buttons.
+Renders a rose (polar bar) chart, plotting magnitude by category around a circle. `directions` is a JSON array of the labels arranged around the circle - compass points (N, NE, E, ...), hours, months, or any plain category names. `series` is EITHER a JSON array of numbers (single series) OR a JSON array of `{name, data}` objects (stacked bands). A single series is drawn nightingale style: each slice gets its own palette color, and slices are sorted ascending by value so they grow around the circle. When every label carries an order of its own - compass points, anything containing a digit, month or weekday names - the order you passed is kept instead. `sort` overrides that choice (`asc`, `desc`, or `none`). Several `{name, data}` series stack into bands, one color per band, with a legend. Good for wind direction, time-of-day distributions, or ranked category comparisons. The card has PNG + Copy export buttons.
 
 **Parameters**
 
@@ -280,6 +281,7 @@ Renders a wind rose (polar bar) chart, plotting magnitude by direction around a 
 | `series` | `STRING` | ✓ | JSON array of numbers, or of `{name, data}` objects for stacked bands. |
 | `seriesName` | `STRING` |  | Optional name for a single series (legend/tooltip label). |
 | `title` | `STRING` |  | Optional chart title. |
+| `sort` | `STRING` |  | Slice order: `asc` (the default for a single series with plain category labels), `desc`, or `none` to keep the given order. |
 
 **Sandbox** - Runs at the sandbox **L0** baseline (Safest) - pure compute: no network, no filesystem.
 

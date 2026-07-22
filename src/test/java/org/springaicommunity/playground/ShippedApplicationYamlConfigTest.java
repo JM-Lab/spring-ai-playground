@@ -24,8 +24,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,6 +74,36 @@ class ShippedApplicationYamlConfigTest {
         assertThat(nested(openai, "spring", "ai", "model", "embedding")).isEqualTo("openai");
         assertThat(nested(openai, "spring", "ai", "openai")).as("spring.ai.openai block").isNotNull();
         assertThat(nested(openai, "spring", "ai", "openai-sdk")).as("removed spring.ai.openai-sdk block").isNull();
+    }
+
+    // SecurityConfig permitAll()s /actuator/** and no server.address is set, so every exposed endpoint is
+    // an unauthenticated surface on 0.0.0.0; beans served the whole bean graph and nothing in the app or
+    // the launcher ever read it.
+    @Test
+    void actuatorExposureShipsOnlyReadOnlyOperationalEndpoints() {
+        Object include = null;
+        for (Map<String, Object> doc : documents) {
+            Object value = nested(doc, "management", "endpoints", "web", "exposure", "include");
+            if (value != null) {
+                include = value;
+            }
+        }
+        assertThat(include).as("management.endpoints.web.exposure.include").isNotNull();
+        assertThat(Arrays.stream(String.valueOf(include).split(",")).map(String::trim).toList())
+                .containsExactlyInAnyOrder("health", "info", "metrics", "prometheus");
+    }
+
+    @Test
+    void shippedYamlBindsEnvVarsOnlyThroughRelaxedBinding() throws Exception {
+        List<String> allowed = List.of("user.home", "spring.application.name",
+                "spring.ai.playground.built-in-mcp-server.name", "OPENAI_API_KEY");
+        for (String yaml : List.of("src/main/resources/application.yaml",
+                "src/main/resources/application-mcp-stdio.yaml")) {
+            Matcher placeholders = Pattern.compile("\\$\\{([^}:]+)").matcher(Files.readString(Path.of(yaml)));
+            while (placeholders.find()) {
+                assertThat(placeholders.group(1)).as("%s placeholder", yaml).isIn(allowed);
+            }
+        }
     }
 
     private Map<String, Object> maximumExpectedValues() {

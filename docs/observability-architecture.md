@@ -9,15 +9,14 @@ Two questions dominate when you debug a live agent: *which tool just ran with wh
 
 The sandbox documented in [AI Agent Tool Safety](safety-architecture.md) *prevents* unsafe tool execution at runtime. This collector *captures* every tool and MCP call that did happen - span by span, attribute by attribute - so prevention is auditable end-to-end. The two are two arms of the same safety model: sandbox is the prevention arm and the gate; observability is the visibility arm and the ledger. Prevention without visibility is unverifiable; visibility without prevention is unactionable. Visibility is itself a defensive guarantee - a system whose actions you cannot see is a system you cannot trust.
 
-This is one of the architecture documents that complement each other:
+Pages this one is most closely tied to:
 
-- [Application](architecture.md) - runtime layers, feature modules, data flows, extension points
-- [Safe Tool Specification](safe-tool-specification.md) - normative JSON spec for tool authoring (the document the sandbox enforces)
-- [AI Agent Tool Safety](safety-architecture.md) - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping
-- [MCP Server Safety](mcp-server-safety.md) - client-side risk model for external MCP servers and re-exposed tools
-- [Human-in-the-Loop Approval](hitl-architecture.md) - the runtime per-call approval gate
-- [Agent Loop](agent-loop-architecture.md) - per-turn round governance around the tool-calling loop
-- **AI Agent Observability Architecture** (this page) - signal sources, trace pipeline, storage tiers, log correlation, cost attribution
+- [AI Agent Tool Safety](safety-architecture.md) - the prevention arm this layer makes auditable
+- [Agent Loop](agent-loop-architecture.md) - the per-turn rounds that spans are grouped into
+- [MCP Server Safety](mcp-server-safety.md) - the wrapped-call spans and risk events collected here
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the approvals and declines recorded as part of a turn
+- [Context Engineering](context-engineering-architecture.md) - the context whose token counts and cost are attributed here
+- [Application](architecture.md) - where the collector sits in the runtime
 
 ## Overview { #overview }
 
@@ -243,7 +242,7 @@ The persistence service is **opt-out via property**, not bean removal:
         havingValue = "true", matchIfMissing = true)
 ```
 
-Setting `OBS_PERSIST=false` disables the bean entirely, in which case the collector's `persistenceProvider.getIfAvailable()` returns `null` and the disk write is silently skipped.
+Setting `spring.ai.playground.observability.persist=false` disables the bean entirely, in which case the collector's `persistenceProvider.getIfAvailable()` returns `null` and the disk write is silently skipped.
 
 ## Parallel pipeline for system metrics
 
@@ -277,10 +276,10 @@ All observability properties live under `spring.ai.playground.observability` and
 
 | Property | Env | Default | What it controls |
 |---|---|---|---|
-| `ring-buffer-capacity` | `OBS_RING_CAPACITY` | `2000` | Max in-memory traces before FIFO eviction. Lower bound is 10 (set by the constructor) - values below are silently raised. |
-| `retain-days` | `OBS_RETAIN_DAYS` | `30` | Disk persistence TTL. Directories older than this are deleted by the 04:00 cron. Has no effect when `persist=false`. |
-| `persist` | `OBS_PERSIST` | `true` | Master switch for disk persistence. Setting `false` removes the `ObservabilityPersistenceService` bean entirely (`@ConditionalOnProperty matchIfMissing=true`). |
-| `max-spans-per-trace` | `OBS_MAX_SPANS` | `200` | Hard cap on spans appended to a single `TraceRecord`. Excess spans are dropped silently - runaway tool loops cannot blow up a single trace. |
+| `ring-buffer-capacity` | `SPRING_AI_PLAYGROUND_OBSERVABILITY_RING_BUFFER_CAPACITY` | `2000` | Max in-memory traces before FIFO eviction. Lower bound is 10 (set by the constructor) - values below are silently raised. |
+| `retain-days` | `SPRING_AI_PLAYGROUND_OBSERVABILITY_RETAIN_DAYS` | `30` | Disk persistence TTL. Directories older than this are deleted by the 04:00 cron. Has no effect when `persist=false`. |
+| `persist` | `SPRING_AI_PLAYGROUND_OBSERVABILITY_PERSIST` | `true` | Master switch for disk persistence. Setting `false` removes the `ObservabilityPersistenceService` bean entirely (`@ConditionalOnProperty matchIfMissing=true`). |
+| `max-spans-per-trace` | `SPRING_AI_PLAYGROUND_OBSERVABILITY_MAX_SPANS_PER_TRACE` | `200` | Hard cap on spans appended to a single `TraceRecord`. Excess spans are dropped silently - runaway tool loops cannot blow up a single trace. |
 | `capture-prompt-content` | *(relaxed binding)* | `true` | Whether to copy prompt and completion text from `gen_ai.prompt.*.content` / `gen_ai.completion.*.content` span attributes into the persisted `TraceRecord`. Off → the Conversation Thread dialog can only reconstruct message counts and roles, not bodies. |
 | `max-prompt-content-bytes` | *(relaxed binding)* | `4096` | Byte cap per captured prompt or completion. Long prompts are truncated silently - limits trace record size. |
 | `max-captured-messages-per-span` | *(relaxed binding)* | `16` | Cap on conversation messages preserved per span. Excess messages are dropped silently. |
@@ -290,13 +289,13 @@ Adjacent Spring Boot and Spring AI properties that shape what reaches the collec
 
 | Property | Env | Default | Effect |
 |---|---|---|---|
-| `management.tracing.sampling.probability` | `SPRING_AI_PLAYGROUND_TRACE_SAMPLE` | `1.0` | Fraction of traces sampled by the Micrometer Tracer. `1.0` captures everything; lower for production-style load. |
+| `management.tracing.sampling.probability` | `MANAGEMENT_TRACING_SAMPLING_PROBABILITY` | `1.0` | Fraction of traces sampled by the Micrometer Tracer. `1.0` captures everything; lower for production-style load. |
 | `management.observations.annotations.enabled` | - | `true` | Enables `@Observed` on application-level methods. |
-| `management.endpoints.web.exposure.include` | `SPRING_AI_PLAYGROUND_ACTUATOR_INCLUDE` | `health,info,metrics,prometheus,beans` | Which Actuator endpoints are HTTP-reachable. The Prometheus scrape endpoint is included by default so external systems can pull alongside the in-app dashboards. |
-| `spring.ai.chat.observations.log-prompt` | `SPRING_AI_OBSERVE_LOG_PROMPT` | `false` | Whether prompt text is included in chat observation logs. Off by default - secret-masking only covers `console.log`. |
-| `spring.ai.chat.observations.log-completion` | `SPRING_AI_OBSERVE_LOG_COMPLETION` | `false` | Whether completion text is included. Same caveat. |
-| `spring.ai.tools.observations.include-content` | `SPRING_AI_TOOLS_OBSERVE_INCLUDE_CONTENT` | `false` | Whether tool argument and result content is included. |
-| `spring.ai.vectorstore.observations.log-query-response` | `SPRING_AI_VECTORSTORE_OBSERVE_LOG` | `false` | Whether retrieved documents are included in vector store observations. |
+| `management.endpoints.web.exposure.include` | `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE` | `health,info,metrics,prometheus` | Which Actuator endpoints are HTTP-reachable. The Prometheus scrape endpoint is included by default so external systems can pull alongside the in-app dashboards. |
+| `spring.ai.chat.observations.log-prompt` | `SPRING_AI_CHAT_OBSERVATIONS_LOG_PROMPT` | `false` | Whether prompt text is included in chat observation logs. Off by default - secret-masking only covers `console.log`. |
+| `spring.ai.chat.observations.log-completion` | `SPRING_AI_CHAT_OBSERVATIONS_LOG_COMPLETION` | `false` | Whether completion text is included. Same caveat. |
+| `spring.ai.tools.observations.include-content` | `SPRING_AI_TOOLS_OBSERVATIONS_INCLUDE_CONTENT` | `false` | Whether tool argument and result content is included. |
+| `spring.ai.vectorstore.observations.log-query-response` | `SPRING_AI_VECTORSTORE_OBSERVATIONS_LOG_QUERY_RESPONSE` | `false` | Whether retrieved documents are included in vector store observations. |
 | `management.otlp.tracing.endpoint` | `MANAGEMENT_OTLP_TRACING_ENDPOINT` | *(unset)* | Opt-in OTLP exporter. Leave unset for desktop; set to a collector URL to forward traces to an external system. The empty-endpoint case is intentionally absent from `application.yaml` because Spring Boot rejects a blank endpoint at startup. |
 
 ## Log correlation
@@ -376,7 +375,7 @@ Examples of the kind of policy layer the trace stream documented above could sup
 Three bridges connect the safety layers to this observability layer, all shipped and surfaced on the [Safety](features/observability/ai-stack/safety.md) dashboard:
 
 - **`SandboxGuardMetrics`** - a Micrometer counter (`sandbox.guard.blocked`) tagged by `category` and `reason`. The sandbox increments it every time it blocks an unsafe action; operators see policy enforcement as a time series in the in-app dashboard, and external observability stacks scrape the same counter via `/actuator/prometheus`. Every prevention decision is observable - this is the *visibility* side of the Sandbox-Observability pairing, already shipped.
-- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate records the **same** `mcp.hitl.decision` counter, tagged `side` = chat. The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus` and surfaced on the Safety dashboard as the *HITL decisions* chart and *HITL approval rate* KPI. The [agent loop](agent-loop-architecture.md) hosting the chat-side gate emits a companion `chat.tool.loop` counter (tagged `outcome` = wrap-up / hard-stop / cancelled / repeated / declined-repeat / interaction-budget) whenever one of its guards fires, scrapable the same way.
+- **Per-call HITL approval gate** (shipped) - see [Human-in-the-Loop Approval](hitl-architecture.md). Tools flagged `humanInTheLoop` are gated before they run, by two paths: an on-device chat dialog and, for external MCP clients, MCP `elicitation/create`. The server-side gate records every decision as the `mcp.hitl.decision` Micrometer counter (tagged `outcome` = approved/declined/denied/elicit-failed, `side` = server) plus `hitl.server.*` logs; the chat-side gate records the **same** `mcp.hitl.decision` counter, tagged `side` = chat, with its own outcome vocabulary (approved/declined/ask-failed, where `ask-failed` is a fail-closed refusal recorded when the approval interaction itself breaks). The `mcp.hitl.decision` counter is scrapable via `/actuator/prometheus` and surfaced on the Safety dashboard as the *HITL decisions* chart and *HITL approval rate* KPI. The [agent loop](agent-loop-architecture.md) hosting the chat-side gate emits a companion `chat.tool.loop` counter (tagged `outcome` = wrap-up / hard-stop / cancelled / repeated / declined-repeat / interaction-budget) whenever one of its guards fires, scrapable the same way.
 - **`McpRiskSignalSink`** - the sink for risk-signal events (external-server / re-exposed-tool risk computation, floor override, fingerprint mismatch, composition-lifecycle change, poisoning hit). It is implemented by `McpRiskSignalLogger`, a `@Component` that replaces the `@ConditionalOnMissingBean` NO-OP default, emits the `saip.risk.signal` counter (tagged by signal `type`), and buffers recent events. Both feed the Safety dashboard's *Risk signals by type* chart and its *Risk signals* / *Tamper rejects* / *Poisoning hits* / *Floor overrides* KPIs, and the counter is scrapable via `/actuator/prometheus` - the visibility side of the [MCP Server Safety](mcp-server-safety.md) risk engine.
 
 Anything else, if it ships, will be documented under [Features → Observability](features/observability/index.md) by the milestone that ships it. Sandbox layers ([Safety Architecture](safety-architecture.md)) prevent unsafe *actions* at the boundary of a single call. The observability layer documented here records what those calls were. Whether the two are ever combined into a behavioural layer that catches unsafe *patterns* across calls is a question for later milestones, not for this document.

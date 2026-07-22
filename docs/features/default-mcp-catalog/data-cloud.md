@@ -1,10 +1,10 @@
-description: Default MCP Servers - Data & Cloud reference: 17 preset MCP connections with transport, auth defaults, required env, and full description per card.
+description: Default MCP Servers - Data & Cloud reference: 18 preset MCP connections with transport, auth defaults, required env, and full description per card.
 
 # Default MCP Servers - Data & Cloud
 
 Object storage, managed databases (relational / analytical / document), and hosting platforms. Google Cloud entries route through Google OAuth; Microsoft entries through Azure AD tenants; the rest carry the vendor's own OAuth issuer URI. BigQuery carries the `pipeline` tag - it's the only entry on this page used as both a query target and a long-running ETL endpoint.
 
-## Entries (17)
+## Entries (18)
 
 Click any card to expand the full spec inline - transport (Streamable HTTP / STDIO), authentication shape (OAuth 2.1 / API key / Bearer / none), required environment variables, vendor URL or stdio command, and the upstream docs link.
 
@@ -870,11 +870,67 @@ Security: writes are allowed by default - point at a copy of the DB or a read-on
 </div>
 </div>
 
+<div class="tcg-card tcg-card--clickable" id="KOSIS" data-tool-id="KOSIS" data-tool-title="KOSIS National Statistics" markdown>
+<div class="tcg-name"><span class="tcg-name__text">KOSIS National Statistics</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-chart-box-outline:</div>
+<div class="tcg-type">public data · korea · preview <span class="risk risk-l3">preview</span> <span class="rl rl-l2">L2</span></div>
+<div class="tcg-body" markdown>
+Query Korea's official national statistics in natural language, straight from KOSIS. Official pilot MCP server operated by the National Data Office - 1,360+ approved statistics and 260,000+ tables (population, prices, housing, employment, OECD comparisons). No API key, read-only.
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Vendor** &nbsp; National Data Office · T2 gov</div>
+<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;None</div>
+</div>
+<div class="tcg-cta">Click for transport · auth · required env · description · docs</div>
+<div class="tcg-detail-template" hidden markdown>
+
+**Vendor** - National Data Office, formerly Statistics Korea (vendor-official)
+
+**Transport** - Streamable HTTP
+
+**URL** - `https://kosismcp2026.vercel.app`
+
+**Endpoint** - `/api/mcp` - keep the path in the separate Endpoint field; the Streamable HTTP transport defaults to `/mcp` and resolves the endpoint against the base URL, so a URL carrying the full path with Endpoint left empty resolves to `https://kosismcp2026.vercel.app/mcp` and the handshake fails
+
+**Auth** - None (public pilot, read-only)
+
+**Stability** - PREVIEW · **Tier** - Tier 2
+
+**Required env** - -
+
+**Tags** - korea · statistics
+
+**Tools** - 10 read-only tools published by the pilot; keyword search, table metadata, and region-code lookups compose to <span class="rl rl-l1">L1</span>, the bulk data fetch to <span class="rl rl-l2">L2</span> - confirm the live set and recomputed levels on the [Inspector](../mcp-server/inspector.md#tools):
+
+??? note "Tools (10) - kosis_search · kosis_local_search · kosis_item_search · kosis_validate · kosis_region_code · kosis_table_info · kosis_get_data · kosis_meta · kosis_list · kosis_indicator"
+    - **`kosis_search`** - keyword search across statistical tables. <span class="rl rl-l1">L1</span>
+    - **`kosis_local_search`** - keyword search tuned for regional statistics. <span class="rl rl-l1">L1</span>
+    - **`kosis_item_search`** - vector search over municipal statistics items. <span class="rl rl-l1">L1</span>
+    - **`kosis_validate`** - check a candidate table fits the question. <span class="rl rl-l1">L1</span>
+    - **`kosis_region_code`** - map region names to per-table region codes. <span class="rl rl-l1">L1</span>
+    - **`kosis_table_info`** - table structure, classification items, units, cycles. <span class="rl rl-l1">L1</span>
+    - **`kosis_get_data`** - fetch actual statistics values from a table. <span class="rl rl-l2">L2</span>
+    - **`kosis_meta`** - official methodology notes (purpose, legal basis, cycle). <span class="rl rl-l1">L1</span>
+    - **`kosis_list`** - browse the statistics tree by topic or agency. <span class="rl rl-l1">L1</span>
+    - **`kosis_indicator`** - key economic and social indicator definitions. <span class="rl rl-l1">L1</span>
+
+**Description**
+
+Query Korea's official national statistics in natural language, straight from KOSIS (Korean Statistical Information Service). Official pilot MCP server operated by the National Data Office: 1,360+ approved national statistics and 260,000+ statistical tables covering population, prices, housing, employment, births, regional indicators, and international (OECD) comparisons.
+
+PILOT SERVICE (opened 2026-07-08): the endpoint URL may change and availability is not guaranteed; full service is planned for 2027.
+
+
+**Docs** - [https://kosis.kr/serviceInfo/noticeDetail.do?boardIdx=2553](https://kosis.kr/serviceInfo/noticeDetail.do?boardIdx=2553)
+
+</div>
+</div>
+
 </div>
 
 ## Workflow combinations { #combinations }
 
-The 17 entries on this page span object storage, managed databases, and hosting platforms. They compose naturally as **data-pipeline assemblies**:
+The 18 entries on this page span object storage, managed databases, hosting platforms, and public statistics. They compose naturally as **data-pipeline assemblies**:
 
 - **Analytics report → dashboard upload** - `BigQuery` (run the query) + `Google Cloud Storage` (drop the CSV) + `Cloudflare` (purge the cache so the next dashboard hit is fresh).
 - **Cross-cloud DB read** - `Supabase` (Postgres-flavoured) + `Neon` (serverless Postgres) + `PlanetScale` (Vitess-on-MySQL). Same SQL surface, three providers - useful for cost / latency comparisons.
@@ -884,7 +940,7 @@ The 17 entries on this page span object storage, managed databases, and hosting 
 
 ## Auth & secrets { #auth-secrets }
 
-Every remote entry uses OAuth 2.1. One stdio entry needs no env at all.
+Every remote entry uses OAuth 2.1 except the public KOSIS pilot, which needs no auth. One stdio entry needs no env at all.
 
 | Connection family | OAuth issuer | Extra env |
 |---|---|---|
@@ -898,6 +954,7 @@ Every remote entry uses OAuth 2.1. One stdio entry needs no env at all.
 | Neon | Neon OAuth | - |
 | Supabase | Supabase OAuth | - |
 | PlanetScale | PlanetScale OAuth | - |
+| KOSIS (public pilot) | None | Read-only; endpoint may change while in PREVIEW |
 | SQLite (stdio) | None | Node.js 18+; pass the database file path as the first arg |
 
 Google Cloud entries each request a specific scope - `bigquery.read` for BigQuery, `cloud-platform` for Cloud Run, `cloud-spanner.data` for Spanner. Spring AI Playground stores the granted refresh token under `~/spring-ai-playground/mcp/oauth-tokens/` so you don't reauthorise on every restart.
@@ -915,4 +972,5 @@ Google Cloud entries each request a specific scope - `bigquery.read` for BigQuer
 | Edge / CDN | `Cloudflare` |
 | Static-first hosting | `Vercel` · `Netlify` |
 | Container-on-managed-runtime | `Google Cloud Run` · `Render` · `Heroku` |
+| Korea public statistics | `KOSIS` |
 

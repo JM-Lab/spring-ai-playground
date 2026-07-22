@@ -1,14 +1,14 @@
-description: Default MCP Servers - 57 preset external MCP server connections (49 remote + 8 stdio per OS), browseable + filterable across 6 category pages.
+description: Default MCP Servers - 58 preset external MCP server connections (50 remote + 8 stdio per OS), browseable + filterable across 6 category pages.
 
 # Default MCP Servers
 
 **Where:** top navigation → **MCP Server** → the sidebar's **Inactive MCP** section.
 
-Spring AI Playground ships with **57 default MCP server connections** spread across **49 vendor-official remote entries** (Streamable HTTP - Gmail, Outlook, Notion, GitHub, Linear, Atlassian, Stripe, BigQuery, ...) and **8 community stdio entries per OS** (`modelcontextprotocol/servers` - Git, Memory, Puppeteer, MCP Everything, ...). They are ready to activate the moment the desktop launcher is running - you do not need to type a URL or hunt down a stdio command yourself to start chatting against an external service.
+Spring AI Playground ships with **58 default MCP server connections** spread across **50 vendor-official remote entries** (Streamable HTTP - Gmail, Outlook, Notion, GitHub, Linear, Atlassian, Stripe, BigQuery, ...) and **8 community stdio entries per OS** (`modelcontextprotocol/servers` - Git, Memory, Puppeteer, MCP Everything, ...). They are ready to activate the moment the desktop launcher is running - you do not need to type a URL or hunt down a stdio command yourself to start chatting against an external service.
 
 The MCP Server sidebar does not connect them all by default - every entry starts in the sidebar's **Inactive MCP** section as a *ghost row*. Clicking one promotes it into the right-hand configuration form pre-filled with the catalog template, so you only fill in your local secret / tenant before **Save & Connect**. The catalog itself lives in `src/main/resources/mcp/default-mcp-specs*.json` and the activation/filter state lives entirely in the sidebar.
 
-## Browse all 57 catalog entries { #browse-all-entries }
+## Browse all 58 catalog entries { #browse-all-entries }
 
 Click a card to jump to its full reference (with transport / auth defaults / required env / docs expanded) on the right sub-page - same UX as the **Default Tools** directory and the **MCP Server Setting** drawer in Tool Studio. Six reference pages organise the catalog by category cohort: [Productivity & Communication](productivity.md) · [Dev & Project Management](dev.md) · [Data & Cloud](data-cloud.md) · [Business](business.md) · [Search](search.md) · [Examples](examples.md).
 
@@ -18,7 +18,7 @@ Click a card to jump to its full reference (with transport / auth defaults / req
 <div class="tool-directory__controls">
 <input type="search" class="tool-directory__search" placeholder="Search by name, vendor, or description..." aria-label="Search MCP catalog">
 <div class="tool-directory__chips">
-<span class="tool-directory__chip-label">Category</span> <button class="tool-directory__chip" data-group="category" data-value="cloud" aria-pressed="false">Cloud</button> <button class="tool-directory__chip" data-group="category" data-value="communication" aria-pressed="false">Communication</button> <button class="tool-directory__chip" data-group="category" data-value="crm" aria-pressed="false">Crm</button> <button class="tool-directory__chip" data-group="category" data-value="database" aria-pressed="false">Database</button> <button class="tool-directory__chip" data-group="category" data-value="design" aria-pressed="false">Design</button> <button class="tool-directory__chip" data-group="category" data-value="dev" aria-pressed="false">Dev</button> <button class="tool-directory__chip" data-group="category" data-value="example" aria-pressed="false">Example</button> <button class="tool-directory__chip" data-group="category" data-value="finance" aria-pressed="false">Finance</button> <button class="tool-directory__chip" data-group="category" data-value="productivity" aria-pressed="false">Productivity</button> <button class="tool-directory__chip" data-group="category" data-value="project_mgmt" aria-pressed="false">Project Mgmt</button> <button class="tool-directory__chip" data-group="category" data-value="search" aria-pressed="false">Search</button> <button class="tool-directory__chip" data-group="category" data-value="storage" aria-pressed="false">Storage</button> <button class="tool-directory__chip" data-group="category" data-value="util" aria-pressed="false">Util</button>
+<span class="tool-directory__chip-label">Category</span> <button class="tool-directory__chip" data-group="category" data-value="cloud" aria-pressed="false">Cloud</button> <button class="tool-directory__chip" data-group="category" data-value="communication" aria-pressed="false">Communication</button> <button class="tool-directory__chip" data-group="category" data-value="crm" aria-pressed="false">Crm</button> <button class="tool-directory__chip" data-group="category" data-value="database" aria-pressed="false">Database</button> <button class="tool-directory__chip" data-group="category" data-value="design" aria-pressed="false">Design</button> <button class="tool-directory__chip" data-group="category" data-value="dev" aria-pressed="false">Dev</button> <button class="tool-directory__chip" data-group="category" data-value="example" aria-pressed="false">Example</button> <button class="tool-directory__chip" data-group="category" data-value="finance" aria-pressed="false">Finance</button> <button class="tool-directory__chip" data-group="category" data-value="productivity" aria-pressed="false">Productivity</button> <button class="tool-directory__chip" data-group="category" data-value="project_mgmt" aria-pressed="false">Project Mgmt</button> <button class="tool-directory__chip" data-group="category" data-value="public_data" aria-pressed="false">Public Data</button> <button class="tool-directory__chip" data-group="category" data-value="search" aria-pressed="false">Search</button> <button class="tool-directory__chip" data-group="category" data-value="storage" aria-pressed="false">Storage</button> <button class="tool-directory__chip" data-group="category" data-value="util" aria-pressed="false">Util</button>
 </div>
 <div class="tool-directory__chips">
 <span class="tool-directory__chip-label">Tag</span> <button class="tool-directory__chip" data-group="tag" data-value="aggregator" aria-pressed="false">aggregator</button> <button class="tool-directory__chip" data-group="tag" data-value="beta" aria-pressed="false">beta</button> <button class="tool-directory__chip" data-group="tag" data-value="community" aria-pressed="false">community</button> <button class="tool-directory__chip" data-group="tag" data-value="free-tier" aria-pressed="false">free-tier</button> <button class="tool-directory__chip" data-group="tag" data-value="geo" aria-pressed="false">geo</button> <button class="tool-directory__chip" data-group="tag" data-value="global" aria-pressed="false">global</button> <button class="tool-directory__chip" data-group="tag" data-value="korea" aria-pressed="false">korea</button> <button class="tool-directory__chip" data-group="tag" data-value="legal" aria-pressed="false">legal</button> <button class="tool-directory__chip" data-group="tag" data-value="pipeline" aria-pressed="false">pipeline</button> <button class="tool-directory__chip" data-group="tag" data-value="preview" aria-pressed="false">preview</button> <button class="tool-directory__chip" data-group="tag" data-value="us" aria-pressed="false">us</button>
@@ -27,7 +27,7 @@ Click a card to jump to its full reference (with transport / auth defaults / req
 <span class="tool-directory__chip-label">Transport</span> <button class="tool-directory__chip" data-group="transport" data-value="streamable-http" aria-pressed="false">Streamable HTTP</button> <button class="tool-directory__chip" data-group="transport" data-value="stdio" aria-pressed="false">STDIO</button> <button class="tool-directory__chip" data-group="transport" data-value="sse" aria-pressed="false">SSE</button>
 </div>
 </div>
-<div class="tool-directory__count">Showing 57 of 57 entries</div>
+<div class="tool-directory__count">Showing 58 of 58 entries</div>
 <div class="tool-directory__list" markdown>
 
 <div class="tcg-grid tcg-grid--directory" markdown>
@@ -587,6 +587,21 @@ Query and manage Firestore documents, collections, composite indexes, and securi
 <div class="tcg-page">→ Data & Cloud</div>
 </div>
 
+<div class="tcg-card tcg-card--directory" data-name="kosis national statistics" data-desc="query korea's official national statistics in natural language from kosis. official pilot mcp by the national data office - 1,360+ statistics, 260,000+ tables. no api key, read-only." data-category="public_data" data-tags="korea,statistics,preview" data-transport="streamable-http" markdown>
+<a class="tcg-stretched-link" href="data-cloud/#KOSIS" aria-label="Open KOSIS National Statistics">KOSIS National Statistics</a>
+<div class="tcg-name"><span class="tcg-name__text">KOSIS National Statistics</span> <span class="cost">🆓</span></div>
+<div class="tcg-art" markdown>:material-chart-box-outline:</div>
+<div class="tcg-type">PUBLIC_DATA · korea · preview <span class="risk risk-l3">preview</span> <span class="rl rl-l2">L2</span></div>
+<div class="tcg-body" markdown>
+Query Korea's official national statistics in natural language from KOSIS. Official pilot MCP by the National Data Office - 1,360+ statistics, 260,000+ tables. No API key, read-only.
+</div>
+<div class="tcg-stats" markdown>
+<div class="tcg-stats__line" markdown>**Vendor** &nbsp; National Data Office · T2 gov</div>
+<div class="tcg-stats__line" markdown>**Auth** &nbsp; &nbsp; &nbsp; &nbsp;None</div>
+</div>
+<div class="tcg-page">→ Data & Cloud</div>
+</div>
+
 <div class="tcg-card tcg-card--directory" data-name="stripe" data-desc="manage stripe payments, customers, subscriptions, invoices, refunds, product catalogue, and connect. oauth." data-category="finance" data-tags="global" data-transport="streamable-http" markdown>
 <a class="tcg-stretched-link" href="business/#Stripe" aria-label="Open Stripe">Stripe</a>
 <div class="tcg-name"><span class="tcg-name__text">Stripe</span> <span class="cost">🔐</span></div>
@@ -981,7 +996,7 @@ The catalog only changes step 1 (entry selection + form pre-fill). Everything af
 
 Most MCP client implementations require the user to **type each external server's URL by hand**, look up OAuth issuer URIs from a vendor doc, and discover which env vars `requiredEnv` declares. That's three lookup hops before any tool runs.
 
-Spring AI Playground's catalog **pre-resolves those hops**. The 49 remote entries carry the vendor-recommended Streamable HTTP URL + OAuth defaults + tenant-ID hints; the 8 stdio entries carry the `npx` / `uvx` command + args verified against `modelcontextprotocol/servers`. The desktop launcher even picks the OS-matching stdio variant automatically (`npx` for macOS / Linux, `npx.cmd` for Windows) so the pre-filled command can be saved without editing on any host.
+Spring AI Playground's catalog **pre-resolves those hops**. The 50 remote entries carry the vendor-recommended Streamable HTTP URL + OAuth defaults + tenant-ID hints; the 8 stdio entries carry the `npx` / `uvx` command + args verified against `modelcontextprotocol/servers`. The desktop launcher even picks the OS-matching stdio variant automatically (`npx` for macOS / Linux, `npx.cmd` for Windows) so the pre-filled command can be saved without editing on any host.
 
 Every entry is either **vendor-official** (Tier 1 - listed under the vendor's own documentation) or **community-published** (Tier 2 - `modelcontextprotocol/servers` and adjacent maintained projects). The catalog file shipped with the app is the source of truth; updates land as part of regular releases rather than requiring users to chase vendor doc URLs.
 

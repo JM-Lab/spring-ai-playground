@@ -35,6 +35,17 @@ final class HomeUi {
                 section);
     }
 
+    static void launcherActionOrDocs(Anchor anchor, String section, String desktopLabel) {
+        anchor.getElement().executeJs(
+                "if (window.electronAPI) this.textContent = $1;"
+                        + " this.addEventListener('click', e => {"
+                        + " if (!window.electronAPI) return;"
+                        + " e.preventDefault();"
+                        + " window.electronAPI.invoke('config:open-section', $0);"
+                        + "});",
+                section, desktopLabel);
+    }
+
     static Span divider() {
         Span span = new Span("·");
         span.getStyle().set("color", "var(--lumo-tertiary-text-color)");

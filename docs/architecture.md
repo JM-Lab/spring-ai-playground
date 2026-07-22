@@ -7,15 +7,16 @@ Spring AI Playground is a **tool-first Spring Boot application** with several UI
 
 This page explains how the system is organized, how requests flow through it, and where to extend it. It is intended for contributors, integrators, and anyone evaluating how the product is built under the hood.
 
-This is one of seven architecture documents that complement each other:
+This page is the map; each of the other architecture documents drills into one layer of it:
 
-- **Application** (this page) - runtime layers, feature modules, data flows, extension points
-- **[Safe Tool Specification](safe-tool-specification.md)** - normative JSON spec for tool authoring (fields, JSON Schema, resolution algorithm, lifecycle)
-- **[AI Agent Tool Safety](safety-architecture.md)** - defense-in-depth sandbox model, policy resolution, threat-to-layer mapping, known limitations
-- **[MCP Server Safety](mcp-server-safety.md)** - client-side risk model for external MCP servers and re-exposed tools
-- **[Human-in-the-Loop Approval](hitl-architecture.md)** - the runtime per-call approval gate (chat dialog + MCP elicitation)
-- **[Agent Loop](agent-loop-architecture.md)** - per-turn state and round governance around the tool-calling loop
-- **[AI Agent Observability](observability-architecture.md)** - the visibility layer that captures every action the agent took and surfaces it through fourteen dashboards
+- [AI Agent Tool Safety](safety-architecture.md) - the sandbox that contains locally-authored JS tools
+- [Safe Tool Specification](safe-tool-specification.md) - the normative JSON document a tool is written as
+- [MCP Server Safety](mcp-server-safety.md) - the risk model for external servers and the tools re-exposed from them
+- [Human-in-the-Loop Approval](hitl-architecture.md) - the per-call approval gate in front of tool execution
+- [OWASP MCP Top 10](mcp-owasp-top-10.md) - how those controls map to the OWASP catalog
+- [Agent Loop](agent-loop-architecture.md) - the round governance wrapped around Spring AI's tool-calling loop
+- [Context Engineering](context-engineering-architecture.md) - what enters the model's context on each chat turn
+- [AI Agent Observability](observability-architecture.md) - the trace pipeline behind the in-app dashboards
 
 ## Overview { #overview }
 
@@ -94,7 +95,7 @@ Per-feature services under `src/main/java/org/springaicommunity/playground/servi
 | `service/agent` | `AgentLoopManager`, `AgentTurn`, `AgentLoopHarness`, `AgentRoundInterceptor` (`LoopGuard` / `HitlApproval` / `FileUpload` / `ImageReference`), `AgentTurnMessages` | The **agent loop** layer that wraps Spring AI's tool-calling loop: per-turn state, round bounds, and the chat-side interceptor chain (HITL approval, interactive upload/image, loop guards) - see [Agent Loop](agent-loop-architecture.md) |
 | `service/mcp` | `McpServerInfoService`, `McpServerHitlToolGate` | Built-in MCP server metadata and the server-side human-in-the-loop elicitation gate - see [Human-in-the-Loop Approval](hitl-architecture.md) |
 | `service/oauth` | `EncryptedFileOAuth2AuthorizedClientRepository`, `OAuthTokenEncryptor`, `McpClientRegistrationRepository`, `McpOAuth2AuthorizationCodeRequestCustomizer` | OAuth 2.1 for external MCP connections - encrypted-at-rest token store, dynamic client registration, authorization-code customizer |
-| `service/mcp/catalog` | `McpCatalogService`, `McpCategoryService`, `McpTagSuggestionService` | 57-entry preset catalog (49 remote + 8 stdio per OS) - loaded from `default-mcp-specs.json` and `default-mcp-specs-stdio-{mac,linux,windows}.json`, plus the 14-row `default-mcp-categories.json` taxonomy (13 catalog-facing categories + `CUSTOM` reserved for user-added entries), plus dynamic tag suggestions for the Config form; each entry carries `trustSignals` + `docsAdequate` metadata consumed by the risk model |
+| `service/mcp/catalog` | `McpCatalogService`, `McpCategoryService`, `McpTagSuggestionService` | 58-entry preset catalog (50 remote + 8 stdio per OS) - loaded from `default-mcp-specs.json` and `default-mcp-specs-stdio-{mac,linux,windows}.json`, plus the 14-row `default-mcp-categories.json` taxonomy (13 catalog-facing categories + `CUSTOM` reserved for user-added entries), plus dynamic tag suggestions for the Config form; each entry carries `trustSignals` + `docsAdequate` metadata consumed by the risk model |
 | `service/mcp/client` | `McpClientService`, `Mcp*PropertiesService` | External MCP clients across STDIO / HTTP / SSE |
 | `service/mcp/risk` | `McpServerRiskCalculator`, `McpToolPublishRiskCalculator`, `McpToolRiskComposer`, `McpToolPoisoningScanner`, `McpToolHashLedger`, `McpCompositionService`, `McpCompositionShadowingRules`, `McpExposedToolService`, `WrappedExternalToolCallback` | L0-L5 risk scoring for external servers/tools (transport · auth · trust · doc axes + floor rules), tool-description poisoning scan, fingerprint ledger for change detection, and tool **composition** that re-exposes upstream tools on the built-in server with alias / description / HITL overrides - see [MCP Server Safety](mcp-server-safety.md) |
 | `service/util` | `SecretMasking`, `EnvVarResolver` | Resolve `${ENV_VAR}` placeholders against the OS env; sweep connection-error notifications + per-call logs to replace any resolved secret value with `***` |

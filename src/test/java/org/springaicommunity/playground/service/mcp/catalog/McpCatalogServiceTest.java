@@ -53,7 +53,7 @@ class McpCatalogServiceTest {
     @Test
     void tierSplitMatchesCatalogSeed() {
         assertThat(service.getByTier(1)).hasSize(18);
-        assertThat(service.getByTier(2)).hasSize(39);
+        assertThat(service.getByTier(2)).hasSize(40);
     }
 
     @Test

@@ -232,7 +232,7 @@ Use only enabled tools and never fake their output.</pre>
 
 **What happens** - the agent calls `parseCsv` and `stats` to compute the statistics (mean 83.75, max 95). Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![Data wrangler result - the CSV question, a folded MCP TOOLS summary, and a renderChart bar chart of the four parsed scores](../../assets/images/chat/preset-data-wrangler-collapsed.png){ width="1084" }
+![Data wrangler result - the closing lines of the statistics summary (min 70, max 95, median 82.5) and a note that all 4 rows parsed with none dropped or coerced, above a Scores bar chart card with one bar per parsed row and Copy and PNG export buttons; the tool selector at the bottom shows stats, regexReplace, and parseCsv](../../assets/images/chat/preset-data-wrangler-collapsed.png){ width="1084" }
 
 </div>
 </div>
@@ -349,7 +349,7 @@ Use only enabled tools and never fake their output.</pre>
 
 **What happens** - the agent pulls the latest release and its issues (`getGithubLatestRelease`, `listGithubRepoIssues`), then rewrites them into keep-a-changelog notes - Added / Fixed / Deprecated with linked issue numbers. Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![Release notes writer result - the question, a folded MCP TOOLS summary, and a renderTimeline of the release history](../../assets/images/chat/preset-release-notes-writer-collapsed.png){ width="1084" }
+![Release notes writer result - the tail of the written notes, three release bullets for v1.0 (initial stable release), v1.1 (dark mode support), and v2.0 (new plugin API), above a renderTimeline card titled Release History that repeats them as dated entries from Mar 1 to Jun 1, 2026; the tool selector at the bottom shows getGithubLatestRelease](../../assets/images/chat/preset-release-notes-writer-collapsed.png){ width="1084" }
 
 </div>
 </div>
@@ -432,7 +432,7 @@ Use only enabled tools and never fake their output.</pre>
 
 **You ask**
 
-> Search every file under /Users/jm/qa-doc-detective-sample for the word "penalty". Which files mention it? Quote each match with its file, line number, and a couple of lines of context.
+> Search every file under my sample documents folder for the word "penalty". Which files mention it? Quote each match with its file, line number, and a couple of lines of context.
 
 **What happens** - the agent sweeps the folder with `searchInFiles`, pins line numbers with `grepFile`, pulls context windows with `sliceFile`, and reports which documents carry the clause with a verbatim quote per hit - the `find | grep -C` idiom as tool calls. Ask it about a single file instead and it opens an upload dialog with `requestFileUpload` - [Tutorial 15](../../tutorials/15-investigate-documents.md) walks that flow end-to-end. Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
@@ -476,7 +476,7 @@ Use only enabled tools and never fake their output.</pre>
 
 **What happens** - the agent pulls the Upbit (KRW) and global (USD) prices and uses `evalExpression` to compute the premium, showing the formula and result. Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![Crypto market watch result - the question, a folded MCP TOOLS summary, and a renderChart bar chart comparing spot prices](../../assets/images/chat/preset-crypto-market-watch-collapsed.png){ width="1084" }
+![Crypto market watch result - closing ratio bullets (Bitcoin at about 25.8x Ethereum, Ethereum at about 17.1x Solana) and a not-financial-advice note, above a renderChart bar chart card titled Spot Prices Comparison (USD) where the Bitcoin bar towers over Ethereum and Solana; the tool selector at the bottom shows getUpbitTicker and evalExpression](../../assets/images/chat/preset-crypto-market-watch-collapsed.png){ width="1084" }
 
 </div>
 </div>
@@ -615,7 +615,7 @@ Use only enabled tools and never fake their output.</pre>
 
 **What happens** - the agent calls `getRecentEarthquakes`, states the magnitudes and locations briefly, then calls `plotPointsOnMap` to drop every quake onto one multi-point Leaflet map (with a Light / Dark toggle and Copy / PNG export). Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![The Data visualizer preset in action - the earthquake question, a folded MCP TOOLS summary showing one plotPointsOnMap call, and the rendered map card with three markers and a Light/Dark toggle](../../assets/images/chat/preset-data-visualizer-result.png){ width="980" }
+![The Data visualizer preset in action - closing magnitude bullets for Japan (5.8) and Chile (5.0), above a rendered map card titled Earthquake Locations with three round markers near central Asia, Japan, and South America, zoom controls, a Light / Dark toggle, and Copy and PNG buttons; the tool selector at the bottom shows getCryptoPrice and evalExpression next to an overflow chip for 14 more](../../assets/images/chat/preset-data-visualizer-result.png){ width="980" }
 
 </div>
 </div>
@@ -651,7 +651,7 @@ Nothing here is financial advice. Never invent prices; only chart what a tool ac
 
 **What happens** - the agent calls `getUpbitCandles` for the OHLCV rows and renders them with `renderCandlestick` as an interactive candlestick card (with Copy / PNG export in the header). Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![The Market charts preset in action - the candle question, a folded MCP TOOLS summary showing one renderCandlestick call, and the rendered OHLC candlestick card](../../assets/images/chat/preset-market-charts-result.png){ width="980" }
+![The Market charts preset in action - closing OHLC bullets for Tuesday and Wednesday and a note that the chart uses the data provided, above a renderCandlestick card titled BTC OHLC Candlestick Chart with three daily candles (green Monday, red Tuesday, green Wednesday) on a 95 to 115 scale and Copy and PNG buttons; the tool selector at the bottom shows getCryptoPrice and getUpbitCandles](../../assets/images/chat/preset-market-charts-result.png){ width="980" }
 
 </div>
 </div>
@@ -690,7 +690,7 @@ Always diff the actual contents you read; never guess at a file you could not op
 
 **What happens** - the agent calls `renderDiff` with the two sides, producing a side-by-side card with deletions in red and additions in green (and a "completely different" banner when the two share almost nothing), then summarizes the changes in a few bullets. Its reasoning and tool calls run in collapsible **THINK** / **MCP TOOLS** panels (folded here; click any in the app to open).
 
-![The Diff inspector preset in action - the compare request, a folded MCP TOOLS summary showing one renderDiff call, and the rendered side-by-side diff card](../../assets/images/chat/preset-diff-inspector-result.png){ width="980" }
+![The Diff inspector preset in action - closing summary bullets for the host, timeout, and logging changes, above a renderDiff card titled Config comparison that reads "33% of lines in common, +4 / -3" and puts the removed before lines (port 8080, host localhost, timeout 30) in red beside the added after lines (port 9090, host 0.0.0.0, timeout 60, logging debug) in green; the tool selector at the bottom shows readTextFile and listAllowedDirectories](../../assets/images/chat/preset-diff-inspector-result.png){ width="980" }
 
 </div>
 </div>

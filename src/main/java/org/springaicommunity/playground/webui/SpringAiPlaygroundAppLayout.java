@@ -51,6 +51,7 @@ import java.util.Map;
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-combo-box")
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-multi-select-combo-box")
 @CssImport(value = "./playground/input-placeholder.css", themeFor = "vaadin-select")
+@CssImport(value = "./playground/disabled-placeholder.css", themeFor = "vaadin-multi-select-combo-box")
 // The parent layout must allow access at least as broadly as its views, or navigation is denied.
 @AnonymousAllowed
 public class SpringAiPlaygroundAppLayout extends AppLayout
