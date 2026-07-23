@@ -16,10 +16,14 @@
 package org.springaicommunity.playground.webui.chat;
 
 import com.vaadin.browserless.SpringBrowserlessTest;
+import com.vaadin.flow.component.AbstractField;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentUtil;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.listbox.ListBox;
 import com.vaadin.flow.component.markdown.Markdown;
 import com.vaadin.flow.component.orderedlayout.Scroller;
@@ -32,7 +36,11 @@ import org.springaicommunity.playground.service.chat.ChatExtraOptions;
 import org.springaicommunity.playground.service.chat.ChatHistory;
 import org.springaicommunity.playground.service.chat.ChatHistoryService;
 import org.springaicommunity.playground.service.chat.ChatToolPreferences;
+import org.springaicommunity.playground.service.mcp.McpServerInfo;
+import org.springaicommunity.playground.service.mcp.McpServerInfoService;
+import org.springaicommunity.playground.service.mcp.client.McpTransportType;
 import org.springaicommunity.playground.webui.SttMicButton;
+import org.springaicommunity.playground.webui.mcp.McpServerView;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -47,11 +55,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.ai.playground.chat.tool-search.min-tools=0")
 class ChatConversationReloadTest extends SpringBrowserlessTest {
 
     @MockitoBean
@@ -60,9 +69,86 @@ class ChatConversationReloadTest extends SpringBrowserlessTest {
     @Autowired
     private ChatHistoryService chatHistoryService;
 
+    @Autowired
+    private McpServerInfoService mcpServerInfoService;
+
     @BeforeEach
     void stubModelOptions() {
         lenient().when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    }
+
+    @Test
+    void mcpServerSavedAfterChatOpenedAppearsWhenReturningToTheView() {
+        UI.getCurrent().navigate(ChatView.class);
+        roundTrip();
+        assertThat(mcpServerCombo((ChatView) getCurrentView()).getListDataView().getItems()
+                .map(McpServerInfo::serverName)).doesNotContain("late-saved-sse");
+
+        long now = System.currentTimeMillis();
+        this.mcpServerInfoService.updateMcpServerInfo(McpTransportType.SSE, "late-saved-sse",
+                new McpServerInfo(McpTransportType.SSE, "late-saved-sse", "saved after the chat was built",
+                        now, now, null));
+        try {
+            UI.getCurrent().navigate(McpServerView.class);
+            roundTrip();
+            UI.getCurrent().navigate(ChatView.class);
+            roundTrip();
+
+            MultiSelectComboBox<McpServerInfo> combo = mcpServerCombo((ChatView) getCurrentView());
+            assertThat(combo.getListDataView().getItems().map(McpServerInfo::serverName))
+                    .contains("late-saved-sse");
+            assertThat(combo.isEnabled()).isTrue();
+            assertThat(combo.getPlaceholder()).isEqualTo("Select MCP servers for tools");
+        } finally {
+            this.mcpServerInfoService.deleteMcpServerInfo(McpTransportType.SSE, "late-saved-sse");
+        }
+    }
+
+    @Test
+    void selectingAnMcpServerWhileDynamicTurnsDynamicOffAndPersistsTheSelection() {
+        long now = System.currentTimeMillis();
+        this.mcpServerInfoService.updateMcpServerInfo(McpTransportType.SSE, "dynamic-exit-sse",
+                new McpServerInfo(McpTransportType.SSE, "dynamic-exit-sse", "connected before the chat",
+                        now, now, null));
+        try {
+            this.chatHistoryService.putIfAbsentChatHistory(new ChatHistory("dyn-conv", "Dyn", now, now, "sys",
+                    (DefaultChatOptions) ChatOptions.builder().build(), List::of)
+                    .withToolPreferences(ChatToolPreferences.defaults().withDynamicTools(true)));
+            UI.getCurrent().navigate(ChatView.class, QueryParameters.of("conv", "dyn-conv"));
+            roundTrip();
+            ChatView view = (ChatView) getCurrentView();
+            MultiSelectComboBox<McpServerInfo> combo = mcpServerCombo(view);
+            assertThat(dynamicCheckbox(view).getValue()).isTrue();
+            assertThat(combo.isEnabled()).isTrue();
+            assertThat(combo.getPlaceholder()).isEqualTo("Select servers (turns Dynamic off)");
+
+            test(combo).selectItem("dynamic-exit-sse(SSE)");
+            ComponentUtil.fireEvent(combo,
+                    new AbstractField.ComponentValueChangeEvent<>(combo, combo, Set.of(), true));
+            roundTrip();
+
+            assertThat(dynamicCheckbox(view).getValue()).isFalse();
+            assertThat(combo.getPlaceholder()).isEqualTo("Select MCP servers for tools");
+            ChatToolPreferences persisted = this.chatHistoryService.getChatHistory("dyn-conv").toolPreferences();
+            assertThat(persisted.dynamicTools()).isFalse();
+            assertThat(persisted.mcpServerNames().get(McpTransportType.SSE)).containsExactly("dynamic-exit-sse");
+        } finally {
+            this.mcpServerInfoService.deleteMcpServerInfo(McpTransportType.SSE, "dynamic-exit-sse");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private MultiSelectComboBox<McpServerInfo> mcpServerCombo(ChatView view) {
+        return $(MultiSelectComboBox.class, view)
+                .withCondition(combo -> "Access Tools via external MCP connections"
+                        .equals(combo.getTooltip().getText()))
+                .first();
+    }
+
+    private Checkbox dynamicCheckbox(ChatView view) {
+        return $(Checkbox.class, view)
+                .withCondition(box -> "Dynamic tool discovery".equals(box.getLabel()))
+                .first();
     }
 
     @Test

@@ -1,0 +1,18 @@
+vaadin-multi-select-combo-box[disabled]::part(input-field) {
+    background-color: var(--lumo-contrast-10pct);
+}
+
+vaadin-multi-select-combo-box[disabled] > input {
+    -webkit-text-fill-color: var(--lumo-secondary-text-color);
+}
+
+vaadin-multi-select-combo-box[disabled] > input::placeholder {
+    color: var(--lumo-tertiary-text-color);
+    -webkit-text-fill-color: var(--lumo-tertiary-text-color);
+    opacity: 0.6;
+}
+
+vaadin-multi-select-combo-box[disabled]::part(toggle-button),
+vaadin-multi-select-combo-box[readonly]::part(toggle-button) {
+    color: var(--lumo-contrast-60pct);
+}

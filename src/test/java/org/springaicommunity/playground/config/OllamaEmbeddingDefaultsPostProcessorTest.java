@@ -87,13 +87,36 @@ class OllamaEmbeddingDefaultsPostProcessorTest {
     }
 
     @Test
-    void documentEmbedsRouteThroughTheRetypedPath() {
+    void modelLessOptionsAreDroppedSoTheConfiguredDefaultModelApplies() {
+        ArgumentCaptor<EmbeddingRequest> sent = stubDelegateCall();
+
+        this.wrapped.call(new EmbeddingRequest(List.of("query"), EmbeddingOptions.builder().build()));
+
+        verify(this.delegate).call(sent.capture());
+        assertThat(sent.getValue().getOptions()).isNull();
+        assertThat(sent.getValue().getInstructions()).containsExactly("query");
+    }
+
+    @Test
+    void modelLessOptionsWithDimensionsStayPlainSoTheDelegateStillMergesTheConfiguredModel() {
+        ArgumentCaptor<EmbeddingRequest> sent = stubDelegateCall();
+        EmbeddingRequest dimensionsOnly = new EmbeddingRequest(List.of("query"),
+                EmbeddingOptions.builder().dimensions(512).build());
+
+        this.wrapped.call(dimensionsOnly);
+
+        verify(this.delegate).call(sent.capture());
+        assertThat(sent.getValue()).isSameAs(dimensionsOnly);
+    }
+
+    @Test
+    void documentEmbedsCarryNoInventedModel() {
         ArgumentCaptor<EmbeddingRequest> sent = stubDelegateCall();
 
         this.wrapped.embed(new Document("doc text"));
 
         verify(this.delegate).call(sent.capture());
-        assertThat(sent.getValue().getOptions()).isInstanceOf(OllamaEmbeddingOptions.class);
+        assertThat(sent.getValue().getOptions()).isNull();
         assertThat(sent.getValue().getInstructions()).containsExactly("doc text");
     }
 

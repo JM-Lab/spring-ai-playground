@@ -25,6 +25,7 @@ import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 // OllamaEmbeddingModel merges its configured defaults (keep-alive, truncate, ...) only into requests
 // that already carry OllamaEmbeddingOptions; the plain options built by the vector store and the tool
@@ -70,6 +71,10 @@ public class OllamaEmbeddingDefaultsPostProcessor implements BeanPostProcessor {
         private static EmbeddingRequest retyped(EmbeddingRequest request) {
             EmbeddingOptions options = request.getOptions();
             if (options == null || options instanceof OllamaEmbeddingOptions) return request;
+            if (!StringUtils.hasText(options.getModel())) {
+                return options.getDimensions() == null
+                        ? new EmbeddingRequest(request.getInstructions(), null) : request;
+            }
             return new EmbeddingRequest(request.getInstructions(), OllamaEmbeddingOptions.builder()
                     .model(options.getModel()).dimensions(options.getDimensions()).build());
         }

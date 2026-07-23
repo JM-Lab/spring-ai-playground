@@ -120,6 +120,20 @@ public class ChatHistoryServiceTest {
     }
 
     @Test
+    void testUpdateChatHistoryKeepsIncomingToolPreferencesOnTitledConversations() {
+        ChatHistory chatHistory = chatHistoryService.createChatHistory("systemPrompt", chatOptions);
+        this.chatMemory.add(chatHistory.conversationId(), new UserMessage("User Message"));
+        ChatHistory titled = chatHistoryService.updateChatHistory(chatHistory.mutate("Titled", 1L));
+
+        ChatToolPreferences changed = ChatToolPreferences.defaults().withDynamicTools(true);
+        chatHistoryService.updateChatHistory(titled.withToolPreferences(changed));
+
+        ChatHistory reloaded = chatHistoryService.getChatHistory(chatHistory.conversationId());
+        assertEquals("Titled", reloaded.title());
+        assertTrue(reloaded.toolPreferences().dynamicTools());
+    }
+
+    @Test
     void testUpdateChatHistoryBeforeUserMessageCommitted() {
         // A stopped stream can commit before the user turn reaches chat memory; the conversation must
         // still be registered (fallback title) instead of throwing inside the cancel path.

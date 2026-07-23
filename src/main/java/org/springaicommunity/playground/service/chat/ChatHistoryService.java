@@ -65,9 +65,7 @@ public class ChatHistoryService {
     private ChatHistory changeChatHistory(ChatHistory chatHistory) {
         if (Objects.isNull(chatHistory.title()) || chatHistory.title().isBlank())
             return chatHistory.mutate(extractTitle(chatHistory.messagesSupplier().get()), System.currentTimeMillis());
-        ChatHistory registered = this.conversationIdHistoryMap.get(chatHistory.conversationId());
-        return (Objects.isNull(registered) ? chatHistory : registered)
-                .mutate(chatHistory.title(), System.currentTimeMillis());
+        return chatHistory.mutate(chatHistory.title(), System.currentTimeMillis());
     }
 
     // Stopping a stream can commit the conversation before the user turn reaches chat memory; falling back

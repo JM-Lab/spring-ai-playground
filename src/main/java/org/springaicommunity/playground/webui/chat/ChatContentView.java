@@ -224,6 +224,9 @@ public class ChatContentView extends VerticalLayout {
         this.composedToolsComboBox.setItems(List.of());
         this.builtinToolsComboBox.setHelperText(
                 "Built-in tools the MCP server currently exposes — tick which this chat may use.");
+        keepSelectionOnEscape(this.customToolsComboBox);
+        keepSelectionOnEscape(this.builtinToolsComboBox);
+        keepSelectionOnEscape(this.composedToolsComboBox);
 
         this.exposedToolsDisplayBox = new MultiSelectComboBox<>();
         this.exposedToolsDisplayBox.setPlaceholder("Built-in MCP off — click to enable");
@@ -275,8 +278,17 @@ public class ChatContentView extends VerticalLayout {
                 mcpServerInfo -> mcpServerInfo.serverName() + "(" + mcpServerInfo.mcpTransportType() + ")");
         this.mcpToolProviderComboBox.setItems(externalMcpServerInfos());
         this.mcpToolProviderComboBox.addClassName("active-on-select");
+        keepSelectionOnEscape(this.mcpToolProviderComboBox);
         this.mcpToolProviderComboBox.addValueChangeListener(e -> {
-            if (e.isFromClient()) persistToolPreferences();
+            if (!e.isFromClient()) return;
+            if (!e.getValue().isEmpty() && this.dynamicToolsCheckbox.getValue()) {
+                this.dynamicToolsCheckbox.setValue(false);
+                applyDynamicToolsUi();
+                refreshExposedToolsDisplay();
+                VaadinUtils.showInfoNotification(
+                        "Dynamic tool discovery turned off — selected MCP servers bind their tools directly.");
+            }
+            persistToolPreferences();
         });
 
         this.documentsComboBox = new MultiSelectComboBox<>();
@@ -290,6 +302,7 @@ public class ChatContentView extends VerticalLayout {
         this.documentsComboBox.setPlaceholder(
                 ragDocuments.isEmpty() ? "No documents for RAG" : "Select documents for RAG");
         this.documentsComboBox.addClassName("active-on-select");
+        keepSelectionOnEscape(this.documentsComboBox);
         this.documentsComboBox.addValueChangeListener(e -> {
             if (e.isFromClient()) persistToolPreferences();
         });
@@ -422,7 +435,10 @@ public class ChatContentView extends VerticalLayout {
         this.dynamicToolsNote.getStyle().set("font-size", "var(--lumo-font-size-xs)");
         this.dynamicToolsCheckbox.addValueChangeListener(e -> {
             if (e.isFromClient()) {
-                if (e.getValue()) this.useBuiltinMcpCheckbox.setValue(false);
+                if (e.getValue()) {
+                    this.useBuiltinMcpCheckbox.setValue(false);
+                    this.mcpToolProviderComboBox.deselectAll();
+                }
                 applyDynamicToolsUi();
                 persistToolPreferences();
                 refreshExposedToolsDisplay();
@@ -607,9 +623,36 @@ public class ChatContentView extends VerticalLayout {
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
         populateExposedToolsCombos();
+        refreshMcpServerItems();
+        refreshRagDocumentItems();
         applyStoredChatToolSelection();
         applyDynamicToolsUi();
         registerClientActionBridge();
+    }
+
+    private void refreshMcpServerItems() {
+        Set<String> selectedKeys = this.mcpToolProviderComboBox.getSelectedItems().stream()
+                .map(ChatContentView::mcpServerKey).collect(Collectors.toSet());
+        List<McpServerInfo> servers = externalMcpServerInfos();
+        this.mcpToolProviderComboBox.setItems(servers);
+        this.mcpToolProviderComboBox.select(servers.stream()
+                .filter(info -> selectedKeys.contains(mcpServerKey(info))).toList());
+    }
+
+    private static String mcpServerKey(McpServerInfo info) {
+        return info.mcpTransportType() + "|" + info.serverName();
+    }
+
+    private void refreshRagDocumentItems() {
+        Set<String> selectedIds = this.documentsComboBox.getSelectedItems().stream()
+                .map(VectorStoreDocumentInfo::docInfoId).collect(Collectors.toSet());
+        List<VectorStoreDocumentInfo> ragDocuments = this.chatService.getExistDocumentInfoList();
+        this.documentsComboBox.setItems(ragDocuments);
+        this.documentsComboBox.select(ragDocuments.stream()
+                .filter(info -> selectedIds.contains(info.docInfoId())).toList());
+        this.documentsComboBox.setEnabled(!ragDocuments.isEmpty());
+        this.documentsComboBox.setPlaceholder(
+                ragDocuments.isEmpty() ? "No documents for RAG" : "Select documents for RAG");
     }
 
     private void registerClientActionBridge() {
@@ -726,13 +769,19 @@ public class ChatContentView extends VerticalLayout {
         this.builtinToolsComboBox.setEnabled(manual && hasItems(this.builtinToolsComboBox));
         this.composedToolsComboBox.setEnabled(manual && hasItems(this.composedToolsComboBox));
         boolean hasServers = this.mcpToolProviderComboBox.getListDataView().getItems().findAny().isPresent();
-        this.mcpToolProviderComboBox.setEnabled(!dynamic && hasServers);
+        this.mcpToolProviderComboBox.setEnabled(hasServers);
         this.mcpToolProviderComboBox.setPlaceholder(!hasServers ? "No MCP servers connected"
-                : dynamic ? "Disabled in Dynamic mode" : "Select MCP servers for tools");
+                : dynamic ? "Select servers (turns Dynamic off)" : "Select MCP servers for tools");
     }
 
     private static boolean hasItems(MultiSelectComboBox<ToolSpec> combo) {
         return combo.getListDataView().getItems().findAny().isPresent();
+    }
+
+    private static void keepSelectionOnEscape(MultiSelectComboBox<?> combo) {
+        combo.getElement().executeJs("this.addEventListener('keydown', e => {"
+                + " if (e.key === 'Escape' && !this.opened) { e.stopImmediatePropagation(); e.stopPropagation(); }"
+                + " }, true);");
     }
 
     private long searchablePoolSize() {
