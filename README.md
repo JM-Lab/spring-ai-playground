@@ -120,6 +120,8 @@ If you install the app, you can run Spring AI Playground immediately without set
 
 Every release ships with a matching `.sha256` checksum file and a Sigstore SLSA build provenance attestation. See [Verify Your Download](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#verify-your-download) in the docs for the exact `shasum`, `Get-FileHash`, and `gh attestation verify` commands.
 
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). See our [Code Signing Policy](CODE_SIGNING_POLICY.md) for how releases are built, signed, and verified.
+
 The desktop launcher handles first-run setup on one screen — provider config, Default MCP Tools curation, and JVM/environment cards — and includes an Ollama model manager to review, search, and download models. See [Getting Started](https://spring-ai-community.github.io/spring-ai-playground/getting-started/) and [Model Configuration](https://spring-ai-community.github.io/spring-ai-playground/getting-started/#model-configuration).
 
 ## Documentation
